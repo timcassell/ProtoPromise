@@ -1,0 +1,92 @@
+﻿using System;
+using System.Collections;
+using UnityEngine;
+
+namespace ProtoPromise
+{
+	public class GlobalMonoBehaviour : MonoBehaviour
+	{
+		private class Routine : IEnumerator
+		{
+			public Routine next;
+			public Action onComplete;
+			bool _continue = false;
+			
+			public object Current { get; set; }
+			
+			public bool MoveNext()
+			{
+				// As a coroutine, this will wait for the Current's yield, then execute this once, then stop.
+				if (_continue)
+				{
+					Current = null;
+					if (onComplete != null)
+					{
+						onComplete.Invoke();
+						onComplete = null;
+					}
+					// Place this back in the pool.
+					next = node;
+					node = this;
+				}
+				_continue = !_continue;
+				return _continue;
+			}
+			
+			public void Reset()
+			{
+				throw new NotImplementedException();
+			}
+		}
+
+		private static GlobalMonoBehaviour _instance;
+		static GlobalMonoBehaviour Instance
+		{
+			get
+			{
+				if (_instance == null)
+				{
+					_instance = new GameObject("ProtoPromise.GlobalMonoBehaviour").AddComponent<GlobalMonoBehaviour>();
+					_instance.gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
+				}
+				return _instance;
+			}
+		}
+
+		private static Routine node; // Pool of routines, in linked-list stack fashion.
+
+		/// <summary>
+		/// Waits for <paramref name="yieldInstruction"/> to complete, then calls <paramref name="onComplete"/>.
+		/// If <typeparamref name="TYieldInstruction"/> is not a Unity supported <see cref="YieldInstruction"/> or <see cref="CustomYieldInstruction"/>, then this will wait for 1 frame.
+		/// </summary>
+		/// <param name="yieldInstruction">Yield instruction.</param>
+		/// <param name="onComplete">Callback</param>
+		/// <typeparam name="TYieldInstruction">The type of yield instruction.</typeparam>
+		public static void Yield<TYieldInstruction>(TYieldInstruction yieldInstruction, Action onComplete)
+		{
+			// Grab from pool or create new if pool is empty.
+			Routine routine = node;
+			if (routine != null)
+			{
+				node = routine.next;
+			}
+			else
+			{
+				routine = new Routine();
+			}
+
+			routine.Current = yieldInstruction;
+			routine.onComplete = onComplete;
+			Instance.StartCoroutine(routine);
+		}
+
+		/// <summary>
+		/// Waits for one frame, then calls onComplete.
+		/// </summary>
+		/// <param name="onComplete">Callback</param>
+		public static void Yield(Action onComplete)
+		{
+			Yield<object>(null, onComplete);
+		}
+	}
+}
