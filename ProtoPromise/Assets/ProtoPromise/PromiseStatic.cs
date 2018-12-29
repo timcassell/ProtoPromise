@@ -8,7 +8,7 @@ namespace ProtoPromise
 	{
 		public static Promise<T[]> All<T>(params Promise<T>[] promises)
 		{
-			var masterDeferred = new Deferred<T[]>();
+			var masterDeferred = Deferred<T[]>();
 
 			int waiting = promises.Length;
 			T[] args = new T[waiting];
@@ -21,7 +21,9 @@ namespace ProtoPromise
 				promise.Complete(() =>
 				{
 					if (masterDeferred.StateInternal != DeferredState.Pending)
+					{
 						return;
+					}
 					
 					args[index] = promise.Value;
 					switch(promise.DeferredInternal.StateInternal)
@@ -34,7 +36,9 @@ namespace ProtoPromise
 							break;
 						case DeferredState.Resolving:
 							if (--waiting == 0)
+							{
 								masterDeferred.Resolve(args);
+							}
 							break;
 					}
 				});
@@ -50,7 +54,7 @@ namespace ProtoPromise
 
 		public static Promise All(params Promise[] promises)
 		{
-			var masterDeferred = new Deferred();
+			var masterDeferred = Deferred();
 
 			int waiting = promises.Length;
 
@@ -61,7 +65,9 @@ namespace ProtoPromise
 				promise.Complete(() =>
 				{
 					if (masterDeferred.StateInternal != DeferredState.Pending)
+					{
 						return;
+					}
 
 					switch (promise.DeferredInternal.StateInternal)
 					{
@@ -73,7 +79,9 @@ namespace ProtoPromise
 							break;
 						case DeferredState.Resolving:
 							if (--waiting == 0)
+							{
 								masterDeferred.Resolve();
+							}
 							break;
 					}
 				});
@@ -89,7 +97,7 @@ namespace ProtoPromise
 
 		public static Promise<T> Race<T>(params Promise<T>[] promises)
 		{
-			var masterDeferred = new Deferred<T>();
+			var masterDeferred = Deferred<T>();
 
 			for (int i = 0; i < promises.Length; ++i)
 			{
@@ -98,7 +106,9 @@ namespace ProtoPromise
 				promise.Complete(() =>
 				{
 					if (masterDeferred.StateInternal != DeferredState.Pending)
+					{
 						return;
+					}
 
 					switch (promise.DeferredInternal.StateInternal)
 					{
@@ -125,7 +135,7 @@ namespace ProtoPromise
 
 		public static Promise Race(params Promise[] promises)
 		{
-			var masterDeferred = new Deferred();
+			var masterDeferred = Deferred();
 
 			for (int i = 0; i < promises.Length; ++i)
 			{
@@ -134,7 +144,9 @@ namespace ProtoPromise
 				promise.Complete(() =>
 				{
 					if (masterDeferred.StateInternal != DeferredState.Pending)
+					{
 						return;
+					}
 
 					switch (promise.DeferredInternal.StateInternal)
 					{
@@ -180,13 +192,13 @@ namespace ProtoPromise
 
 		/// <summary>
 		/// Returns a promise that resolves with the <paramref name="yieldInstruction"/> after the <paramref name="yieldInstruction"/> has completed.
-		/// If <typeparamref name="TYieldInstruction"/> is not a Unity supported <see cref="UnityEngine.YieldInstruction"/> or <see cref="UnityEngine.CustomYieldInstruction"/>, then the returned promise will resolve after 1 frame.
+		/// If <paramref name="yieldInstruction"/> is not a Unity supported <see cref="UnityEngine.YieldInstruction"/> or <see cref="UnityEngine.CustomYieldInstruction"/>, then the returned promise will resolve after 1 frame.
 		/// </summary>
 		/// <param name="yieldInstruction">Yield instruction.</param>
 		/// <typeparam name="TYieldInstruction">The type of yieldInstruction.</typeparam>
 		public static Promise<TYieldInstruction> Yield<TYieldInstruction>(TYieldInstruction yieldInstruction)
 		{
-			Deferred<TYieldInstruction> deferred = new Deferred<TYieldInstruction>();
+			Deferred<TYieldInstruction> deferred = Deferred<TYieldInstruction>();
 			GlobalMonoBehaviour.Yield(yieldInstruction, () => deferred.Resolve(yieldInstruction));
 			return deferred.Promise;
 		}
@@ -196,44 +208,68 @@ namespace ProtoPromise
 		/// </summary>
 		public static Promise Yield()
 		{
-			Deferred deferred = new Deferred();
+			Deferred deferred = Deferred();
 			GlobalMonoBehaviour.Yield(deferred.Resolve);
+			return deferred.Promise;
+		}
+
+		public static Promise New(Action<Deferred> resolver)
+		{
+			Deferred deferred = Deferred();
+			resolver.Invoke(deferred);
+			return deferred.Promise;
+		}
+
+		public static Promise<T> New<T>(Action<Deferred<T>> resolver)
+		{
+			Deferred<T> deferred = Deferred<T>();
+			resolver.Invoke(deferred);
 			return deferred.Promise;
 		}
 
 		public static Promise Resolve()
 		{
-			Deferred deferred = new Deferred();
+			Deferred deferred = Deferred();
 			deferred.Resolve();
 			return deferred.Promise;
 		}
 
 		public static Promise<T> Resolve<T>(T arg)
 		{
-			Deferred<T> deferred = new Deferred<T>();
+			Deferred<T> deferred = Deferred<T>();
 			deferred.Resolve(arg);
 			return deferred.Promise;
 		}
 
 		public static Promise Reject()
 		{
-			Deferred deferred = new Deferred();
+			Deferred deferred = Deferred();
 			deferred.Reject();
 			return deferred.Promise;
 		}
 
 		public static Promise Reject<TFail>(TFail reason)
 		{
-			Deferred deferred = new Deferred();
+			Deferred deferred = Deferred();
 			deferred.Reject(reason);
 			return deferred.Promise;
 		}
 
 		public static Promise Throw<TException>(TException exception) where TException : Exception
 		{
-			Deferred deferred = new Deferred();
+			Deferred deferred = Deferred();
 			deferred.Throw(exception);
 			return deferred.Promise;
+		}
+
+		public static Deferred Deferred()
+		{
+			return new Deferred();
+		}
+
+		public static Deferred<T> Deferred<T>()
+		{
+			return new Deferred<T>();
 		}
 	}
 }

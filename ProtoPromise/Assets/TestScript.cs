@@ -56,6 +56,17 @@ public class TestScript : MonoBehaviour
 
 	private IEnumerator Start()
 	{
+		var wait = WaitForEnd(0, null);
+		StartCoroutine(wait);
+		StopCoroutine(wait);
+
+		StartCoroutine(wait);
+		yield return null;
+		yield return null;
+		yield return null;
+
+		yield break;
+
 		MyYield myYield = new MyYield();
 		yield return new WaitForSeconds(1);
 		while (true)
@@ -79,8 +90,8 @@ public class TestScript : MonoBehaviour
 		StartCoroutine(WaitForEnd(2, new WaitForEndOfFrame()));
 		ProtoPromise.GlobalMonoBehaviour.Yield(new WaitForSeconds(2), () => Debug.LogError("Waited 2 seconds"));
 
-		Deferred deferred = new Deferred();
-		Deferred<int> deferred2 = new Deferred<int>();
+		Deferred deferred = Promise.Deferred();
+		Deferred<int> deferred2 = Promise.Deferred<int>();
 
 		deferred.Resolve();
 		deferred2.Resolve(0);

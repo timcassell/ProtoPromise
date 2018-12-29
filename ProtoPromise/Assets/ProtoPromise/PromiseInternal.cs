@@ -39,12 +39,12 @@ namespace ProtoPromise
 			return other.TryHandleRejectionInternal();
 		}
 
-		public virtual bool TryInvoke<TArg>(Action<TArg> callback, ADeferred deferred)
+		public virtual void TryInvoke<TArg>(Action<TArg> callback, ADeferred deferred)
 		{
 			throw new NotImplementedException();
 		}
 
-		public virtual bool TryInvoke<TArg, TResult>(Func<TArg, TResult> callback, out TResult result, ADeferred deferred)
+		public virtual TResult TryInvoke<TArg, TResult>(Func<TArg, TResult> callback, ADeferred deferred)
 		{
 			throw new NotImplementedException();
 		}
@@ -77,29 +77,37 @@ namespace ProtoPromise
 			return other.TryHandleRejectionInternal(_value);
 		}
 
-		public override bool TryInvoke<TArg>(Action<TArg> callback, ADeferred deferred)
+		public override void TryInvoke<TArg>(Action<TArg> callback, ADeferred deferred)
 		{
+			//if (this is ValueContainer<TArg>) // This avoids boxing value types.
+			//{
+			//	deferred.ResolveUnhandledInternal(); // You never know what someone might do in a callback, so make sure deferred is in a clean state before invoking.
+			//	callback.Invoke((this as ValueContainer<TArg>)._value);
+			//}
+
 			object val = _value;
 			if (typeof(TArg).IsAssignableFrom(typeof(T)) || (val != null && _value is TArg))
 			{
-				deferred.ResolveUnhandledInternal(); // Execution order is important here.
+				deferred.ResolveUnhandledInternal(); // You never know what someone might do in a callback, so make sure deferred is in a clean state before invoking.
 				callback.Invoke((TArg)val);
-				return true;
 			}
-			return false;
 		}
 
-		public override bool TryInvoke<TArg, TResult>(Func<TArg, TResult> callback, out TResult result, ADeferred deferred)
+		public override TResult TryInvoke<TArg, TResult>(Func<TArg, TResult> callback, ADeferred deferred)
 		{
+			//if (this is ValueContainer<TArg>) // This avoids boxing value types.
+			//{
+			//	deferred.ResolveUnhandledInternal(); // You never know what someone might do in a callback, so make sure deferred is in a clean state before invoking.
+			//	return callback.Invoke((this as ValueContainer<TArg>)._value);
+			//}
+
 			object val = _value;
 			if (typeof(TArg).IsAssignableFrom(typeof(T)) || (val != null && _value is TArg))
 			{
-				deferred.ResolveUnhandledInternal(); // Execution order is important here.
-				result = callback.Invoke((TArg)val);
-				return true;
+				deferred.ResolveUnhandledInternal(); // You never know what someone might do in a callback, so make sure deferred is in a clean state before invoking.
+				return callback.Invoke((TArg)val);
 			}
-			result = default(TResult);
-			return false;
+			return default(TResult);
 		}
 	}
 

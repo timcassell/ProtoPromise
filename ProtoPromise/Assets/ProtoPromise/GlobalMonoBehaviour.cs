@@ -53,11 +53,11 @@ namespace ProtoPromise
 			}
 		}
 
-		private static Routine node; // Pool of routines, in linked-list stack fashion.
+		private static Routine node; // Pool of routines as linked stack.
 
 		/// <summary>
 		/// Waits for <paramref name="yieldInstruction"/> to complete, then calls <paramref name="onComplete"/>.
-		/// If <typeparamref name="TYieldInstruction"/> is not a Unity supported <see cref="YieldInstruction"/> or <see cref="CustomYieldInstruction"/>, then this will wait for 1 frame.
+		/// If <paramref name="yieldInstruction"/> is not a Unity supported <see cref="YieldInstruction"/> or <see cref="CustomYieldInstruction"/>, then this will wait for 1 frame.
 		/// </summary>
 		/// <param name="yieldInstruction">Yield instruction.</param>
 		/// <param name="onComplete">Callback</param>
