@@ -24,9 +24,9 @@ namespace ProtoPromise
 					{
 						return;
 					}
-					
+
 					args[index] = promise.Value;
-					switch(promise.DeferredInternal.StateInternal)
+					switch (promise.DeferredInternal.StateInternal)
 					{
 						case DeferredState.Rejecting:
 							promise.DeferredInternal.HandleUnhandledRejectionInternal(masterDeferred);

@@ -24,24 +24,33 @@ namespace ProtoPromise
 		Errored
 	}
 
-	public partial class Promise : CustomYieldInstruction, IDelegate
+	public partial class Promise : CustomYieldInstruction, IDelegate, ILinked<Promise>
 	{
-		protected Action onComplete;
-		internal Queue<IDelegate> doneHandlersInternal;
-		internal Queue<IDelegate> exceptionHandlersInternal;
-		internal Queue<IDelegate> failHandlersInternal;
+		Promise ILinked<Promise>.Next { get { return NextInternal; } set { NextInternal = value; } }
+		IDelegate ILinked<IDelegate>.Next { get { return NextInternal; } set { NextInternal = (Promise) value; } }
 		internal Promise NextInternal { get; set; }
+
+		private static int idCounter = 0;
+		
+		public int id;
+		
+		protected Action onComplete;
+		internal LinkedListStruct<IDelegate> doneHandlersInternal;
+		internal LinkedListStruct<ITryInvokable> exceptionHandlersInternal;
+		internal LinkedListStruct<ITryInvokable> failHandlersInternal;
+		//internal LinkedListStruct<Promise> NextBranchesInternal = new LinkedListStruct<Promise>();
 		internal ADeferred DeferredInternal { get; private set; }
 		public PromiseState State { get; protected set; }
 
 		internal Promise(ADeferred deferred)
 		{
+			id = idCounter++;
 			DeferredInternal = deferred;
 		}
 
 		internal virtual void InvokeInternal(IDelegate feed)
 		{
-			State = PromiseState.Resolved;
+			throw new NotImplementedException();
 		}
 
 		void IDelegate.Invoke(IDelegate feed)
@@ -51,6 +60,7 @@ namespace ProtoPromise
 
 		internal void CompleteInternal()
 		{
+			Debug.LogWarning(id + " Complete, deferred state: " + DeferredInternal.StateInternal + ", invoking onComplete: " + (onComplete != null));
 			if (onComplete != null)
 			{
 				onComplete.Invoke();
@@ -59,78 +69,64 @@ namespace ProtoPromise
 
 		internal virtual void ResolveInternal()
 		{
+			for (IDelegate del = doneHandlersInternal.PeekFirst(); del != null; del = del.Next, doneHandlersInternal.TakeFirst())
+			{
+				del.Invoke(this);
+			}
+
 			State = PromiseState.Resolved;
-
-			if (doneHandlersInternal != null)
-			{
-				while (doneHandlersInternal.Count > 0)
-				{
-					doneHandlersInternal.Dequeue().Invoke(this);
-				}
-			}
-			CompleteInternal();
 		}
 
-		internal virtual bool TryInvokeInternal<U>(IDelegate delegateArg, U value)
+		internal virtual bool TryInvokeInternal<U>(ITryInvokable tryInvoke, U value, out bool invoked) // private protected not supported before c# 7.2, so must use internal.
 		{
-			if (delegateArg is IDelegateArg<U>)
-			{
-				((IDelegateArg<U>) delegateArg).Invoke(value);
-				return true;
-			}
-			return delegateArg.TryInvoke(value);
+			return tryInvoke.TryInvoke(value, out invoked);
 		}
 
-		internal virtual bool TryInvokeInternal(IDelegate delegateArg)
+		internal virtual bool TryInvokeInternal(ITryInvokable tryInvoke) // private protected not supported before c# 7.2, so must use internal.
 		{
-			if (delegateArg is IDelegateVoid)
-			{
-				((IDelegateVoid)delegateArg).Invoke();
-				return true;
-			}
-			return false;
+			return tryInvoke.TryInvoke();
 		}
 
-		internal bool TryHandleExceptionInternal(Exception exception)
+		internal bool TryHandleExceptionInternal(Exception exception, out bool handled) // Use out to let the caller know that the exception was handled, just in case a callback throws another exception.
 		{
+			handled = TryHandleException(exception, out handled) || TryHandleFail(exception);
+
 			State = PromiseState.Errored;
 
-			return TryHandleException(exception) || TryHandleFail(exception);
+			return handled;
 		}
 
-		private bool TryHandleException(Exception exception)
+		private bool TryHandleException(Exception exception, out bool handled)
 		{
-			if (exceptionHandlersInternal != null)
+			for (ITryInvokable del = exceptionHandlersInternal.PeekFirst(); del != null; del = del.Next, exceptionHandlersInternal.TakeFirst())
 			{
-				while (exceptionHandlersInternal.Count > 0)
+				if (TryInvokeInternal(del, exception, out handled))
 				{
-					if (TryInvokeInternal(exceptionHandlersInternal.Dequeue(), exception))
-					{
-						return true;
-					}
+					return true;
 				}
 			}
 
-			return false;
+			return handled = false;
 		}
 
 		internal bool TryHandleFailInternal<TFail>(TFail failValue)
 		{
+			bool success;
+			success = TryHandleFail(failValue) || (typeof(Exception).IsAssignableFrom(typeof(TFail)) && TryHandleException(failValue as Exception, out success));
+
 			State = PromiseState.Rejected;
 
-			return TryHandleFail(failValue) || (typeof(Exception).IsAssignableFrom(typeof(TFail)) && TryHandleException(failValue as Exception));
+			return success;
 		}
 
 		private bool TryHandleFail<TFail>(TFail failValue)
 		{
-			if (failHandlersInternal != null)
+			bool success;
+			for (ITryInvokable del = failHandlersInternal.PeekFirst(); del != null; del = del.Next, failHandlersInternal.TakeFirst())
 			{
-				while (failHandlersInternal.Count > 0)
+				if (TryInvokeInternal(del, failValue, out success))
 				{
-					if (TryInvokeInternal(failHandlersInternal.Dequeue(), failValue))
-					{
-						return true;
-					}
+					return true;
 				}
 			}
 
@@ -139,14 +135,20 @@ namespace ProtoPromise
 
 		internal bool TryHandleFailInternal()
 		{
-			if (failHandlersInternal != null)
+			bool success = TryHandleFail();
+
+			State = PromiseState.Rejected;
+
+			return success;
+		}
+
+		bool TryHandleFail()
+		{
+			for (ITryInvokable del = failHandlersInternal.PeekFirst(); del != null; del = del.Next, failHandlersInternal.TakeFirst())
 			{
-				while (failHandlersInternal.Count > 0)
+				if (TryInvokeInternal(del))
 				{
-					if (TryInvokeInternal(failHandlersInternal.Dequeue()))
-					{
-						return true;
-					}
+					return true;
 				}
 			}
 
@@ -159,13 +161,13 @@ namespace ProtoPromise
 			return false;
 		}
 
-        public override bool keepWaiting
-        {
-            get
-            {
+		public override bool keepWaiting
+		{
+			get
+			{
 				return State == PromiseState.Pending;
-            }
-        }
+			}
+		}
 
 		public Promise Notification<TNotify>(Action<TNotify> onNotification)
 		{
@@ -180,8 +182,12 @@ namespace ProtoPromise
 
 		public Promise Complete(Action onComplete)
 		{
-			this.onComplete += onComplete;
-			if (State != PromiseState.Pending)
+			Debug.LogError(id + " Complete, State: " + State);
+			if (State == PromiseState.Pending)
+			{
+				this.onComplete += onComplete;
+			}
+			else
 			{
 				onComplete.Invoke();
 			}
@@ -193,11 +199,7 @@ namespace ProtoPromise
 			switch (State)
 			{
 				case PromiseState.Pending:
-					if (doneHandlersInternal == null)
-					{
-						doneHandlersInternal = new Queue<IDelegate>(1);
-					}
-					doneHandlersInternal.Enqueue(new DelegateVoid(onResolved));
+					doneHandlersInternal.AddLast(new DelegateVoid(onResolved));
 					break;
 				case PromiseState.Resolved:
 					onResolved.Invoke();
@@ -211,11 +213,7 @@ namespace ProtoPromise
 			switch (State)
 			{
 				case PromiseState.Pending:
-					if (failHandlersInternal == null)
-					{
-						failHandlersInternal = new Queue<IDelegate>(1);
-					}
-					failHandlersInternal.Enqueue(new DelegateVoid(onRejected));
+					failHandlersInternal.AddLast(new DelegateVoid(onRejected));
 					break;
 				case PromiseState.Rejected:
 				case PromiseState.Errored:
@@ -231,11 +229,7 @@ namespace ProtoPromise
 			switch (State)
 			{
 				case PromiseState.Pending:
-					if (failHandlersInternal == null)
-					{
-						failHandlersInternal = new Queue<IDelegate>(1);
-					}
-					failHandlersInternal.Enqueue(new DelegateArg<TFail>(onRejected));
+					failHandlersInternal.AddLast(new DelegateArg<TFail>(onRejected));
 					break;
 				case PromiseState.Rejected:
 				case PromiseState.Errored:
@@ -251,11 +245,7 @@ namespace ProtoPromise
 			switch (State)
 			{
 				case PromiseState.Pending:
-					if (exceptionHandlersInternal == null)
-					{
-						exceptionHandlersInternal = new Queue<IDelegate>(1);
-					}
-					exceptionHandlersInternal.Enqueue(new DelegateArg<TException>(onException));
+					exceptionHandlersInternal.AddLast(new DelegateArg<TException>(onException));
 					break;
 				case PromiseState.Errored:
 					DeferredInternal.TryInvokeDirectInternal(onException, DeferredState.Erroring);
@@ -282,7 +272,7 @@ namespace ProtoPromise
 				callback = onResolved
 			};
 			NextInternal = promise;
-			if (State == PromiseState.Resolved)
+			if (State != PromiseState.Pending)
 			{
 				DeferredInternal.ContinueResolvedInternal(this);
 			}
@@ -296,7 +286,7 @@ namespace ProtoPromise
 				callback = onResolved
 			};
 			NextInternal = promise;
-			if (State == PromiseState.Resolved)
+			if (State != PromiseState.Pending)
 			{
 				DeferredInternal.ContinueResolvedInternal(this);
 			}
@@ -310,7 +300,7 @@ namespace ProtoPromise
 				callback = onResolved
 			};
 			NextInternal = promise;
-			if (State == PromiseState.Resolved)
+			if (State != PromiseState.Pending)
 			{
 				DeferredInternal.ContinueResolvedInternal(this);
 			}
@@ -324,16 +314,11 @@ namespace ProtoPromise
 				callback = onResolved
 			};
 			NextInternal = promise;
-			if (State == PromiseState.Resolved)
+			if (State != PromiseState.Pending)
 			{
 				DeferredInternal.ContinueResolvedInternal(this);
 			}
 			return promise;
-		}
-
-		bool IDelegate.TryInvoke<U>(U arg)
-		{
-			throw new NotImplementedException();
 		}
 
 		//[System.Diagnostics.Conditional("DEBUG")]
@@ -345,40 +330,32 @@ namespace ProtoPromise
 
 	public class Promise<T> : Promise, IValueContainer<T>
 	{
-		protected T _value;
-
 		internal Promise(ADeferred deferred) : base(deferred) { }
 
-		public T Value
-		{
-			get
-			{
-				return _value;
-			}
-		}
+		public T Value { get; protected set; }
 
 		// Only used for the first link.
 		internal void SetValueInternal(T value)
 		{
-			_value = value;
+			Value = value;
 		}
 
-		internal override bool TryInvokeInternal<U>(IDelegate delegateArg, U value)
+		internal override bool TryInvokeInternal<U>(ITryInvokable tryInvoke, U value, out bool invoked) // private protected not supported before c# 7.2, so must use internal.
 		{
-			bool success = base.TryInvokeInternal(delegateArg, value);
-			if (delegateArg is IValueContainer<T>)
+			bool success = base.TryInvokeInternal(tryInvoke, value, out invoked);
+			if (tryInvoke is IValueContainer<T>)
 			{
-				_value = ((IValueContainer<T>) delegateArg).Value;
+				Value = ((IValueContainer<T>) tryInvoke).Value;
 			}
 			return success;
 		}
 
-		internal override bool TryInvokeInternal(IDelegate delegateArg)
+		internal override bool TryInvokeInternal(ITryInvokable tryInvoke) // private protected not supported before c# 7.2, so must use internal.
 		{
-			bool success = base.TryInvokeInternal(delegateArg);
-			if (delegateArg is IValueContainer<T>)
+			bool success = base.TryInvokeInternal(tryInvoke);
+			if (tryInvoke is IValueContainer<T>)
 			{
-				_value = ((IValueContainer<T>) delegateArg).Value;
+				Value = ((IValueContainer<T>) tryInvoke).Value;
 			}
 			return success;
 		}
@@ -406,14 +383,10 @@ namespace ProtoPromise
 			switch (State)
 			{
 				case PromiseState.Pending:
-					if (doneHandlersInternal == null)
-					{
-						doneHandlersInternal = new Queue<IDelegate>(1);
-					}
-					doneHandlersInternal.Enqueue(new DelegateArg<T>(onResolved));
+					doneHandlersInternal.AddLast(new DelegateArg<T>(onResolved));
 					break;
 				case PromiseState.Resolved:
-					onResolved.Invoke(_value);
+					onResolved.Invoke(Value);
 					break;
 			}
 			return this;
@@ -424,15 +397,11 @@ namespace ProtoPromise
 			switch (State)
 			{
 				case PromiseState.Pending:
-					if (failHandlersInternal == null)
-					{
-						failHandlersInternal = new Queue<IDelegate>(1);
-					}
-					failHandlersInternal.Enqueue(new DelegateVoidResult<T>(onRejected));
+					failHandlersInternal.AddLast(new DelegateVoidResult<T>(onRejected));
 					break;
 				case PromiseState.Rejected:
 				case PromiseState.Errored:
-					_value = DeferredInternal.TryInvokeDirectInternal(onRejected, DeferredState.Rejecting | DeferredState.Erroring);
+					Value = DeferredInternal.TryInvokeDirectInternal(onRejected, DeferredState.Rejecting | DeferredState.Erroring);
 					break;
 			}
 
@@ -444,15 +413,11 @@ namespace ProtoPromise
 			switch (State)
 			{
 				case PromiseState.Pending:
-					if (failHandlersInternal == null)
-					{
-						failHandlersInternal = new Queue<IDelegate>(1);
-					}
-					failHandlersInternal.Enqueue(new DelegateArgResult<TFail, T>(onRejected));
+					failHandlersInternal.AddLast(new DelegateArgResult<TFail, T>(onRejected));
 					break;
 				case PromiseState.Rejected:
 				case PromiseState.Errored:
-					_value = DeferredInternal.TryInvokeDirectInternal(onRejected, DeferredState.Rejecting | DeferredState.Erroring);
+					Value = DeferredInternal.TryInvokeDirectInternal(onRejected, DeferredState.Rejecting | DeferredState.Erroring);
 					break;
 			}
 
@@ -464,14 +429,10 @@ namespace ProtoPromise
 			switch (State)
 			{
 				case PromiseState.Pending:
-					if (exceptionHandlersInternal == null)
-					{
-						exceptionHandlersInternal = new Queue<IDelegate>(1);
-					}
-					exceptionHandlersInternal.Enqueue(new DelegateArgResult<TException, T>(onException));
+					exceptionHandlersInternal.AddLast(new DelegateArgResult<TException, T>(onException));
 					break;
 				case PromiseState.Errored:
-					_value = DeferredInternal.TryInvokeDirectInternal(onException, DeferredState.Erroring);
+					Value = DeferredInternal.TryInvokeDirectInternal(onException, DeferredState.Erroring);
 					break;
 			}
 
@@ -485,7 +446,7 @@ namespace ProtoPromise
 				callback = onResolved
 			};
 			NextInternal = promise;
-			if (State == PromiseState.Resolved)
+			if (State != PromiseState.Pending)
 			{
 				DeferredInternal.ContinueResolvedInternal(this);
 			}
@@ -499,7 +460,7 @@ namespace ProtoPromise
 				callback = onResolved
 			};
 			NextInternal = promise;
-			if (State == PromiseState.Resolved)
+			if (State != PromiseState.Pending)
 			{
 				DeferredInternal.ContinueResolvedInternal(this);
 			}
@@ -513,7 +474,7 @@ namespace ProtoPromise
 				callback = onResolved
 			};
 			NextInternal = promise;
-			if (State == PromiseState.Resolved)
+			if (State != PromiseState.Pending)
 			{
 				DeferredInternal.ContinueResolvedInternal(this);
 			}
@@ -527,7 +488,7 @@ namespace ProtoPromise
 				callback = onResolved
 			};
 			NextInternal = promise;
-			if (State == PromiseState.Resolved)
+			if (State != PromiseState.Pending)
 			{
 				DeferredInternal.ContinueResolvedInternal(this);
 			}

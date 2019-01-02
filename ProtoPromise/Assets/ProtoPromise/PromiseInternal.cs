@@ -2,10 +2,14 @@ using System;
 
 namespace ProtoPromise
 {
-	internal interface IDelegate
+	internal interface IDelegate : ILinked<IDelegate>
 	{
 		void Invoke(IDelegate feed);
-		bool TryInvoke<U>(U arg);
+	}
+	internal interface ITryInvokable : ILinked<ITryInvokable>
+	{
+		bool TryInvoke<U>(U arg, out bool invoked);
+		bool TryInvoke();
 	}
 	internal interface IDelegateVoid : IDelegate
 	{
@@ -52,67 +56,85 @@ namespace ProtoPromise
 
 	internal sealed class ValueContainer<T> : ValueContainer, IValueContainer<T>
 	{
-		readonly T _value;
-
 		public ValueContainer(T value)
 		{
-			_value = value;
+			Value = value;
 		}
 
-		public T Value
-		{
-			get
-			{
-				return _value;
-			}
-		}
+		public T Value { get; set; }
 
 		public override void RejectOther(ADeferred other)
 		{
-			other.Reject(_value);
+			other.Reject(Value);
 		}
 
 		public override bool TryHandleRejection(ADeferred other)
 		{
-			return other.TryHandleRejectionInternal(_value);
+			return other.TryHandleRejectionInternal(Value);
 		}
 
 		public override void TryInvoke<TArg>(Action<TArg> callback, ADeferred deferred)
 		{
-			//if (this is ValueContainer<TArg>) // This avoids boxing value types.
-			//{
-			//	deferred.ResolveUnhandledInternal(); // You never know what someone might do in a callback, so make sure deferred is in a clean state before invoking.
-			//	callback.Invoke((this as ValueContainer<TArg>)._value);
-			//}
-
-			object val = _value;
-			if (typeof(TArg).IsAssignableFrom(typeof(T)) || (val != null && _value is TArg))
+			if (this is ValueContainer<TArg>) // This avoids boxing value types.
 			{
 				deferred.ResolveUnhandledInternal(); // You never know what someone might do in a callback, so make sure deferred is in a clean state before invoking.
-				callback.Invoke((TArg)val);
+				callback.Invoke((this as ValueContainer<TArg>).Value);
+			}
+
+			object val = Value;
+			if (typeof(TArg).IsAssignableFrom(typeof(T)) || (val != null && Value is TArg))
+			{
+				deferred.ResolveUnhandledInternal(); // You never know what someone might do in a callback, so make sure deferred is in a clean state before invoking.
+				callback.Invoke((TArg) val);
 			}
 		}
 
 		public override TResult TryInvoke<TArg, TResult>(Func<TArg, TResult> callback, ADeferred deferred)
 		{
-			//if (this is ValueContainer<TArg>) // This avoids boxing value types.
-			//{
-			//	deferred.ResolveUnhandledInternal(); // You never know what someone might do in a callback, so make sure deferred is in a clean state before invoking.
-			//	return callback.Invoke((this as ValueContainer<TArg>)._value);
-			//}
-
-			object val = _value;
-			if (typeof(TArg).IsAssignableFrom(typeof(T)) || (val != null && _value is TArg))
+			if (this is ValueContainer<TArg>) // This avoids boxing value types.
 			{
 				deferred.ResolveUnhandledInternal(); // You never know what someone might do in a callback, so make sure deferred is in a clean state before invoking.
-				return callback.Invoke((TArg)val);
+				return callback.Invoke((this as ValueContainer<TArg>).Value);
+			}
+
+			object val = Value;
+			if (typeof(TArg).IsAssignableFrom(typeof(T)) || (val != null && Value is TArg))
+			{
+				deferred.ResolveUnhandledInternal(); // You never know what someone might do in a callback, so make sure deferred is in a clean state before invoking.
+				return callback.Invoke((TArg) val);
 			}
 			return default(TResult);
 		}
 	}
 
-	internal sealed class DelegateVoid : IDelegateVoid
+	internal sealed class DelegateVoid : IDelegateVoid, ITryInvokable, ILinked<DelegateVoid>
 	{
+		public DelegateVoid Next { get; set; }
+
+		IDelegate ILinked<IDelegate>.Next
+		{
+			get
+			{
+				return Next;
+			}
+			set
+			{
+				Next = (DelegateVoid) value;
+			}
+		}
+
+		ITryInvokable ILinked<ITryInvokable>.Next
+		{
+			get
+			{
+				return Next;
+			}
+			set
+			{
+				Next = (DelegateVoid) value;
+			}
+		}
+
 		Action callback;
 
 		public DelegateVoid(Action action)
@@ -135,15 +157,48 @@ namespace ProtoPromise
 			callback.Invoke();
 		}
 
-		public bool TryInvoke<U>(U arg)
+		public bool TryInvoke<U>(U arg, out bool invoked)
+		{
+			invoked = true;
+			Invoke();
+			return true;
+		}
+
+		public bool TryInvoke()
 		{
 			Invoke();
 			return true;
 		}
 	}
 
-	internal sealed class DelegateArg<TArg> : IDelegateArg<TArg>
+	internal sealed class DelegateArg<TArg> : IDelegateArg<TArg>, ITryInvokable, ILinked<DelegateArg<TArg>>
 	{
+		public DelegateArg<TArg> Next { get; set; }
+
+		IDelegate ILinked<IDelegate>.Next
+		{
+			get
+			{
+				return Next;
+			}
+			set
+			{
+				Next = (DelegateArg<TArg>) value;
+			}
+		}
+
+		ITryInvokable ILinked<ITryInvokable>.Next
+		{
+			get
+			{
+				return Next;
+			}
+			set
+			{
+				Next = (DelegateArg<TArg>) value;
+			}
+		}
+
 		Action<TArg> callback;
 
 		public DelegateArg(Action<TArg> action)
@@ -163,7 +218,7 @@ namespace ProtoPromise
 
 		public void Invoke(IDelegate feed)
 		{
-			Invoke(((IValueContainer<TArg>)feed).Value);
+			Invoke(((IValueContainer<TArg>) feed).Value);
 		}
 
 		public void Invoke(TArg arg)
@@ -171,35 +226,66 @@ namespace ProtoPromise
 			callback.Invoke(arg);
 		}
 
-		public bool TryInvoke<U>(U arg)
+		public bool TryInvoke<U>(U arg, out bool invoked)
 		{
+			if (this is DelegateArg<U>) // This avoids boxing value types.
+			{
+				invoked = true;
+				(this as DelegateArg<U>).Invoke(arg);
+				return true;
+			}
+
 			object val = arg;
 			if (typeof(TArg).IsAssignableFrom(typeof(U)) || (val != null && arg is TArg))
 			{
+				invoked = true;
 				Invoke((TArg) val);
 				return true;
 			}
+			return invoked = false;
+		}
+
+		public bool TryInvoke()
+		{
 			return false;
 		}
 	}
 
-	internal class DelegateVoidResult<TResult> : IDelegateVoidResult<TResult>
+	internal class DelegateVoidResult<TResult> : IDelegateVoidResult<TResult>, ITryInvokable, ILinked<DelegateVoidResult<TResult>>
 	{
+		public DelegateVoidResult<TResult> Next { get; set; }
+
+		IDelegate ILinked<IDelegate>.Next
+		{
+			get
+			{
+				return Next;
+			}
+			set
+			{
+				Next = (DelegateVoidResult<TResult>) value;
+			}
+		}
+
+		ITryInvokable ILinked<ITryInvokable>.Next
+		{
+			get
+			{
+				return Next;
+			}
+			set
+			{
+				Next = (DelegateVoidResult<TResult>) value;
+			}
+		}
+
 		Func<TResult> callback;
 
-		TResult _value;
+		public TResult Value { get; private set; }
 
 		public DelegateVoidResult(Func<TResult> func)
 		{
 			SetCallback(func);
-		}
-
-		public TResult Value
-		{
-			get
-			{
-				return _value;
-			}
 		}
 
 		public void SetCallback(Func<TResult> func)
@@ -214,30 +300,58 @@ namespace ProtoPromise
 
 		public void Invoke()
 		{
-			_value = callback.Invoke();
+			Value = callback.Invoke();
 		}
 
-		public bool TryInvoke<U>(U arg)
+		public bool TryInvoke<U>(U arg, out bool invoked)
+		{
+			invoked = true;
+			Invoke();
+			return true;
+		}
+
+		public bool TryInvoke()
 		{
 			Invoke();
 			return true;
 		}
 	}
 
-	internal sealed class DelegateArgResult<TArg, TResult> : IDelegateArgResult<TArg, TResult>
+	internal sealed class DelegateArgResult<TArg, TResult> : IDelegateArgResult<TArg, TResult>, ITryInvokable, ILinked<DelegateArgResult<TArg, TResult>>
 	{
+		public DelegateArgResult<TArg, TResult> Next { get; set; }
+
+		IDelegate ILinked<IDelegate>.Next
+		{
+			get
+			{
+				return Next;
+			}
+			set
+			{
+				Next = (DelegateArgResult<TArg, TResult>) value;
+			}
+		}
+
+		ITryInvokable ILinked<ITryInvokable>.Next
+		{
+			get
+			{
+				return Next;
+			}
+			set
+			{
+				Next = (DelegateArgResult<TArg, TResult>) value;
+			}
+		}
+
 		Func<TArg, TResult> callback;
 
-		TResult _value;
+		public TResult Value { get; private set; }
 
 		public DelegateArgResult(Func<TArg, TResult> func)
 		{
 			SetCallback(func);
-		}
-
-		public TResult Value
-		{
-			get { return _value; }
 		}
 
 		public void SetCallback(Func<TArg, TResult> func)
@@ -252,31 +366,45 @@ namespace ProtoPromise
 
 		public void Invoke(TArg arg)
 		{
-			_value = callback.Invoke(arg);
+			Value = callback.Invoke(arg);
 		}
 
-		public bool TryInvoke<U>(U arg)
+		public bool TryInvoke<U>(U arg, out bool invoked)
 		{
+			if (this is DelegateArg<U>) // This avoids boxing value types.
+			{
+				invoked = true;
+				(this as DelegateArg<U>).Invoke(arg);
+				return true;
+			}
+
 			object val = arg;
 			if (typeof(TArg).IsAssignableFrom(typeof(U)) || (val != null && arg is TArg))
 			{
-				Invoke((TArg)val);
+				invoked = true;
+				Invoke((TArg) val);
 				return true;
 			}
+			return invoked = false;
+		}
+
+		public bool TryInvoke()
+		{
 			return false;
 		}
 	}
 
 
-	internal sealed class PromiseVoidFromVoid : Promise, IDelegateVoid
+	internal sealed class PromiseVoidFromVoid : Promise, IDelegateVoid, ILinked<PromiseVoidFromVoid>
 	{
+		public PromiseVoidFromVoid Next { get { return (PromiseVoidFromVoid) NextInternal; } set { NextInternal = value; } }
+
 		internal Action callback;
 
 		internal PromiseVoidFromVoid(ADeferred deferred) : base(deferred) { }
 
 		internal override void InvokeInternal(IDelegate feed)
 		{
-			State = PromiseState.Resolved;
 			Invoke();
 		}
 
@@ -284,98 +412,69 @@ namespace ProtoPromise
 		{
 			callback.Invoke();
 		}
-
-		public bool TryInvoke<U>(U arg)
-		{
-			Invoke();
-			return true;
-		}
 	}
 
-	internal sealed class PromiseVoidFromArg<TArg> : Promise, IDelegateArg<TArg>
+	internal sealed class PromiseVoidFromArg<TArg> : Promise, IDelegateArg<TArg>, ILinked<PromiseVoidFromArg<TArg>>
 	{
+		public PromiseVoidFromArg<TArg> Next { get { return (PromiseVoidFromArg<TArg>) NextInternal; } set { NextInternal = value; } }
+
 		internal Action<TArg> callback;
 
 		internal PromiseVoidFromArg(ADeferred deferred) : base(deferred) { }
 
 		internal override void InvokeInternal(IDelegate feed)
 		{
-			Invoke(((IValueContainer<TArg>)feed).Value);
+			Invoke(((IValueContainer<TArg>) feed).Value);
 		}
 
 		public void Invoke(TArg arg)
 		{
-			State = PromiseState.Resolved;
 			callback.Invoke(arg);
-		}
-
-		public bool TryInvoke<U>(U arg)
-		{
-			object val = arg;
-			if (typeof(TArg).IsAssignableFrom(typeof(U)) || (val != null && arg is TArg))
-			{
-				Invoke((TArg)val);
-				return true;
-			}
-			return false;
 		}
 	}
 
-	internal sealed class PromiseArgFromResult<TResult> : Promise<TResult>, IDelegateVoidResult<TResult>
+	internal sealed class PromiseArgFromResult<TResult> : Promise<TResult>, IDelegateVoidResult<TResult>, ILinked<PromiseArgFromResult<TResult>>
 	{
+		public PromiseArgFromResult<TResult> Next { get { return (PromiseArgFromResult<TResult>) NextInternal; } set { NextInternal = value; } }
+
 		internal Func<TResult> callback;
 
 		internal PromiseArgFromResult(ADeferred deferred) : base(deferred) { }
 
 		public void Invoke()
 		{
-			State = PromiseState.Resolved;
-			_value = callback.Invoke();
+			Value = callback.Invoke();
 		}
 
 		internal override void InvokeInternal(IDelegate feed)
 		{
 			Invoke();
 		}
-
-		public bool TryInvoke<U>(U arg)
-		{
-			Invoke();
-			return true;
-		}
 	}
 
-	internal sealed class PromiseArgFromArgResult<TArg, TResult> : Promise<TResult>, IDelegateArgResult<TArg, TResult>
+	internal sealed class PromiseArgFromArgResult<TArg, TResult> : Promise<TResult>, IDelegateArgResult<TArg, TResult>, ILinked<PromiseArgFromArgResult<TArg, TResult>>
 	{
+		public PromiseArgFromArgResult<TArg, TResult> Next { get { return (PromiseArgFromArgResult<TArg, TResult>) NextInternal; } set { NextInternal = value; } }
+
 		internal Func<TArg, TResult> callback;
 
 		internal PromiseArgFromArgResult(ADeferred deferred) : base(deferred) { }
 
 		public void Invoke(TArg arg)
 		{
-			State = PromiseState.Resolved;
-			_value = callback.Invoke(arg);
+			Value = callback.Invoke(arg);
 		}
 
 		internal override void InvokeInternal(IDelegate feed)
 		{
 			Invoke(((IValueContainer<TArg>) feed).Value);
 		}
-
-		public bool TryInvoke<U>(U arg)
-		{
-			object val = arg;
-			if (typeof(TArg).IsAssignableFrom(typeof(U)) || (val != null && arg is TArg))
-			{
-				Invoke((TArg)val);
-				return true;
-			}
-			return false;
-		}
 	}
 
-	internal sealed class PromiseVoidFromResultPromise : Promise, IDelegateVoidResult<Promise>
+	internal sealed class PromiseVoidFromResultPromise : Promise, IDelegateVoidResult<Promise>, ILinked<PromiseVoidFromResultPromise>
 	{
+		public PromiseVoidFromResultPromise Next { get { return (PromiseVoidFromResultPromise) NextInternal; } set { NextInternal = value; } }
+
 		internal Func<Promise> callback;
 		internal Promise result;
 
@@ -396,13 +495,7 @@ namespace ProtoPromise
 
 		public void Invoke()
 		{
-			UnityEngine.Debug.LogError("Wait for other promise to complete.");
 			result = callback.Invoke();
-			result.Complete(() =>
-			{
-				UnityEngine.Debug.LogError("Done waiting.");
-				State = PromiseState.Resolved;
-			});
 		}
 
 		internal override bool TryGetPromiseResultInternal(out Promise promise)
@@ -410,16 +503,12 @@ namespace ProtoPromise
 			promise = result;
 			return true;
 		}
-
-		public bool TryInvoke<U>(U arg)
-		{
-			Invoke();
-			return true;
-		}
 	}
 
-	internal sealed class PromiseVoidFromArgResultPromise<TArg> : Promise, IDelegateArgResult<TArg, Promise>
+	internal sealed class PromiseVoidFromArgResultPromise<TArg> : Promise, IDelegateArgResult<TArg, Promise>, ILinked<PromiseVoidFromArgResultPromise<TArg>>
 	{
+		public PromiseVoidFromArgResultPromise<TArg> Next { get { return (PromiseVoidFromArgResultPromise<TArg>) NextInternal; } set { NextInternal = value; } }
+
 		internal Func<TArg, Promise> callback;
 		internal Promise result;
 
@@ -435,16 +524,12 @@ namespace ProtoPromise
 
 		internal override void InvokeInternal(IDelegate feed)
 		{
-			Invoke(((IValueContainer<TArg>)feed).Value);
+			Invoke(((IValueContainer<TArg>) feed).Value);
 		}
 
 		public void Invoke(TArg arg)
 		{
 			result = callback.Invoke(arg);
-			result.Complete(() =>
-			{
-				State = PromiseState.Resolved;
-			});
 		}
 
 		internal override bool TryGetPromiseResultInternal(out Promise promise)
@@ -452,21 +537,12 @@ namespace ProtoPromise
 			promise = result;
 			return true;
 		}
-
-		public bool TryInvoke<U>(U arg)
-		{
-			object val = arg;
-			if (typeof(TArg).IsAssignableFrom(typeof(U)) || (val != null && arg is TArg))
-			{
-				Invoke((TArg) val);
-				return true;
-			}
-			return false;
-		}
 	}
 
-	internal sealed class PromiseArgFromResultPromise<TArg> : Promise<TArg>, IDelegateVoidResult<Promise<TArg>>
+	internal sealed class PromiseArgFromResultPromise<TArg> : Promise<TArg>, IDelegateVoidResult<Promise<TArg>>, ILinked<PromiseArgFromResultPromise<TArg>>
 	{
+		public PromiseArgFromResultPromise<TArg> Next { get { return (PromiseArgFromResultPromise<TArg>) NextInternal; } set { NextInternal = value; } }
+
 		internal Func<Promise<TArg>> callback;
 		internal Promise<TArg> result;
 
@@ -479,12 +555,11 @@ namespace ProtoPromise
 
 		public void Invoke()
 		{
-			result = callback.Invoke();
-			result.Complete(() =>
-			{
-				_value = result.Value;
-				State = PromiseState.Resolved;
-			});
+			result = callback.Invoke()
+				.Complete(() =>
+				{
+					Value = result.Value;
+				});
 		}
 
 		internal override void InvokeInternal(IDelegate feed)
@@ -497,16 +572,12 @@ namespace ProtoPromise
 			promise = result;
 			return true;
 		}
-
-		public bool TryInvoke<U>(U arg)
-		{
-			Invoke();
-			return true;
-		}
 	}
 
-	internal sealed class PromiseArgFromArgResultPromise<TArg, PResult> : Promise<TArg>, IDelegateArgResult<PResult, Promise<TArg>>
+	internal sealed class PromiseArgFromArgResultPromise<TArg, PResult> : Promise<TArg>, IDelegateArgResult<PResult, Promise<TArg>>, ILinked<PromiseArgFromArgResultPromise<TArg, PResult>>
 	{
+		public PromiseArgFromArgResultPromise<TArg, PResult> Next { get { return (PromiseArgFromArgResultPromise<TArg, PResult>) NextInternal; } set { NextInternal = value; } }
+
 		internal Func<PResult, Promise<TArg>> callback;
 		internal Promise<TArg> result;
 
@@ -519,34 +590,22 @@ namespace ProtoPromise
 
 		public void Invoke(PResult arg)
 		{
-			result = callback.Invoke(arg);
-			result.Complete(() =>
-			{
-				_value = result.Value;
-				State = PromiseState.Resolved;
-			});
+			result = callback.Invoke(arg)
+				.Complete(() =>
+				{
+					Value = result.Value;
+				});
 		}
 
 		internal override void InvokeInternal(IDelegate feed)
 		{
-			Invoke(((IValueContainer<PResult>)feed).Value);
+			Invoke(((IValueContainer<PResult>) feed).Value);
 		}
 
 		internal override bool TryGetPromiseResultInternal(out Promise promise)
 		{
 			promise = result;
 			return true;
-		}
-
-		public bool TryInvoke<U>(U arg)
-		{
-			object val = arg;
-			if (typeof(PResult).IsAssignableFrom(typeof(U)) || (val != null && arg is PResult))
-			{
-				Invoke((PResult) val);
-				return true;
-			}
-			return false;
 		}
 	}
 }

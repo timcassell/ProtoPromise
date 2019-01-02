@@ -4,9 +4,9 @@ using UnityEngine;
 
 namespace ProtoPromise
 {
-	public class UnhandledException : Exception
+	internal class UnhandledException : Exception
 	{
-		public UnhandledException(Exception innerException) : this(innerException, null) { }
+		public UnhandledException(Exception innerException) : this(innerException, string.Empty) { }
 		public UnhandledException(Exception innerException, string stackTrace) : base(string.Empty, innerException)
 		{
 			_stackTrace = stackTrace;
@@ -17,9 +17,8 @@ namespace ProtoPromise
 		{
 			get
 			{
-				return _stackTrace == null ? base.StackTrace : _stackTrace;
+				return _stackTrace;
 			}
-			
 		}
 
 		public override string Message
@@ -31,11 +30,13 @@ namespace ProtoPromise
 		}
 	}
 
-	internal sealed class FinalYield : CustomYieldInstruction
+	public sealed class FinalYield : CustomYieldInstruction
 	{
 		bool wait = true;
 		Action callback;
-		
+
+		internal FinalYield() { }
+
 		public override bool keepWaiting
 		{
 			get
@@ -86,14 +87,21 @@ namespace ProtoPromise
 
 		internal DeferredState StateInternal { get; private set; }
 
-		private void SetStatePreserveFinal(DeferredState newState)
-		{
-			StateInternal = newState | (StateInternal & DeferredState.Final); // Change state, preserving final.
-		}
-
 		internal ADeferred()
 		{
 			StateInternal = DeferredState.Pending;
+		}
+
+		internal void SetStatePreserveFinalInternal(DeferredState newState) // private protected not supported before c# 7.2, so must use internal.
+		{
+			Debug.LogWarning("Set state to: " + newState);
+			StateInternal = newState | (StateInternal & DeferredState.Final); // Change state, preserving final.
+		}
+
+		internal void ResolveUnhandledInternal()
+		{
+			SetStatePreserveFinalInternal(DeferredState.Resolving);
+			unhandledValue = null;
 		}
 
 		internal void TryInvokeDirectInternal(Action callback, DeferredState expectedState)
@@ -114,15 +122,7 @@ namespace ProtoPromise
 				return;
 			}
 
-			if (unhandledValue is ValueContainer<TArg>)
-			{
-				ResolveUnhandledInternal(); // You never know what someone might do in a callback, so make sure deferred is in a clean state before invoking.
-				callback.Invoke(((ValueContainer<TArg>)unhandledValue).Value);
-			}
-			else
-			{
-				unhandledValue.TryInvoke(callback, this);
-			}
+			unhandledValue.TryInvoke(callback, this);
 		}
 
 		internal TResult TryInvokeDirectInternal<TResult>(Func<TResult> callback, DeferredState expectedState)
@@ -143,11 +143,6 @@ namespace ProtoPromise
 				return default(TResult);
 			}
 
-			if (unhandledValue is ValueContainer<TArg>)
-			{
-				ResolveUnhandledInternal(); // You never know what someone might do in a callback, so make sure deferred is in a clean state before invoking.
-				return callback.Invoke(((ValueContainer<TArg>)unhandledValue).Value);
-			}
 			return unhandledValue.TryInvoke(callback, this);
 		}
 
@@ -164,13 +159,7 @@ namespace ProtoPromise
 			ValueContainer temp = unhandledValue;
 			other.unhandledValue = temp;
 			ResolveUnhandledInternal();
-			other.Throw(((ValueContainer<Exception>)temp).Value);
-		}
-
-		internal void ResolveUnhandledInternal()
-		{
-			SetStatePreserveFinal(DeferredState.Resolving);
-			unhandledValue = null;
+			other.Throw(((ValueContainer<Exception>) temp).Value);
 		}
 
 		protected void OnFinished()
@@ -264,10 +253,10 @@ namespace ProtoPromise
 				// Format stacktrace to match "throw exception" so that double-clicking log in console will go to the proper line.
 				System.Text.StringBuilder sb = new System.Text.StringBuilder(new System.Diagnostics.StackTrace(1, true).ToString())
 					.Remove(0, 1)
+					.Replace(":line ", ":")
+					.Replace("\n ", " \n")
 					.Replace("(", " (")
 					.Replace(") in", ") [0x00000] in") // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
-					.Replace("\n ", " \n")
-					.Replace("line ", string.Empty)
 					.Append(" ");
 				ex = new UnhandledException(ex, sb.ToString());
 			}
@@ -314,13 +303,12 @@ namespace ProtoPromise
 
 		protected void ContinueThenChain()
 		{
-			SetStatePreserveFinal(DeferredState.Resolving);
+			SetStatePreserveFinalInternal(DeferredState.Resolving);
 
-			while (next.NextInternal != null)
+			Promise current = next;
+			next = next.NextInternal;
+			while (next != null)
 			{
-				Promise current = next;
-				next = next.NextInternal;
-
 				try
 				{
 					next.InvokeInternal(current);
@@ -330,13 +318,24 @@ namespace ProtoPromise
 					{
 						if (!TryHandleOther(promise))
 						{
+							Debug.LogError(promise.id + " Failed to tryhandleother");
 							return;
 						}
-						SetStatePreserveFinal(DeferredState.Resolving);
+
+						SetStatePreserveFinalInternal(DeferredState.Resolving);
+
+						current = next;
+						next = next.NextInternal;
+
 						continue;
 					}
 
 					next.ResolveInternal();
+
+					current = next;
+					next = next.NextInternal;
+
+					current.CompleteInternal();
 				}
 				catch (Exception e)
 				{
@@ -344,109 +343,110 @@ namespace ProtoPromise
 					{
 						return;
 					}
-					SetStatePreserveFinal(DeferredState.Resolving);
+					SetStatePreserveFinalInternal(DeferredState.Resolving);
 					//typeof(ADeferred).GetMethod("HandleException").MakeGenericMethod(e.GetType()).Invoke(this, new object[] { e });
 				}
 			}
 
-			next = null;
-			OnFinished();
+			//OnFinished();
 		}
 
 		private bool TryHandleOther(Promise promise)
 		{
+			Debug.LogError(promise.id + " other state: " + promise.State);
 			if (promise.State == PromiseState.Pending)
 			{
 				promise.Complete(() =>
 				{
+					Debug.LogError(promise.id + " other deferred state: " + promise.DeferredInternal.StateInternal);
 					if (TryHandleOther(promise))
 					{
 						ContinueThenChain();
 					}
+					Debug.LogError(promise.id + " Failed to tryhandleother");
 				});
 				return false;
 			}
 
 			ADeferred other = promise.DeferredInternal;
 
+			Debug.LogError(promise.id + " other deferred state: " + other.StateInternal);
 			switch (other.StateInternal)
 			{
 				case DeferredState.Rejecting:
 				case DeferredState.RejectingFinal:
-				{
-					ValueContainer temp = other.unhandledValue;
-					unhandledValue = temp;
-					other.ResolveUnhandledInternal();
-					return temp.TryHandleRejection(this);
-				}
+					{
+						Debug.LogWarning("Reject");
+						ValueContainer temp = other.unhandledValue;
+						Debug.LogWarning("temp type: " + (temp == null ? "null" : temp.GetType().ToString()));
+						unhandledValue = temp;
+						other.ResolveUnhandledInternal();
+						return temp.TryHandleRejection(this);
+					}
 				case DeferredState.Erroring:
 				case DeferredState.ErroringFinal:
-				{
-					ValueContainer<Exception> temp = (ValueContainer<Exception>)other.unhandledValue;
-					unhandledValue = temp;
-					other.ResolveUnhandledInternal();
-					return TryHandleException(temp.Value);
-				}
+					{
+						Debug.LogWarning("error");
+						ValueContainer<Exception> temp = (ValueContainer<Exception>) other.unhandledValue;
+						Debug.LogWarning("temp type: " + temp.GetType());
+						unhandledValue = temp;
+						other.ResolveUnhandledInternal();
+						return TryHandleException(temp.Value);
+					}
 				case DeferredState.Resolving:
 				case DeferredState.ResolvingFinal:
 				case DeferredState.Final:
-				{
-					try
 					{
-						next.ResolveInternal();
-					}
-					catch (Exception e)
-					{
-						if (!TryHandleException(e))
+						Debug.LogWarning("Resolve");
+						try
 						{
-							return false;
+							next.ResolveInternal();
+							return true;
+						}
+						catch (Exception e)
+						{
+							return TryHandleException(e);
 						}
 					}
-					return true;
-				}
 			}
 			return false;
 		}
 
 		internal bool TryHandleException(Exception ex)
 		{
-			Exception exception = ex;
-			if (ex is UnhandledException)
-			{
-				exception = exception.InnerException;
-			}
-			
-			var current = next;
+			ResolveUnhandledInternal();
+			ValueContainer<Exception> cached;
+			unhandledValue = cached = new ValueContainer<Exception>(ex);
+			SetStatePreserveFinalInternal(DeferredState.Erroring);
+
+			Exception exception = ex is UnhandledException ? ex.InnerException : ex;
+			bool handled = false;
+
 			while (next != null)
 			{
-				current = next;
+				Promise current = next;
 				try
 				{
-					if (current.TryHandleExceptionInternal(exception))
+					if (current.TryHandleExceptionInternal(exception, out handled))
 					{
-						unhandledValue = null;
+						ResolveUnhandledInternal();
 						current.CompleteInternal();
 						return true;
 					}
 					next = next.NextInternal;
+					current.CompleteInternal();
 				}
 				catch (Exception e)
 				{
-					exception = e;
+					if (!handled)
+					{
+						Debug.LogErrorFormat("A new exception was encountered in a Promise.Complete callback before an old exception was handled. The new exception will replace the old exception propagating up the promise chain.\nOld exception:\n{0}", ex);
+					}
+					cached.Value = ex = exception = e;
 				}
 			}
 
-			if (TryHandleRejectionInternal(exception))
-			{
-				return true;
-			}
-
-			SetStatePreserveFinal(DeferredState.Erroring);
-			if (unhandledValue == null)
-			{
-				unhandledValue = new ValueContainer<Exception>(ex);
-			}
-			current.CompleteInternal();
+			unhandledValue = cached;
 
 			// TODO: Subscribe to global error thrower for next frame.
 			GlobalMonoBehaviour.Yield(() =>
@@ -463,74 +463,64 @@ namespace ProtoPromise
 
 		internal bool TryHandleRejectionInternal()
 		{
-			//if (next == null)
-			//{
-			//	return false;
-			//}
+			ResolveUnhandledInternal();
+			unhandledValue = new ValueContainer();
+			SetStatePreserveFinalInternal(DeferredState.Rejecting);
 
-			var current = next;
-			while (next != null)
+			while (true)
 			{
-				current = next;
+				Promise current = next;
 				try
 				{
 					if (current.TryHandleFailInternal())
 					{
-						unhandledValue = null;
+						ResolveUnhandledInternal();
 						current.CompleteInternal();
 						return true;
 					}
 					next = next.NextInternal;
+					current.CompleteInternal();
+					if (next == null)
+					{
+						return false;
+					}
 				}
 				catch (Exception e)
 				{
 					return TryHandleException(e);
 				}
 			}
-
-			SetStatePreserveFinal(DeferredState.Rejecting);
-			if (unhandledValue == null)
-			{
-				unhandledValue = new ValueContainer();
-			}
-			current.CompleteInternal();
-			return false;
 		}
 
 		internal bool TryHandleRejectionInternal<TFail>(TFail rejectionValue)
 		{
-			//if (next == null)
-			//{
-			//	return false;
-			//}
+			ResolveUnhandledInternal();
+			unhandledValue = new ValueContainer<TFail>(rejectionValue);
+			SetStatePreserveFinalInternal(DeferredState.Rejecting);
 
-			var current = next;
-			while (next != null)
+			while (true)
 			{
-				current = next;
+				Promise current = next;
 				try
 				{
 					if (current.TryHandleFailInternal(rejectionValue))
 					{
-						unhandledValue = null;
+						ResolveUnhandledInternal();
 						current.CompleteInternal();
 						return true;
 					}
 					next = next.NextInternal;
+					current.CompleteInternal();
+					if (next == null)
+					{
+						return false;
+					}
 				}
 				catch (Exception e)
 				{
 					return TryHandleException(e);
 				}
 			}
-
-			SetStatePreserveFinal(DeferredState.Rejecting);
-			if (unhandledValue == null)
-			{
-				unhandledValue = new ValueContainer<TFail>(rejectionValue);
-			}
-			current.CompleteInternal();
-			return false;
 		}
 	}
 
@@ -551,12 +541,13 @@ namespace ProtoPromise
 				return;
 			}
 
-			Promise.InvokeInternal(null);
+			SetStatePreserveFinalInternal(DeferredState.Resolving);
+
 			try
 			{
 				Promise.ResolveInternal();
 			}
-			catch(Exception e)
+			catch (Exception e)
 			{
 				if (!TryHandleException(e))
 				{
@@ -584,7 +575,8 @@ namespace ProtoPromise
 				return;
 			}
 
-			Promise.InvokeInternal(null);
+			SetStatePreserveFinalInternal(DeferredState.Resolving);
+
 			Promise.SetValueInternal(arg);
 			try
 			{

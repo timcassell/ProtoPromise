@@ -56,48 +56,49 @@ public class TestScript : MonoBehaviour
 
 	private IEnumerator Start()
 	{
-		var wait = WaitForEnd(0, null);
-		StartCoroutine(wait);
-		StopCoroutine(wait);
+		//var wait = WaitForEnd(0, null);
+		//StartCoroutine(wait);
+		//StopCoroutine(wait);
 
-		StartCoroutine(wait);
-		yield return null;
-		yield return null;
-		yield return null;
+		//StartCoroutine(wait);
+		//yield return null;
+		//yield return null;
+		//yield return null;
 
-		yield break;
+		//yield break;
 
-		MyYield myYield = new MyYield();
-		yield return new WaitForSeconds(1);
-		while (true)
-		{
-			var coroutine = StartCoroutine(myYield);
-			for (int i = 0; i < 100000; ++i)
-			{
-				coroutine = StartCoroutine(myYield);
-			}
-			yield return coroutine;
-		}
-		yield return new WaitForEndOfFrame();
-		//StartCoroutine(WaitForEnd(0, myYield));
-		//StartCoroutine(WaitForEnd(0, myYield));
-		yield return myYield;
-		Debug.LogError(Time.frameCount);
-		yield return null;
-		StartCoroutine(WaitForEnd(1, new WaitForEndOfFrame()));
-		yield return new WaitForEndOfFrame();
-		Debug.LogError(Time.frameCount);
-		StartCoroutine(WaitForEnd(2, new WaitForEndOfFrame()));
-		ProtoPromise.GlobalMonoBehaviour.Yield(new WaitForSeconds(2), () => Debug.LogError("Waited 2 seconds"));
+		//MyYield myYield = new MyYield();
+		//yield return new WaitForSeconds(1);
+		//while (true)
+		//{
+		//	var coroutine = StartCoroutine(myYield);
+		//	for (int i = 0; i < 100000; ++i)
+		//	{
+		//		coroutine = StartCoroutine(myYield);
+		//	}
+		//	yield return coroutine;
+		//}
+		//yield return new WaitForEndOfFrame();
+		////StartCoroutine(WaitForEnd(0, myYield));
+		////StartCoroutine(WaitForEnd(0, myYield));
+		//yield return myYield;
+		//Debug.LogError(Time.frameCount);
+		//yield return null;
+		//StartCoroutine(WaitForEnd(1, new WaitForEndOfFrame()));
+		//yield return new WaitForEndOfFrame();
+		//Debug.LogError(Time.frameCount);
+		//StartCoroutine(WaitForEnd(2, new WaitForEndOfFrame()));
+		//ProtoPromise.GlobalMonoBehaviour.Yield(new WaitForSeconds(2), () => Debug.LogError("Waited 2 seconds"));
 
 		Deferred deferred = Promise.Deferred();
 		Deferred<int> deferred2 = Promise.Deferred<int>();
 
-		deferred.Resolve();
-		deferred2.Resolve(0);
 
 		var promise2 = deferred2.Promise
-			.Done(i => Debug.Log("deferred2.done: " + i));
+			.Done(i => Debug.Log("deferred2.done: " + i))
+            //.Fail<int>(x => { Debug.LogError("Rejected: " + x); return x;})
+            ;
+
 		deferred.Promise
 				.Done(() => Debug.Log("deferred1.done"))
 		        .Then(() => promise2)
@@ -107,7 +108,7 @@ public class TestScript : MonoBehaviour
 		        .Fail<Exception>( e => { Debug.LogError("caught exception"); return e.ToString(); })
 				.Done(s => Debug.Log("deferred.done " + s))
 				.Then(s => { Debug.Log(s); return s; })
-				.Fail<float>(f => Debug.Log("Failed: " + f));
+				.Fail<int>(f => Debug.Log("Failed: " + f));
 		;
 		promise2
 			.Then(() => { Debug.Log("deferred2.then"); return "deferred2 string."; })
@@ -117,6 +118,8 @@ public class TestScript : MonoBehaviour
 			;
 
 
+		deferred.Resolve();
+		deferred2.Reject(0);
 		yield return null;
 
 		//deferred.Reject(1.5f);

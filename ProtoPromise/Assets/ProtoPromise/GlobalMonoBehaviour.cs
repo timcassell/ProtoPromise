@@ -11,9 +11,9 @@ namespace ProtoPromise
 			public Routine next;
 			public Action onComplete;
 			bool _continue = false;
-			
+
 			public object Current { get; set; }
-			
+
 			public bool MoveNext()
 			{
 				// As a coroutine, this will wait for the Current's yield, then execute this once, then stop.
@@ -32,7 +32,7 @@ namespace ProtoPromise
 				_continue = !_continue;
 				return _continue;
 			}
-			
+
 			public void Reset()
 			{
 				throw new NotImplementedException();
