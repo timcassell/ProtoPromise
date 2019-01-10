@@ -96,6 +96,7 @@ public class TestScript : MonoBehaviour
 
 		var promise2 = deferred2.Promise
 			.Done(i => Debug.Log("deferred2.done: " + i))
+            .Catch(e => {})
             //.Fail<int>(x => { Debug.LogError("Rejected: " + x); return x;})
             ;
 

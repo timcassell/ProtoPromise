@@ -11,154 +11,155 @@ namespace ProtoPromise
 		/// </summary>
 		Pending,
 		/// <summary>
-		/// .Done and .Then have resolved successfully.
+		/// This promise was resolved successfully.
 		/// </summary>
 		Resolved,
 		/// <summary>
-		/// This promise has been rejected or an earlier promise in the chain was rejected and didn't handle the rejection.
+		/// This promise was rejected.
 		/// </summary>
 		Rejected,
-		/// <summary>
-		/// An exception was encountered in the chain (and no promises before this handled the exception).
-		/// </summary>
-		Errored
+		//Canceled
 	}
 
-	public partial class Promise : CustomYieldInstruction, IDelegate, ILinked<Promise>
+	public partial class Promise : CustomYieldInstruction, IValueContainer, ILinked<Promise>
 	{
 		Promise ILinked<Promise>.Next { get { return NextInternal; } set { NextInternal = value; } }
-		IDelegate ILinked<IDelegate>.Next { get { return NextInternal; } set { NextInternal = (Promise) value; } }
 		internal Promise NextInternal { get; set; }
 
 		private static int idCounter = 0;
-		
-		public int id;
+		public readonly int id;
+
+		protected Exception _exception; // TODO: Track how many nextbranches are subscribed and how many resolved this.
 		
 		protected Action onComplete;
-		internal LinkedListStruct<IDelegate> doneHandlersInternal;
-		internal LinkedListStruct<ITryInvokable> exceptionHandlersInternal;
-		internal LinkedListStruct<ITryInvokable> failHandlersInternal;
-		//internal LinkedListStruct<Promise> NextBranchesInternal = new LinkedListStruct<Promise>();
-		internal ADeferred DeferredInternal { get; private set; }
+		private LinkedQueueStruct<IDelegate> doneHandlers;
+		private LinkedQueueClass<Promise> NextBranches = new LinkedQueueClass<Promise>();
+		internal ADeferred DeferredInternal { get; set; }
+
+		protected bool handling = false; // This is to handle any new callbacks being added from a callback that is being invoked. e.g. promise.Done(() => { DoSomething(); promise.Done(DoSomethingElse); })
+
 		public PromiseState State { get; protected set; }
 
-		internal Promise(ADeferred deferred)
+		internal Promise(ADeferred deferred) // TODO: object pooling
 		{
 			id = idCounter++;
 			DeferredInternal = deferred;
 		}
 
-		internal virtual void InvokeInternal(IDelegate feed)
+		internal void OnComplete()
 		{
-			throw new NotImplementedException();
-		}
-
-		void IDelegate.Invoke(IDelegate feed)
-		{
-			InvokeInternal(feed);
-		}
-
-		internal void CompleteInternal()
-		{
-			Debug.LogWarning(id + " Complete, deferred state: " + DeferredInternal.StateInternal + ", invoking onComplete: " + (onComplete != null));
-			if (onComplete != null)
+			//Debug.LogWarning(id + " Complete, deferred state: " + DeferredInternal.StateInternal + ", invoking onComplete: " + (onComplete != null));
+			for (Action temp = onComplete; temp != null; temp = onComplete) // Keep looping in case more onComplete callbacks are added from the invoke. This should avoid any recursion.
 			{
-				onComplete.Invoke();
+				handling = true;
+
+				onComplete = null;
+				try
+				{
+					temp.Invoke();
+
+					if (State == PromiseState.Resolved && _exception == null)
+					{
+						// Just in case a .Done callback was added during the onComplete invocation.
+						ResolveDones();
+					}
+				}
+				catch (Exception e)
+				{
+					if (_exception != null)
+					{
+						Debug.LogError("A new exception was encountered in a Promise.Complete callback before an old exception was handled." +
+						               " The new exception will replace the old exception propagating up the promise chain.\nOld exception:\n" +
+						               _exception);
+					}
+					_exception = e;
+				}
 			}
+			handling = false;
+
+			// TODO: Subscribe to global error thrower for next frame.
+			GlobalMonoBehaviour.Yield(() =>
+			{
+				if (_exception == null) return;
+				throw _exception is UnhandledException ? _exception : new UnhandledException(_exception);
+			});
 		}
 
-		internal virtual void ResolveInternal()
+		internal Promise HandleInternal(Promise feed)
 		{
-			for (IDelegate del = doneHandlersInternal.PeekFirst(); del != null; del = del.Next, doneHandlersInternal.TakeFirst())
-			{
-				del.Invoke(this);
-			}
+			Exception exception = feed._exception;
+			return exception == null ? ResolveInternal(feed) : RejectInternal(exception);
+		}
 
+		protected void ResolveDones()
+		{
+			handling = true;
+			try
+			{
+				for (IDelegate del = doneHandlers.Peek(); del != null; del = del.Next)
+				{
+					del.Invoke(this);
+				}
+			}
+			catch (Exception e)
+			{
+				_exception = e;
+			}
+			doneHandlers.Clear();
+			handling = false;
+		}
+
+		internal Promise ResolveInternal(IValueContainer feed)
+		{
+			handling = true;
 			State = PromiseState.Resolved;
-		}
-
-		internal virtual bool TryInvokeInternal<U>(ITryInvokable tryInvoke, U value, out bool invoked) // private protected not supported before c# 7.2, so must use internal.
-		{
-			return tryInvoke.TryInvoke(value, out invoked);
-		}
-
-		internal virtual bool TryInvokeInternal(ITryInvokable tryInvoke) // private protected not supported before c# 7.2, so must use internal.
-		{
-			return tryInvoke.TryInvoke();
-		}
-
-		internal bool TryHandleExceptionInternal(Exception exception, out bool handled) // Use out to let the caller know that the exception was handled, just in case a callback throws another exception.
-		{
-			handled = TryHandleException(exception, out handled) || TryHandleFail(exception);
-
-			State = PromiseState.Errored;
-
-			return handled;
-		}
-
-		private bool TryHandleException(Exception exception, out bool handled)
-		{
-			for (ITryInvokable del = exceptionHandlersInternal.PeekFirst(); del != null; del = del.Next, exceptionHandlersInternal.TakeFirst())
+			Promise promise = null;
+			try
 			{
-				if (TryInvokeInternal(del, exception, out handled))
-				{
-					return true;
-				}
+				promise = ResolveProtected(feed);
+				ResolveDones();
 			}
-
-			return handled = false;
+			catch (Exception e)
+			{
+				_exception = e;
+			}
+			OnComplete();
+			handling = false;
+			return promise;
 		}
 
-		internal bool TryHandleFailInternal<TFail>(TFail failValue)
+		internal virtual Promise ResolveProtected(IValueContainer feed) // private protected not supported before c# 7.2, so must use internal.
 		{
-			bool success;
-			success = TryHandleFail(failValue) || (typeof(Exception).IsAssignableFrom(typeof(TFail)) && TryHandleException(failValue as Exception, out success));
+			return null;
+		}
 
+		internal Promise RejectInternal(Exception exception)
+		{
+			handling = true;
 			State = PromiseState.Rejected;
-
-			return success;
-		}
-
-		private bool TryHandleFail<TFail>(TFail failValue)
-		{
-			bool success;
-			for (ITryInvokable del = failHandlersInternal.PeekFirst(); del != null; del = del.Next, failHandlersInternal.TakeFirst())
+			Promise promise = null;
+			try
 			{
-				if (TryInvokeInternal(del, failValue, out success))
-				{
-					return true;
-				}
+				promise = RejectProtected(exception);
 			}
-
-			return false;
-		}
-
-		internal bool TryHandleFailInternal()
-		{
-			bool success = TryHandleFail();
-
-			State = PromiseState.Rejected;
-
-			return success;
-		}
-
-		bool TryHandleFail()
-		{
-			for (ITryInvokable del = failHandlersInternal.PeekFirst(); del != null; del = del.Next, failHandlersInternal.TakeFirst())
+			catch (Exception e)
 			{
-				if (TryInvokeInternal(del))
-				{
-					return true;
-				}
+				_exception = e;
 			}
-
-			return false;
+			OnComplete();
+			handling = false;
+			return promise;
 		}
 
-		internal virtual bool TryGetPromiseResultInternal(out Promise promise)
+		internal virtual Promise RejectProtected(Exception exception) // private protected not supported before c# 7.2, so must use internal.
 		{
-			promise = null;
-			return false;
+			_exception = exception;
+			return null;
+		}
+
+		internal bool RejectionNotHandled()
+		{
+			return _exception != null;
 		}
 
 		public override bool keepWaiting
@@ -175,21 +176,30 @@ namespace ProtoPromise
 			return this;
 		}
 
-		public void End()
+		// TODO Implement End
+		public Promise End()
 		{
-			DeferredInternal.End();
+			//DeferredInternal.End();
+			return this;
 		}
+
+		// TODO Implement Finally
+		//public CustomYieldInstruction Finally()
+		//{
+		//	return DeferredInternal.FinallyInternal();
+		//}
+
+		//public CustomYieldInstruction Finally(Action onFinally)
+		//{
+		//	return DeferredInternal.FinallyInternal(onFinally);
+		//}
 
 		public Promise Complete(Action onComplete)
 		{
-			Debug.LogError(id + " Complete, State: " + State);
-			if (State == PromiseState.Pending)
+			this.onComplete += onComplete;
+			if (State != PromiseState.Pending && !handling)
 			{
-				this.onComplete += onComplete;
-			}
-			else
-			{
-				onComplete.Invoke();
+				OnComplete();
 			}
 			return this;
 		}
@@ -199,70 +209,97 @@ namespace ProtoPromise
 			switch (State)
 			{
 				case PromiseState.Pending:
-					doneHandlersInternal.AddLast(new DelegateVoid(onResolved));
+					doneHandlers.Enqueue(new DelegateVoid(onResolved));
 					break;
 				case PromiseState.Resolved:
-					onResolved.Invoke();
+					if (_exception != null)
+					{
+						break;
+					}
+					doneHandlers.Enqueue(new DelegateVoid(onResolved));
+					if (!handling)
+					{
+						ResolveDones();
+						OnComplete(); // Just in case a .Complete callback was added during a .Done callback invocation.
+					}
 					break;
 			}
 			return this;
 		}
 
-		public Promise Fail(Action onRejected)
+		protected void DoneT<T>(Action<T> onResolved)
 		{
 			switch (State)
 			{
 				case PromiseState.Pending:
-					failHandlersInternal.AddLast(new DelegateVoid(onRejected));
+					doneHandlers.Enqueue(new DelegateArg<T>(onResolved));
 					break;
-				case PromiseState.Rejected:
-				case PromiseState.Errored:
-					DeferredInternal.TryInvokeDirectInternal(onRejected, DeferredState.Rejecting | DeferredState.Erroring);
+				case PromiseState.Resolved:
+					if (_exception != null)
+					{
+						break;
+					}
+					doneHandlers.Enqueue(new DelegateArg<T>(onResolved));
+					if (!handling)
+					{
+						ResolveDones();
+						OnComplete(); // Just in case a .Complete callback was added during a .Done callback invocation.
+					}
 					break;
 			}
-
-			return this;
 		}
 
-		public Promise Fail<TFail>(Action<TFail> onRejected)
+		protected void HookupNewPromise(Promise newPromise)
 		{
-			switch (State)
+			if (State != PromiseState.Pending && NextBranches.Peek() == null)
 			{
-				case PromiseState.Pending:
-					failHandlersInternal.AddLast(new DelegateArg<TFail>(onRejected));
-					break;
-				case PromiseState.Rejected:
-				case PromiseState.Errored:
-					DeferredInternal.TryInvokeDirectInternal(onRejected, DeferredState.Rejecting | DeferredState.Erroring);
-					break;
+				NextBranches.Enqueue(newPromise);
+				ContinueHandlingInternal(this);
 			}
-
-			return this;
-		}
-
-		public Promise Catch<TException>(Action<TException> onException) where TException : Exception
-		{
-			switch (State)
+			else
 			{
-				case PromiseState.Pending:
-					exceptionHandlersInternal.AddLast(new DelegateArg<TException>(onException));
-					break;
-				case PromiseState.Errored:
-					DeferredInternal.TryInvokeDirectInternal(onException, DeferredState.Erroring);
-					break;
+				NextBranches.Enqueue(newPromise);
 			}
-
-			return this;
 		}
 
-		public CustomYieldInstruction Finally()
+		public Promise Catch(Action onRejected)
 		{
-			return DeferredInternal.FinallyInternal();
+			PromiseVoidReject promise = new PromiseVoidReject(DeferredInternal)
+			{
+				rejectionHandler = onRejected
+			};
+			HookupNewPromise(promise);
+			return promise;
 		}
 
-		public CustomYieldInstruction Finally(Action onFinally)
+		public Promise Catch<TException>(Action<TException> onRejected) where TException : Exception
 		{
-			return DeferredInternal.FinallyInternal(onFinally);
+			PromiseVoidReject<TException> promise = new PromiseVoidReject<TException>(DeferredInternal)
+			{
+				rejectionHandler = onRejected
+			};
+			HookupNewPromise(promise);
+			return promise;
+		}
+
+		public Promise Catch(Func<Promise> onRejected)
+		{
+			PromiseVoidRejectPromise promise = new PromiseVoidRejectPromise(DeferredInternal)
+			{
+				rejectionHandler = onRejected
+			};
+			HookupNewPromise(promise);
+			return promise;
+		}
+
+		public Promise Catch<TException>(Func<TException, Promise> onRejected) where TException : Exception
+		{
+			PromiseArgRejectPromise<TException> promise = new PromiseArgRejectPromise<TException>(DeferredInternal)
+			{
+				rejectionHandler = onRejected
+			};
+			HookupNewPromise(promise);
+			return promise;
 		}
 
 		public Promise Then(Action onResolved)
@@ -271,61 +308,63 @@ namespace ProtoPromise
 			{
 				callback = onResolved
 			};
-			NextInternal = promise;
-			if (State != PromiseState.Pending)
-			{
-				DeferredInternal.ContinueResolvedInternal(this);
-			}
+			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Then<T>(Func<T> onResolved)
 		{
-			PromiseArgFromResult<T> promise = new PromiseArgFromResult<T>(DeferredInternal)
+			PromiseArgFromResultResolve<T> promise = new PromiseArgFromResultResolve<T>(DeferredInternal)
 			{
 				callback = onResolved
 			};
-			NextInternal = promise;
-			if (State != PromiseState.Pending)
-			{
-				DeferredInternal.ContinueResolvedInternal(this);
-			}
+			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Then(Func<Promise> onResolved)
 		{
-			PromiseVoidFromResultPromise promise = new PromiseVoidFromResultPromise(DeferredInternal)
+			PromiseVoidFromPromiseResultResolve promise = new PromiseVoidFromPromiseResultResolve(DeferredInternal)
 			{
 				callback = onResolved
 			};
-			NextInternal = promise;
-			if (State != PromiseState.Pending)
-			{
-				DeferredInternal.ContinueResolvedInternal(this);
-			}
+			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Then<T>(Func<Promise<T>> onResolved)
 		{
-			PromiseArgFromResultPromise<T> promise = new PromiseArgFromResultPromise<T>(DeferredInternal)
+			PromiseArgFromPromiseResultResolve<T> promise = new PromiseArgFromPromiseResultResolve<T>(DeferredInternal)
 			{
 				callback = onResolved
 			};
-			NextInternal = promise;
-			if (State != PromiseState.Pending)
-			{
-				DeferredInternal.ContinueResolvedInternal(this);
-			}
+			HookupNewPromise(promise);
 			return promise;
 		}
 
-		//[System.Diagnostics.Conditional("DEBUG")]
-		//void Check()
-		//{
-
-		//}
+		protected void PromiseHelper(Promise promise)
+		{
+			promise
+				.Done(() =>
+				{
+					try
+					{
+						ResolveDones();
+					}
+					catch (Exception e)
+					{
+						State = PromiseState.Resolved;
+						_exception = e;
+					}
+				})
+				.Catch<Exception>(e =>
+				{
+					State = PromiseState.Rejected;
+					_exception = e;
+				})
+				.Complete(OnComplete)
+				.End();
+		}
 	}
 
 	public class Promise<T> : Promise, IValueContainer<T>
@@ -334,30 +373,17 @@ namespace ProtoPromise
 
 		public T Value { get; protected set; }
 
-		// Only used for the first link.
-		internal void SetValueInternal(T value)
+		internal void ResolveInternal(T value)
 		{
 			Value = value;
+
+			ResolveInternal(this);
 		}
 
-		internal override bool TryInvokeInternal<U>(ITryInvokable tryInvoke, U value, out bool invoked) // private protected not supported before c# 7.2, so must use internal.
+		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			bool success = base.TryInvokeInternal(tryInvoke, value, out invoked);
-			if (tryInvoke is IValueContainer<T>)
-			{
-				Value = ((IValueContainer<T>) tryInvoke).Value;
-			}
-			return success;
-		}
-
-		internal override bool TryInvokeInternal(ITryInvokable tryInvoke) // private protected not supported before c# 7.2, so must use internal.
-		{
-			bool success = base.TryInvokeInternal(tryInvoke);
-			if (tryInvoke is IValueContainer<T>)
-			{
-				Value = ((IValueContainer<T>) tryInvoke).Value;
-			}
-			return success;
+			Value = ((IValueContainer<T>) feed).Value;
+			return null;
 		}
 
 		public new Promise<T> Notification<TNotify>(Action<TNotify> onNotification)
@@ -380,119 +406,113 @@ namespace ProtoPromise
 
 		public Promise<T> Done(Action<T> onResolved)
 		{
-			switch (State)
-			{
-				case PromiseState.Pending:
-					doneHandlersInternal.AddLast(new DelegateArg<T>(onResolved));
-					break;
-				case PromiseState.Resolved:
-					onResolved.Invoke(Value);
-					break;
-			}
+			DoneT(onResolved);
 			return this;
 		}
 
-		public Promise<T> Fail(Func<T> onRejected)
+		public Promise<T> Catch(Func<T> onRejected)
 		{
-			switch (State)
+			PromiseArgReject<T> promise = new PromiseArgReject<T>(DeferredInternal)
 			{
-				case PromiseState.Pending:
-					failHandlersInternal.AddLast(new DelegateVoidResult<T>(onRejected));
-					break;
-				case PromiseState.Rejected:
-				case PromiseState.Errored:
-					Value = DeferredInternal.TryInvokeDirectInternal(onRejected, DeferredState.Rejecting | DeferredState.Erroring);
-					break;
-			}
-
-			return this;
+				rejectionHandler = onRejected
+			};
+			HookupNewPromise(promise);
+			return promise;
 		}
 
-		public Promise<T> Fail<TFail>(Func<TFail, T> onRejected)
+		public Promise<T> Catch<TException>(Func<TException, T> onRejected) where TException : Exception
 		{
-			switch (State)
+			PromiseArgReject<TException, T> promise = new PromiseArgReject<TException, T>(DeferredInternal)
 			{
-				case PromiseState.Pending:
-					failHandlersInternal.AddLast(new DelegateArgResult<TFail, T>(onRejected));
-					break;
-				case PromiseState.Rejected:
-				case PromiseState.Errored:
-					Value = DeferredInternal.TryInvokeDirectInternal(onRejected, DeferredState.Rejecting | DeferredState.Erroring);
-					break;
-			}
-
-			return this;
+				rejectionHandler = onRejected
+			};
+			HookupNewPromise(promise);
+			return promise;
 		}
 
-		public Promise<T> Catch<TException>(Func<TException, T> onException) where TException : Exception
+		public Promise<T> Catch(Func<Promise<T>> onRejected)
 		{
-			switch (State)
+			PromiseArgRejectPromiseT<T> promise = new PromiseArgRejectPromiseT<T>(DeferredInternal)
 			{
-				case PromiseState.Pending:
-					exceptionHandlersInternal.AddLast(new DelegateArgResult<TException, T>(onException));
-					break;
-				case PromiseState.Errored:
-					Value = DeferredInternal.TryInvokeDirectInternal(onException, DeferredState.Erroring);
-					break;
-			}
+				rejectionHandler = onRejected
+			};
+			HookupNewPromise(promise);
+			return promise;
+		}
 
-			return this;
+		public Promise<T> Catch<TException>(Func<TException, Promise<T>> onRejected) where TException : Exception
+		{
+			PromiseArgRejectPromiseT<TException, T> promise = new PromiseArgRejectPromiseT<TException, T>(DeferredInternal)
+			{
+				rejectionHandler = onRejected
+			};
+			HookupNewPromise(promise);
+			return promise;
 		}
 
 		public Promise Then(Action<T> onResolved)
 		{
-			PromiseVoidFromArg<T> promise = new PromiseVoidFromArg<T>(DeferredInternal)
+			PromiseVoidFromArgResolve<T> promise = new PromiseVoidFromArgResolve<T>(DeferredInternal)
 			{
 				callback = onResolved
 			};
-			NextInternal = promise;
-			if (State != PromiseState.Pending)
-			{
-				DeferredInternal.ContinueResolvedInternal(this);
-			}
+			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved)
 		{
-			PromiseArgFromArgResult<T, TResult> promise = new PromiseArgFromArgResult<T, TResult>(DeferredInternal)
+			PromiseArgFromArgResultResolve<T, TResult> promise = new PromiseArgFromArgResultResolve<T, TResult>(DeferredInternal)
 			{
 				callback = onResolved
 			};
-			NextInternal = promise;
-			if (State != PromiseState.Pending)
-			{
-				DeferredInternal.ContinueResolvedInternal(this);
-			}
+			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Then(Func<T, Promise> onResolved)
 		{
-			PromiseVoidFromArgResultPromise<T> promise = new PromiseVoidFromArgResultPromise<T>(DeferredInternal)
+			PromiseVoidFromPromiseArgResultResolve<T> promise = new PromiseVoidFromPromiseArgResultResolve<T>(DeferredInternal)
 			{
 				callback = onResolved
 			};
-			NextInternal = promise;
-			if (State != PromiseState.Pending)
-			{
-				DeferredInternal.ContinueResolvedInternal(this);
-			}
+			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved)
 		{
-			PromiseArgFromArgResultPromise<TResult, T> promise = new PromiseArgFromArgResultPromise<TResult, T>(DeferredInternal)
+			PromiseArgFromPromiseArgResultResolve<TResult, T> promise = new PromiseArgFromPromiseArgResultResolve<TResult, T>(DeferredInternal)
 			{
 				callback = onResolved
 			};
-			NextInternal = promise;
-			if (State != PromiseState.Pending)
-			{
-				DeferredInternal.ContinueResolvedInternal(this);
-			}
+			HookupNewPromise(promise);
 			return promise;
+		}
+
+		protected void PromiseHelper(Promise<T> promise)
+		{
+			promise
+				.Done(x =>
+				{
+					State = PromiseState.Resolved;
+					Value = x;
+					try
+					{
+						ResolveDones();
+					}
+					catch (Exception e)
+					{
+						_exception = e;
+					}
+				})
+				.Catch<Exception>(e =>
+				{
+					State = PromiseState.Rejected;
+					_exception = e;
+				})
+				.Complete(OnComplete)
+				.End();
 		}
 	}
 }

@@ -10,16 +10,14 @@ namespace ProtoPromise
 		T Next { get; set; }
 	}
 
-	internal struct LinkedStackStruct<T> where T : class, ILinked<T>
+	/// <summary>
+	///  This structure is unsuitable for general purpose.
+	/// </summary>
+	internal class LinkedStackClass<T> where T : class, ILinked<T>
 	{
 		T first;
 
-		//public bool IsNotEmpty { get { return first != null; } }
-
-		//public LinkedEnumerator<T> GetEnumerator()
-		//{
-		//	return new LinkedEnumerator<T>(first);
-		//}
+		public bool IsEmpty { get { return first == null; } }
 
 		public void Clear()
 		{
@@ -39,16 +37,38 @@ namespace ProtoPromise
 			return temp;
 		}
 
-		//public bool TryPop(out T item)
-		//{
-		//	if (IsNotEmpty)
-		//	{
-		//		item = Pop();
-		//		return true;
-		//	}
-		//	item = default(T);
-		//	return false;
-		//}
+		public T Peek()
+		{
+			return first;
+		}
+	}
+
+	/// <summary>
+	///  This structure is unsuitable for general purpose.
+	/// </summary>
+	internal class LinkedStackStruct<T> where T : class, ILinked<T>
+	{
+		T first;
+
+		public bool IsEmpty { get { return first == null; } }
+
+		public void Clear()
+		{
+			first = null;
+		}
+
+		public void Push(T item)
+		{
+			item.Next = first;
+			first = item;
+		}
+
+		public T Pop()
+		{
+			T temp = first;
+			first = first.Next;
+			return temp;
+		}
 
 		public T Peek()
 		{
@@ -56,37 +76,20 @@ namespace ProtoPromise
 		}
 	}
 
-	internal struct LinkedListStruct<T>  where T : class, ILinked<T>
+	/// <summary>
+	///  This structure is unsuitable for general purpose.
+	/// </summary>
+	internal class LinkedQueueClass<T> where T : class, ILinked<T>
 	{
 		T first;
 		T last;
-
-		//public bool IsNotEmpty { get { return first != null; } }
-
-		//public LinkedEnumerator<T> GetEnumerator()
-		//{
-		//	return new LinkedEnumerator<T>(first);
-		//}
 
 		public void Clear()
 		{
 			first = last = null;
 		}
 
-		public void AddFirst(T item)
-		{
-			item.Next = first;
-			if (first == null)
-			{
-				first = last = item;
-			}
-			else
-			{
-				first = item;
-			}
-		}
-
-		public void AddLast(T item)
+		public void Enqueue(T item)
 		{
 			item.Next = null;
 			if (first == null)
@@ -100,57 +103,66 @@ namespace ProtoPromise
 			}
 		}
 
-		public T TakeFirst()
-		{
-			T temp = first;
-			first = first.Next;
-			return temp;
-		}
-
-		//public bool TryTakeFirst(out T item)
-		//{
-		//	if (IsNotEmpty)
-		//	{
-		//		item = TakeFirst();
-		//		return true;
-		//	}
-		//	item = default(T);
-		//	return false;
-		//}
-
-		public T PeekFirst()
+		public T Peek()
 		{
 			return first;
 		}
 	}
 
-	//internal struct LinkedEnumerator<T> where T : class, ILinked<T>
-	//{
-	//	public T Current { get; private set; }
-	//	T next;
+	/// <summary>
+	///  This structure is unsuitable for general purpose.
+	/// </summary>
+	internal struct LinkedQueueStruct<T>  where T : class, ILinked<T>
+	{
+		T first;
+		T last;
 
-	//	public LinkedEnumerator(T first)
-	//	{
-	//		Current = next = first;
-	//	}
+		public LinkedQueueStruct(T item)
+		{
+			item.Next = null;
+			first = last = item;
+		}
 
-	//	public bool MoveNext()
-	//	{
-	//		if (next != null)
-	//		{
-	//			Current = next;
-	//			next = next.Next;
-	//			return true;
-	//		}
-	//		Current = null;
-	//		return false;
-	//	}
-	//}
+		public void Clear()
+		{
+			first = last = null;
+		}
 
-	public static class PromiseHelper
+		public void Enqueue(T item)
+		{
+			item.Next = null;
+			if (first == null)
+			{
+				first = last = item;
+			}
+			else
+			{
+				last.Next = item;
+				last = item;
+			}
+		}
+
+		/// <summary>
+		/// Only use this to enqueue if you know this isn't empty.
+		/// </summary>
+		/// <param name="item">Item.</param>
+		public void EnqueueRisky(T item)
+		{
+			item.Next = null;
+			last.Next = item;
+			last = item;
+		}
+
+		public T Peek()
+		{
+			return first;
+		}
+	}
+
+	public static class PromiseExtensions
 	{
 		/// <summary>
-		/// Helper method for promise.Notification&lt;float&gt;(onProgress).
+		/// Helper method for promise.Notification{<see cref="float"/>}(onProgress).
 		/// </summary>
 		public static Promise Progress(this Promise promise, Action<float> onProgress)
 		{
@@ -158,11 +170,16 @@ namespace ProtoPromise
 		}
 
 		/// <summary>
-		/// Helper method for promise.Notification&lt;float&gt;(onProgress).
+		/// Helper method for promise.Notification{<see cref="float"/>}(onProgress).
 		/// </summary>
 		public static Promise<T> Progress<T>(this Promise<T> promise, Action<float> onProgress)
 		{
 			return promise.Notification(onProgress);
+		}
+
+		public static Promise Catch(this Promise promise, Action<Exception> onRejected)
+		{
+			return promise.Catch(onRejected);
 		}
 	}
 }

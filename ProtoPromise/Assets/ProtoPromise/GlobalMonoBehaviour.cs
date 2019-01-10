@@ -6,9 +6,9 @@ namespace ProtoPromise
 {
 	public class GlobalMonoBehaviour : MonoBehaviour
 	{
-		private class Routine : IEnumerator
+		private class Routine : IEnumerator, ILinked<Routine>
 		{
-			public Routine next;
+			public Routine Next { get; set; }
 			public Action onComplete;
 			bool _continue = false;
 
@@ -26,14 +26,13 @@ namespace ProtoPromise
 						onComplete = null;
 					}
 					// Place this back in the pool.
-					next = node;
-					node = this;
+					pool.Push(this);
 				}
 				_continue = !_continue;
 				return _continue;
 			}
 
-			public void Reset()
+			void IEnumerator.Reset()
 			{
 				throw new NotImplementedException();
 			}
@@ -53,11 +52,12 @@ namespace ProtoPromise
 			}
 		}
 
-		private static Routine node; // Pool of routines as linked stack.
+		private static LinkedStackStruct<Routine> pool; // Pool of routines as linked stack.
 
 		/// <summary>
 		/// Waits for <paramref name="yieldInstruction"/> to complete, then calls <paramref name="onComplete"/>.
 		/// If <paramref name="yieldInstruction"/> is not a Unity supported <see cref="YieldInstruction"/> or <see cref="CustomYieldInstruction"/>, then this will wait for 1 frame.
+		/// If you are using Unity 5.3 or later and <paramref name="yieldInstruction"/> is an <see cref="IEnumerator"/>, it will be started and yielded as a Coroutine by Unity. Earlier versions will simply wait 1 frame.
 		/// </summary>
 		/// <param name="yieldInstruction">Yield instruction.</param>
 		/// <param name="onComplete">Callback</param>
@@ -65,15 +65,7 @@ namespace ProtoPromise
 		public static void Yield<TYieldInstruction>(TYieldInstruction yieldInstruction, Action onComplete)
 		{
 			// Grab from pool or create new if pool is empty.
-			Routine routine = node;
-			if (routine != null)
-			{
-				node = routine.next;
-			}
-			else
-			{
-				routine = new Routine();
-			}
+			Routine routine = pool.IsEmpty ? new Routine() : pool.Pop();
 
 			routine.Current = yieldInstruction;
 			routine.onComplete = onComplete;
