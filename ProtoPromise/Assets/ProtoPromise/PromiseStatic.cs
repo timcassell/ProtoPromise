@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace ProtoPromise
 {
@@ -16,10 +15,8 @@ namespace ProtoPromise
 			for (int i = 0, max = promises.Length; i < max; ++i)
 			{
 				int index = i;
-				Promise<T> promise = promises[index];
-
-				promise
-					.Done(x =>
+				promises[index]
+					.Then<Exception>(x =>
 					{
 						if (masterDeferred.StateInternal != PromiseState.Pending)
 						{
@@ -31,11 +28,8 @@ namespace ProtoPromise
 						{
 							masterDeferred.Resolve(args);
 						}
-					})
-					.Catch<Exception>(e =>
-					{
-						masterDeferred.Reject(e);
-					});
+					}, masterDeferred.Reject)
+					.End();
 			}
 
 			return masterDeferred.Promise;
@@ -43,7 +37,7 @@ namespace ProtoPromise
 
 		public static Promise<T[]> All<T>(IEnumerable<Promise<T>> promises)
 		{
-			return All(promises.ToArray());
+			return All(System.Linq.Enumerable.ToArray(promises));
 		}
 
 		public static Promise All(params Promise[] promises)
@@ -54,10 +48,8 @@ namespace ProtoPromise
 
 			for (int i = 0, max = promises.Length; i < max; ++i)
 			{
-				Promise promise = promises[i];
-
-				promise
-					.Done(() =>
+				promises[i]
+					.Then<Exception>(() =>
 					{
 						if (masterDeferred.StateInternal != PromiseState.Pending)
 						{
@@ -68,11 +60,8 @@ namespace ProtoPromise
 						{
 							masterDeferred.Resolve();
 						}
-					})
-					.Catch<Exception>(e =>
-					{
-						masterDeferred.Reject(e);
-					});
+					}, masterDeferred.Reject)
+					.End();
 			}
 
 			return masterDeferred.Promise;
@@ -80,7 +69,7 @@ namespace ProtoPromise
 
 		public static Promise All(IEnumerable<Promise> promises)
 		{
-			return All(promises.ToArray());
+			return All(System.Linq.Enumerable.ToArray(promises));
 		}
 
 		public static Promise<T> Race<T>(params Promise<T>[] promises)
@@ -89,10 +78,8 @@ namespace ProtoPromise
 
 			for (int i = 0, max = promises.Length; i < max; ++i)
 			{
-				Promise<T> promise = promises[i];
-
-				promise
-					.Done(x =>
+				promises[i]
+					.Then<Exception>(x =>
 					{
 						if (masterDeferred.StateInternal != PromiseState.Pending)
 						{
@@ -100,11 +87,8 @@ namespace ProtoPromise
 						}
 
 						masterDeferred.Resolve(x);
-					})
-					.Catch<Exception>(e =>
-					{
-						masterDeferred.Reject(e);
-					});
+					}, masterDeferred.Reject)
+					.End();
 			}
 
 			return masterDeferred.Promise;
@@ -112,7 +96,7 @@ namespace ProtoPromise
 
 		public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
 		{
-			return Race(promises.ToArray());
+			return Race(System.Linq.Enumerable.ToArray(promises));
 		}
 
 		public static Promise Race(params Promise[] promises)
@@ -121,10 +105,8 @@ namespace ProtoPromise
 
 			for (int i = 0, max = promises.Length; i < max; ++i)
 			{
-				Promise promise = promises[i];
-
-				promise
-					.Done(() =>
+				promises[i]
+					.Then<Exception>(() =>
 					{
 						if (masterDeferred.StateInternal != PromiseState.Pending)
 						{
@@ -132,11 +114,8 @@ namespace ProtoPromise
 						}
 
 						masterDeferred.Resolve();
-					})
-					.Catch<Exception>(e =>
-					{
-						masterDeferred.Reject(e);
-					});
+					}, masterDeferred.Reject)
+					.End();
 			}
 
 			return masterDeferred.Promise;
@@ -144,7 +123,7 @@ namespace ProtoPromise
 
 		public static Promise Race(IEnumerable<Promise> promises)
 		{
-			return Race(promises.ToArray());
+			return Race(System.Linq.Enumerable.ToArray(promises));
 		}
 
 		public static Promise Sequence(params Func<Promise>[] funcs)
@@ -163,7 +142,7 @@ namespace ProtoPromise
 
 		public static Promise Sequence(IEnumerable<Func<Promise>> funcs)
 		{
-			return Sequence(funcs.ToArray());
+			return Sequence(System.Linq.Enumerable.ToArray(funcs));
 		}
 
 		/// <summary>

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace ProtoPromise
 {
@@ -22,38 +21,6 @@ namespace ProtoPromise
 		}
 	}
 
-	public sealed class FinalYield : CustomYieldInstruction
-	{
-		bool wait = true;
-		Action callback;
-
-		internal FinalYield() { }
-
-		public override bool keepWaiting
-		{
-			get
-			{
-				return wait;
-			}
-		}
-
-		internal void AddCallback(Action action)
-		{
-			callback += action;
-			wait = true;
-		}
-
-		internal void Invoke()
-		{
-			if (callback != null)
-			{
-				callback.Invoke();
-				callback = null;
-			}
-			wait = false;
-		}
-	}
-
 	public abstract class ADeferred
 	{
 		private Dictionary<Type, IDelegateArg> notifications;
@@ -65,43 +32,6 @@ namespace ProtoPromise
 		{
 			StateInternal = PromiseState.Pending;
 		}
-
-		//protected void OnFinished()
-		//{
-		//	if (_finally != null)
-		//	{
-		//		//StateInternal = PromiseState.Final;
-		//		_finally.Invoke();
-		//	}
-		//}
-
-		//internal FinalYield FinallyInternal()
-		//{
-		//	if (_finally == null)
-		//	{
-		//		_finally = new FinalYield();
-		//		//if (StateInternal == PromiseState.Final)
-		//		//{
-		//		//	// chain is complete
-		//		//	OnFinished();
-		//		//}
-		//	}
-		//	return _finally;
-		//}
-
-		//internal FinalYield FinallyInternal(Action callback)
-		//{
-		//	FinalYield final = FinallyInternal();
-		//	if (StateInternal == PromiseState.Pending)
-		//	{
-		//		final.AddCallback(callback);
-		//	}
-		//	else
-		//	{
-		//		callback.Invoke();
-		//	}
-		//	return final;
-		//}
 
 		internal void NotificationInternal<T>(Action<T> onNotification)
 		{
@@ -144,19 +74,11 @@ namespace ProtoPromise
 		{
 			if (StateInternal != PromiseState.Pending)
 			{
-				Debug.LogWarning("Deferred.Throw - Deferred is not in the pending state.");
+				UnityEngine.Debug.LogError("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
 				return;
 			}
 
-			Exception ex;
-			if (reason == null)
-			{
-				ex = new NullReferenceException();
-			}
-			else
-			{
-				ex = reason;
-			}
+			Exception ex = reason == null ? new NullReferenceException() : (Exception) reason;
 			if (string.IsNullOrEmpty(ex.StackTrace))
 			{
 				// Format stacktrace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
@@ -186,13 +108,14 @@ namespace ProtoPromise
 		protected override void RejectProtected(Exception exception)
 		{
 			Promise.RejectInternal(exception);
+			Promise.ContinueHandlingInternal(Promise);
 		}
 
 		public void Resolve()
 		{
 			if (StateInternal != PromiseState.Pending)
 			{
-				Debug.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+				UnityEngine.Debug.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
 				return;
 			}
 
@@ -215,13 +138,14 @@ namespace ProtoPromise
 		protected override void RejectProtected(Exception exception)
 		{
 			Promise.RejectInternal(exception);
+			ProtoPromise.Promise.ContinueHandlingInternal(Promise);
 		}
 
 		public void Resolve(T arg)
 		{
 			if (StateInternal != PromiseState.Pending)
 			{
-				Debug.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+				UnityEngine.Debug.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
 				return;
 			}
 

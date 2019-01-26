@@ -1,387 +1,118 @@
 using System;
+using System.Collections.Generic;
 
 namespace ProtoPromise
 {
 	public partial class Promise
 	{
-		// This allows infinite .Then callbacks, since it avoids recursion.
+		// This allows infinite .Then resolveHandlers, since it avoids recursion.
 		internal static void ContinueHandlingInternal(Promise current)
 		{
 			LinkedQueueStruct<Promise> nextHandles = new LinkedQueueStruct<Promise>(current);
 			for (; current != null; current = current.NextInternal)
 			{
 				LinkedQueueClass<Promise> branches = current.NextBranches;
-				for (Promise next = branches.Peek(); next != null; next = next.NextInternal)
+				for (Promise next = branches.Peek(); next != null;)
 				{
 					Promise waitPromise = next.HandleInternal(current);
 					if (waitPromise == null || waitPromise.State != PromiseState.Pending)
 					{
-						nextHandles.EnqueueRisky(next);
+						Promise temp = next;
+						next = next.NextInternal; // This is necessary because enqueue sets temp.next to null.
+						nextHandles.EnqueueRisky(temp);
 					}
 					else
 					{
 						Promise cachedPromise = next;
-						waitPromise.Complete(() => ContinueHandlingInternal(cachedPromise));
+						next = next.NextInternal;
+						waitPromise.Complete(() =>
+						{
+							ContinueHandlingInternal(cachedPromise);
+						});
 					}
 				}
 				branches.Clear();
 			}
 		}
-	}
 
-	internal interface ITryInvokable : ILinked<ITryInvokable>
-	{
-		bool TryInvoke<U>(U arg, out bool invoked);
-		bool TryInvoke(out bool invoked);
-	}
-	internal interface IDelegate : ILinked<IDelegate>
-	{
-		void Invoke(IValueContainer feed);
-	}
-	internal interface IDelegateVoid : IDelegate
-	{
-		void Invoke();
-	}
-	internal interface IDelegateArg : IDelegate { }
-	internal interface IDelegateArg<TArg> : IDelegateArg
-	{
-		void Invoke(TArg arg);
-	}
-	internal interface IDelegateArgResult<TArg, TResult> : IDelegateArg<TArg>, IValueContainer<TResult> { }
+		private static readonly UnityEngine.WaitForEndOfFrame waitForEndOfFrame = new UnityEngine.WaitForEndOfFrame();
+		private static bool handlingFinally = false;
+		private static HashSet<Promise> finallies = new HashSet<Promise>();
+		private static HashSet<Promise> finallies2 = new HashSet<Promise>();
 
-	internal interface IDelegateVoidResult<TResult> : IDelegateVoid, IValueContainer<TResult> { }
-
-	internal interface IValueContainer { }
-
-	internal interface IValueContainer<T> : IValueContainer
-	{
-		T Value { get; }
-	}
-
-	internal class ValueContainer : IValueContainer
-	{
-	}
-
-	internal sealed class ValueContainer<T> : ValueContainer, IValueContainer<T>
-	{
-		public ValueContainer(T value)
+		private static void HandleFinals()
 		{
-			Value = value;
-		}
+			handlingFinally = false;
+			HashSet<Promise> tempFinals = finallies;
+			finallies = finallies2;
+			finallies2 = tempFinals;
 
-		public T Value { get; set; }
-	}
-
-	internal sealed class DelegateVoid : IDelegateVoid, ITryInvokable, ILinked<DelegateVoid>
-	{
-		public DelegateVoid Next { get; set; }
-
-		IDelegate ILinked<IDelegate>.Next
-		{
-			get
+			Exception exception = null;
+			foreach (var promise in tempFinals)
 			{
-				return Next;
-			}
-			set
-			{
-				Next = (DelegateVoid) value;
-			}
-		}
-
-		ITryInvokable ILinked<ITryInvokable>.Next
-		{
-			get
-			{
-				return Next;
-			}
-			set
-			{
-				Next = (DelegateVoid) value;
-			}
-		}
-
-		Action callback;
-
-		public DelegateVoid(Action action)
-		{
-			SetCallback(action);
-		}
-
-		public void SetCallback(Action action)
-		{
-			callback = action;
-		}
-
-		public void Invoke(IValueContainer feed)
-		{
-			Invoke();
-		}
-
-		public void Invoke()
-		{
-			callback.Invoke();
-		}
-
-		public bool TryInvoke<U>(U arg, out bool invoked)
-		{
-			return TryInvoke(out invoked);
-		}
-
-		public bool TryInvoke(out bool invoked)
-		{
-			invoked = true;
-			Invoke();
-			return true;
-		}
-	}
-
-	internal sealed class DelegateArg<TArg> : IDelegateArg<TArg>, ITryInvokable, ILinked<DelegateArg<TArg>>
-	{
-		public DelegateArg<TArg> Next { get; set; }
-
-		IDelegate ILinked<IDelegate>.Next
-		{
-			get
-			{
-				return Next;
-			}
-			set
-			{
-				Next = (DelegateArg<TArg>) value;
-			}
-		}
-
-		ITryInvokable ILinked<ITryInvokable>.Next
-		{
-			get
-			{
-				return Next;
-			}
-			set
-			{
-				Next = (DelegateArg<TArg>) value;
-			}
-		}
-
-		Action<TArg> callback;
-
-		public DelegateArg(Action<TArg> action)
-		{
-			SetCallback(action);
-		}
-
-		public void SetCallback(Action<TArg> action)
-		{
-			callback = action;
-		}
-
-		public void AddCallback(Action<TArg> action)
-		{
-			callback += action;
-		}
-
-		public void Invoke(IValueContainer feed)
-		{
-			Invoke(((IValueContainer<TArg>) feed).Value);
-		}
-
-		public void Invoke(TArg arg)
-		{
-			callback.Invoke(arg);
-		}
-
-		public bool TryInvoke<U>(U arg, out bool invoked)
-		{
-			if (typeof(TArg).IsValueType)
-			{
-				// This avoids boxing value types.
-				if (this is DelegateArg<U>)
+				var final = promise.final;
+				if (final != null)
 				{
-					invoked = true;
-					(this as DelegateArg<U>).Invoke(arg);
-					return true;
+					final.ResolveInternal();
+				}
+
+				for (Promise prev = promise.previous; prev != null; prev = prev.previous)
+				{
+					if (--prev.nextCount == 0)
+					{
+						final = prev.final;
+						if (final != null)
+						{
+							final.ResolveInternal();
+						}
+					}
+
+					// TODO: repool prev here
+				}
+
+				exception = promise._exception;
+				// TODO: repool promise here
+				if (exception != null)
+				{
+					break;
 				}
 			}
-			else
+			finallies2.Clear();
+			if (exception != null)
 			{
-				object val = arg;
-				if (typeof(TArg).IsAssignableFrom(typeof(U)) || (val != null && arg is TArg))
-				{
-					invoked = true;
-					Invoke((TArg) val);
-					return true;
-				}
-			}
-			return invoked = false;
-		}
-
-		public bool TryInvoke(out bool invoked)
-		{
-			return invoked = false;
-		}
-	}
-
-	internal class DelegateVoidResult<TResult> : IDelegateVoidResult<TResult>, ITryInvokable, ILinked<DelegateVoidResult<TResult>>
-	{
-		public DelegateVoidResult<TResult> Next { get; set; }
-
-		IDelegate ILinked<IDelegate>.Next
-		{
-			get
-			{
-				return Next;
-			}
-			set
-			{
-				Next = (DelegateVoidResult<TResult>) value;
+				throw exception is UnhandledException ? exception : new UnhandledException(exception);
 			}
 		}
 
-		ITryInvokable ILinked<ITryInvokable>.Next
+		private static void AddFinal(Promise finallyPromise)
 		{
-			get
+			if (!handlingFinally)
 			{
-				return Next;
+				handlingFinally = true;
+				GlobalMonoBehaviour.Yield(waitForEndOfFrame, HandleFinals);
 			}
-			set
-			{
-				Next = (DelegateVoidResult<TResult>) value;
-			}
+			finallies.Add(finallyPromise);
 		}
 
-		Func<TResult> callback;
-
-		public TResult Value { get; private set; }
-
-		public DelegateVoidResult(Func<TResult> func)
+		private static void RemoveFinal(Promise finallyPromise)
 		{
-			SetCallback(func);
-		}
-
-		public void SetCallback(Func<TResult> func)
-		{
-			callback = func;
-		}
-
-		public virtual void Invoke(IValueContainer feed)
-		{
-			Invoke();
-		}
-
-		public void Invoke()
-		{
-			Value = callback.Invoke();
-		}
-
-		public bool TryInvoke<U>(U arg, out bool invoked)
-		{
-			return TryInvoke(out invoked);
-		}
-
-		public bool TryInvoke(out bool invoked)
-		{
-			invoked = true;
-			Invoke();
-			return true;
-		}
-	}
-
-	internal sealed class DelegateArgResult<TArg, TResult> : IDelegateArgResult<TArg, TResult>, ITryInvokable, ILinked<DelegateArgResult<TArg, TResult>>
-	{
-		public DelegateArgResult<TArg, TResult> Next { get; set; }
-
-		IDelegate ILinked<IDelegate>.Next
-		{
-			get
-			{
-				return Next;
-			}
-			set
-			{
-				Next = (DelegateArgResult<TArg, TResult>) value;
-			}
-		}
-
-		ITryInvokable ILinked<ITryInvokable>.Next
-		{
-			get
-			{
-				return Next;
-			}
-			set
-			{
-				Next = (DelegateArgResult<TArg, TResult>) value;
-			}
-		}
-
-		Func<TArg, TResult> callback;
-
-		public TResult Value { get; private set; }
-
-		public DelegateArgResult(Func<TArg, TResult> func)
-		{
-			SetCallback(func);
-		}
-
-		public void SetCallback(Func<TArg, TResult> func)
-		{
-			callback = func;
-		}
-
-		public void Invoke(IValueContainer feed)
-		{
-			Invoke(((IValueContainer<TArg>) feed).Value);
-		}
-
-		public void Invoke(TArg arg)
-		{
-			Value = callback.Invoke(arg);
-		}
-
-		public bool TryInvoke<U>(U arg, out bool invoked)
-		{
-			if (typeof(TArg).IsValueType)
-			{
-				// This avoids boxing value types.
-				if (this is DelegateArg<U>)
-				{
-					invoked = true;
-					(this as DelegateArg<U>).Invoke(arg);
-					return true;
-				}
-			}
-			else
-			{
-				object val = arg;
-				if (typeof(TArg).IsAssignableFrom(typeof(U)) || (val != null && arg is TArg))
-				{
-					invoked = true;
-					Invoke((TArg) val);
-					return true;
-				}
-			}
-			return invoked = false;
-		}
-
-		public bool TryInvoke(out bool invoked)
-		{
-			return invoked = false;
+			finallies.Remove(finallyPromise);
 		}
 	}
 
 
-
+	// TODO: add exception filters
 	internal class PromiseVoidReject : Promise, ILinked<PromiseVoidReject>
 	{
 		PromiseVoidReject ILinked<PromiseVoidReject>.Next { get { return (PromiseVoidReject) NextInternal; } set { NextInternal = value; } }
 
-		internal Action rejectionHandler;
+		internal Action rejectHandler;
 
 		internal PromiseVoidReject(ADeferred deferred) : base(deferred) { }
 
-		internal override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(Exception exception)
 		{
-			rejectionHandler.Invoke();
+			rejectHandler.Invoke();
 			return null;
 		}
 	}
@@ -390,15 +121,20 @@ namespace ProtoPromise
 	{
 		PromiseVoidReject<TException> ILinked<PromiseVoidReject<TException>>.Next { get { return (PromiseVoidReject<TException>) NextInternal; } set { NextInternal = value; } }
 
-		internal Action<TException> rejectionHandler;
+		internal Action<TException> rejectHandler;
 
 		internal PromiseVoidReject(ADeferred deferred) : base(deferred) { }
 
-		internal override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(Exception exception)
 		{
-			if (exception != null && exception is TException)
+			if (exception is UnhandledException)
 			{
-				rejectionHandler.Invoke((TException) exception);
+				exception = exception.InnerException;
+			}
+
+			if (exception is TException)
+			{
+				rejectHandler.Invoke((TException) exception);
 			}
 			else
 			{
@@ -412,13 +148,13 @@ namespace ProtoPromise
 	{
 		PromiseArgReject<TArg> ILinked<PromiseArgReject<TArg>>.Next { get { return (PromiseArgReject<TArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TArg> rejectionHandler;
+		internal Func<TArg> rejectHandler;
 
 		internal PromiseArgReject(ADeferred deferred) : base(deferred) { }
 
-		internal override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(Exception exception)
 		{
-			Value = rejectionHandler.Invoke();
+			Value = rejectHandler.Invoke();
 			return null;
 		}
 	}
@@ -427,14 +163,14 @@ namespace ProtoPromise
 	{
 		PromiseVoidRejectPromise ILinked<PromiseVoidRejectPromise>.Next { get { return (PromiseVoidRejectPromise) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<Promise> rejectionHandler;
+		internal Func<Promise> rejectHandler;
 
 		internal PromiseVoidRejectPromise(ADeferred deferred) : base(deferred) { }
 
-		internal override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(Exception exception)
 		{
-			PromiseHelper(rejectionHandler.Invoke());
-			return null;
+			State = PromiseState.Pending;
+			return PromiseHelper(rejectHandler.Invoke());
 		}
 	}
 
@@ -442,15 +178,20 @@ namespace ProtoPromise
 	{
 		PromiseArgReject<TException, TArg> ILinked<PromiseArgReject<TException, TArg>>.Next { get { return (PromiseArgReject<TException, TArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TException, TArg> rejectionHandler;
+		internal Func<TException, TArg> rejectHandler;
 
 		internal PromiseArgReject(ADeferred deferred) : base(deferred) { }
 
-		internal override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(Exception exception)
 		{
-			if (exception != null && exception is TException)
+			if (exception is UnhandledException)
 			{
-				Value = rejectionHandler.Invoke((TException) exception);
+				exception = exception.InnerException;
+			}
+
+			if (exception is TException)
+			{
+				Value = rejectHandler.Invoke((TException) exception);
 			}
 			else
 			{
@@ -464,17 +205,22 @@ namespace ProtoPromise
 	{
 		PromiseArgRejectPromise<TException> ILinked<PromiseArgRejectPromise<TException>>.Next { get { return (PromiseArgRejectPromise<TException>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TException, Promise> rejectionHandler;
+		internal Func<TException, Promise> rejectHandler;
 
 		internal PromiseArgRejectPromise(ADeferred deferred) : base(deferred) { }
 
-		internal override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(Exception exception)
 		{
-			Promise promise;
-			if (exception != null && exception is TException)
+			if (exception is UnhandledException)
 			{
-				promise = rejectionHandler.Invoke((TException) exception);
-				PromiseHelper(promise);
+				exception = exception.InnerException;
+			}
+
+			State = PromiseState.Pending;
+			Promise promise;
+			if (exception is TException)
+			{
+				promise = PromiseHelper(rejectHandler.Invoke((TException) exception));
 			}
 			else
 			{
@@ -489,15 +235,14 @@ namespace ProtoPromise
 	{
 		PromiseArgRejectPromiseT<TArg> ILinked<PromiseArgRejectPromiseT<TArg>>.Next { get { return (PromiseArgRejectPromiseT<TArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<Promise<TArg>> rejectionHandler;
+		internal Func<Promise<TArg>> rejectHandler;
 
 		internal PromiseArgRejectPromiseT(ADeferred deferred) : base(deferred) { }
 
-		internal override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(Exception exception)
 		{
-			Promise promise = rejectionHandler.Invoke();
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(rejectHandler.Invoke());
 		}
 	}
 
@@ -505,17 +250,22 @@ namespace ProtoPromise
 	{
 		PromiseArgRejectPromiseT<TException, TArg> ILinked<PromiseArgRejectPromiseT<TException, TArg>>.Next { get { return (PromiseArgRejectPromiseT<TException, TArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TException, Promise<TArg>> rejectionHandler;
+		internal Func<TException, Promise<TArg>> rejectHandler;
 
 		internal PromiseArgRejectPromiseT(ADeferred deferred) : base(deferred) { }
 
-		internal override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(Exception exception)
 		{
-			Promise promise;
-			if (exception != null && exception is TException)
+			if (exception is UnhandledException)
 			{
-				promise = rejectionHandler.Invoke((TException) exception);
-				PromiseHelper(promise);
+				exception = exception.InnerException;
+			}
+
+			State = PromiseState.Pending;
+			Promise promise;
+			if (exception is TException)
+			{
+				promise = PromiseHelper(rejectHandler.Invoke((TException) exception));
 			}
 			else
 			{
@@ -528,17 +278,126 @@ namespace ProtoPromise
 
 
 
+	internal sealed class FinallyPromise : Promise, ILinked<FinallyPromise>
+	{
+		FinallyPromise ILinked<FinallyPromise>.Next { get { return (FinallyPromise) NextInternal; } set { NextInternal = value; } }
+
+		internal Action finalHandler;
+
+		internal FinallyPromise(ADeferred deferred) : base(deferred) { }
+
+		internal void HandleFinallies()
+		{
+			handling = true;
+			for (Action temp = finalHandler; temp != null; temp = finalHandler) // Keep looping in case more finally callbacks are added from the invoke. This avoids recursion to prevent StackOverflows.
+			{
+				finalHandler = null;
+				try
+				{
+					temp.Invoke();
+				}
+				catch (Exception e)
+				{
+					if (_exception != null)
+					{
+						UnityEngine.Debug.LogError("A new exception was encountered in a Promise.Finally callback before an old exception was handled." +
+									   " The new exception will replace the old exception propagating up the final promise chain.\nOld exception:\n" +
+									   _exception);
+					}
+					_exception = e;
+				}
+			}
+			handling = false;
+		}
+
+		internal void ResolveInternal()
+		{
+			State = PromiseState.Resolved;
+			HandleFinallies();
+			if (_exception == null)
+			{
+				try
+				{
+					ResolveDones();
+				}
+				catch (Exception e)
+				{
+					_exception = e;
+				}
+			}
+			OnComplete();
+		}
+	}
+
+
+	internal sealed class PromiseFromDeferred : Promise, ILinked<PromiseFromDeferred>
+	{
+		PromiseFromDeferred ILinked<PromiseFromDeferred>.Next { get { return (PromiseFromDeferred) NextInternal; } set { NextInternal = value; } }
+
+		internal Func<Action<Deferred>> resolveHandler;
+
+		internal PromiseFromDeferred(ADeferred deferred) : base(deferred) { }
+
+		internal override Promise ResolveProtected(IValueContainer feed)
+		{
+			return New(resolveHandler.Invoke());
+		}
+	}
+
+	internal sealed class PromiseFromDeferred<T> : Promise<T>, ILinked<PromiseFromDeferred<T>>
+	{
+		PromiseFromDeferred<T> ILinked<PromiseFromDeferred<T>>.Next { get { return (PromiseFromDeferred<T>) NextInternal; } set { NextInternal = value; } }
+
+		internal Func<Action<Deferred<T>>> resolveHandler;
+
+		internal PromiseFromDeferred(ADeferred deferred) : base(deferred) { }
+
+		internal override Promise ResolveProtected(IValueContainer feed)
+		{
+			return New(resolveHandler.Invoke());
+		}
+	}
+
+	internal sealed class PromiseFromDeferredT<TValue> : Promise, ILinked<PromiseFromDeferredT<TValue>>
+	{
+		PromiseFromDeferredT<TValue> ILinked<PromiseFromDeferredT<TValue>>.Next { get { return (PromiseFromDeferredT<TValue>) NextInternal; } set { NextInternal = value; } }
+
+		internal Func<TValue, Action<Deferred>> resolveHandler;
+
+		internal PromiseFromDeferredT(ADeferred deferred) : base(deferred) { }
+
+		internal override Promise ResolveProtected(IValueContainer feed)
+		{
+			return New(resolveHandler.Invoke(((IValueContainer<TValue>) feed).Value));
+		}
+	}
+
+	internal sealed class PromiseFromDeferredT<T, TValue> : Promise<T>, ILinked<PromiseFromDeferredT<T, TValue>>
+	{
+		PromiseFromDeferredT<T, TValue> ILinked<PromiseFromDeferredT<T, TValue>>.Next { get { return (PromiseFromDeferredT<T, TValue>) NextInternal; } set { NextInternal = value; } }
+
+		internal Func<TValue, Action<Deferred<T>>> resolveHandler;
+
+		internal PromiseFromDeferredT(ADeferred deferred) : base(deferred) { }
+
+		internal override Promise ResolveProtected(IValueContainer feed)
+		{
+			return New(resolveHandler.Invoke(((IValueContainer<TValue>) feed).Value));
+		}
+	}
+
+
 	internal sealed class PromiseVoidFromVoidResolve : Promise, ILinked<PromiseVoidFromVoidResolve>
 	{
 		PromiseVoidFromVoidResolve ILinked<PromiseVoidFromVoidResolve>.Next { get { return (PromiseVoidFromVoidResolve) NextInternal; } set { NextInternal = value; } }
 
-		internal Action callback;
+		internal Action resolveHandler;
 
 		internal PromiseVoidFromVoidResolve(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			callback.Invoke();
+			resolveHandler.Invoke();
 			return null;
 		}
 	}
@@ -547,13 +406,13 @@ namespace ProtoPromise
 	{
 		PromiseVoidFromVoid ILinked<PromiseVoidFromVoid>.Next { get { return (PromiseVoidFromVoid) NextInternal; } set { NextInternal = value; } }
 
-		internal Action callback;
+		internal Action resolveHandler;
 
 		internal PromiseVoidFromVoid(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			callback.Invoke();
+			resolveHandler.Invoke();
 			return null;
 		}
 	}
@@ -562,13 +421,13 @@ namespace ProtoPromise
 	{
 		PromiseVoidFromVoid<TException> ILinked<PromiseVoidFromVoid<TException>>.Next { get { return (PromiseVoidFromVoid<TException>) NextInternal; } set { NextInternal = value; } }
 
-		internal Action callback;
+		internal Action resolveHandler;
 
 		internal PromiseVoidFromVoid(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			callback.Invoke();
+			resolveHandler.Invoke();
 			return null;
 		}
 	}
@@ -579,13 +438,13 @@ namespace ProtoPromise
 	{
 		PromiseVoidFromArgResolve<TArg> ILinked<PromiseVoidFromArgResolve<TArg>>.Next { get { return (PromiseVoidFromArgResolve<TArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Action<TArg> callback;
+		internal Action<TArg> resolveHandler;
 
 		internal PromiseVoidFromArgResolve(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			callback.Invoke(((IValueContainer<TArg>) feed).Value);
+			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
 			return null;
 		}
 	}
@@ -594,13 +453,13 @@ namespace ProtoPromise
 	{
 		PromiseVoidFromArg<TArg> ILinked<PromiseVoidFromArg<TArg>>.Next { get { return (PromiseVoidFromArg<TArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Action<TArg> callback;
+		internal Action<TArg> resolveHandler;
 
 		internal PromiseVoidFromArg(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			callback.Invoke(((IValueContainer<TArg>) feed).Value);
+			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
 			return null;
 		}
 	}
@@ -609,13 +468,13 @@ namespace ProtoPromise
 	{
 		PromiseVoidFromArg<TArg, TException> ILinked<PromiseVoidFromArg<TArg, TException>>.Next { get { return (PromiseVoidFromArg<TArg, TException>) NextInternal; } set { NextInternal = value; } }
 
-		internal Action<TArg> callback;
+		internal Action<TArg> resolveHandler;
 
 		internal PromiseVoidFromArg(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			callback.Invoke(((IValueContainer<TArg>) feed).Value);
+			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
 			return null;
 		}
 	}
@@ -626,13 +485,13 @@ namespace ProtoPromise
 	{
 		PromiseArgFromResultResolve<TResult> ILinked<PromiseArgFromResultResolve<TResult>>.Next { get { return (PromiseArgFromResultResolve<TResult>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TResult> callback;
+		internal Func<TResult> resolveHandler;
 
 		internal PromiseArgFromResultResolve(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Value = callback.Invoke();
+			Value = resolveHandler.Invoke();
 			return null;
 		}
 	}
@@ -641,13 +500,13 @@ namespace ProtoPromise
 	{
 		PromiseArgFromResult<TResult> ILinked<PromiseArgFromResult<TResult>>.Next { get { return (PromiseArgFromResult<TResult>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TResult> callback;
+		internal Func<TResult> resolveHandler;
 
 		internal PromiseArgFromResult(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Value = callback.Invoke();
+			Value = resolveHandler.Invoke();
 			return null;
 		}
 	}
@@ -656,13 +515,13 @@ namespace ProtoPromise
 	{
 		PromiseArgFromResult<TResult, TException> ILinked<PromiseArgFromResult<TResult, TException>>.Next { get { return (PromiseArgFromResult<TResult, TException>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TResult> callback;
+		internal Func<TResult> resolveHandler;
 
 		internal PromiseArgFromResult(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Value = callback.Invoke();
+			Value = resolveHandler.Invoke();
 			return null;
 		}
 	}
@@ -673,13 +532,13 @@ namespace ProtoPromise
 	{
 		PromiseArgFromArgResultResolve<TArg, TResult> ILinked<PromiseArgFromArgResultResolve<TArg, TResult>>.Next { get { return (PromiseArgFromArgResultResolve<TArg, TResult>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TArg, TResult> callback;
+		internal Func<TArg, TResult> resolveHandler;
 
 		internal PromiseArgFromArgResultResolve(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Value = callback.Invoke(((IValueContainer<TArg>) feed).Value);
+			Value = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
 			return null;
 		}
 	}
@@ -688,13 +547,13 @@ namespace ProtoPromise
 	{
 		PromiseArgFromArgResult<TArg, TResult> ILinked<PromiseArgFromArgResult<TArg, TResult>>.Next { get { return (PromiseArgFromArgResult<TArg, TResult>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TArg, TResult> callback;
+		internal Func<TArg, TResult> resolveHandler;
 
 		internal PromiseArgFromArgResult(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Value = callback.Invoke(((IValueContainer<TArg>) feed).Value);
+			Value = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
 			return null;
 		}
 	}
@@ -703,13 +562,13 @@ namespace ProtoPromise
 	{
 		PromiseArgFromArgResult<TArg, TResult, TException> ILinked<PromiseArgFromArgResult<TArg, TResult, TException>>.Next { get { return (PromiseArgFromArgResult<TArg, TResult, TException>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TArg, TResult> callback;
+		internal Func<TArg, TResult> resolveHandler;
 
 		internal PromiseArgFromArgResult(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Value = callback.Invoke(((IValueContainer<TArg>) feed).Value);
+			Value = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
 			return null;
 		}
 	}
@@ -720,15 +579,14 @@ namespace ProtoPromise
 	{
 		PromiseVoidFromPromiseResultResolve ILinked<PromiseVoidFromPromiseResultResolve>.Next { get { return (PromiseVoidFromPromiseResultResolve) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<Promise> callback;
+		internal Func<Promise> resolveHandler;
 
 		internal PromiseVoidFromPromiseResultResolve(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Promise promise = callback.Invoke();
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(resolveHandler.Invoke());
 		}
 	}
 
@@ -736,15 +594,14 @@ namespace ProtoPromise
 	{
 		PromiseVoidFromPromiseResult ILinked<PromiseVoidFromPromiseResult>.Next { get { return (PromiseVoidFromPromiseResult) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<Promise> callback;
+		internal Func<Promise> resolveHandler;
 
 		internal PromiseVoidFromPromiseResult(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Promise promise = callback.Invoke();
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(resolveHandler.Invoke());
 		}
 	}
 
@@ -752,15 +609,14 @@ namespace ProtoPromise
 	{
 		PromiseVoidFromPromiseResult ILinked<PromiseVoidFromPromiseResult>.Next { get { return (PromiseVoidFromPromiseResult) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<Promise> callback;
+		internal Func<Promise> resolveHandler;
 
 		internal PromiseVoidFromPromiseResult(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Promise promise = callback.Invoke();
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(resolveHandler.Invoke());
 		}
 	}
 
@@ -770,15 +626,14 @@ namespace ProtoPromise
 	{
 		PromiseVoidFromPromiseArgResultResolve<TArg> ILinked<PromiseVoidFromPromiseArgResultResolve<TArg>>.Next { get { return (PromiseVoidFromPromiseArgResultResolve<TArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TArg, Promise> callback;
+		internal Func<TArg, Promise> resolveHandler;
 
 		internal PromiseVoidFromPromiseArgResultResolve(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Promise promise = callback.Invoke(((IValueContainer<TArg>) feed).Value);
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value));
 		}
 	}
 
@@ -786,15 +641,14 @@ namespace ProtoPromise
 	{
 		PromiseVoidFromPromiseArgResult<TArg> ILinked<PromiseVoidFromPromiseArgResult<TArg>>.Next { get { return (PromiseVoidFromPromiseArgResult<TArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TArg, Promise> callback;
+		internal Func<TArg, Promise> resolveHandler;
 
 		internal PromiseVoidFromPromiseArgResult(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Promise promise = callback.Invoke(((IValueContainer<TArg>) feed).Value);
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value));
 		}
 	}
 
@@ -802,15 +656,14 @@ namespace ProtoPromise
 	{
 		PromiseVoidFromPromiseArgResult<TArg, TException> ILinked<PromiseVoidFromPromiseArgResult<TArg, TException>>.Next { get { return (PromiseVoidFromPromiseArgResult<TArg, TException>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TArg, Promise> callback;
+		internal Func<TArg, Promise> resolveHandler;
 
 		internal PromiseVoidFromPromiseArgResult(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Promise promise = callback.Invoke(((IValueContainer<TArg>) feed).Value);
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value));
 		}
 	}
 
@@ -820,15 +673,14 @@ namespace ProtoPromise
 	{
 		PromiseArgFromPromiseResultResolve<TArg> ILinked<PromiseArgFromPromiseResultResolve<TArg>>.Next { get { return (PromiseArgFromPromiseResultResolve<TArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<Promise<TArg>> callback;
+		internal Func<Promise<TArg>> resolveHandler;
 
 		internal PromiseArgFromPromiseResultResolve(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Promise promise = callback.Invoke();
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(resolveHandler.Invoke());
 		}
 	}
 
@@ -836,15 +688,14 @@ namespace ProtoPromise
 	{
 		PromiseArgFromPromiseResult<TArg> ILinked<PromiseArgFromPromiseResult<TArg>>.Next { get { return (PromiseArgFromPromiseResult<TArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<Promise<TArg>> callback;
+		internal Func<Promise<TArg>> resolveHandler;
 
 		internal PromiseArgFromPromiseResult(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Promise promise = callback.Invoke();
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(resolveHandler.Invoke());
 		}
 	}
 
@@ -852,15 +703,14 @@ namespace ProtoPromise
 	{
 		PromiseArgFromPromiseResult<TArg, TException> ILinked<PromiseArgFromPromiseResult<TArg, TException>>.Next { get { return (PromiseArgFromPromiseResult<TArg, TException>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<Promise<TArg>> callback;
+		internal Func<Promise<TArg>> resolveHandler;
 
 		internal PromiseArgFromPromiseResult(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Promise promise = callback.Invoke();
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(resolveHandler.Invoke());
 		}
 	}
 
@@ -870,15 +720,14 @@ namespace ProtoPromise
 	{
 		PromiseArgFromPromiseArgResultResolve<TArg, PArg> ILinked<PromiseArgFromPromiseArgResultResolve<TArg, PArg>>.Next { get { return (PromiseArgFromPromiseArgResultResolve<TArg, PArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<PArg, Promise<TArg>> callback;
+		internal Func<PArg, Promise<TArg>> resolveHandler;
 
 		internal PromiseArgFromPromiseArgResultResolve(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Promise promise = callback.Invoke(((IValueContainer<PArg>) feed).Value);
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(resolveHandler.Invoke(((IValueContainer<PArg>) feed).Value));
 		}
 	}
 
@@ -886,15 +735,14 @@ namespace ProtoPromise
 	{
 		PromiseArgFromPromiseArgResult<TArg, PArg> ILinked<PromiseArgFromPromiseArgResult<TArg, PArg>>.Next { get { return (PromiseArgFromPromiseArgResult<TArg, PArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<PArg, Promise<TArg>> callback;
+		internal Func<PArg, Promise<TArg>> resolveHandler;
 
 		internal PromiseArgFromPromiseArgResult(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Promise promise = callback.Invoke(((IValueContainer<PArg>) feed).Value);
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(resolveHandler.Invoke(((IValueContainer<PArg>) feed).Value));
 		}
 	}
 
@@ -902,15 +750,14 @@ namespace ProtoPromise
 	{
 		PromiseArgFromPromiseArgResult<TArg, PArg, TException> ILinked<PromiseArgFromPromiseArgResult<TArg, PArg, TException>>.Next { get { return (PromiseArgFromPromiseArgResult<TArg, PArg, TException>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<PArg, Promise<TArg>> callback;
+		internal Func<PArg, Promise<TArg>> resolveHandler;
 
 		internal PromiseArgFromPromiseArgResult(ADeferred deferred) : base(deferred) { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			Promise promise = callback.Invoke(((IValueContainer<PArg>) feed).Value);
-			PromiseHelper(promise);
-			return promise;
+			State = PromiseState.Pending;
+			return PromiseHelper(resolveHandler.Invoke(((IValueContainer<PArg>) feed).Value));
 		}
 	}
 }

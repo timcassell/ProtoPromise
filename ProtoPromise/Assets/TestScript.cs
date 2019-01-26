@@ -96,31 +96,38 @@ public class TestScript : MonoBehaviour
 
 		var promise2 = deferred2.Promise
 			.Done(i => Debug.Log("deferred2.done: " + i))
-            .Catch(e => {})
+			//.End()
+            //.Catch(e => {})
             //.Fail<int>(x => { Debug.LogError("Rejected: " + x); return x;})
             ;
 
 		deferred.Promise
 				.Done(() => Debug.Log("deferred1.done"))
 		        .Then(() => promise2)
-	   			.Then(() => { Debug.Log("deferred.then"); /*throw new InvalidCastException();*/ return "deferred string."; })
+	   			.Then(x => { Debug.Log("deferred.then " + x); /*throw new InvalidCastException();*/ return "deferred string."; })
 				.Done(() => Debug.Log("Promise.Done"))
 				//.Catch<ArgumentException>( e => { Debug.LogError("caught argument"); return e.ToString(); })
-		        .Fail<Exception>( e => { Debug.LogError("caught exception"); return e.ToString(); })
+		        .Catch( (Exception e) => { Debug.LogError("caught exception"); return e.ToString(); })
 				.Done(s => Debug.Log("deferred.done " + s))
 				.Then(s => { Debug.Log(s); return s; })
-				.Fail<int>(f => Debug.Log("Failed: " + f));
-		;
+		        .End()
+				;
+
+
 		promise2
 			.Then(() => { Debug.Log("deferred2.then"); return "deferred2 string."; })
 			.Done(s => Debug.Log(s))
-			.Fail<float>(f => Debug.Log("Failed: " + f))
+			.Complete(() => Debug.Log("deferred2 complete"))
+			//.Catch((Exception e) => { Debug.LogError("caught exception"); throw e; return e.ToString(); })
+			.End()
 			//.Then(s => s)
 			;
-
+		deferred2.Resolve(199);
 
 		deferred.Resolve();
-		deferred2.Reject(0);
+
+		//deferred2.Reject(default(Exception));
+		//deferred2.Reject(new Exception());
 		yield return null;
 
 		//deferred.Reject(1.5f);
