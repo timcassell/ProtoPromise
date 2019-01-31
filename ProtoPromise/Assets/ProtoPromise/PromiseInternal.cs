@@ -108,7 +108,7 @@ namespace ProtoPromise
 
 		internal Action rejectHandler;
 
-		internal PromiseVoidReject(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidReject() : base() { }
 
 		protected override sealed Promise RejectProtected(Exception exception)
 		{
@@ -123,7 +123,7 @@ namespace ProtoPromise
 
 		internal Action<TException> rejectHandler;
 
-		internal PromiseVoidReject(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidReject() : base() { }
 
 		protected override sealed Promise RejectProtected(Exception exception)
 		{
@@ -150,7 +150,7 @@ namespace ProtoPromise
 
 		internal Func<TArg> rejectHandler;
 
-		internal PromiseArgReject(ADeferred deferred) : base(deferred) { }
+		public PromiseArgReject() : base() { }
 
 		protected override sealed Promise RejectProtected(Exception exception)
 		{
@@ -165,7 +165,7 @@ namespace ProtoPromise
 
 		internal Func<Promise> rejectHandler;
 
-		internal PromiseVoidRejectPromise(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidRejectPromise() : base() { }
 
 		protected override sealed Promise RejectProtected(Exception exception)
 		{
@@ -180,7 +180,7 @@ namespace ProtoPromise
 
 		internal Func<TException, TArg> rejectHandler;
 
-		internal PromiseArgReject(ADeferred deferred) : base(deferred) { }
+		public PromiseArgReject() : base() { }
 
 		protected override sealed Promise RejectProtected(Exception exception)
 		{
@@ -207,7 +207,7 @@ namespace ProtoPromise
 
 		internal Func<TException, Promise> rejectHandler;
 
-		internal PromiseArgRejectPromise(ADeferred deferred) : base(deferred) { }
+		public PromiseArgRejectPromise() : base() { }
 
 		protected override sealed Promise RejectProtected(Exception exception)
 		{
@@ -237,7 +237,7 @@ namespace ProtoPromise
 
 		internal Func<Promise<TArg>> rejectHandler;
 
-		internal PromiseArgRejectPromiseT(ADeferred deferred) : base(deferred) { }
+		public PromiseArgRejectPromiseT() : base() { }
 
 		protected override sealed Promise RejectProtected(Exception exception)
 		{
@@ -252,7 +252,7 @@ namespace ProtoPromise
 
 		internal Func<TException, Promise<TArg>> rejectHandler;
 
-		internal PromiseArgRejectPromiseT(ADeferred deferred) : base(deferred) { }
+		public PromiseArgRejectPromiseT() : base() { }
 
 		protected override sealed Promise RejectProtected(Exception exception)
 		{
@@ -284,7 +284,7 @@ namespace ProtoPromise
 
 		internal Action finalHandler;
 
-		internal FinallyPromise(ADeferred deferred) : base(deferred) { }
+		public FinallyPromise() : base() { }
 
 		internal void HandleFinallies()
 		{
@@ -314,17 +314,17 @@ namespace ProtoPromise
 		{
 			State = PromiseState.Resolved;
 			HandleFinallies();
-			if (_exception == null)
-			{
-				try
-				{
-					ResolveDones();
-				}
-				catch (Exception e)
-				{
-					_exception = e;
-				}
-			}
+			//if (_exception == null)
+			//{
+			//	try
+			//	{
+			//		ResolveDones();
+			//	}
+			//	catch (Exception e)
+			//	{
+			//		_exception = e;
+			//	}
+			//}
 			OnComplete();
 		}
 	}
@@ -336,7 +336,7 @@ namespace ProtoPromise
 
 		internal Func<Action<Deferred>> resolveHandler;
 
-		internal PromiseFromDeferred(ADeferred deferred) : base(deferred) { }
+		public PromiseFromDeferred() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -350,7 +350,7 @@ namespace ProtoPromise
 
 		internal Func<Action<Deferred<T>>> resolveHandler;
 
-		internal PromiseFromDeferred(ADeferred deferred) : base(deferred) { }
+		public PromiseFromDeferred() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -364,7 +364,7 @@ namespace ProtoPromise
 
 		internal Func<TValue, Action<Deferred>> resolveHandler;
 
-		internal PromiseFromDeferredT(ADeferred deferred) : base(deferred) { }
+		public PromiseFromDeferredT() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -378,7 +378,7 @@ namespace ProtoPromise
 
 		internal Func<TValue, Action<Deferred<T>>> resolveHandler;
 
-		internal PromiseFromDeferredT(ADeferred deferred) : base(deferred) { }
+		public PromiseFromDeferredT() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -393,7 +393,7 @@ namespace ProtoPromise
 
 		internal Action resolveHandler;
 
-		internal PromiseVoidFromVoidResolve(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidFromVoidResolve() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -408,7 +408,7 @@ namespace ProtoPromise
 
 		internal Action resolveHandler;
 
-		internal PromiseVoidFromVoid(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidFromVoid() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -423,7 +423,7 @@ namespace ProtoPromise
 
 		internal Action resolveHandler;
 
-		internal PromiseVoidFromVoid(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidFromVoid() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -440,7 +440,7 @@ namespace ProtoPromise
 
 		internal Action<TArg> resolveHandler;
 
-		internal PromiseVoidFromArgResolve(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidFromArgResolve() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -455,7 +455,7 @@ namespace ProtoPromise
 
 		internal Action<TArg> resolveHandler;
 
-		internal PromiseVoidFromArg(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidFromArg() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -470,7 +470,7 @@ namespace ProtoPromise
 
 		internal Action<TArg> resolveHandler;
 
-		internal PromiseVoidFromArg(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidFromArg() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -487,7 +487,7 @@ namespace ProtoPromise
 
 		internal Func<TResult> resolveHandler;
 
-		internal PromiseArgFromResultResolve(ADeferred deferred) : base(deferred) { }
+		public PromiseArgFromResultResolve() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -502,7 +502,7 @@ namespace ProtoPromise
 
 		internal Func<TResult> resolveHandler;
 
-		internal PromiseArgFromResult(ADeferred deferred) : base(deferred) { }
+		public PromiseArgFromResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -517,7 +517,7 @@ namespace ProtoPromise
 
 		internal Func<TResult> resolveHandler;
 
-		internal PromiseArgFromResult(ADeferred deferred) : base(deferred) { }
+		public PromiseArgFromResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -534,7 +534,7 @@ namespace ProtoPromise
 
 		internal Func<TArg, TResult> resolveHandler;
 
-		internal PromiseArgFromArgResultResolve(ADeferred deferred) : base(deferred) { }
+		public PromiseArgFromArgResultResolve() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -549,7 +549,7 @@ namespace ProtoPromise
 
 		internal Func<TArg, TResult> resolveHandler;
 
-		internal PromiseArgFromArgResult(ADeferred deferred) : base(deferred) { }
+		public PromiseArgFromArgResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -564,7 +564,7 @@ namespace ProtoPromise
 
 		internal Func<TArg, TResult> resolveHandler;
 
-		internal PromiseArgFromArgResult(ADeferred deferred) : base(deferred) { }
+		public PromiseArgFromArgResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -581,7 +581,7 @@ namespace ProtoPromise
 
 		internal Func<Promise> resolveHandler;
 
-		internal PromiseVoidFromPromiseResultResolve(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidFromPromiseResultResolve() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -596,7 +596,7 @@ namespace ProtoPromise
 
 		internal Func<Promise> resolveHandler;
 
-		internal PromiseVoidFromPromiseResult(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidFromPromiseResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -605,13 +605,13 @@ namespace ProtoPromise
 		}
 	}
 
-	internal sealed class PromiseVoidFromPromiseResult<TException> : PromiseArgRejectPromise<TException>, ILinked<PromiseVoidFromPromiseResult> where TException : Exception
+	internal sealed class PromiseVoidFromPromiseResult<TException> : PromiseArgRejectPromise<TException>, ILinked<PromiseVoidFromPromiseResult<TException>> where TException : Exception
 	{
-		PromiseVoidFromPromiseResult ILinked<PromiseVoidFromPromiseResult>.Next { get { return (PromiseVoidFromPromiseResult) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromPromiseResult<TException> ILinked<PromiseVoidFromPromiseResult<TException>>.Next { get { return (PromiseVoidFromPromiseResult<TException>) NextInternal; } set { NextInternal = value; } }
 
 		internal Func<Promise> resolveHandler;
 
-		internal PromiseVoidFromPromiseResult(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidFromPromiseResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -628,7 +628,7 @@ namespace ProtoPromise
 
 		internal Func<TArg, Promise> resolveHandler;
 
-		internal PromiseVoidFromPromiseArgResultResolve(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidFromPromiseArgResultResolve() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -643,7 +643,7 @@ namespace ProtoPromise
 
 		internal Func<TArg, Promise> resolveHandler;
 
-		internal PromiseVoidFromPromiseArgResult(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidFromPromiseArgResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -658,7 +658,7 @@ namespace ProtoPromise
 
 		internal Func<TArg, Promise> resolveHandler;
 
-		internal PromiseVoidFromPromiseArgResult(ADeferred deferred) : base(deferred) { }
+		public PromiseVoidFromPromiseArgResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -675,7 +675,7 @@ namespace ProtoPromise
 
 		internal Func<Promise<TArg>> resolveHandler;
 
-		internal PromiseArgFromPromiseResultResolve(ADeferred deferred) : base(deferred) { }
+		public PromiseArgFromPromiseResultResolve() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -690,7 +690,7 @@ namespace ProtoPromise
 
 		internal Func<Promise<TArg>> resolveHandler;
 
-		internal PromiseArgFromPromiseResult(ADeferred deferred) : base(deferred) { }
+		public PromiseArgFromPromiseResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -705,7 +705,7 @@ namespace ProtoPromise
 
 		internal Func<Promise<TArg>> resolveHandler;
 
-		internal PromiseArgFromPromiseResult(ADeferred deferred) : base(deferred) { }
+		public PromiseArgFromPromiseResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -722,7 +722,7 @@ namespace ProtoPromise
 
 		internal Func<PArg, Promise<TArg>> resolveHandler;
 
-		internal PromiseArgFromPromiseArgResultResolve(ADeferred deferred) : base(deferred) { }
+		public PromiseArgFromPromiseArgResultResolve() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -737,7 +737,7 @@ namespace ProtoPromise
 
 		internal Func<PArg, Promise<TArg>> resolveHandler;
 
-		internal PromiseArgFromPromiseArgResult(ADeferred deferred) : base(deferred) { }
+		public PromiseArgFromPromiseArgResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -752,7 +752,7 @@ namespace ProtoPromise
 
 		internal Func<PArg, Promise<TArg>> resolveHandler;
 
-		internal PromiseArgFromPromiseArgResult(ADeferred deferred) : base(deferred) { }
+		public PromiseArgFromPromiseArgResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{

@@ -40,11 +40,6 @@ namespace ProtoPromise
 
 	internal sealed class ValueContainer<T> : ValueContainer, IValueContainer<T>
 	{
-		public ValueContainer(T value)
-		{
-			Value = value;
-		}
-
 		public T Value { get; set; }
 	}
 

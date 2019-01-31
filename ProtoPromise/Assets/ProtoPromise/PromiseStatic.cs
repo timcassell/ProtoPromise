@@ -213,12 +213,18 @@ namespace ProtoPromise
 
 		public static Deferred Deferred()
 		{
-			return new Deferred();
+			Deferred deferred = PromisePool.TakePoolableInternal(() => new Deferred());
+			deferred.SetPromiseInternal(PromisePool.TakePoolableInternal(() => new Promise()));
+			deferred.Promise.DeferredInternal = deferred;
+			return deferred;
 		}
 
 		public static Deferred<T> Deferred<T>()
 		{
-			return new Deferred<T>();
+			Deferred<T> deferred = PromisePool.TakePoolableInternal(() => new Deferred<T>());
+			deferred.SetPromiseInternal(PromisePool.TakePoolableInternal(() => new Promise<T>()));
+			deferred.Promise.DeferredInternal = deferred;
+			return deferred;
 		}
 	}
 }

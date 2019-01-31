@@ -2,138 +2,101 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using ProtoPromise;
 using UnityEngine;
 
 public class TestScript : MonoBehaviour
 {
-	//private void Awake()
-	//{
-	//	string throwTrace = null;
-	//	string newTrace = null;
-	//	try
-	//	{
-	//		newTrace = new System.Diagnostics.StackTrace(0, true).ToString();
-	//		throw new Exception();
-	//	}
-	//	catch (Exception e)
-	//	{
-	//		throwTrace = e.StackTrace;
-	//	}
-	//	Debug.Log("throwTrace: {" + throwTrace + "}");
-	//	Debug.Log("newTrace: {" + newTrace + "}");
-
-	//	//throw new UnhandledException(null, new System.Diagnostics.StackTrace(0, true).ToString().Replace("line ", string.Empty));
-	//}
-
-	class MyYield : IEnumerator
-	{
-		int frame = Time.frameCount;
-		public bool keepWaiting { get { /*Debug.LogError("custom wait initial frame: " + frame + ", real frame: " + Time.frameCount);*/ return frame + 0 > Time.frameCount; } }
-
-		public object Current { get { return null; } }
-
-		public bool MoveNext()
-		{
-			return keepWaiting;
-		}
-
-		public void Reset()
-		{
-			frame = Time.frameCount;
-		}
-	}
-
-	Deferred[] lolDeferreds;
-	uPromise.Deferred[] uDeferreds;
-
-	IEnumerator WaitForEnd(int index, object yield)
-	{
-		Debug.LogError(index + " WaitForEndFirst: " + Time.frameCount);
-		yield return yield;
-		Debug.LogError(index + " WaitForEndSecond: " + Time.frameCount);
-	}
+	Deferred[] lolDeferreds = new Deferred[0];
+	uPromise.Deferred[] uDeferreds = new uPromise.Deferred[0];
+	Task[] tasks = new Task[0];
 
 	private IEnumerator Start()
 	{
-		//var wait = WaitForEnd(0, null);
-		//StartCoroutine(wait);
-		//StopCoroutine(wait);
+		//Debug.LogWarning(System.Threading.Thread.CurrentThread.ManagedThreadId);
+		//voidToVoid = () => { Debug.LogError(System.Threading.Thread.CurrentThread.ManagedThreadId); };
+		//Task task = new Task(voidToVoid);
+		//Task<int> task2 = new Task<int>(voidToInt);
 
-		//StartCoroutine(wait);
+		//task2
+		//	.ContinueWith(i => { Debug.Log("deferred2.done: " + i); return i.Result; })
+		//	//.End()
+		//	//.Catch(e => {})
+		//	//.Fail<int>(x => { Debug.LogError("Rejected: " + x); return x;})
+		//	;
+
+		//task
+		//		.ContinueWith(x => Debug.Log("deferred1.done"))
+		//		.ContinueWith(async x => await task2)
+	 // 			.ContinueWith(x => { Debug.Log("deferred.then " + x); /*throw new InvalidCastException();*/ return "deferred string."; })
+		//		.ContinueWith(x => { Debug.Log("Promise.Done"); return x; })
+		//		//.Catch<ArgumentException>( e => { Debug.LogError("caught argument"); return e.ToString(); })
+		//		//.Catch((Exception e) => { Debug.LogError("caught exception"); return e.ToString(); })
+		//		.ContinueWith(s => { Debug.Log("deferred.done " + s); return s; })
+		//		.ContinueWith(s => { Debug.Log(s); return s; })
+		//		//.End()
+		//		;
+
+
+		//task2 = task2
+		//	.ContinueWith(_ => { Debug.Log("deferred2.then"); return "deferred2 string."; })
+		//	.ContinueWith(s => Debug.Log(s))
+		//	.ContinueWith(_ => Debug.Log("deferred2 complete"))
+		//	.ContinueWith(_ => 0)
+		//	//.Catch((Exception e) => { Debug.LogError("caught exception"); throw e; return e.ToString(); })
+		//	//.End()
+		//	//.Then(s => s)
+		//	;
+		//task.RunSynchronously();
+
+		//task2.RunSynchronously();
+
+
+		//Deferred deferred = Promise.Deferred();
+		//Deferred<int> deferred2 = Promise.Deferred<int>();
+
+
+		//var promise2 = deferred2.Promise
+  //          .Then(i => { Debug.Log("deferred2.done: " + i); return i; })
+		//	//.End()
+		//	//.Catch(e => {})
+		//	//.Fail<int>(x => { Debug.LogError("Rejected: " + x); return x;})
+		//	;
+
+		//deferred.Promise
+		//		.Then(() => Debug.Log("deferred1.done"))
+		//        .Then(() => promise2)
+	 // 			.Then(x => { Debug.Log("deferred.then " + x); /*throw new InvalidCastException();*/ return "deferred string."; })
+		//        .Then(x => { Debug.Log("Promise.Done"); return x; })
+		//		//.Catch<ArgumentException>( e => { Debug.LogError("caught argument"); return e.ToString(); })
+		//        .Catch( (Exception e) => { Debug.LogError("caught exception"); return e.ToString(); })
+		//        .Then(s => { Debug.Log("deferred.done " + s); return s; })
+		//		.Then(s => { Debug.Log(s); return s; })
+		//        .End()
+		//		;
+
+
+		//promise2
+		//	.Then(() => { Debug.Log("deferred2.then"); return "deferred2 string."; })
+		//	.Then(s => Debug.Log(s))
+		//	.Complete(() => Debug.Log("deferred2 complete"))
+		//	//.Catch((Exception e) => { Debug.LogError("caught exception"); throw e; return e.ToString(); })
+		//	.End()
+		//	//.Then(s => s)
+		//	;
+		//deferred2.Resolve(199);
+
+		//deferred.Resolve();
+
+		////deferred2.Reject(default(Exception));
+		////deferred2.Reject(new Exception());
 		//yield return null;
+
+		////deferred.Reject(1.5f);
+
 		//yield return null;
-		//yield return null;
-
-		//yield break;
-
-		//MyYield myYield = new MyYield();
-		//yield return new WaitForSeconds(1);
-		//while (true)
-		//{
-		//	var coroutine = StartCoroutine(myYield);
-		//	for (int i = 0; i < 100000; ++i)
-		//	{
-		//		coroutine = StartCoroutine(myYield);
-		//	}
-		//	yield return coroutine;
-		//}
-		//yield return new WaitForEndOfFrame();
-		////StartCoroutine(WaitForEnd(0, myYield));
-		////StartCoroutine(WaitForEnd(0, myYield));
-		//yield return myYield;
-		//Debug.LogError(Time.frameCount);
-		//yield return null;
-		//StartCoroutine(WaitForEnd(1, new WaitForEndOfFrame()));
-		//yield return new WaitForEndOfFrame();
-		//Debug.LogError(Time.frameCount);
-		//StartCoroutine(WaitForEnd(2, new WaitForEndOfFrame()));
-		//ProtoPromise.GlobalMonoBehaviour.Yield(new WaitForSeconds(2), () => Debug.LogError("Waited 2 seconds"));
-
-		Deferred deferred = Promise.Deferred();
-		Deferred<int> deferred2 = Promise.Deferred<int>();
-
-
-		var promise2 = deferred2.Promise
-			.Done(i => Debug.Log("deferred2.done: " + i))
-			//.End()
-            //.Catch(e => {})
-            //.Fail<int>(x => { Debug.LogError("Rejected: " + x); return x;})
-            ;
-
-		deferred.Promise
-				.Done(() => Debug.Log("deferred1.done"))
-		        .Then(() => promise2)
-	   			.Then(x => { Debug.Log("deferred.then " + x); /*throw new InvalidCastException();*/ return "deferred string."; })
-				.Done(() => Debug.Log("Promise.Done"))
-				//.Catch<ArgumentException>( e => { Debug.LogError("caught argument"); return e.ToString(); })
-		        .Catch( (Exception e) => { Debug.LogError("caught exception"); return e.ToString(); })
-				.Done(s => Debug.Log("deferred.done " + s))
-				.Then(s => { Debug.Log(s); return s; })
-		        .End()
-				;
-
-
-		promise2
-			.Then(() => { Debug.Log("deferred2.then"); return "deferred2 string."; })
-			.Done(s => Debug.Log(s))
-			.Complete(() => Debug.Log("deferred2 complete"))
-			//.Catch((Exception e) => { Debug.LogError("caught exception"); throw e; return e.ToString(); })
-			.End()
-			//.Then(s => s)
-			;
-		deferred2.Resolve(199);
-
-		deferred.Resolve();
-
-		//deferred2.Reject(default(Exception));
-		//deferred2.Reject(new Exception());
-		yield return null;
-
-		//deferred.Reject(1.5f);
-
-		yield return null;
-		Debug.LogError("----------");
+		//Debug.LogError("----------");
 
 		//deferred2.Throw(new InvalidCastException());
 		//try
@@ -145,245 +108,321 @@ public class TestScript : MonoBehaviour
 		//	deferred2.Throw(e);
 		//}
 
-		//StartCoroutine(Executor());
-		//StartCoroutine(Log());
+		StartCoroutine(Executor());
+		StartCoroutine(Log());
 
-		//StartCoroutine(wait());
-
-		//Debug.Log(Time.frameCount);
-
-		//new Deferred().Promise.Then<Coroutine>(() => StartCoroutine(tester()));
-
-		//routine = tester();
-		//StartCoroutine(routine);
-		//StartCoroutine(routine);
-		//yield break;
-		////yield return routine;
-		//Debug.Log(Time.frameCount);
-
-		//yield return routine;
-		//Debug.Log(Time.frameCount);
-
-		//routine = null;
-		//yield return routine;
-		//Debug.Log(Time.frameCount);
+		yield break;
 	}
-	//IEnumerator routine;
 
-	//IEnumerator tester()
-	//{
-	//	Debug.Log(Time.frameCount);
-	//	yield return new WaitForSeconds(1);
-	//	Debug.Log(Time.frameCount);
-	//	StopCoroutine(routine);
-	//	Debug.Log(Time.frameCount);
-	//	StartCoroutine(routine);
-	//	Debug.Log(Time.frameCount);
-	//	yield return null;
-	//	Debug.Log(Time.frameCount);
+	IEnumerator Executor()
+	{
+		Reset:
+		yield return null;
 
-	//	yield break;
-	//}
+		switch (runType)
+		{
+			case RunType.ProtoPromise:
+				{
+					protoThen = 0;
+					break;
+				}
+			case RunType.uPromise:
+				{
+					uThen = 0;
+					break;
+				}
+			case RunType.Task:
+				{
+					taskThen = 0;
+					break;
+				}
+		}
+		for (int j = 0; j < trials; ++j)
+		{
+			AddThens(j);
+		}
 
-	//IEnumerator wait()
-	//{
-	//	yield return new WaitForSeconds(1);
+		goto Reset;
+	}
 
-	//	StartCoroutine(routine);
-	//}
+	IEnumerator Log()
+	{
+		Reset:
+		yield return new WaitForEndOfFrame();
 
-	//IEnumerator Executor()
-	//{
-	//	Reset:
-	//	yield return null;
-
-	//	if (runLoL)
-	//	{
-	//		lolThen = 0;
-	//	}
-	//	else
-	//	{
-	//		uThen = 0;
-	//	}
-	//	for (int j = 0; j < trials; ++j)
-	//	{
-	//		AddThens(j);
-	//	}
-
-	//	goto Reset;
-	//}
-
-	//IEnumerator Log()
-	//{
-	//	Reset:
-	//	yield return new WaitForEndOfFrame();
-
-	//	if (runLoL)
-	//	{
-	//		lolTotal = (lolCreation + lolThen + lolResolve) / trials;
-	//		lolCreation /= trials;
-	//		lolThen /= trials;
-	//		lolResolve /= trials;
-	//	}
-	//	else
-	//	{
-	//		uTotal = (uCreation + uThen + uResolve) / trials;
-	//		uCreation /= trials;
-	//		uThen /= trials;
-	//		uResolve /= trials;
-	//	}
-	//	Debug.LogFormat("lolPromise average Creation: {0}, Then: {1}, Resolve: {2}, Total: {3}", lolCreation, lolThen, lolResolve, lolTotal);
-	//	Debug.LogFormat("uuuPromise average Creation: {0}, Then: {1}, Resolve: {2}, Total: {3}", uCreation, uThen, uResolve, uTotal);
-	//	Debug.LogWarningFormat("Differences: Creation: {0}, Then: {1}, Resolve: {2}, Total: {3}",
-	//	                       ((double)lolCreation / uCreation).ToString("n3"),
-	//	                       ((double)lolThen / uThen).ToString("n3"),
-	//	                       ((double)lolResolve / uResolve).ToString("n5"),
-	//	                       ((double)lolTotal / uTotal).ToString("n3"));
-
-	//	goto Reset;
-	//}
+		switch(runType)
+		{
+			case RunType.ProtoPromise:
+				{
+					protoCreation /= trials;
+					protoThen /= trials;
+					protoResolve /= trials;
+					break;
+				}
+			case RunType.uPromise:
+				{
+					uCreation /= trials;
+					uThen /= trials;
+					uResolve /= trials;
+					break;
+				}
+			case RunType.Task:
+				{
+					taskCreation /= trials;
+					taskThen /= trials;
+					taskResolve /= trials;
+					break;
+				}
+		}
+		if (runType != RunType.None)
+		{
+			Debug.LogFormat("ProtoPromise average Creation: {0}, Then: {1}, Resolve: {2}", protoCreation, protoThen, protoResolve);
+			Debug.LogFormat("uPromise average Creation: {0}, Then: {1}, Resolve: {2}", uCreation, uThen, uResolve);
+			Debug.LogFormat("Task average Creation: {0}, Then: {1}, Resolve: {2}", taskCreation, taskThen, taskResolve);
+		}
+		goto Reset;
+	}
 
 
-	//Action voidToVoid = () => { };
-	//Action<float> toVoid = x => { };
-	//Func<int> toInt = () => 0;
-	//Func<object, int> uToInt = x => 0;
-	//Func<int, float> toFloat = x => 0f;
-	//Func<int, int> intToInt = x => x;
+	Action voidToVoid = () => { };
+	Action<float> toVoid = x => { };
+	Func<int> voidToInt = () => 0;
+	Func<object, int> uToInt = x => 0;
+	Func<int, float> toFloat = x => 0f;
+	Func<int, int> intToInt = x => x;
 
-	//public int thenCount = 100;
-	//public int trials = 100;
+	Func<Task, int> taskVoidToInt = x => 0;
+	Func<Task<int>, float> taskIntToFloat = x => 0f;
+	Action<Task<float>> taskFloatToVoid = x => { };
 
-	//System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
+	public int thenCount = 100;
+	public int trials = 100;
 
-	//long lolCreation, lolThen, lolResolve, lolTotal,
-	//	uCreation, uThen, uResolve, uTotal;
+	System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
 
-	//public bool runLoL = true;
+	long protoCreation, protoThen, protoResolve,
+		uCreation, uThen, uResolve,
+		taskCreation, taskThen, taskResolve;
 
-
-	//private void Update()
-	//{
-	//	if (runLoL)
-	//	{
-	//		lolDeferreds = new Deferred[trials];
-	//		lolCreation = 0;
-
-	//		watch.Reset();
-	//		watch.Start();
-
-	//		for (int j = 0; j < trials; ++j)
-	//		{
-	//			lolDeferreds[j] = new Deferred();
-	//		}
-
-	//		watch.Stop();
-	//		lolCreation = watch.ElapsedTicks;
-	//	}
-	//	else
-	//	{
-	//		uDeferreds = new uPromise.Deferred[trials];
-	//		uCreation = 0;
-
-	//		watch.Reset();
-	//		watch.Start();
-	//		for (int j = 0; j < trials; ++j)
-	//		{
-	//			uDeferreds[j] = new uPromise.Deferred();
-	//		}
-	//		watch.Stop();
-	//		uCreation = watch.ElapsedTicks;
-	//	}
-	//}
-
-	//public void LateUpdate ()
-	//{
-	//	if (runLoL)
-	//	{
-	//		lolResolve = 0;
-	//	}
-	//	else
-	//	{
-	//		uResolve = 0;
-	//	}
-	//	for (int j = 0; j < trials; ++j)
-	//	{
-	//		Resolve(j);
-	//	}
-	//}
+	public enum RunType
+	{
+		None,
+		ProtoPromise,
+		uPromise,
+		Task
+	}
+	public RunType runType = RunType.None;
 
 
-	//public void AddThens(int index)
-	//{
-	//	if (runLoL)
-	//	{
-	//		var lolPromise = lolDeferreds[index].Promise;
-	//		var lolPromiseInt = lolPromise.Then(toInt);
-	//		var lolPromiseFloat = lolPromiseInt.Then(toFloat);
+	private void Update()
+	{
+		GC.Collect();
 
-	//		watch.Reset();
-	//		watch.Start();
+		switch (runType)
+		{
+			case RunType.ProtoPromise:
+				{
+					if (lolDeferreds.Length != trials)
+					{
+						lolDeferreds = new Deferred[trials];
+					}
+					protoCreation = 0;
 
-	//		for (int i = 0; i < thenCount; ++i)
-	//		{
-	//			lolPromise = lolPromise.Then(voidToVoid);
-	//			//lolPromiseInt.Then(intToInt);
-	//			lolPromise = lolPromiseFloat.Then(toVoid);
-	//			lolPromiseInt = lolPromise.Then(toInt);
-	//			lolPromiseFloat = lolPromiseInt.Then(toFloat);
-	//		}
+					watch.Reset();
+					watch.Start();
 
-	//		watch.Stop();
-	//		lolThen += watch.ElapsedTicks;
-	//	}
-	//	else
-	//	{
-	//		var uPromise = uDeferreds[index].Promise;
-	//		var uPromiseInt = uPromise.Then(uToInt);
-	//		var uPromiseFloat = uPromiseInt.Then(toFloat);
+					for (int j = 0; j < trials; ++j)
+					{
+						lolDeferreds[j] = Promise.Deferred();
+					}
 
-	//		watch.Reset();
-	//		watch.Start();
+					watch.Stop();
+					protoCreation = watch.ElapsedTicks;
+					break;
+				}
+			case RunType.uPromise:
+				{
+					if (uDeferreds.Length != trials)
+					{
+						uDeferreds = new uPromise.Deferred[trials];
+					}
+					uCreation = 0;
 
-	//		for (int i = 0; i < thenCount; ++i)
-	//		{
-	//			//uPromise = uPromise.Then(voidToVoid);
-	//			//uPromiseInt.Then(intToInt);
-	//			uPromise = uPromiseFloat.Then(toVoid);
-	//			uPromiseInt = uPromise.Then(uToInt);
-	//			uPromiseFloat = uPromiseInt.Then(toFloat);
-	//		}
+					watch.Reset();
+					watch.Start();
+					for (int j = 0; j < trials; ++j)
+					{
+						uDeferreds[j] = new uPromise.Deferred();
+					}
+					watch.Stop();
+					uCreation = watch.ElapsedTicks;
+					break;
+				}
+			case RunType.Task:
+				{
+					if (tasks.Length != trials)
+					{
+						tasks = new Task[trials];
+					}
+					taskCreation = 0;
 
-	//		watch.Stop();
-	//		uThen += watch.ElapsedTicks;
-	//	}
-	//}
+					watch.Reset();
+					watch.Start();
+					for (int j = 0; j < trials; ++j)
+					{
+						tasks[j] = new Task(voidToVoid);
+					}
+					watch.Stop();
+					taskCreation = watch.ElapsedTicks;
+					break;
+				}
+		}
+	}
 
-	//public void Resolve(int index)
-	//{
-	//	if (runLoL)
-	//	{
-	//		var lolDeferred = lolDeferreds[index];
+	public void LateUpdate ()
+	{
+		switch (runType)
+		{
+			case RunType.ProtoPromise:
+				{
+					protoResolve = 0;
+					break;
+				}
+			case RunType.uPromise:
+				{
+					uResolve = 0;
+					break;
+				}
+			case RunType.Task:
+				{
+					taskResolve = 0;
+					break;
+				}
+		}
+		for (int j = 0; j < trials; ++j)
+		{
+			Resolve(j);
+		}
+	}
 
-	//		watch.Reset();
-	//		watch.Start();
 
-	//		lolDeferred.Resolve();
+	public void AddThens(int index)
+	{
+		switch (runType)
+		{
+			case RunType.ProtoPromise:
+				{
+					var lolPromise = lolDeferreds[index].Promise;
+					var lolPromiseInt = lolPromise.Then(voidToInt);
+					var lolPromiseFloat = lolPromiseInt.Then(toFloat);
 
-	//		watch.Stop();
-	//		lolResolve += watch.ElapsedTicks;
-	//	}
-	//	else
-	//	{
-	//		var uDeferred = uDeferreds[index];
+					watch.Reset();
+					watch.Start();
 
-	//		watch.Reset();
-	//		watch.Start();
+					for (int i = 0; i < thenCount; ++i)
+					{
+						//lolPromise = lolPromise.Then(voidToVoid);
+						//lolPromiseInt.Then(intToInt);
+						lolPromise = lolPromiseFloat.Then(toVoid);
+						lolPromiseInt = lolPromise.Then(voidToInt);
+						lolPromiseFloat = lolPromiseInt.Then(toFloat);
+					}
 
-	//		uDeferred.Resolve();
+					watch.Stop();
+					protoThen += watch.ElapsedTicks;
+					break;
+				}
+			case RunType.uPromise:
+				{
+					var uPromise = uDeferreds[index].Promise;
+					var uPromiseInt = uPromise.Then(uToInt);
+					var uPromiseFloat = uPromiseInt.Then(toFloat);
 
-	//		watch.Stop();
-	//		uResolve += watch.ElapsedTicks;
-	//	}
-	//}
+					watch.Reset();
+					watch.Start();
+
+					for (int i = 0; i < thenCount; ++i)
+					{
+						//uPromise = uPromise.Then(voidToVoid);
+						//uPromiseInt.Then(intToInt);
+						uPromise = uPromiseFloat.Then(toVoid);
+						uPromiseInt = uPromise.Then(uToInt);
+						uPromiseFloat = uPromiseInt.Then(toFloat);
+					}
+
+					watch.Stop();
+					uThen += watch.ElapsedTicks;
+					break;
+				}
+			case RunType.Task:
+				{
+					var task = tasks[index];
+					var taskInt = task.ContinueWith(taskVoidToInt);
+					var taskFloat = taskInt.ContinueWith(taskIntToFloat);
+
+					watch.Reset();
+					watch.Start();
+
+					for (int i = 0; i < thenCount; ++i)
+					{
+						//uPromise = uPromise.Then(voidToVoid);
+						//uPromiseInt.Then(intToInt);
+						task = taskFloat.ContinueWith(taskFloatToVoid);
+						taskInt = task.ContinueWith(taskVoidToInt);
+						taskFloat = taskInt.ContinueWith(taskIntToFloat);
+					}
+
+					watch.Stop();
+					taskThen += watch.ElapsedTicks;
+					break;
+				}
+		}
+	}
+
+	public void Resolve(int index)
+	{
+		switch (runType)
+		{
+			case RunType.ProtoPromise:
+				{
+					var lolDeferred = lolDeferreds[index];
+
+					watch.Reset();
+					watch.Start();
+
+					lolDeferred.Resolve();
+
+					watch.Stop();
+					protoResolve += watch.ElapsedTicks;
+					break;
+				}
+			case RunType.uPromise:
+				{
+					var uDeferred = uDeferreds[index];
+
+					watch.Reset();
+					watch.Start();
+
+					uDeferred.Resolve();
+
+					watch.Stop();
+					uResolve += watch.ElapsedTicks;
+					break;
+				}
+			case RunType.Task:
+				{
+					var task = tasks[index];
+
+					watch.Reset();
+					watch.Start();
+
+					task.RunSynchronously();
+					task.Wait();
+
+					watch.Stop();
+					taskResolve += watch.ElapsedTicks;
+					break;
+				}
+		}
+	}
 }

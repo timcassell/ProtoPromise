@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ProtoPromise
 {
@@ -22,13 +23,35 @@ namespace ProtoPromise
 		//Canceled // Debating whether to implement this or not since it violates Promises/A+ API
 	}
 
-	public partial class Promise : UnityEngine.CustomYieldInstruction, IValueContainer, ILinked<Promise>
+	public partial class Promise : UnityEngine.CustomYieldInstruction, IValueContainer, ILinked<Promise>, IPoolable, IResetable
 	{
 		Promise ILinked<Promise>.Next { get { return NextInternal; } set { NextInternal = value; } }
 		internal Promise NextInternal { get; set; }
 
-		private static int idCounter = 0;
-		public readonly int id;
+		private static Dictionary<Promise, Action> CompleteVoids = new Dictionary<Promise, Action>();
+		protected static Dictionary<Promise, Action<Promise>> CompletePromises = new Dictionary<Promise, Action<Promise>>(); // Used to prevent anonymous closure allocations.
+
+		//private static int idCounter = 0;
+		//public readonly int id;
+
+		private int poolOptsInternal;
+		bool IPoolable.CanPool { get { return poolOptsInternal < 0; }}
+
+		void IPoolable.OptIn()
+		{
+			checked
+			{
+				--poolOptsInternal;
+			}
+		}
+
+		void IPoolable.OptOut()
+		{
+			checked
+			{
+				++poolOptsInternal;
+			}
+		}
 
 		protected uint nextCount;
 		private Promise previous;
@@ -37,8 +60,6 @@ namespace ProtoPromise
 
 		protected Exception _exception;
 		
-		protected Action onComplete;
-		private LinkedQueueStruct<IDelegate> doneHandlers;
 		private LinkedQueueClass<Promise> NextBranches = new LinkedQueueClass<Promise>();
 		internal ADeferred DeferredInternal { get; set; }
 
@@ -47,10 +68,9 @@ namespace ProtoPromise
 
 		public PromiseState State { get; protected set; }
 
-		internal Promise(ADeferred deferred) // TODO: object pooling
+		internal Promise() // TODO: object pooling
 		{
-			id = idCounter++;
-			DeferredInternal = deferred;
+			//id = idCounter++;
 		}
 
 		private void OnFinally()
@@ -65,22 +85,14 @@ namespace ProtoPromise
 
 		private void HandleComplete()
 		{
-			//Debug.LogWarning(id + " Complete, deferred state: " + DeferredInternal.StateInternal + ", invoking onComplete: " + (onComplete != null));
-
-			for (Action temp = onComplete; temp != null; temp = onComplete) // Keep looping in case more onComplete callbacks are added from the invoke. This avoids recursion to prevent StackOverflows.
+			handling = true;
+			Action temp;
+			while (CompleteVoids.TryGetValue(this, out temp)) // Keep looping in case more onComplete callbacks are added from the invoke. This avoids recursion to prevent StackOverflows.
 			{
-				handling = true;
-
-				onComplete = null;
+				CompleteVoids.Remove(this);
 				try
 				{
 					temp.Invoke();
-
-					if (State == PromiseState.Resolved && _exception == null)
-					{
-						// Just in case a .Done callback was added during the onComplete invocation.
-						ResolveDones();
-					}
 				}
 				catch (Exception e)
 				{
@@ -93,8 +105,13 @@ namespace ProtoPromise
 					_exception = e;
 				}
 			}
+			Action<Promise> stateAdoptionCallback;
+			if (CompletePromises.TryGetValue(this, out stateAdoptionCallback))
+			{
+				stateAdoptionCallback.Invoke(this);
+				CompletePromises.Remove(this);
+			}
 			handling = false;
-
 		}
 
 		protected void OnComplete()
@@ -111,24 +128,6 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		protected void ResolveDones()
-		{
-			handling = true;
-			try
-			{
-				for (IDelegate del = doneHandlers.Peek(); del != null; del = del.Next)
-				{
-					del.Invoke(this);
-				}
-			}
-			catch (Exception e)
-			{
-				_exception = e;
-			}
-			doneHandlers.Clear();
-			handling = false;
-		}
-
 		internal Promise ResolveInternal(IValueContainer feed)
 		{
 			handling = true;
@@ -137,7 +136,6 @@ namespace ProtoPromise
 			try
 			{
 				promise = ResolveProtected(feed);
-				ResolveDones();
 			}
 			catch (Exception e)
 			{
@@ -161,10 +159,6 @@ namespace ProtoPromise
 			try
 			{
 				promise = RejectProtected(exception);
-				if (_exception == null)
-				{
-					ResolveDones();
-				}
 			}
 			catch (Exception e)
 			{
@@ -214,17 +208,14 @@ namespace ProtoPromise
 		{
 			if (final == null)
 			{
-				final = new FinallyPromise(DeferredInternal);
+				final = PromisePool.TakePromiseInternal<FinallyPromise>(DeferredInternal);
 			}
 			return final;
 		}
 
 		public Promise Finally(Action onFinally)
 		{
-			if (final == null)
-			{
-				final = new FinallyPromise(DeferredInternal);
-			}
+			Finally();
 			final.finalHandler += onFinally;
 			if (final.State != PromiseState.Pending && !final.handling)
 			{
@@ -235,57 +226,15 @@ namespace ProtoPromise
 
 		public Promise Complete(Action onComplete)
 		{
-			this.onComplete += onComplete;
+			Action temp;
+			CompleteVoids.TryGetValue(this, out temp);
+			temp += onComplete;
+			CompleteVoids[this] = temp;
 			if (State != PromiseState.Pending && !handling)
 			{
 				HandleComplete();
 			}
 			return this;
-		}
-
-		public Promise Done(Action onResolved)
-		{
-			switch (State)
-			{
-				case PromiseState.Pending:
-					doneHandlers.Enqueue(new DelegateVoid(onResolved));
-					break;
-				case PromiseState.Resolved:
-					if (_exception != null)
-					{
-						break;
-					}
-					doneHandlers.Enqueue(new DelegateVoid(onResolved));
-					if (!handling)
-					{
-						ResolveDones();
-						HandleComplete(); // Just in case a .Complete callback was added during a .Done callback invocation.
-					}
-					break;
-			}
-			return this;
-		}
-
-		protected void DoneT<T>(Action<T> onResolved)
-		{
-			switch (State)
-			{
-				case PromiseState.Pending:
-					doneHandlers.Enqueue(new DelegateArg<T>(onResolved));
-					break;
-				case PromiseState.Resolved:
-					if (_exception != null)
-					{
-						break;
-					}
-					doneHandlers.Enqueue(new DelegateArg<T>(onResolved));
-					if (!handling)
-					{
-						ResolveDones();
-						HandleComplete(); // Just in case a .Complete callback was added during a .Done callback invocation.
-					}
-					break;
-			}
 		}
 
 		protected void HookupNewPromise(Promise newPromise)
@@ -311,60 +260,52 @@ namespace ProtoPromise
 
 		public Promise Then(Func<Action<Deferred>> onResolved)
 		{
-			var promise = new PromiseFromDeferred(DeferredInternal)
-			{
-				resolveHandler = onResolved
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseFromDeferred>(DeferredInternal);
+			promise.resolveHandler = onResolved;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Then<T>(Func<Action<Deferred<T>>> onResolved)
 		{
-			var promise = new PromiseFromDeferred<T>(DeferredInternal)
-			{
-				resolveHandler = onResolved
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseFromDeferred<T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Then(Action onResolved)
 		{
-			var promise = new PromiseVoidFromVoidResolve(DeferredInternal)
-			{
-				resolveHandler = onResolved
-			};
+			var promise = new PromiseVoidFromVoidResolve();
+			promise.DeferredInternal = DeferredInternal;
+			//var promise = PromisePool.TakePromiseInternal<PromiseVoidFromVoidResolve>(DeferredInternal);
+			promise.resolveHandler = onResolved;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Then<T>(Func<T> onResolved)
 		{
-			var promise = new PromiseArgFromResultResolve<T>(DeferredInternal)
-			{
-				resolveHandler = onResolved
-			};
+			var promise = new PromiseArgFromResultResolve<T>();
+			promise.DeferredInternal = DeferredInternal;
+			//var promise = PromisePool.TakePromiseInternal<PromiseArgFromResultResolve<T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Then(Func<Promise> onResolved)
 		{
-			var promise = new PromiseVoidFromPromiseResultResolve(DeferredInternal)
-			{
-				resolveHandler = onResolved
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidFromPromiseResultResolve>(DeferredInternal);
+			promise.resolveHandler = onResolved;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Then<T>(Func<Promise<T>> onResolved)
 		{
-			var promise = new PromiseArgFromPromiseResultResolve<T>(DeferredInternal)
-			{
-				resolveHandler = onResolved
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgFromPromiseResultResolve<T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -372,40 +313,32 @@ namespace ProtoPromise
 		// TODO: add exception filters
 		public Promise Catch(Action onRejected)
 		{
-			var promise = new PromiseVoidReject(DeferredInternal)
-			{
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidReject>(DeferredInternal);
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Catch<TException>(Action<TException> onRejected) where TException : Exception
 		{
-			var promise = new PromiseVoidReject<TException>(DeferredInternal)
-			{
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidReject<TException>>(DeferredInternal);
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Catch(Func<Promise> onRejected)
 		{
-			var promise = new PromiseVoidRejectPromise(DeferredInternal)
-			{
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidRejectPromise>(DeferredInternal);
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Catch<TException>(Func<TException, Promise> onRejected) where TException : Exception
 		{
-			var promise = new PromiseArgRejectPromise<TException>(DeferredInternal)
-			{
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgRejectPromise<TException>>(DeferredInternal);
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -413,119 +346,104 @@ namespace ProtoPromise
 
 		public Promise Then(Action onResolved, Action onRejected)
 		{
-			var promise = new PromiseVoidFromVoid(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidFromVoid>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Then<TException>(Action onResolved, Action<TException> onRejected) where TException : Exception
 		{
-			var promise = new PromiseVoidFromVoid<TException>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidFromVoid<TException>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Then<T>(Func<T> onResolved, Func<T> onRejected)
 		{
-			var promise = new PromiseArgFromResult<T>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgFromResult<T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Then<T, TException>(Func<T> onResolved, Func<TException, T> onRejected) where TException : Exception
 		{
-			var promise = new PromiseArgFromResult<T, TException>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgFromResult<T, TException>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Then(Func<Promise> onResolved, Func<Promise> onRejected)
 		{
-			var promise = new PromiseVoidFromPromiseResult(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidFromPromiseResult>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Then<TException>(Func<Promise> onResolved, Func<TException, Promise> onRejected) where TException : Exception
 		{
-			var promise = new PromiseVoidFromPromiseResult<TException>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidFromPromiseResult<TException>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Then<T>(Func<Promise<T>> onResolved, Func<Promise<T>> onRejected)
 		{
-			var promise = new PromiseArgFromPromiseResult<T>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgFromPromiseResult<T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Then<T, TException>(Func<Promise<T>> onResolved, Func<TException, Promise<T>> onRejected) where TException : Exception
 		{
-			var promise = new PromiseArgFromPromiseResult<T, TException>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgFromPromiseResult<T, TException>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		protected Promise PromiseHelper(Promise promise)
 		{
-			return promise
-				.Then<Exception>(() =>
+			if (promise.State == PromiseState.Pending)
+			{
+				Action<Promise> callback;
+				CompletePromises.TryGetValue(promise, out callback);
+				callback += p =>
 				{
-					State = PromiseState.Resolved;
-					try
-					{
-						ResolveDones();
-					}
-					catch (Exception e)
-					{
-						_exception = e;
-					}
-				}, e =>
-				{
-					State = PromiseState.Rejected;
-					_exception = e;
-				})
-				.Complete(OnComplete)
-				.End();
+					State = p.State;
+					_exception = p._exception;
+					OnComplete();
+				};
+			}
+			else
+			{
+				State = promise.State;
+				_exception = promise._exception;
+				OnComplete();
+			}
+			return promise;
 		}
 	}
 
-	public class Promise<T> : Promise, IValueContainer<T>
+	public class Promise<T> : Promise, IValueContainer<T>, ILinked<Promise<T>>
 	{
-		internal Promise(ADeferred deferred) : base(deferred) { }
+		Promise<T> ILinked<Promise<T>>.Next { get { return (Promise<T>) NextInternal; } set { NextInternal = value; } }
+
+		internal Promise() : base() { }
 
 		public T Value { get; protected set; }
 
@@ -535,14 +453,14 @@ namespace ProtoPromise
 
 			handling = true;
 			State = PromiseState.Resolved;
-			try
-			{
-				ResolveDones();
-			}
-			catch (Exception e)
-			{
-				_exception = e;
-			}
+			//try
+			//{
+			//	ResolveDones();
+			//}
+			//catch (Exception e)
+			//{
+			//	_exception = e;
+			//}
 			OnComplete();
 			handling = false;
 		}
@@ -571,114 +489,98 @@ namespace ProtoPromise
 			return this;
 		}
 
-		public new Promise<T> Done(Action onResolved)
-		{
-			base.Done(onResolved);
-			return this;
-		}
+		//public new Promise<T> Done(Action onResolved)
+		//{
+		//	base.Done(onResolved);
+		//	return this;
+		//}
 
-		public Promise<T> Done(Action<T> onResolved)
-		{
-			DoneT(onResolved);
-			return this;
-		}
+		//public Promise<T> Done(Action<T> onResolved)
+		//{
+		//	DoneT(onResolved);
+		//	return this;
+		//}
 
 		public Promise Then(Func<T, Action<Deferred>> onResolved)
 		{
-			var promise = new PromiseFromDeferredT<T>(DeferredInternal)
-			{
-				resolveHandler = onResolved
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseFromDeferredT<T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<TResult> Then<TResult>(Func<T, Action<Deferred<TResult>>> onResolved)
 		{
-			var promise = new PromiseFromDeferredT<TResult, T>(DeferredInternal)
-			{
-				resolveHandler = onResolved
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseFromDeferredT<TResult, T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Then(Action<T> onResolved)
 		{
-			var promise = new PromiseVoidFromArgResolve<T>(DeferredInternal)
-			{
-				resolveHandler = onResolved
-			};
+			var promise = new PromiseVoidFromArgResolve<T>();
+			promise.DeferredInternal = DeferredInternal;
+			//var promise = PromisePool.TakePromiseInternal<PromiseVoidFromArgResolve<T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved)
 		{
-			var promise = new PromiseArgFromArgResultResolve<T, TResult>(DeferredInternal)
-			{
-				resolveHandler = onResolved
-			};
+			var promise = new PromiseArgFromArgResultResolve<T, TResult>();
+			promise.DeferredInternal = DeferredInternal;
+			//var promise = PromisePool.TakePromiseInternal<PromiseArgFromArgResultResolve<T, TResult>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Then(Func<T, Promise> onResolved)
 		{
-			var promise = new PromiseVoidFromPromiseArgResultResolve<T>(DeferredInternal)
-			{
-				resolveHandler = onResolved
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidFromPromiseArgResultResolve<T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved)
 		{
-			var promise = new PromiseArgFromPromiseArgResultResolve<TResult, T>(DeferredInternal)
-			{
-				resolveHandler = onResolved
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgFromPromiseArgResultResolve<TResult, T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Catch(Func<T> onRejected)
 		{
-			var promise = new PromiseArgReject<T>(DeferredInternal)
-			{
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgReject<T>>(DeferredInternal);
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Catch<TException>(Func<TException, T> onRejected) where TException : Exception
 		{
-			var promise = new PromiseArgReject<TException, T>(DeferredInternal)
-			{
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgReject<TException, T>>(DeferredInternal);
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Catch(Func<Promise<T>> onRejected)
 		{
-			var promise = new PromiseArgRejectPromiseT<T>(DeferredInternal)
-			{
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgRejectPromiseT<T>>(DeferredInternal);
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<T> Catch<TException>(Func<TException, Promise<T>> onRejected) where TException : Exception
 		{
-			var promise = new PromiseArgRejectPromiseT<TException, T>(DeferredInternal)
-			{
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgRejectPromiseT<TException, T>>(DeferredInternal);
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -686,114 +588,98 @@ namespace ProtoPromise
 
 		public Promise Then(Action<T> onResolved, Action onRejected)
 		{
-			var promise = new PromiseVoidFromArg<T>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidFromArg<T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Then<TException>(Action<T> onResolved, Action<TException> onRejected) where TException : Exception
 		{
-			var promise = new PromiseVoidFromArg<T, TException>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidFromArg<T, TException>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, Func<TResult> onRejected)
 		{
-			var promise = new PromiseArgFromArgResult<T, TResult>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgFromArgResult<T, TResult>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<TResult> Then<TResult, TException>(Func<T, TResult> onResolved, Func<TException, TResult> onRejected) where TException : Exception
 		{
-			var promise = new PromiseArgFromArgResult<T, TResult, TException>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgFromArgResult<T, TResult, TException>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Then(Func<T, Promise> onResolved, Func<Promise> onRejected)
 		{
-			var promise = new PromiseVoidFromPromiseArgResult<T>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidFromPromiseArgResult<T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise Then<TException>(Func<T, Promise> onResolved, Func<TException, Promise> onRejected) where TException : Exception
 		{
-			var promise = new PromiseVoidFromPromiseArgResult<T, TException>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseVoidFromPromiseArgResult<T, TException>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
 		{
-			var promise = new PromiseArgFromPromiseArgResult<TResult, T>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgFromPromiseArgResult<TResult, T>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		public Promise<TResult> Then<TResult, TException>(Func<T, Promise<TResult>> onResolved, Func<TException, Promise<TResult>> onRejected) where TException : Exception
 		{
-			var promise = new PromiseArgFromPromiseArgResult<TResult, T, TException>(DeferredInternal)
-			{
-				resolveHandler = onResolved,
-				rejectHandler = onRejected
-			};
+			var promise = PromisePool.TakePromiseInternal<PromiseArgFromPromiseArgResult<TResult, T, TException>>(DeferredInternal);
+			promise.resolveHandler = onResolved;
+			promise.rejectHandler = onRejected;
 			HookupNewPromise(promise);
 			return promise;
 		}
 
 		protected Promise PromiseHelper(Promise<T> promise)
 		{
-			return promise
-				.Then<Exception>(x =>
+			if (promise.State == PromiseState.Pending)
+			{
+				Action<Promise> callback;
+				CompletePromises.TryGetValue(promise, out callback);
+				callback += p =>
 				{
-					State = PromiseState.Resolved;
-					Value = x;
-					try
-					{
-						ResolveDones();
-					}
-					catch (Exception e)
-					{
-						_exception = e;
-					}
-				}, e =>
-				{
-					State = PromiseState.Rejected;
-					_exception = e;
-				})
-				.Complete(OnComplete)
-				.End();
+					Promise<T> pt = (Promise<T>) p;
+					State = pt.State;
+					Value = pt.Value;
+					_exception = pt._exception;
+					OnComplete();
+				};
+			}
+			else
+			{
+				State = promise.State;
+				_exception = promise._exception;
+				OnComplete();
+			}
+			return promise;
 		}
 	}
 }

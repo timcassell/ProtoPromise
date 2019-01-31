@@ -21,10 +21,38 @@ namespace ProtoPromise
 		}
 	}
 
-	public abstract class ADeferred
+	public abstract class ADeferred : IPoolable, IResetable
 	{
+		private int poolOptsInternal;
+		bool IPoolable.CanPool { get { return poolOptsInternal < 0; } }
+
+		void IPoolable.OptIn()
+		{
+			checked
+			{
+				--poolOptsInternal;
+			}
+		}
+
+		void IPoolable.OptOut()
+		{
+			checked
+			{
+				++poolOptsInternal;
+			}
+		}
+
+		void IResetable.Reset()
+		{
+			poolOptsInternal = 0;
+			StateInternal = PromiseState.Pending;
+			if (notifications != null)
+			{
+				notifications.Clear();
+			}
+		}
+
 		private Dictionary<Type, IDelegateArg> notifications;
-		//private FinalYield _finally;
 
 		public PromiseState StateInternal { get; protected set; }
 
@@ -96,14 +124,18 @@ namespace ProtoPromise
 		}
 	}
 
-	public sealed class Deferred : ADeferred
+	public sealed class Deferred : ADeferred, ILinked<Deferred>
 	{
-		public readonly Promise Promise;
+		Deferred ILinked<Deferred>.Next { get; set; }
 
-		internal Deferred()
+		public Promise Promise { get; private set; }
+
+		internal void SetPromiseInternal(Promise promise)
 		{
-			Promise = new Promise(this);
+			Promise = promise;
 		}
+
+		internal Deferred() { }
 
 		protected override void RejectProtected(Exception exception)
 		{
@@ -126,14 +158,18 @@ namespace ProtoPromise
 		}
 	}
 
-	public sealed class Deferred<T> : ADeferred
+	public sealed class Deferred<T> : ADeferred, ILinked<Deferred<T>>
 	{
-		public readonly Promise<T> Promise;
+		Deferred<T> ILinked<Deferred<T>>.Next { get; set; }
 
-		internal Deferred()
+		public Promise<T> Promise { get; private set; }
+
+		internal void SetPromiseInternal(Promise<T> promise)
 		{
-			Promise = new Promise<T>(this);
+			Promise = promise;
 		}
+
+		internal Deferred() { }
 
 		protected override void RejectProtected(Exception exception)
 		{
