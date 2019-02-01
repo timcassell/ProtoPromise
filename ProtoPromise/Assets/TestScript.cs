@@ -8,9 +8,43 @@ using UnityEngine;
 
 public class TestScript : MonoBehaviour
 {
-	Deferred[] lolDeferreds = new Deferred[0];
+	Deferred[] protoDeferreds = new Deferred[0];
+	ProtoPromiseLite.Deferred[] liteDeferreds = new ProtoPromiseLite.Deferred[0];
 	uPromise.Deferred[] uDeferreds = new uPromise.Deferred[0];
 	Task[] tasks = new Task[0];
+
+
+	Action voidToVoid = () => { };
+	Action<float> toVoid = x => { };
+	Func<int> voidToInt = () => 0;
+	Func<object, int> uToInt = x => 0;
+	Func<int, float> toFloat = x => 0f;
+	Func<int, int> intToInt = x => x;
+
+	Func<Task, int> taskVoidToInt = x => 0;
+	Func<Task<int>, float> taskIntToFloat = x => 0f;
+	Action<Task<float>> taskFloatToVoid = x => { };
+
+	public int thenCount = 100;
+	public int trials = 100;
+
+	System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
+
+	long protoCreation, protoThen, protoResolve,
+		liteCreation, liteThen, liteResolve,
+		uCreation, uThen, uResolve,
+		taskCreation, taskThen, taskResolve;
+
+	public enum RunType
+	{
+		None,
+		ProtoPromise,
+		LitePromise,
+		uPromise,
+		Task
+	}
+	public RunType runType = RunType.None;
+
 
 	private IEnumerator Start()
 	{
@@ -126,6 +160,11 @@ public class TestScript : MonoBehaviour
 					protoThen = 0;
 					break;
 				}
+			case RunType.LitePromise:
+				{
+					liteThen = 0;
+					break;
+				}
 			case RunType.uPromise:
 				{
 					uThen = 0;
@@ -159,6 +198,13 @@ public class TestScript : MonoBehaviour
 					protoResolve /= trials;
 					break;
 				}
+			case RunType.LitePromise:
+				{
+					liteCreation /= trials;
+					liteThen /= trials;
+					liteResolve /= trials;
+					break;
+				}
 			case RunType.uPromise:
 				{
 					uCreation /= trials;
@@ -177,42 +223,12 @@ public class TestScript : MonoBehaviour
 		if (runType != RunType.None)
 		{
 			Debug.LogFormat("ProtoPromise average Creation: {0}, Then: {1}, Resolve: {2}", protoCreation, protoThen, protoResolve);
+			Debug.LogFormat("LitePromise average Creation: {0}, Then: {1}, Resolve: {2}", liteCreation, liteThen, liteResolve);
 			Debug.LogFormat("uPromise average Creation: {0}, Then: {1}, Resolve: {2}", uCreation, uThen, uResolve);
 			Debug.LogFormat("Task average Creation: {0}, Then: {1}, Resolve: {2}", taskCreation, taskThen, taskResolve);
 		}
 		goto Reset;
 	}
-
-
-	Action voidToVoid = () => { };
-	Action<float> toVoid = x => { };
-	Func<int> voidToInt = () => 0;
-	Func<object, int> uToInt = x => 0;
-	Func<int, float> toFloat = x => 0f;
-	Func<int, int> intToInt = x => x;
-
-	Func<Task, int> taskVoidToInt = x => 0;
-	Func<Task<int>, float> taskIntToFloat = x => 0f;
-	Action<Task<float>> taskFloatToVoid = x => { };
-
-	public int thenCount = 100;
-	public int trials = 100;
-
-	System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
-
-	long protoCreation, protoThen, protoResolve,
-		uCreation, uThen, uResolve,
-		taskCreation, taskThen, taskResolve;
-
-	public enum RunType
-	{
-		None,
-		ProtoPromise,
-		uPromise,
-		Task
-	}
-	public RunType runType = RunType.None;
-
 
 	private void Update()
 	{
@@ -222,9 +238,9 @@ public class TestScript : MonoBehaviour
 		{
 			case RunType.ProtoPromise:
 				{
-					if (lolDeferreds.Length != trials)
+					if (protoDeferreds.Length != trials)
 					{
-						lolDeferreds = new Deferred[trials];
+						protoDeferreds = new Deferred[trials];
 					}
 					protoCreation = 0;
 
@@ -233,11 +249,31 @@ public class TestScript : MonoBehaviour
 
 					for (int j = 0; j < trials; ++j)
 					{
-						lolDeferreds[j] = Promise.Deferred();
+						protoDeferreds[j] = Promise.Deferred();
 					}
 
 					watch.Stop();
 					protoCreation = watch.ElapsedTicks;
+					break;
+				}
+			case RunType.LitePromise:
+				{
+					if (liteDeferreds.Length != trials)
+					{
+						liteDeferreds = new ProtoPromiseLite.Deferred[trials];
+					}
+					liteCreation = 0;
+
+					watch.Reset();
+					watch.Start();
+
+					for (int j = 0; j < trials; ++j)
+					{
+						liteDeferreds[j] = new ProtoPromiseLite.Deferred();
+					}
+
+					watch.Stop();
+					liteCreation = watch.ElapsedTicks;
 					break;
 				}
 			case RunType.uPromise:
@@ -288,6 +324,11 @@ public class TestScript : MonoBehaviour
 					protoResolve = 0;
 					break;
 				}
+			case RunType.LitePromise:
+				{
+					liteResolve = 0;
+					break;
+				}
 			case RunType.uPromise:
 				{
 					uResolve = 0;
@@ -312,7 +353,7 @@ public class TestScript : MonoBehaviour
 		{
 			case RunType.ProtoPromise:
 				{
-					var lolPromise = lolDeferreds[index].Promise;
+					var lolPromise = protoDeferreds[index].Promise;
 					var lolPromiseInt = lolPromise.Then(voidToInt);
 					var lolPromiseFloat = lolPromiseInt.Then(toFloat);
 
@@ -330,6 +371,26 @@ public class TestScript : MonoBehaviour
 
 					watch.Stop();
 					protoThen += watch.ElapsedTicks;
+					break;
+				}
+			case RunType.LitePromise:
+				{
+					var litePromise = liteDeferreds[index].Promise;
+					var litePromiseInt = litePromise.Then(voidToInt);
+					var litePromiseFloat = litePromiseInt.Then(toFloat);
+
+					watch.Reset();
+					watch.Start();
+
+					for (int i = 0; i < thenCount; ++i)
+					{
+						litePromise = litePromiseFloat.Then(toVoid);
+						litePromiseInt = litePromise.Then(voidToInt);
+						litePromiseFloat = litePromiseInt.Then(toFloat);
+					}
+
+					watch.Stop();
+					liteThen += watch.ElapsedTicks;
 					break;
 				}
 			case RunType.uPromise:
@@ -365,8 +426,6 @@ public class TestScript : MonoBehaviour
 
 					for (int i = 0; i < thenCount; ++i)
 					{
-						//uPromise = uPromise.Then(voidToVoid);
-						//uPromiseInt.Then(intToInt);
 						task = taskFloat.ContinueWith(taskFloatToVoid);
 						taskInt = task.ContinueWith(taskVoidToInt);
 						taskFloat = taskInt.ContinueWith(taskIntToFloat);
@@ -385,7 +444,7 @@ public class TestScript : MonoBehaviour
 		{
 			case RunType.ProtoPromise:
 				{
-					var lolDeferred = lolDeferreds[index];
+					var lolDeferred = protoDeferreds[index];
 
 					watch.Reset();
 					watch.Start();
@@ -394,6 +453,19 @@ public class TestScript : MonoBehaviour
 
 					watch.Stop();
 					protoResolve += watch.ElapsedTicks;
+					break;
+				}
+			case RunType.LitePromise:
+				{
+					var liteDeferred = liteDeferreds[index];
+
+					watch.Reset();
+					watch.Start();
+
+					liteDeferred.Resolve();
+
+					watch.Stop();
+					liteResolve += watch.ElapsedTicks;
 					break;
 				}
 			case RunType.uPromise:

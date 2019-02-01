@@ -28,8 +28,7 @@ namespace ProtoPromise
 					// Place this back in the pool.
 					pool.Push(this);
 				}
-				_continue = !_continue;
-				return _continue;
+				return _continue = !_continue;
 			}
 
 			void IEnumerator.Reset()

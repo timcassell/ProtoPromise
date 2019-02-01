@@ -10,8 +10,7 @@ namespace ProtoPromise
 		{
 			LinkedQueueStruct<Promise> nextHandles = new LinkedQueueStruct<Promise>(current);
 			for (; current != null; current = current.NextInternal)
-			{
-				LinkedQueueClass<Promise> branches = current.NextBranches;
+			{	LinkedQueueClass<Promise> branches = current.NextBranches;
 				for (Promise next = branches.Peek(); next != null;)
 				{
 					Promise waitPromise = next.HandleInternal(current);
@@ -50,18 +49,14 @@ namespace ProtoPromise
 			Exception exception = null;
 			foreach (var promise in tempFinals)
 			{
-				var final = promise.final;
-				if (final != null)
-				{
-					final.ResolveInternal();
-				}
+				FinallyPromise final = finals[promise];
+				final.ResolveInternal();
 
 				for (Promise prev = promise.previous; prev != null; prev = prev.previous)
 				{
 					if (--prev.nextCount == 0)
 					{
-						final = prev.final;
-						if (final != null)
+						if (finals.TryGetValue(prev, out final))
 						{
 							final.ResolveInternal();
 						}
@@ -113,6 +108,7 @@ namespace ProtoPromise
 		protected override sealed Promise RejectProtected(Exception exception)
 		{
 			rejectHandler.Invoke();
+			rejectHandler = null;
 			return null;
 		}
 	}
@@ -140,6 +136,7 @@ namespace ProtoPromise
 			{
 				_exception = exception;
 			}
+			rejectHandler = null;
 			return null;
 		}
 	}
@@ -155,6 +152,7 @@ namespace ProtoPromise
 		protected override sealed Promise RejectProtected(Exception exception)
 		{
 			Value = rejectHandler.Invoke();
+			rejectHandler = null;
 			return null;
 		}
 	}
@@ -170,7 +168,9 @@ namespace ProtoPromise
 		protected override sealed Promise RejectProtected(Exception exception)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(rejectHandler.Invoke());
+			var temp = rejectHandler;
+			rejectHandler = null;
+			return PromiseHelper(temp.Invoke());
 		}
 	}
 
@@ -197,6 +197,7 @@ namespace ProtoPromise
 			{
 				_exception = exception;
 			}
+			rejectHandler = null;
 			return null;
 		}
 	}
@@ -227,6 +228,7 @@ namespace ProtoPromise
 				_exception = exception;
 				promise = null;
 			}
+			rejectHandler = null;
 			return promise;
 		}
 	}
@@ -242,7 +244,9 @@ namespace ProtoPromise
 		protected override sealed Promise RejectProtected(Exception exception)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(rejectHandler.Invoke());
+			var temp = rejectHandler;
+			rejectHandler = null;
+			return PromiseHelper(temp.Invoke());
 		}
 	}
 
@@ -272,6 +276,7 @@ namespace ProtoPromise
 				_exception = exception;
 				promise = null;
 			}
+			rejectHandler = null;
 			return promise;
 		}
 	}
@@ -340,7 +345,9 @@ namespace ProtoPromise
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			return New(resolveHandler.Invoke());
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return New(temp.Invoke());
 		}
 	}
 
@@ -354,7 +361,9 @@ namespace ProtoPromise
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			return New(resolveHandler.Invoke());
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return New(temp.Invoke());
 		}
 	}
 
@@ -368,7 +377,9 @@ namespace ProtoPromise
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			return New(resolveHandler.Invoke(((IValueContainer<TValue>) feed).Value));
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return New(temp.Invoke(((IValueContainer<TValue>) feed).Value));
 		}
 	}
 
@@ -382,7 +393,9 @@ namespace ProtoPromise
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
-			return New(resolveHandler.Invoke(((IValueContainer<TValue>) feed).Value));
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return New(temp.Invoke(((IValueContainer<TValue>) feed).Value));
 		}
 	}
 
@@ -398,6 +411,7 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			resolveHandler.Invoke();
+			resolveHandler = null;
 			return null;
 		}
 	}
@@ -413,6 +427,7 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			resolveHandler.Invoke();
+			resolveHandler = null;
 			return null;
 		}
 	}
@@ -428,6 +443,7 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			resolveHandler.Invoke();
+			resolveHandler = null;
 			return null;
 		}
 	}
@@ -445,6 +461,7 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
+			resolveHandler = null;
 			return null;
 		}
 	}
@@ -460,6 +477,7 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
+			resolveHandler = null;
 			return null;
 		}
 	}
@@ -475,6 +493,7 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
+			resolveHandler = null;
 			return null;
 		}
 	}
@@ -492,6 +511,7 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			Value = resolveHandler.Invoke();
+			resolveHandler = null;
 			return null;
 		}
 	}
@@ -507,6 +527,7 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			Value = resolveHandler.Invoke();
+			resolveHandler = null;
 			return null;
 		}
 	}
@@ -522,6 +543,7 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			Value = resolveHandler.Invoke();
+			resolveHandler = null;
 			return null;
 		}
 	}
@@ -539,6 +561,7 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			Value = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
+			resolveHandler = null;
 			return null;
 		}
 	}
@@ -554,6 +577,7 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			Value = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
+			resolveHandler = null;
 			return null;
 		}
 	}
@@ -569,6 +593,7 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			Value = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
+			resolveHandler = null;
 			return null;
 		}
 	}
@@ -586,7 +611,9 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(resolveHandler.Invoke());
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return PromiseHelper(temp.Invoke());
 		}
 	}
 
@@ -601,7 +628,9 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(resolveHandler.Invoke());
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return PromiseHelper(temp.Invoke());
 		}
 	}
 
@@ -616,7 +645,9 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(resolveHandler.Invoke());
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return PromiseHelper(temp.Invoke());
 		}
 	}
 
@@ -633,7 +664,9 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value));
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return PromiseHelper(temp.Invoke(((IValueContainer<TArg>) feed).Value));
 		}
 	}
 
@@ -648,7 +681,9 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value));
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return PromiseHelper(temp.Invoke(((IValueContainer<TArg>) feed).Value));
 		}
 	}
 
@@ -663,7 +698,9 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value));
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return PromiseHelper(temp.Invoke(((IValueContainer<TArg>) feed).Value));
 		}
 	}
 
@@ -680,7 +717,9 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(resolveHandler.Invoke());
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return PromiseHelper(temp.Invoke());
 		}
 	}
 
@@ -695,7 +734,9 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(resolveHandler.Invoke());
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return PromiseHelper(temp.Invoke());
 		}
 	}
 
@@ -710,7 +751,9 @@ namespace ProtoPromise
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(resolveHandler.Invoke());
+			var temp = resolveHandler;
+			resolveHandler = null;
+			return PromiseHelper(temp.Invoke());
 		}
 	}
 

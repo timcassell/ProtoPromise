@@ -1,6 +1,6 @@
 using System;
 
-namespace LoL.Core.Structures.Promise2
+namespace ProtoPromiseLite
 {
 	public partial class Promise : UnityEngine.CustomYieldInstruction
 	{

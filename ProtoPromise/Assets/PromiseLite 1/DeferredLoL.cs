@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace LoL.Core.Structures.Promise2
+namespace ProtoPromiseLite
 {
 	public enum DeferredState
 	{
@@ -277,8 +277,8 @@ namespace LoL.Core.Structures.Promise2
 		{
 			State = DeferredState.Resolving;
 
-			//if (_thenQueue != null)
-				//HandleNextThen();
+			if (_thenQueue != null)
+				HandleNextThen();
 		}
 
 		protected void OnThen<T>(T arg)

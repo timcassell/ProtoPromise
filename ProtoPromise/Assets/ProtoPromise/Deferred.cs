@@ -23,7 +23,6 @@ namespace ProtoPromise
 
 	public abstract class ADeferred : IPoolable, IResetable
 	{
-		private int poolOptsInternal;
 		bool IPoolable.CanPool { get { return poolOptsInternal < 0; } }
 
 		void IPoolable.OptIn()
@@ -54,11 +53,17 @@ namespace ProtoPromise
 
 		private Dictionary<Type, IDelegateArg> notifications;
 
+		private sbyte poolOptsInternal; // This is an sbyte to preserve memory footprint. Change this to System.Int32(int) if you need to perpetually use one deferred in more than 128 places.
+
 		public PromiseState StateInternal { get; protected set; }
 
 		internal ADeferred()
 		{
 			StateInternal = PromiseState.Pending;
+			if (ObjectPool.poolType == PoolType.OptOut)
+			{
+				((IPoolable) this).OptIn();
+			}
 		}
 
 		internal void NotificationInternal<T>(Action<T> onNotification)
@@ -85,6 +90,11 @@ namespace ProtoPromise
 
 		public void Notify<T>(T value)
 		{
+			if (StateInternal != PromiseState.Pending)
+			{
+				UnityEngine.Debug.LogWarning("Deferred.Notify - Deferred is not in the pending state.");
+				return;
+			}
 			if (notifications == null)
 			{
 				return;
@@ -132,10 +142,11 @@ namespace ProtoPromise
 
 		internal void SetPromiseInternal(Promise promise)
 		{
+			promise.DeferredInternal = this;
 			Promise = promise;
 		}
 
-		internal Deferred() { }
+		internal Deferred() : base() { }
 
 		protected override void RejectProtected(Exception exception)
 		{
@@ -166,10 +177,11 @@ namespace ProtoPromise
 
 		internal void SetPromiseInternal(Promise<T> promise)
 		{
+			promise.DeferredInternal = this;
 			Promise = promise;
 		}
 
-		internal Deferred() { }
+		internal Deferred() : base() { }
 
 		protected override void RejectProtected(Exception exception)
 		{
