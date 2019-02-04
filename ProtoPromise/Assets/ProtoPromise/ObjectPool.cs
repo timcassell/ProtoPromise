@@ -67,8 +67,13 @@ namespace ProtoPromise
 			return false;
 		}
 
-		internal static void AddInternal<T>(T item) where T : class, ILinked<T>
+		internal static void AddInternal<T>(T item) where T : class, ILinked<T>, IResetable, IPoolable
 		{
+			if (!item.CanPool)
+			{
+				return;
+			}
+
 			object obj;
 			LinkedStackClass<T> stack;
 			if (pool.TryGetValue(typeof(T), out obj))

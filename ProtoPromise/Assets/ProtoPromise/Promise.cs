@@ -47,6 +47,10 @@ namespace ProtoPromise
 			{
 				--poolOptsInternal;
 			}
+			if (poolOptsInternal == -1 && State != PromiseState.Pending && ended)
+			{
+				ObjectPool.AddInternal(this);
+			}
 		}
 
 		void IPoolable.OptOut()
@@ -57,24 +61,22 @@ namespace ProtoPromise
 			}
 		}
 
-		protected uint nextCount;
 		private Promise previous;
-
-		//private FinallyPromise final;
 
 		protected Exception _exception;
 		
 		private LinkedQueueClass<Promise> NextBranches = new LinkedQueueClass<Promise>();
 		internal ADeferred DeferredInternal { get; set; }
 
-		private sbyte poolOptsInternal; // This is an sbyte to conserve memory footprint. Change this to System.Int32(int) if you need to perpetually use one promise in more than 128 places.
+		private ushort nextCount; // This is a ushort to conserve memory footprint. Change this to uint or ulong if you need to use .Then or .Catch on one promise more than 65,535 times (branching, not chaining).
+		private short poolOptsInternal; // This is a short to conserve memory footprint. Change this to int or long if you need to perpetually use one promise in more than 32,768 places.
 
 		protected bool ended = false;
 		protected bool handling = false; // This is to handle any new callbacks being added from a callback that is being invoked. e.g. promise.Done(() => { DoSomething(); promise.Done(DoSomethingElse); })
 
 		public PromiseState State { get; protected set; }
 
-		internal Promise() // TODO: object pooling
+		internal Promise()
 		{
 			//id = idCounter++;
 			if (ObjectPool.poolType == PoolType.OptOut)
@@ -92,7 +94,7 @@ namespace ProtoPromise
 
 		private void OnFinally()
 		{
-			if (!ended || nextCount > 0)
+			if (nextCount > 0)
 			{
 				return;
 			}
@@ -520,6 +522,7 @@ namespace ProtoPromise
 					_exception = p._exception;
 					OnComplete();
 				};
+				completePromises[promise] = callback;
 			}
 			else
 			{
@@ -812,6 +815,7 @@ namespace ProtoPromise
 					_exception = pt._exception;
 					OnComplete();
 				};
+				completePromises[promise] = callback;
 			}
 			else
 			{

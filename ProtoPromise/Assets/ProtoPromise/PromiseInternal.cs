@@ -56,19 +56,23 @@ namespace ProtoPromise
 				{
 					if (--prev.nextCount == 0)
 					{
+						prev.ended = true;
 						if (finals.TryGetValue(prev, out final))
 						{
 							final.ResolveInternal();
 						}
 					}
 
-					// TODO: repool prev here
+					ObjectPool.AddInternal(prev);
 				}
 
 				exception = promise._exception;
-				// TODO: repool promise here
+				ObjectPool.AddInternal(promise);
 				if (exception != null)
 				{
+
+					// TODO: repool rest of tempFinals promises here.
+
 					break;
 				}
 			}
@@ -319,17 +323,6 @@ namespace ProtoPromise
 		{
 			State = PromiseState.Resolved;
 			HandleFinallies();
-			//if (_exception == null)
-			//{
-			//	try
-			//	{
-			//		ResolveDones();
-			//	}
-			//	catch (Exception e)
-			//	{
-			//		_exception = e;
-			//	}
-			//}
 			OnComplete();
 		}
 	}
@@ -347,7 +340,7 @@ namespace ProtoPromise
 		{
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return New(temp.Invoke());
+			return PromiseHelper(New(temp.Invoke()));
 		}
 	}
 
@@ -363,7 +356,7 @@ namespace ProtoPromise
 		{
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return New(temp.Invoke());
+			return PromiseHelper(New(temp.Invoke()));
 		}
 	}
 
@@ -379,7 +372,7 @@ namespace ProtoPromise
 		{
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return New(temp.Invoke(((IValueContainer<TValue>) feed).Value));
+			return PromiseHelper(New(temp.Invoke(((IValueContainer<TValue>) feed).Value)));
 		}
 	}
 
@@ -395,7 +388,7 @@ namespace ProtoPromise
 		{
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return New(temp.Invoke(((IValueContainer<TValue>) feed).Value));
+			return PromiseHelper(New(temp.Invoke(((IValueContainer<TValue>) feed).Value)));
 		}
 	}
 

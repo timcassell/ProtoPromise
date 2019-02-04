@@ -21,29 +21,10 @@ namespace ProtoPromise
 		}
 	}
 
-	public abstract class ADeferred : IPoolable, IResetable
+	public abstract class ADeferred : IResetable
 	{
-		bool IPoolable.CanPool { get { return poolOptsInternal < 0; } }
-
-		void IPoolable.OptIn()
-		{
-			checked
-			{
-				--poolOptsInternal;
-			}
-		}
-
-		void IPoolable.OptOut()
-		{
-			checked
-			{
-				++poolOptsInternal;
-			}
-		}
-
 		void IResetable.Reset()
 		{
-			poolOptsInternal = 0;
 			StateInternal = PromiseState.Pending;
 			if (notifications != null)
 			{
@@ -52,8 +33,6 @@ namespace ProtoPromise
 		}
 
 		private Dictionary<Type, IDelegateArg> notifications;
-
-		private sbyte poolOptsInternal; // This is an sbyte to preserve memory footprint. Change this to System.Int32(int) if you need to perpetually use one deferred in more than 128 places.
 
 		public PromiseState StateInternal { get; protected set; }
 
@@ -134,19 +113,29 @@ namespace ProtoPromise
 		}
 	}
 
-	public sealed class Deferred : ADeferred, ILinked<Deferred>
+	public sealed class Deferred : ADeferred, ILinked<Deferred>, IPoolable
 	{
 		Deferred ILinked<Deferred>.Next { get; set; }
 
+		bool IPoolable.CanPool { get { throw new NotImplementedException(); } }
+
+		void IPoolable.OptIn()
+		{
+			((IPoolable) Promise).OptIn();
+		}
+
+		void IPoolable.OptOut()
+		{
+			((IPoolable) Promise).OptOut();
+		}
+
 		public Promise Promise { get; private set; }
 
-		internal void SetPromiseInternal(Promise promise)
+		internal Deferred(Promise promise) : base()
 		{
 			promise.DeferredInternal = this;
 			Promise = promise;
 		}
-
-		internal Deferred() : base() { }
 
 		protected override void RejectProtected(Exception exception)
 		{
@@ -169,19 +158,29 @@ namespace ProtoPromise
 		}
 	}
 
-	public sealed class Deferred<T> : ADeferred, ILinked<Deferred<T>>
+	public sealed class Deferred<T> : ADeferred, ILinked<Deferred<T>>, IPoolable
 	{
 		Deferred<T> ILinked<Deferred<T>>.Next { get; set; }
 
+		bool IPoolable.CanPool { get { throw new NotImplementedException(); } }
+
+		void IPoolable.OptIn()
+		{
+			((IPoolable) Promise).OptIn();
+		}
+
+		void IPoolable.OptOut()
+		{
+			((IPoolable) Promise).OptOut();
+		}
+
 		public Promise<T> Promise { get; private set; }
 
-		internal void SetPromiseInternal(Promise<T> promise)
+		internal Deferred(Promise<T> promise) : base()
 		{
 			promise.DeferredInternal = this;
 			Promise = promise;
 		}
-
-		internal Deferred() : base() { }
 
 		protected override void RejectProtected(Exception exception)
 		{

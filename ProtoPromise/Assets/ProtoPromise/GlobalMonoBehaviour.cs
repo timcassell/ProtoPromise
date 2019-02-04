@@ -20,13 +20,14 @@ namespace ProtoPromise
 				if (_continue)
 				{
 					Current = null;
-					if (onComplete != null)
-					{
-						onComplete.Invoke();
-						onComplete = null;
-					}
+					Action temp = onComplete;
+					onComplete = null;
 					// Place this back in the pool.
 					pool.Push(this);
+					if (temp != null)
+					{
+						temp.Invoke();
+					}
 				}
 				return _continue = !_continue;
 			}
