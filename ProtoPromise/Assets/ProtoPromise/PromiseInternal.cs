@@ -49,14 +49,23 @@ namespace ProtoPromise
 			Exception exception = null;
 			foreach (var promise in tempFinals)
 			{
-				FinallyPromise final = finals[promise];
-				final.ResolveInternal();
+				promise.done |= AutoDone;
+				if (!promise.done)
+				{
+					// Only resolve final and throw uncaught exceptions if promise is marked done.
+					continue;
+				}
+				FinallyPromise final;
+				if (finals.TryGetValue(promise, out final))
+				{
+					final.ResolveInternal();
+				}
 
 				for (Promise prev = promise.previous; prev != null; prev = prev.previous)
 				{
 					if (--prev.nextCount == 0)
 					{
-						prev.ended = true;
+						prev.done = true;
 						if (finals.TryGetValue(prev, out final))
 						{
 							final.ResolveInternal();
@@ -289,6 +298,8 @@ namespace ProtoPromise
 
 	internal sealed class FinallyPromise : Promise, ILinked<FinallyPromise>
 	{
+		private bool handlingFinals;
+
 		FinallyPromise ILinked<FinallyPromise>.Next { get { return (FinallyPromise) NextInternal; } set { NextInternal = value; } }
 
 		internal Action finalHandler;
@@ -297,7 +308,12 @@ namespace ProtoPromise
 
 		internal void HandleFinallies()
 		{
-			handling = true;
+			if (handlingFinals)
+			{
+				// This is already looping higher in the stack, so just return.
+				return;
+			}
+			handlingFinals = true;
 			for (Action temp = finalHandler; temp != null; temp = finalHandler) // Keep looping in case more finally callbacks are added from the invoke. This avoids recursion to prevent StackOverflows.
 			{
 				finalHandler = null;
@@ -316,7 +332,7 @@ namespace ProtoPromise
 					_exception = e;
 				}
 			}
-			handling = false;
+			handlingFinals = false;
 		}
 
 		internal void ResolveInternal()

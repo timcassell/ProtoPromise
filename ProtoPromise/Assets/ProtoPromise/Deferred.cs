@@ -113,11 +113,9 @@ namespace ProtoPromise
 		}
 	}
 
-	public sealed class Deferred : ADeferred, ILinked<Deferred>, IPoolable
+	public sealed class Deferred : ADeferred, IPoolable
 	{
-		Deferred ILinked<Deferred>.Next { get; set; }
-
-		bool IPoolable.CanPool { get { throw new NotImplementedException(); } }
+		bool IPoolable.CanPool { get { return ((IPoolable) Promise).CanPool; } }
 
 		void IPoolable.OptIn()
 		{
@@ -158,11 +156,9 @@ namespace ProtoPromise
 		}
 	}
 
-	public sealed class Deferred<T> : ADeferred, ILinked<Deferred<T>>, IPoolable
+	public sealed class Deferred<T> : ADeferred, IPoolable
 	{
-		Deferred<T> ILinked<Deferred<T>>.Next { get; set; }
-
-		bool IPoolable.CanPool { get { throw new NotImplementedException(); } }
+		bool IPoolable.CanPool { get { return ((IPoolable) Promise).CanPool; } }
 
 		void IPoolable.OptIn()
 		{

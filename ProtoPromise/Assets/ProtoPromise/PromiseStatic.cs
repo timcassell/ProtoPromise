@@ -5,6 +5,8 @@ namespace ProtoPromise
 {
 	public partial class Promise
 	{
+		public static bool AutoDone = false;
+
 		public static Promise<T[]> All<T>(params Promise<T>[] promises)
 		{
 			var masterDeferred = Deferred<T[]>();
@@ -29,7 +31,7 @@ namespace ProtoPromise
 							masterDeferred.Resolve(args);
 						}
 					}, masterDeferred.Reject)
-					.End();
+					.Done();
 			}
 
 			return masterDeferred.Promise;
@@ -61,7 +63,7 @@ namespace ProtoPromise
 							masterDeferred.Resolve();
 						}
 					}, masterDeferred.Reject)
-					.End();
+					.Done();
 			}
 
 			return masterDeferred.Promise;
@@ -88,7 +90,7 @@ namespace ProtoPromise
 
 						masterDeferred.Resolve(x);
 					}, masterDeferred.Reject)
-					.End();
+					.Done();
 			}
 
 			return masterDeferred.Promise;
@@ -115,7 +117,7 @@ namespace ProtoPromise
 
 						masterDeferred.Resolve();
 					}, masterDeferred.Reject)
-					.End();
+					.Done();
 			}
 
 			return masterDeferred.Promise;
@@ -155,7 +157,8 @@ namespace ProtoPromise
 		public static Promise<TYieldInstruction> Yield<TYieldInstruction>(TYieldInstruction yieldInstruction)
 		{
 			Deferred<TYieldInstruction> deferred = Deferred<TYieldInstruction>();
-			GlobalMonoBehaviour.Yield(yieldInstruction, () => deferred.Resolve(yieldInstruction));
+			// TODO: add cancel delegate to promise cancel callback.
+			GlobalMonoBehaviour.Yield(yieldInstruction, deferred.Resolve);
 			return deferred.Promise;
 		}
 

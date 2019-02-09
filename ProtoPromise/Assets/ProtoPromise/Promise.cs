@@ -47,7 +47,7 @@ namespace ProtoPromise
 			{
 				--poolOptsInternal;
 			}
-			if (poolOptsInternal == -1 && State != PromiseState.Pending && ended)
+			if (poolOptsInternal == -1 && State != PromiseState.Pending && done)
 			{
 				ObjectPool.AddInternal(this);
 			}
@@ -71,8 +71,8 @@ namespace ProtoPromise
 		private ushort nextCount; // This is a ushort to conserve memory footprint. Change this to uint or ulong if you need to use .Then or .Catch on one promise more than 65,535 times (branching, not chaining).
 		private short poolOptsInternal; // This is a short to conserve memory footprint. Change this to int or long if you need to perpetually use one promise in more than 32,768 places.
 
-		protected bool ended = false;
-		protected bool handling = false; // This is to handle any new callbacks being added from a callback that is being invoked. e.g. promise.Done(() => { DoSomething(); promise.Done(DoSomethingElse); })
+		protected bool done = false;
+		private bool handling = false; // This is to handle new complete callbacks being added from a callback that is being invoked. e.g. promise.Complete(() => { promise.Complete(DoSomethingElse); DoSomething(); })
 
 		public PromiseState State { get; protected set; }
 
@@ -89,7 +89,7 @@ namespace ProtoPromise
 		{
 			poolOptsInternal = 0;
 			State = PromiseState.Pending;
-			ended = false;
+			done = false;
 		}
 
 		private void OnFinally()
@@ -104,6 +104,11 @@ namespace ProtoPromise
 
 		private void HandleComplete()
 		{
+			if (handling)
+			{
+				// This is already looping higher in the stack, so just return.
+				return;
+			}
 			handling = true;
 			Action temp;
 			while (completeVoids.TryGetValue(this, out temp)) // Keep looping in case more onComplete callbacks are added from the invoke. This avoids recursion to prevent StackOverflows.
@@ -137,6 +142,11 @@ namespace ProtoPromise
 		{
 			HandleComplete();
 			OnFinally();
+				if (nextCount == 0 && AutoDone)
+				{
+					done = true;
+					AddFinal(this);
+				}
 		}
 
 		internal Promise HandleInternal(Promise feed)
@@ -160,8 +170,8 @@ namespace ProtoPromise
 			{
 				_exception = e;
 			}
-			OnComplete();
 			handling = false;
+			OnComplete();
 			return promise;
 		}
 
@@ -183,8 +193,8 @@ namespace ProtoPromise
 			{
 				_exception = e;
 			}
-			OnComplete();
 			handling = false;
+			OnComplete();
 			return promise;
 		}
 
@@ -208,14 +218,20 @@ namespace ProtoPromise
 			return this;
 		}
 
-		public Promise End()
+		public Promise Done(Action onComplete)
 		{
-			if (ended)
+			Complete(onComplete);
+			return Done();
+		}
+
+		public Promise Done()
+		{
+			if (done)
 			{
 				return this;
 			}
 
-			ended = true;
+			done = true;
 			if (State != PromiseState.Pending && !handling)
 			{
 				OnFinally();
@@ -242,7 +258,7 @@ namespace ProtoPromise
 		{
 			FinallyPromise promise = (FinallyPromise) Finally();
 			promise.finalHandler += onFinally;
-			if (promise.State != PromiseState.Pending && !promise.handling)
+			if (promise.State != PromiseState.Pending)
 			{
 				promise.HandleFinallies();
 			}
@@ -255,7 +271,7 @@ namespace ProtoPromise
 			completeVoids.TryGetValue(this, out temp);
 			temp += onComplete;
 			completeVoids[this] = temp;
-			if (State != PromiseState.Pending && !handling)
+			if (State != PromiseState.Pending)
 			{
 				HandleComplete();
 			}
@@ -530,7 +546,17 @@ namespace ProtoPromise
 				_exception = promise._exception;
 				OnComplete();
 			}
-			return promise;
+
+			// Manually add a catch in case promise.done is true.
+			PromiseVoidReject rejectPromise;
+			if (!ObjectPool.TryTakeInternal(out rejectPromise))
+			{
+				rejectPromise = new PromiseVoidReject();
+			}
+			rejectPromise.rejectHandler = () => { };
+			promise.HookupNewPromise(rejectPromise);
+
+			return rejectPromise;
 		}
 	}
 
@@ -546,10 +572,8 @@ namespace ProtoPromise
 		{
 			Value = value;
 
-			handling = true;
 			State = PromiseState.Resolved;
 			OnComplete();
-			handling = false;
 		}
 
 		internal override Promise ResolveProtected(IValueContainer feed)
@@ -567,12 +591,6 @@ namespace ProtoPromise
 		public new Promise<T> Complete(Action onComplete)
 		{
 			base.Complete(onComplete);
-			return this;
-		}
-
-		public new Promise<T> End()
-		{
-			base.End();
 			return this;
 		}
 
@@ -823,7 +841,17 @@ namespace ProtoPromise
 				_exception = promise._exception;
 				OnComplete();
 			}
-			return promise;
+
+			// Manually add a catch in case promise.done is true.
+			PromiseVoidReject rejectPromise;
+			if (!ObjectPool.TryTakeInternal(out rejectPromise))
+			{
+				rejectPromise = new PromiseVoidReject();
+			}
+			rejectPromise.rejectHandler = () => { };
+			promise.HookupNewPromise(rejectPromise);
+
+			return rejectPromise;
 		}
 	}
 }
