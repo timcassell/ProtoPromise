@@ -20,7 +20,7 @@ namespace ProtoPromise
 				promises[index]
 					.Then<Exception>(x =>
 					{
-						if (masterDeferred.StateInternal != PromiseState.Pending)
+						if (masterDeferred.State != PromiseState.Pending)
 						{
 							return;
 						}
@@ -53,7 +53,7 @@ namespace ProtoPromise
 				promises[i]
 					.Then<Exception>(() =>
 					{
-						if (masterDeferred.StateInternal != PromiseState.Pending)
+						if (masterDeferred.State != PromiseState.Pending)
 						{
 							return;
 						}
@@ -83,7 +83,7 @@ namespace ProtoPromise
 				promises[i]
 					.Then<Exception>(x =>
 					{
-						if (masterDeferred.StateInternal != PromiseState.Pending)
+						if (masterDeferred.State != PromiseState.Pending)
 						{
 							return;
 						}
@@ -110,7 +110,7 @@ namespace ProtoPromise
 				promises[i]
 					.Then<Exception>(() =>
 					{
-						if (masterDeferred.StateInternal != PromiseState.Pending)
+						if (masterDeferred.State != PromiseState.Pending)
 						{
 							return;
 						}

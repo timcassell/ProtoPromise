@@ -3,113 +3,105 @@ using System.Collections.Generic;
 
 namespace ProtoPromise
 {
-	internal class UnhandledException : Exception
+	public abstract class ADeferred
 	{
-		public UnhandledException(Exception innerException) : this(innerException, string.Empty) { }
-		public UnhandledException(Exception innerException, string stackTrace) : base("An exception was encountered that was not handled.", innerException)
+		internal Dictionary<Type, IDelegateArg> notificationsInternal;
+
+		public PromiseState State { get { return _promise.State; } }
+
+		protected Promise _promise;
+
+		internal ADeferred(Promise promise)
 		{
-			_stackTrace = stackTrace;
-		}
-
-		readonly string _stackTrace;
-		public override string StackTrace
-		{
-			get
-			{
-				return _stackTrace;
-			}
-		}
-	}
-
-	public abstract class ADeferred : IResetable
-	{
-		void IResetable.Reset()
-		{
-			StateInternal = PromiseState.Pending;
-			if (notifications != null)
-			{
-				notifications.Clear();
-			}
-		}
-
-		private Dictionary<Type, IDelegateArg> notifications;
-
-		public PromiseState StateInternal { get; protected set; }
-
-		internal ADeferred()
-		{
-			StateInternal = PromiseState.Pending;
-			if (ObjectPool.poolType == PoolType.OptOut)
-			{
-				((IPoolable) this).OptIn();
-			}
+			promise.DeferredInternal = this;
+			_promise = promise;
 		}
 
 		internal void NotificationInternal<T>(Action<T> onNotification)
 		{
 			Type type = typeof(T);
-			if (notifications == null)
+			if (notificationsInternal == null)
 			{
-				notifications = new Dictionary<Type, IDelegateArg>(1)
+				notificationsInternal = new Dictionary<Type, IDelegateArg>(1)
 				{
 					{ type, new DelegateArg<T>(onNotification) }
 				};
 				return;
 			}
 			IDelegateArg del;
-			if (notifications.TryGetValue(type, out del))
+			if (notificationsInternal.TryGetValue(type, out del))
 			{
 				((DelegateArg<T>) del).AddCallback(onNotification);
 			}
 			else
 			{
-				notifications.Add(type, new DelegateArg<T>(onNotification));
+				notificationsInternal.Add(type, new DelegateArg<T>(onNotification));
 			}
 		}
 
 		public void Notify<T>(T value)
 		{
-			if (StateInternal != PromiseState.Pending)
+			if (State != PromiseState.Pending)
 			{
 				UnityEngine.Debug.LogWarning("Deferred.Notify - Deferred is not in the pending state.");
 				return;
 			}
-			if (notifications == null)
+			if (notificationsInternal == null)
 			{
 				return;
 			}
 			IDelegateArg del;
-			if (notifications.TryGetValue(typeof(T), out del))
+			if (notificationsInternal.TryGetValue(typeof(T), out del))
 			{
 				((DelegateArg<T>) del).Invoke(value);
 			}
 		}
 
-		protected abstract void RejectProtected(Exception exception);
+		private static System.Text.StringBuilder sb;
 
-		public void Reject<TException>(TException reason) where TException : Exception
+		public void Reject<TReject>(TReject reason)
 		{
-			if (StateInternal != PromiseState.Pending)
+			if (State != PromiseState.Pending)
 			{
 				UnityEngine.Debug.LogError("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
 				return;
 			}
 
-			Exception ex = reason == null ? new NullReferenceException() : (Exception) reason;
-			if (string.IsNullOrEmpty(ex.StackTrace))
+			if (sb == null)
 			{
-				// Format stacktrace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
-				System.Text.StringBuilder sb = new System.Text.StringBuilder(new System.Diagnostics.StackTrace(1, true).ToString())
-					.Remove(0, 1)
-					.Replace(":line ", ":")
-					.Replace("\n ", " \n")
-					.Replace("(", " (")
-					.Replace(") in", ") [0x00000] in") // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
-					.Append(" ");
-				ex = new UnhandledException(ex, sb.ToString());
+				sb = new System.Text.StringBuilder(new System.Diagnostics.StackTrace(1, true).ToString());
+			}
+			else
+			{
+				sb.Append(new System.Diagnostics.StackTrace(1, true).ToString());
 			}
 
-			RejectProtected(ex);
+			// Format stacktrace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
+			string stackTrace =
+				sb.Remove(0, 1)
+				.Replace(":line ", ":")
+				.Replace("\n ", " \n")
+				.Replace("(", " (")
+				.Replace(") in", ") [0x00000] in") // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
+				.Append(" ")
+				.ToString();
+
+			UnhandledException rejectValue;
+			if (typeof(Exception).IsAssignableFrom(typeof(TReject)))
+			{
+				var temp = new UnhandledExceptionException();
+				temp.SetValue(reason as Exception, stackTrace);
+				rejectValue = temp;
+			}
+			else
+			{
+				var temp = new UnhandledException<TReject>();
+				temp.SetValue(reason, stackTrace);
+				rejectValue = temp;
+			}
+
+			_promise.RejectInternal(rejectValue);
+			Promise.ContinueHandlingInternal(_promise);
 		}
 	}
 
@@ -127,29 +119,17 @@ namespace ProtoPromise
 			((IPoolable) Promise).OptOut();
 		}
 
-		public Promise Promise { get; private set; }
+		public Promise Promise { get { return _promise; } }
 
-		internal Deferred(Promise promise) : base()
-		{
-			promise.DeferredInternal = this;
-			Promise = promise;
-		}
-
-		protected override void RejectProtected(Exception exception)
-		{
-			Promise.RejectInternal(exception);
-			Promise.ContinueHandlingInternal(Promise);
-		}
+		internal Deferred(Promise promise) : base(promise) { }
 
 		public void Resolve()
 		{
-			if (StateInternal != PromiseState.Pending)
+			if (State != PromiseState.Pending)
 			{
 				UnityEngine.Debug.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
 				return;
 			}
-
-			StateInternal = PromiseState.Resolved;
 
 			Promise.ResolveInternal(null);
 			Promise.ContinueHandlingInternal(Promise);
@@ -170,29 +150,17 @@ namespace ProtoPromise
 			((IPoolable) Promise).OptOut();
 		}
 
-		public Promise<T> Promise { get; private set; }
+		public Promise<T> Promise { get { return (Promise<T>) _promise; } }
 
-		internal Deferred(Promise<T> promise) : base()
-		{
-			promise.DeferredInternal = this;
-			Promise = promise;
-		}
-
-		protected override void RejectProtected(Exception exception)
-		{
-			Promise.RejectInternal(exception);
-			ProtoPromise.Promise.ContinueHandlingInternal(Promise);
-		}
+		internal Deferred(Promise<T> promise) : base(promise) { }
 
 		public void Resolve(T arg)
 		{
-			if (StateInternal != PromiseState.Pending)
+			if (State != PromiseState.Pending)
 			{
 				UnityEngine.Debug.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
 				return;
 			}
-
-			StateInternal = PromiseState.Resolved;
 
 			Promise.ResolveInternal(arg);
 			ProtoPromise.Promise.ContinueHandlingInternal(Promise);

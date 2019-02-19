@@ -5,29 +5,47 @@ namespace ProtoPromise
 {
 	public partial class Promise
 	{
-		// This allows infinite .Then resolveHandlers, since it avoids recursion.
+		// This is to avoid closures to save some GC allocations.
+		private static Dictionary<Promise, ValueLinkedQueue<Promise>> continuePromises = new Dictionary<Promise, ValueLinkedQueue<Promise>>();
+
+		private static void ContinueFrom(Promise promise)
+		{
+			ValueLinkedQueue<Promise> promises = continuePromises[promise];
+			for (Promise pr = promises.Peek(); pr != null; pr = pr.NextInternal)
+			{
+				ContinueHandlingInternal(pr);
+			}
+			continuePromises.Remove(promise);
+		}
+
+		// This allows infinite .Then/.Catch callbacks, since it avoids recursion.
 		internal static void ContinueHandlingInternal(Promise current)
 		{
-			LinkedQueueStruct<Promise> nextHandles = new LinkedQueueStruct<Promise>(current);
+			ValueLinkedQueue<Promise> nextHandles = new ValueLinkedQueue<Promise>(current);
 			for (; current != null; current = current.NextInternal)
-			{	LinkedQueueClass<Promise> branches = current.NextBranches;
+			{
+				LinkedQueue<Promise> branches = current.NextBranches;
 				for (Promise next = branches.Peek(); next != null;)
 				{
-					Promise waitPromise = next.HandleInternal(current);
+					Promise cachedPromise = next;
+					next = next.NextInternal;
+					Promise waitPromise = cachedPromise.HandleInternal(current);
+
 					if (waitPromise == null || waitPromise.State != PromiseState.Pending)
 					{
-						Promise temp = next;
-						next = next.NextInternal; // This is necessary because enqueue sets temp.next to null.
-						nextHandles.EnqueueRisky(temp);
+						nextHandles.EnqueueRisky(cachedPromise);
 					}
 					else
 					{
-						Promise cachedPromise = next;
-						next = next.NextInternal;
-						waitPromise.Complete(() =>
+						ValueLinkedQueue<Promise> waitingPromises;
+						bool queued = continuePromises.TryGetValue(waitPromise, out waitingPromises);
+						waitingPromises.Enqueue(cachedPromise);
+						continuePromises[waitPromise] = waitingPromises;
+
+						if (!queued) // If queued is true, this is already going to continue, so don't subscribe to complete.
 						{
-							ContinueHandlingInternal(cachedPromise);
-						});
+							waitPromise.Complete(ContinueFrom);
+						}
 					}
 				}
 				branches.Clear();
@@ -46,8 +64,9 @@ namespace ProtoPromise
 			finallies = finallies2;
 			finallies2 = tempFinals;
 
-			Exception exception = null;
-			foreach (var promise in tempFinals)
+			ValueLinkedQueue<UnhandledException> exceptions = new ValueLinkedQueue<UnhandledException>();
+			ValueLinkedQueue<UnhandledException> rejections = new ValueLinkedQueue<UnhandledException>();
+			foreach (Promise promise in tempFinals)
 			{
 				promise.done |= AutoDone;
 				if (!promise.done)
@@ -75,20 +94,28 @@ namespace ProtoPromise
 					ObjectPool.AddInternal(prev);
 				}
 
-				exception = promise._exception;
-				ObjectPool.AddInternal(promise);
-				if (exception != null)
+				var rejection = promise.rejectedValue;
+				if (typeof(UnhandledExceptionException).IsAssignableFrom(typeof(UnhandledExceptionException)))
 				{
-
-					// TODO: repool rest of tempFinals promises here.
-
-					break;
+					exceptions.Enqueue(rejection);
 				}
+				else
+				{
+					rejections.Enqueue(rejection);
+				}
+				ObjectPool.AddInternal(promise);
 			}
 			finallies2.Clear();
-			if (exception != null)
+
+			// Debug log all the uncaught rejections, then throw the first uncaught exception.
+			for (var exception = exceptions.Peek(); exception != null; exception = exception.nextInternal)
 			{
-				throw exception is UnhandledException ? exception : new UnhandledException(exception);
+				UnityEngine.Debug.LogException(exception);
+
+			}
+			if (rejections.Peek() != null)
+			{
+				throw rejections.Peek();
 			}
 		}
 
@@ -118,7 +145,7 @@ namespace ProtoPromise
 
 		public PromiseVoidReject() : base() { }
 
-		protected override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
 		{
 			rejectHandler.Invoke();
 			rejectHandler = null;
@@ -126,28 +153,22 @@ namespace ProtoPromise
 		}
 	}
 
-	internal class PromiseVoidReject<TException> : Promise, ILinked<PromiseVoidReject<TException>> where TException : Exception
+	internal class PromiseVoidReject<TReject> : Promise, ILinked<PromiseVoidReject<TReject>>
 	{
-		PromiseVoidReject<TException> ILinked<PromiseVoidReject<TException>>.Next { get { return (PromiseVoidReject<TException>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidReject<TReject> ILinked<PromiseVoidReject<TReject>>.Next { get { return (PromiseVoidReject<TReject>) NextInternal; } set { NextInternal = value; } }
 
-		internal Action<TException> rejectHandler;
+		internal Action<TReject> rejectHandler;
 
-		public PromiseVoidReject() : base() { }
-
-		protected override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
 		{
-			if (exception is UnhandledException)
+			TReject val;
+			if (rejectVal.TryGetValueAs(out val))
 			{
-				exception = exception.InnerException;
-			}
-
-			if (exception is TException)
-			{
-				rejectHandler.Invoke((TException) exception);
+				rejectHandler.Invoke(val);
 			}
 			else
 			{
-				_exception = exception;
+				rejectedValue = rejectVal;
 			}
 			rejectHandler = null;
 			return null;
@@ -160,9 +181,7 @@ namespace ProtoPromise
 
 		internal Func<TArg> rejectHandler;
 
-		public PromiseArgReject() : base() { }
-
-		protected override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
 		{
 			Value = rejectHandler.Invoke();
 			rejectHandler = null;
@@ -176,9 +195,7 @@ namespace ProtoPromise
 
 		internal Func<Promise> rejectHandler;
 
-		public PromiseVoidRejectPromise() : base() { }
-
-		protected override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
 		{
 			State = PromiseState.Pending;
 			var temp = rejectHandler;
@@ -187,58 +204,47 @@ namespace ProtoPromise
 		}
 	}
 
-	internal class PromiseArgReject<TException, TArg> : Promise<TArg>, ILinked<PromiseArgReject<TException, TArg>> where TException : Exception
+	internal class PromiseArgReject<TReject, TArg> : Promise<TArg>, ILinked<PromiseArgReject<TReject, TArg>>
 	{
-		PromiseArgReject<TException, TArg> ILinked<PromiseArgReject<TException, TArg>>.Next { get { return (PromiseArgReject<TException, TArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgReject<TReject, TArg> ILinked<PromiseArgReject<TReject, TArg>>.Next { get { return (PromiseArgReject<TReject, TArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TException, TArg> rejectHandler;
+		internal Func<TReject, TArg> rejectHandler;
 
-		public PromiseArgReject() : base() { }
-
-		protected override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
 		{
-			if (exception is UnhandledException)
+			TReject val;
+			if (rejectVal.TryGetValueAs(out val))
 			{
-				exception = exception.InnerException;
-			}
-
-			if (exception is TException)
-			{
-				Value = rejectHandler.Invoke((TException) exception);
+				Value = rejectHandler.Invoke(val);
 			}
 			else
 			{
-				_exception = exception;
+				rejectedValue = rejectVal;
 			}
 			rejectHandler = null;
 			return null;
 		}
 	}
 
-	internal class PromiseArgRejectPromise<TException> : Promise, ILinked<PromiseArgRejectPromise<TException>> where TException : Exception
+	internal class PromiseArgRejectPromise<TReject> : Promise, ILinked<PromiseArgRejectPromise<TReject>>
 	{
-		PromiseArgRejectPromise<TException> ILinked<PromiseArgRejectPromise<TException>>.Next { get { return (PromiseArgRejectPromise<TException>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgRejectPromise<TReject> ILinked<PromiseArgRejectPromise<TReject>>.Next { get { return (PromiseArgRejectPromise<TReject>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TException, Promise> rejectHandler;
+		internal Func<TReject, Promise> rejectHandler;
 
-		public PromiseArgRejectPromise() : base() { }
-
-		protected override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
 		{
-			if (exception is UnhandledException)
-			{
-				exception = exception.InnerException;
-			}
-
 			State = PromiseState.Pending;
 			Promise promise;
-			if (exception is TException)
+
+			TReject val;
+			if (rejectVal.TryGetValueAs(out val))
 			{
-				promise = PromiseHelper(rejectHandler.Invoke((TException) exception));
+				promise = PromiseHelper(rejectHandler.Invoke(val));
 			}
 			else
 			{
-				_exception = exception;
+				rejectedValue = rejectVal;
 				promise = null;
 			}
 			rejectHandler = null;
@@ -252,9 +258,7 @@ namespace ProtoPromise
 
 		internal Func<Promise<TArg>> rejectHandler;
 
-		public PromiseArgRejectPromiseT() : base() { }
-
-		protected override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
 		{
 			State = PromiseState.Pending;
 			var temp = rejectHandler;
@@ -263,30 +267,25 @@ namespace ProtoPromise
 		}
 	}
 
-	internal class PromiseArgRejectPromiseT<TException, TArg> : Promise<TArg>, ILinked<PromiseArgRejectPromiseT<TException, TArg>> where TException : Exception
+	internal class PromiseArgRejectPromiseT<TReject, TArg> : Promise<TArg>, ILinked<PromiseArgRejectPromiseT<TReject, TArg>>
 	{
-		PromiseArgRejectPromiseT<TException, TArg> ILinked<PromiseArgRejectPromiseT<TException, TArg>>.Next { get { return (PromiseArgRejectPromiseT<TException, TArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgRejectPromiseT<TReject, TArg> ILinked<PromiseArgRejectPromiseT<TReject, TArg>>.Next { get { return (PromiseArgRejectPromiseT<TReject, TArg>) NextInternal; } set { NextInternal = value; } }
 
-		internal Func<TException, Promise<TArg>> rejectHandler;
+		internal Func<TReject, Promise<TArg>> rejectHandler;
 
-		public PromiseArgRejectPromiseT() : base() { }
-
-		protected override sealed Promise RejectProtected(Exception exception)
+		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
 		{
-			if (exception is UnhandledException)
-			{
-				exception = exception.InnerException;
-			}
-
 			State = PromiseState.Pending;
 			Promise promise;
-			if (exception is TException)
+
+			TReject val;
+			if (rejectVal.TryGetValueAs(out val))
 			{
-				promise = PromiseHelper(rejectHandler.Invoke((TException) exception));
+				promise = PromiseHelper(rejectHandler.Invoke(val));
 			}
 			else
 			{
-				_exception = exception;
+				rejectedValue = rejectVal;
 				promise = null;
 			}
 			rejectHandler = null;
@@ -303,8 +302,6 @@ namespace ProtoPromise
 		FinallyPromise ILinked<FinallyPromise>.Next { get { return (FinallyPromise) NextInternal; } set { NextInternal = value; } }
 
 		internal Action finalHandler;
-
-		public FinallyPromise() : base() { }
 
 		internal void HandleFinallies()
 		{
@@ -323,13 +320,13 @@ namespace ProtoPromise
 				}
 				catch (Exception e)
 				{
-					if (_exception != null)
+					if (rejectedValue != null)
 					{
 						UnityEngine.Debug.LogError("A new exception was encountered in a Promise.Finally callback before an old exception was handled." +
 									   " The new exception will replace the old exception propagating up the final promise chain.\nOld exception:\n" +
-									   _exception);
+									   rejectedValue);
 					}
-					_exception = e;
+					rejectedValue = new UnhandledExceptionException().SetValue(e);
 				}
 			}
 			handlingFinals = false;
@@ -350,8 +347,6 @@ namespace ProtoPromise
 
 		internal Func<Action<Deferred>> resolveHandler;
 
-		public PromiseFromDeferred() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			var temp = resolveHandler;
@@ -365,8 +360,6 @@ namespace ProtoPromise
 		PromiseFromDeferred<T> ILinked<PromiseFromDeferred<T>>.Next { get { return (PromiseFromDeferred<T>) NextInternal; } set { NextInternal = value; } }
 
 		internal Func<Action<Deferred<T>>> resolveHandler;
-
-		public PromiseFromDeferred() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -382,8 +375,6 @@ namespace ProtoPromise
 
 		internal Func<TValue, Action<Deferred>> resolveHandler;
 
-		public PromiseFromDeferredT() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			var temp = resolveHandler;
@@ -397,8 +388,6 @@ namespace ProtoPromise
 		PromiseFromDeferredT<T, TValue> ILinked<PromiseFromDeferredT<T, TValue>>.Next { get { return (PromiseFromDeferredT<T, TValue>) NextInternal; } set { NextInternal = value; } }
 
 		internal Func<TValue, Action<Deferred<T>>> resolveHandler;
-
-		public PromiseFromDeferredT() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -415,8 +404,6 @@ namespace ProtoPromise
 
 		internal Action resolveHandler;
 
-		public PromiseVoidFromVoidResolve() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			resolveHandler.Invoke();
@@ -431,8 +418,6 @@ namespace ProtoPromise
 
 		internal Action resolveHandler;
 
-		public PromiseVoidFromVoid() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			resolveHandler.Invoke();
@@ -441,13 +426,11 @@ namespace ProtoPromise
 		}
 	}
 
-	internal sealed class PromiseVoidFromVoid<TException> : PromiseVoidReject<TException>, ILinked<PromiseVoidFromVoid<TException>> where TException : Exception
+	internal sealed class PromiseVoidFromVoid<TReject> : PromiseVoidReject<TReject>, ILinked<PromiseVoidFromVoid<TReject>>
 	{
-		PromiseVoidFromVoid<TException> ILinked<PromiseVoidFromVoid<TException>>.Next { get { return (PromiseVoidFromVoid<TException>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromVoid<TReject> ILinked<PromiseVoidFromVoid<TReject>>.Next { get { return (PromiseVoidFromVoid<TReject>) NextInternal; } set { NextInternal = value; } }
 
 		internal Action resolveHandler;
-
-		public PromiseVoidFromVoid() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -465,8 +448,6 @@ namespace ProtoPromise
 
 		internal Action<TArg> resolveHandler;
 
-		public PromiseVoidFromArgResolve() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
@@ -481,8 +462,6 @@ namespace ProtoPromise
 
 		internal Action<TArg> resolveHandler;
 
-		public PromiseVoidFromArg() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
@@ -491,13 +470,11 @@ namespace ProtoPromise
 		}
 	}
 
-	internal sealed class PromiseVoidFromArg<TArg, TException> : PromiseVoidReject<TException>, ILinked<PromiseVoidFromArg<TArg, TException>> where TException : Exception
+	internal sealed class PromiseVoidFromArg<TArg, TReject> : PromiseVoidReject<TReject>, ILinked<PromiseVoidFromArg<TArg, TReject>>
 	{
-		PromiseVoidFromArg<TArg, TException> ILinked<PromiseVoidFromArg<TArg, TException>>.Next { get { return (PromiseVoidFromArg<TArg, TException>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromArg<TArg, TReject> ILinked<PromiseVoidFromArg<TArg, TReject>>.Next { get { return (PromiseVoidFromArg<TArg, TReject>) NextInternal; } set { NextInternal = value; } }
 
 		internal Action<TArg> resolveHandler;
-
-		public PromiseVoidFromArg() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -515,8 +492,6 @@ namespace ProtoPromise
 
 		internal Func<TResult> resolveHandler;
 
-		public PromiseArgFromResultResolve() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			Value = resolveHandler.Invoke();
@@ -531,8 +506,6 @@ namespace ProtoPromise
 
 		internal Func<TResult> resolveHandler;
 
-		public PromiseArgFromResult() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			Value = resolveHandler.Invoke();
@@ -541,13 +514,11 @@ namespace ProtoPromise
 		}
 	}
 
-	internal sealed class PromiseArgFromResult<TResult, TException> : PromiseArgReject<TException, TResult>, ILinked<PromiseArgFromResult<TResult, TException>> where TException : Exception
+	internal sealed class PromiseArgFromResult<TResult, TReject> : PromiseArgReject<TReject, TResult>, ILinked<PromiseArgFromResult<TResult, TReject>>
 	{
-		PromiseArgFromResult<TResult, TException> ILinked<PromiseArgFromResult<TResult, TException>>.Next { get { return (PromiseArgFromResult<TResult, TException>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromResult<TResult, TReject> ILinked<PromiseArgFromResult<TResult, TReject>>.Next { get { return (PromiseArgFromResult<TResult, TReject>) NextInternal; } set { NextInternal = value; } }
 
 		internal Func<TResult> resolveHandler;
-
-		public PromiseArgFromResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -565,8 +536,6 @@ namespace ProtoPromise
 
 		internal Func<TArg, TResult> resolveHandler;
 
-		public PromiseArgFromArgResultResolve() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			Value = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
@@ -581,8 +550,6 @@ namespace ProtoPromise
 
 		internal Func<TArg, TResult> resolveHandler;
 
-		public PromiseArgFromArgResult() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			Value = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
@@ -591,13 +558,11 @@ namespace ProtoPromise
 		}
 	}
 
-	internal sealed class PromiseArgFromArgResult<TArg, TResult, TException> : PromiseArgReject<TException, TResult>, ILinked<PromiseArgFromArgResult<TArg, TResult, TException>> where TException : Exception
+	internal sealed class PromiseArgFromArgResult<TArg, TResult, TReject> : PromiseArgReject<TReject, TResult>, ILinked<PromiseArgFromArgResult<TArg, TResult, TReject>>
 	{
-		PromiseArgFromArgResult<TArg, TResult, TException> ILinked<PromiseArgFromArgResult<TArg, TResult, TException>>.Next { get { return (PromiseArgFromArgResult<TArg, TResult, TException>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromArgResult<TArg, TResult, TReject> ILinked<PromiseArgFromArgResult<TArg, TResult, TReject>>.Next { get { return (PromiseArgFromArgResult<TArg, TResult, TReject>) NextInternal; } set { NextInternal = value; } }
 
 		internal Func<TArg, TResult> resolveHandler;
-
-		public PromiseArgFromArgResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -615,8 +580,6 @@ namespace ProtoPromise
 
 		internal Func<Promise> resolveHandler;
 
-		public PromiseVoidFromPromiseResultResolve() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
@@ -632,8 +595,6 @@ namespace ProtoPromise
 
 		internal Func<Promise> resolveHandler;
 
-		public PromiseVoidFromPromiseResult() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
@@ -643,13 +604,11 @@ namespace ProtoPromise
 		}
 	}
 
-	internal sealed class PromiseVoidFromPromiseResult<TException> : PromiseArgRejectPromise<TException>, ILinked<PromiseVoidFromPromiseResult<TException>> where TException : Exception
+	internal sealed class PromiseVoidFromPromiseResult<TReject> : PromiseArgRejectPromise<TReject>, ILinked<PromiseVoidFromPromiseResult<TReject>>
 	{
-		PromiseVoidFromPromiseResult<TException> ILinked<PromiseVoidFromPromiseResult<TException>>.Next { get { return (PromiseVoidFromPromiseResult<TException>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromPromiseResult<TReject> ILinked<PromiseVoidFromPromiseResult<TReject>>.Next { get { return (PromiseVoidFromPromiseResult<TReject>) NextInternal; } set { NextInternal = value; } }
 
 		internal Func<Promise> resolveHandler;
-
-		public PromiseVoidFromPromiseResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -668,8 +627,6 @@ namespace ProtoPromise
 
 		internal Func<TArg, Promise> resolveHandler;
 
-		public PromiseVoidFromPromiseArgResultResolve() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
@@ -685,8 +642,6 @@ namespace ProtoPromise
 
 		internal Func<TArg, Promise> resolveHandler;
 
-		public PromiseVoidFromPromiseArgResult() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
@@ -696,13 +651,11 @@ namespace ProtoPromise
 		}
 	}
 
-	internal sealed class PromiseVoidFromPromiseArgResult<TArg, TException> : PromiseArgRejectPromise<TException>, ILinked<PromiseVoidFromPromiseArgResult<TArg, TException>> where TException : Exception
+	internal sealed class PromiseVoidFromPromiseArgResult<TArg, TReject> : PromiseArgRejectPromise<TReject>, ILinked<PromiseVoidFromPromiseArgResult<TArg, TReject>>
 	{
-		PromiseVoidFromPromiseArgResult<TArg, TException> ILinked<PromiseVoidFromPromiseArgResult<TArg, TException>>.Next { get { return (PromiseVoidFromPromiseArgResult<TArg, TException>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromPromiseArgResult<TArg, TReject> ILinked<PromiseVoidFromPromiseArgResult<TArg, TReject>>.Next { get { return (PromiseVoidFromPromiseArgResult<TArg, TReject>) NextInternal; } set { NextInternal = value; } }
 
 		internal Func<TArg, Promise> resolveHandler;
-
-		public PromiseVoidFromPromiseArgResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -721,8 +674,6 @@ namespace ProtoPromise
 
 		internal Func<Promise<TArg>> resolveHandler;
 
-		public PromiseArgFromPromiseResultResolve() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
@@ -738,8 +689,6 @@ namespace ProtoPromise
 
 		internal Func<Promise<TArg>> resolveHandler;
 
-		public PromiseArgFromPromiseResult() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
@@ -749,13 +698,11 @@ namespace ProtoPromise
 		}
 	}
 
-	internal sealed class PromiseArgFromPromiseResult<TArg, TException> : PromiseArgRejectPromiseT<TException, TArg>, ILinked<PromiseArgFromPromiseResult<TArg, TException>> where TException : Exception
+	internal sealed class PromiseArgFromPromiseResult<TArg, TReject> : PromiseArgRejectPromiseT<TReject, TArg>, ILinked<PromiseArgFromPromiseResult<TArg, TReject>>
 	{
-		PromiseArgFromPromiseResult<TArg, TException> ILinked<PromiseArgFromPromiseResult<TArg, TException>>.Next { get { return (PromiseArgFromPromiseResult<TArg, TException>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromPromiseResult<TArg, TReject> ILinked<PromiseArgFromPromiseResult<TArg, TReject>>.Next { get { return (PromiseArgFromPromiseResult<TArg, TReject>) NextInternal; } set { NextInternal = value; } }
 
 		internal Func<Promise<TArg>> resolveHandler;
-
-		public PromiseArgFromPromiseResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
@@ -774,8 +721,6 @@ namespace ProtoPromise
 
 		internal Func<PArg, Promise<TArg>> resolveHandler;
 
-		public PromiseArgFromPromiseArgResultResolve() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
@@ -789,8 +734,6 @@ namespace ProtoPromise
 
 		internal Func<PArg, Promise<TArg>> resolveHandler;
 
-		public PromiseArgFromPromiseArgResult() : base() { }
-
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
@@ -798,13 +741,11 @@ namespace ProtoPromise
 		}
 	}
 
-	internal sealed class PromiseArgFromPromiseArgResult<TArg, PArg, TException> : PromiseArgRejectPromiseT<TException, TArg>, ILinked<PromiseArgFromPromiseArgResult<TArg, PArg, TException>> where TException : Exception
+	internal sealed class PromiseArgFromPromiseArgResult<TArg, PArg, TReject> : PromiseArgRejectPromiseT<TReject, TArg>, ILinked<PromiseArgFromPromiseArgResult<TArg, PArg, TReject>>
 	{
-		PromiseArgFromPromiseArgResult<TArg, PArg, TException> ILinked<PromiseArgFromPromiseArgResult<TArg, PArg, TException>>.Next { get { return (PromiseArgFromPromiseArgResult<TArg, PArg, TException>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromPromiseArgResult<TArg, PArg, TReject> ILinked<PromiseArgFromPromiseArgResult<TArg, PArg, TReject>>.Next { get { return (PromiseArgFromPromiseArgResult<TArg, PArg, TReject>) NextInternal; } set { NextInternal = value; } }
 
 		internal Func<PArg, Promise<TArg>> resolveHandler;
-
-		public PromiseArgFromPromiseArgResult() : base() { }
 
 		internal override Promise ResolveProtected(IValueContainer feed)
 		{

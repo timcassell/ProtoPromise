@@ -51,7 +51,7 @@ namespace ProtoPromise
 			object obj;
 			if (pool.TryGetValue(typeof(T), out obj))
 			{
-				LinkedStackClass<T> stack = (LinkedStackClass<T>) obj;
+				LinkedStack<T> stack = (LinkedStack<T>) obj;
 				if (!stack.IsEmpty)
 				{
 					item = stack.Pop();
@@ -75,14 +75,14 @@ namespace ProtoPromise
 			}
 
 			object obj;
-			LinkedStackClass<T> stack;
+			LinkedStack<T> stack;
 			if (pool.TryGetValue(typeof(T), out obj))
 			{
-				stack = (LinkedStackClass<T>) obj;
+				stack = (LinkedStack<T>) obj;
 			}
 			else
 			{
-				pool[typeof(T)] = stack = new LinkedStackClass<T>();
+				pool.Add(typeof(T), stack = new LinkedStack<T>());
 			}
 			stack.Push(item);
 		}

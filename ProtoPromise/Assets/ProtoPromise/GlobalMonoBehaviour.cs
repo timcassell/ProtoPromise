@@ -10,7 +10,7 @@ namespace ProtoPromise
 		{
 			public Routine Next { get; set; }
 			public Action onComplete;
-			bool _continue = false;
+			public bool _continue = false;
 
 			public object Current { get; set; }
 
@@ -18,14 +18,16 @@ namespace ProtoPromise
 
 			public bool MoveNext()
 			{
+				bool cont = _continue;
 				// As a coroutine, this will wait for the Current's yield, then execute this once, then stop.
-				if (_continue)
+				if (cont)
 				{
-					onComplete.Invoke();
+					Action comp = onComplete;
 					onComplete = null;
 					Current = null;
-					// Place this back in the pool.
+					// Place this back in the pool before invoking in case the invocation will re-use this.
 					ObjectPool.AddInternal(this);
+					comp.Invoke();
 				}
 				return _continue = !_continue;
 			}
@@ -54,29 +56,34 @@ namespace ProtoPromise
 			}
 		}
 
-		private class Routine<T> : IEnumerator, ILinked<Routine<T>>, IResetable, IPoolable, IValueContainer<T>
+		private class Routine<T> : IEnumerator, ILinked<Routine<T>>, IResetable, IPoolable
 		{
 			public Routine<T> Next { get; set; }
 			public Action<T> onComplete;
-			bool _continue = false;
+			public bool _continue = false;
 
-			public T Value { get; set; }
-			public object Current { get { return Value; } }
+			public T Current { get; set; }
+			object IEnumerator.Current { get { return Current; } }
 
 			public bool CanPool { get { return true; } }
 
 			public bool MoveNext()
 			{
 				// As a coroutine, this will wait for the Current's yield, then execute this once, then stop.
-				if (_continue)
+				bool cont = _continue;
+				_continue = !_continue;
+				if (cont)
 				{
-					onComplete.Invoke(Value);
+					Action<T> comp = onComplete;
 					onComplete = null;
-					Value = default(T);
-					// Place this back in the pool.
+					T tempObj = Current;
+					Current = default(T);
+					// Place this back in the pool before invoking in case the invocation will re-use this.
 					ObjectPool.AddInternal(this);
+					comp.Invoke(tempObj);
+					return false;
 				}
-				return _continue = !_continue;
+				return true;
 			}
 
 			public void Cancel(bool invokeOnComplete)
@@ -84,9 +91,9 @@ namespace ProtoPromise
 				_instance.StopCoroutine(this);
 				if (invokeOnComplete)
 				{
-					onComplete.Invoke(Value);
+					onComplete.Invoke(Current);
 				}
-				Value = default(T);
+				Current = default(T);
 				onComplete = null;
 			}
 
@@ -138,12 +145,23 @@ namespace ProtoPromise
 
 			// Grab from pool or create new if pool is empty.
 			Routine<TYieldInstruction> routine;
-			if (!ObjectPool.TryTakeInternal(out routine))
+			if (ObjectPool.TryTakeInternal(out routine))
+			{
+				if (routine._continue)
+				{
+					// The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
+					routine._continue = false;
+					routine.Current = yieldInstruction;
+					routine.onComplete = onComplete;
+					return routine.Cancel;
+				}
+			}
+			else
 			{
 				routine = new Routine<TYieldInstruction>();
 			}
 
-			routine.Value = yieldInstruction;
+			routine.Current = yieldInstruction;
 			routine.onComplete = onComplete;
 			Instance.StartCoroutine(routine);
 
@@ -169,7 +187,18 @@ namespace ProtoPromise
 
 			// Grab from pool or create new if pool is empty.
 			Routine routine;
-			if (!ObjectPool.TryTakeInternal(out routine))
+			if (ObjectPool.TryTakeInternal(out routine))
+			{
+				if (routine._continue)
+				{
+					// The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
+					routine._continue = false;
+					routine.Current = yieldInstruction;
+					routine.onComplete = onComplete;
+					return routine.Cancel;
+				}
+			}
+			else
 			{
 				routine = new Routine();
 			}
@@ -194,7 +223,17 @@ namespace ProtoPromise
 
 			// Grab from pool or create new if pool is empty.
 			Routine routine;
-			if (!ObjectPool.TryTakeInternal(out routine))
+			if (ObjectPool.TryTakeInternal(out routine))
+			{
+				if (routine._continue)
+				{
+					// The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
+					routine._continue = false;
+					routine.onComplete = onComplete;
+					return;
+				}
+			}
+			else
 			{
 				routine = new Routine();
 			}

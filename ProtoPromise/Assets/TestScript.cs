@@ -60,7 +60,7 @@ public class TestScript : MonoBehaviour
 		//task
 		//		.ContinueWith(x => Debug.Log("deferred1.done"))
 		//		.ContinueWith(async x => await task2)
-	 // 			.ContinueWith(x => { Debug.Log("deferred.then " + x); /*throw new InvalidCastException();*/ return "deferred string."; })
+		// 			.ContinueWith(x => { Debug.Log("deferred.then " + x); /*throw new InvalidCastException();*/ return "deferred string."; })
 		//		.ContinueWith(x => { Debug.Log("Promise.Done"); return x; })
 		//		//.Catch<ArgumentException>( e => { Debug.LogError("caught argument"); return e.ToString(); })
 		//		//.Catch((Exception e) => { Debug.LogError("caught exception"); return e.ToString(); })
@@ -84,46 +84,75 @@ public class TestScript : MonoBehaviour
 		//task2.RunSynchronously();
 
 
-		Deferred deferred = Promise.Deferred();
-		Deferred<int> deferred2 = Promise.Deferred<int>();
+		//Deferred deferred = Promise.Deferred();
+		//Deferred<int> deferred2 = Promise.Deferred<int>();
 
 
-		var promise2 = deferred2.Promise
-            .Then(i => { Debug.Log("deferred2.done: " + i); return i; })
-			//.End()
-			//.Catch(e => {})
-			//.Fail<int>(x => { Debug.LogError("Rejected: " + x); return x;})
-			;
+		//var promise2 = deferred2.Promise
+		//          .Then(i => { Debug.Log("deferred2.done: " + i); return i; })
+		//	//.End()
+		//	//.Catch(e => {})
+		//	//.Fail<int>(x => { Debug.LogError("Rejected: " + x); return x;})
+		//	;
 
-		deferred.Promise
-				.Then(() => Debug.Log("deferred1.then"))
-				.Complete(() => Debug.LogWarning("Promise 1 complete"))
-				.Then(() => promise2)
-	  			.Then(x => { Debug.Log("deferred.then " + x); /*throw new InvalidCastException();*/ return "deferred string."; })
-				.Then(x => { Debug.Log("Promise.Done"); return x; })
-				//.Catch<ArgumentException>( e => { Debug.LogError("caught argument"); return e.ToString(); })
-				.Catch((Exception e) => { Debug.LogError("caught exception"); return e.ToString(); })
-				.Then(s => { Debug.Log("deferred.done " + s); return s; })
-				.Then(s => { Debug.Log(s); return s; })
-				.Done(() => Debug.LogWarning("Promise 1 done"))
-		        .Finally(() => { Debug.LogError("promise 1 final"); })
-				;
+		//deferred.Promise
+		//		.Then(() => Debug.Log("deferred1.then"))
+		//		.Complete(() => Debug.LogWarning("Promise 1 complete"))
+		//		.Then(() => promise2)
+		// 			.Then(x => { Debug.Log("deferred.then " + x); /*throw new InvalidCastException();*/ return "deferred string."; })
+		//		.Then(x => { Debug.Log("Promise.Done"); return x; })
+		//		//.Catch<ArgumentException>( e => { Debug.LogError("caught argument"); return e.ToString(); })
+		//		.Catch((Exception e) => { Debug.LogError("caught exception"); return e.ToString(); })
+		//		.Then(s => { Debug.Log("deferred.done " + s); return s; })
+		//		.Then(s => { Debug.Log(s); return s; })
+		//		.Done(() => Debug.LogWarning("Promise 1 done"))
+		//        .Finally(() => { Debug.LogError("promise 1 final"); })
+		//		;
 
 
-		promise2
-			.Then(() => { Debug.Log("deferred2.then"); return "deferred2 string."; })
-			.Then(s => Debug.Log(s))
-			.Complete(() => Debug.Log("deferred2 complete"))
-			//.Catch((Exception e) => { Debug.LogError("caught exception"); throw e; return e.ToString(); })
-			.Done()
-			.Finally(() => { Debug.LogError("promise 2 final"); })
-			//.Then(s => s)
-			;
-		deferred2.Resolve(199);
+		//promise2
+		//	.Then(() => { Debug.Log("deferred2.then"); return "deferred2 string."; })
+		//	.Then(s => Debug.Log(s))
+		//	.Complete(() => Debug.Log("deferred2 complete"))
+		//	//.Catch((Exception e) => { Debug.LogError("caught exception"); throw e; return e.ToString(); })
+		//	.Done()
+		//	.Finally(() => { Debug.LogError("promise 2 final"); })
+		//	//.Then(s => s)
+		//	;
+		//deferred2.Resolve(199);
 
-		deferred.Resolve();
+		//deferred.Resolve();
 
-		var cancelation = ProtoPromise.GlobalMonoBehaviour.Yield(new WaitForSeconds(5), Debug.Log);
+		try
+		{
+			throw new Exception();
+		}
+		catch (Exception e)
+		{
+			Debug.LogException(new UnhandledExceptionException().SetValue(e));
+		}
+
+
+		var temp = voidToVoid;
+		yield return null;
+		var temp2 = voidToVoid;
+		yield return null;
+		var temp3 = voidToVoid;
+		yield return null;
+		var temp4 = voidToVoid;
+		yield return null;
+		Debug.Log(null);
+		yield return null;
+
+		ProtoPromise.GlobalMonoBehaviour.Yield(voidToVoid);
+
+		yield return null;
+		yield return null;
+		yield return null;
+		yield return null;
+		yield return null;
+
+		var cancelation = ProtoPromise.GlobalMonoBehaviour.Yield(waitFrame, Cb);
 
 		//yield return new WaitForSeconds(1);
 
@@ -148,10 +177,17 @@ public class TestScript : MonoBehaviour
 		//	deferred2.Throw(e);
 		//}
 
-		StartCoroutine(Executor());
-		StartCoroutine(Log());
+		//StartCoroutine(Executor());
+		//StartCoroutine(Log());
 
 		yield break;
+	}
+
+	WaitForSeconds waitFrame = new WaitForSeconds(0f);
+
+	void Cb ()
+	{
+		ProtoPromise.GlobalMonoBehaviour.Yield(Cb);
 	}
 
 	IEnumerator Executor()
@@ -185,10 +221,12 @@ public class TestScript : MonoBehaviour
 		goto Reset;
 	}
 
+	WaitForEndOfFrame waitForEndOfFrame = new WaitForEndOfFrame();
+
 	IEnumerator Log()
 	{
 		Reset:
-		yield return new WaitForEndOfFrame();
+		yield return waitForEndOfFrame;
 
 		switch(runType)
 		{

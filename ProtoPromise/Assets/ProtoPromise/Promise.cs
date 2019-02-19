@@ -63,9 +63,9 @@ namespace ProtoPromise
 
 		private Promise previous;
 
-		protected Exception _exception;
+		protected UnhandledException rejectedValue;
 		
-		private LinkedQueueClass<Promise> NextBranches = new LinkedQueueClass<Promise>();
+		private LinkedQueue<Promise> NextBranches = new LinkedQueue<Promise>();
 		internal ADeferred DeferredInternal { get; set; }
 
 		private ushort nextCount; // This is a ushort to conserve memory footprint. Change this to uint or ulong if you need to use .Then or .Catch on one promise more than 65,535 times (branching, not chaining).
@@ -120,13 +120,13 @@ namespace ProtoPromise
 				}
 				catch (Exception e)
 				{
-					if (_exception != null)
+					if (rejectedValue != null)
 					{
 						UnityEngine.Debug.LogError("A new exception was encountered in a Promise.Complete callback before an old exception was handled." +
 									   " The new exception will replace the old exception propagating up the promise chain.\nOld exception:\n" +
-									   _exception);
+									   rejectedValue);
 					}
-					_exception = e;
+					rejectedValue = new UnhandledExceptionException().SetValue(e);
 				}
 			}
 			Action<Promise> stateAdoptionCallback;
@@ -151,10 +151,8 @@ namespace ProtoPromise
 
 		internal Promise HandleInternal(Promise feed)
 		{
-			Exception exception = feed._exception;
-			var promise = exception == null ? ResolveInternal(feed) : RejectInternal(exception);
-
-			return promise;
+			UnhandledException rejectVal = feed.rejectedValue;
+			return rejectVal == null ? ResolveInternal(feed) : RejectInternal(rejectVal);
 		}
 
 		internal Promise ResolveInternal(IValueContainer feed)
@@ -168,7 +166,7 @@ namespace ProtoPromise
 			}
 			catch (Exception e)
 			{
-				_exception = e;
+				rejectedValue = new UnhandledExceptionException().SetValue(e);
 			}
 			handling = false;
 			OnComplete();
@@ -180,27 +178,27 @@ namespace ProtoPromise
 			return null;
 		}
 
-		internal Promise RejectInternal(Exception exception)
+		internal Promise RejectInternal(UnhandledException rejectVal)
 		{
 			handling = true;
 			State = PromiseState.Rejected;
 			Promise promise = null;
 			try
 			{
-				promise = RejectProtected(exception);
+				promise = RejectProtected(rejectVal);
 			}
 			catch (Exception e)
 			{
-				_exception = e;
+				rejectedValue = new UnhandledExceptionException().SetValue(e);
 			}
 			handling = false;
 			OnComplete();
 			return promise;
 		}
 
-		protected virtual Promise RejectProtected(Exception exception)
+		protected virtual Promise RejectProtected(UnhandledException rejectVal)
 		{
-			_exception = exception;
+			rejectedValue = rejectVal;
 			return null;
 		}
 
@@ -526,24 +524,30 @@ namespace ProtoPromise
 			return promise;
 		}
 
+		// This is to avoid closures to save some GC allocations.
+		protected void Complete(Action<Promise> onComplete)
+		{
+			Action<Promise> callback;
+			completePromises.TryGetValue(this, out callback);
+			callback += onComplete;
+			completePromises[this] = callback;
+		}
+
 		protected Promise PromiseHelper(Promise promise)
 		{
 			if (promise.State == PromiseState.Pending)
 			{
-				Action<Promise> callback;
-				completePromises.TryGetValue(promise, out callback);
-				callback += p =>
+				promise.Complete(p =>
 				{
 					State = p.State;
-					_exception = p._exception;
+					rejectedValue = p.rejectedValue;
 					OnComplete();
-				};
-				completePromises[promise] = callback;
+				});
 			}
 			else
 			{
 				State = promise.State;
-				_exception = promise._exception;
+				rejectedValue = promise.rejectedValue;
 				OnComplete();
 			}
 
@@ -566,7 +570,8 @@ namespace ProtoPromise
 
 		internal Promise() : base() { }
 
-		public T Value { get; protected set; }
+		protected T Value { get; set; }
+		T IValueContainer<T>.Value { get { return Value; } }
 
 		internal void ResolveInternal(T value)
 		{
@@ -823,22 +828,19 @@ namespace ProtoPromise
 		{
 			if (promise.State == PromiseState.Pending)
 			{
-				Action<Promise> callback;
-				completePromises.TryGetValue(promise, out callback);
-				callback += p =>
+				promise.Complete(p =>
 				{
 					Promise<T> pt = (Promise<T>) p;
 					State = pt.State;
 					Value = pt.Value;
-					_exception = pt._exception;
+					rejectedValue = pt.rejectedValue;
 					OnComplete();
-				};
-				completePromises[promise] = callback;
+				});
 			}
 			else
 			{
 				State = promise.State;
-				_exception = promise._exception;
+				rejectedValue = promise.rejectedValue;
 				OnComplete();
 			}
 

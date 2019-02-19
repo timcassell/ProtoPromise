@@ -5,6 +5,104 @@ using UnityEngine;
 
 namespace ProtoPromise
 {
+	public abstract class UnhandledException : Exception, ILinked<UnhandledException>
+	{
+		internal UnhandledException nextInternal;
+		UnhandledException ILinked<UnhandledException>.Next { get { return nextInternal; } set { nextInternal = value; } }
+
+		public abstract bool TryGetValueAs<U>(out U value);
+	}
+
+	public class UnhandledException<T> : UnhandledException, IValueContainer<T>, ILinked<UnhandledException<T>>
+	{
+		UnhandledException<T> ILinked<UnhandledException<T>>.Next { get { return (UnhandledException<T>) nextInternal; } set { nextInternal = value; } }
+
+		public T Value { get; private set; }
+
+		public UnhandledException<T> SetValue(T value, string stackTrace)
+		{
+			Value = value;
+			_stackTrace = stackTrace;
+			return this;
+		}
+
+		public override sealed bool TryGetValueAs<U>(out U value)
+		{
+			if (typeof(T).IsValueType)
+			{
+				// This avoids boxing value types.
+				if (this is UnhandledException<U>)
+				{
+					value = (this as UnhandledException<U>).Value;
+					return true;
+				}
+			}
+			else
+			{
+				object val = Value;
+				if (typeof(U).IsAssignableFrom(typeof(T)) || (val != null && val is U))
+				{
+					value = (U) val;
+					return true;
+				}
+			}
+			value = default(U);
+			return false;
+		}
+
+		protected string _stackTrace;
+		public override sealed string StackTrace
+		{
+			get
+			{
+				return _stackTrace;
+			}
+		}
+
+		public override string Message
+		{
+			get
+			{
+				return "A rejected value was not handled: " + (Value.ToString() ?? "null");
+			}
+		}
+	}
+
+	public sealed class UnhandledExceptionException : UnhandledException<Exception>, ILinked<UnhandledExceptionException>
+	{
+		UnhandledExceptionException ILinked<UnhandledExceptionException>.Next { get { return (UnhandledExceptionException) nextInternal; } set { nextInternal = value; } }
+
+		// value is never null
+		public UnhandledExceptionException SetValue(Exception value)
+		{
+			base.SetValue(value, value.StackTrace);
+			return this;
+		}
+
+		public new UnhandledExceptionException SetValue(Exception value, string stackTrace)
+		{
+			if (value == null)
+			{
+				value = new NullReferenceException();
+			}
+			else
+			{
+				stackTrace = value.StackTrace + "\n" + stackTrace;
+			}
+			base.SetValue(value, stackTrace);
+			return this;
+		}
+
+		public override string Message
+		{
+			get
+			{
+				return "An exception was encountered that was not handled.";
+			}
+		}
+	}
+
+
 	internal interface ITryInvokable
 	{
 		bool TryInvoke<U>(U arg, out bool invoked);
@@ -301,7 +399,7 @@ namespace ProtoPromise
 	/// <summary>
 	///  This structure is unsuitable for general purpose.
 	/// </summary>
-	internal class LinkedStackClass<T> where T : class, ILinked<T>
+	internal class LinkedStack<T> where T : class, ILinked<T>
 	{
 		T first;
 
@@ -334,7 +432,7 @@ namespace ProtoPromise
 	/// <summary>
 	///  This structure is unsuitable for general purpose.
 	/// </summary>
-	internal struct LinkedStackStruct<T> where T : class, ILinked<T>
+	internal struct ValueLinkedStack<T> where T : class, ILinked<T>
 	{
 		T first;
 
@@ -367,10 +465,18 @@ namespace ProtoPromise
 	/// <summary>
 	///  This structure is unsuitable for general purpose.
 	/// </summary>
-	internal class LinkedQueueClass<T> where T : class, ILinked<T>
+	internal class LinkedQueue<T> where T : class, ILinked<T>
 	{
 		T first;
 		T last;
+
+		public LinkedQueue() { }
+
+		public LinkedQueue(T item)
+		{
+			item.Next = null;
+			first = last = item;
+		}
 
 		public void Clear()
 		{
@@ -400,12 +506,12 @@ namespace ProtoPromise
 	/// <summary>
 	///  This structure is unsuitable for general purpose.
 	/// </summary>
-	internal struct LinkedQueueStruct<T>  where T : class, ILinked<T>
+	internal struct ValueLinkedQueue<T>  where T : class, ILinked<T>
 	{
 		T first;
 		T last;
 
-		public LinkedQueueStruct(T item)
+		public ValueLinkedQueue(T item)
 		{
 			item.Next = null;
 			first = last = item;
