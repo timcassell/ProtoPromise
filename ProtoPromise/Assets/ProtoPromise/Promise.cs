@@ -94,7 +94,7 @@ namespace ProtoPromise
 			poolOptsInternal = 0;
 			State = PromiseState.Pending;
 			done = false;
-			if (objectPool.poolType == PoolType.OptOut)
+			if (PromisePool.poolType == PoolType.OptOut)
 			{
 				((IPoolable) this).OptIn();
 			}

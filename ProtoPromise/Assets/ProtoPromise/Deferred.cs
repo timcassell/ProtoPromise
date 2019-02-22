@@ -107,8 +107,6 @@ namespace ProtoPromise
 
 	public sealed class Deferred : ADeferred, IPoolable
 	{
-		bool IPoolable.CanPool { get { return ((IPoolable) Promise).CanPool; } }
-
 		void IPoolable.OptIn()
 		{
 			((IPoolable) Promise).OptIn();
@@ -138,8 +136,6 @@ namespace ProtoPromise
 
 	public sealed class Deferred<T> : ADeferred, IPoolable
 	{
-		bool IPoolable.CanPool { get { return ((IPoolable) Promise).CanPool; } }
-
 		void IPoolable.OptIn()
 		{
 			((IPoolable) Promise).OptIn();
