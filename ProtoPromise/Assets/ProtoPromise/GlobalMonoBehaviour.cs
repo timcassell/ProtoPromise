@@ -4,9 +4,32 @@ using UnityEngine;
 
 namespace ProtoPromise
 {
+	public interface IYieldIntercept
+	{
+		/// <summary>
+		/// Return <see langword="true"/> if the <paramref name="yieldInstruction"/> was intercepted, <see langword="false"/> otherwise.
+		/// If it was intercepted, call <paramref name="onComplete"/> when the yieldInstruction has completed.
+		/// If <paramref name="cancel"/> is invoked, it should stop the wait, then immediately call <paramref name="onComplete"/> if the value passed in is <see langword="true"/>
+		/// </summary>
+		bool InterceptYieldInstruction<TYieldInstruction>(TYieldInstruction yieldInstruction, Action onComplete, out Action<bool> cancel);
+		/// <summary>
+		/// Return <see langword="true"/> if the call was intercepted, <see langword="false"/> otherwise.
+		/// If it was intercepted, call <paramref name="onComplete"/> when a single frame has passed.
+		/// </summary>
+		bool InterceptSingleFrameWait(Action onComplete);
+	}
+
 	public class GlobalMonoBehaviour : MonoBehaviour
 	{
-		private class Routine : IEnumerator, ILinked<Routine>, IResetable, IPoolable
+		/// <summary>
+		/// Assign an object to this to use a third party or your own coroutines.
+		/// If this is null, or the Intercept calls return false, Unity's coroutines will be used.
+		/// </summary>
+		public static IYieldIntercept yieldInterceptor;
+
+		private static ObjectPool objectPool = new ObjectPool();
+
+		private class Routine : IEnumerator, ILinked<Routine>
 		{
 			public Routine Next { get; set; }
 			public Action onComplete;
@@ -14,50 +37,53 @@ namespace ProtoPromise
 
 			public object Current { get; set; }
 
-			public bool CanPool { get { return true; } }
-
 			public bool MoveNext()
 			{
-				bool cont = _continue;
 				// As a coroutine, this will wait for the Current's yield, then execute this once, then stop.
-				if (cont)
+				if (_continue)
 				{
-					Action comp = onComplete;
-					onComplete = null;
-					Current = null;
-					// Place this back in the pool before invoking in case the invocation will re-use this.
-					ObjectPool.AddInternal(this);
-					comp.Invoke();
+					Complete();
 				}
-				return _continue = !_continue;
+				return _continue = !_continue; // If the continue flag is flipped from the callback, this will continue to run.
+			}
+
+			void Complete()
+			{
+				Action comp = onComplete;
+				onComplete = null;
+				Current = null;
+				// Place this back in the pool before invoking in case the invocation will re-use this.
+				objectPool.AddInternal(this);
+				comp.Invoke();
 			}
 
 			public void Cancel(bool invokeOnComplete)
 			{
+				if (onComplete == null)
+				{
+					// It was already completed, do nothing.
+					return;
+				}
+
+				_continue = false;
 				_instance.StopCoroutine(this);
 				if (invokeOnComplete)
 				{
-					onComplete.Invoke();
+					Complete();
 				}
-				Current = null;
-				onComplete = null;
+				else
+				{
+					onComplete = null;
+					Current = null;
+					objectPool.AddInternal(this);
+				}
 			}
 
-			public void Reset() { }
-
-			public void OptIn()
-			{
-				throw new NotImplementedException();
-			}
-
-			public void OptOut()
-			{
-				throw new NotImplementedException();
-			}
+			void IEnumerator.Reset() { }
 		}
 
-		private class Routine<T> : IEnumerator, ILinked<Routine<T>>, IResetable, IPoolable
-		{
+		private class Routine<T> : IEnumerator, ILinked<Routine<T>>
+ 		{
 			public Routine<T> Next { get; set; }
 			public Action<T> onComplete;
 			public bool _continue = false;
@@ -65,50 +91,56 @@ namespace ProtoPromise
 			public T Current { get; set; }
 			object IEnumerator.Current { get { return Current; } }
 
-			public bool CanPool { get { return true; } }
-
 			public bool MoveNext()
 			{
 				// As a coroutine, this will wait for the Current's yield, then execute this once, then stop.
-				bool cont = _continue;
-				_continue = !_continue;
-				if (cont)
+				if (_continue)
 				{
-					Action<T> comp = onComplete;
-					onComplete = null;
-					T tempObj = Current;
-					Current = default(T);
-					// Place this back in the pool before invoking in case the invocation will re-use this.
-					ObjectPool.AddInternal(this);
-					comp.Invoke(tempObj);
+					Complete();
 					return false;
 				}
-				return true;
+				return _continue = !_continue;
+			}
+
+			public void Complete()
+			{
+				Action<T> comp = onComplete;
+				onComplete = null;
+				T tempObj = Current;
+				Current = default(T);
+				// Place this back in the pool before invoking in case the invocation will re-use this.
+				objectPool.AddInternal(this);
+				comp.Invoke(tempObj);
 			}
 
 			public void Cancel(bool invokeOnComplete)
 			{
-				_instance.StopCoroutine(this);
+				if (onComplete == null)
+				{
+					// It was already completed, do nothing.
+					return;
+				}
+
+				if (_continue) // If the yieldInstruction was intercepted, _continue will be false, so no need to stop Unity's coroutine.
+				{
+					_continue = false;
+					_instance.StopCoroutine(this);
+				}
 				if (invokeOnComplete)
 				{
-					onComplete.Invoke(Current);
+					Complete();
 				}
-				Current = default(T);
-				onComplete = null;
+				else
+				{
+					onComplete = null;
+					Current = default(T);
+					objectPool.AddInternal(this);
+				}
 			}
 
-			public void Reset() { }
-
-			public void OptIn()
-			{
-				throw new NotImplementedException();
-			}
-
-			public void OptOut()
-			{
-				throw new NotImplementedException();
-			}
+			void IEnumerator.Reset() { }
 		}
+
 
 		private static GlobalMonoBehaviour _instance;
 		static GlobalMonoBehaviour Instance
@@ -130,12 +162,13 @@ namespace ProtoPromise
 		/// Waits for <paramref name="yieldInstruction"/> to complete, then calls <paramref name="onComplete"/>.
 		/// If <paramref name="yieldInstruction"/> is not a Unity supported <see cref="YieldInstruction"/> or <see cref="CustomYieldInstruction"/>, then this will wait for 1 frame.
 		/// If you are using Unity 5.3 or later and <paramref name="yieldInstruction"/> is an <see cref="IEnumerator"/>, it will be started and yielded as a Coroutine by Unity. Earlier versions will simply wait 1 frame.
-		/// Returns a cancelation delegate, which will stop the waiting if invoked. If the value passed in is true, <paramref name="onComplete"/> will be invoked immediately, otherwise it will not be invoked.
+		/// Returns a cancelation delegate, which will stop the waiting if invoked. If the value passed in is <see langword="true"/>, <paramref name="onComplete"/> will be invoked immediately, otherwise it will not be invoked.
+		/// Note: the cancelation delegate should be discarded when it is invoked or when <paramref name="onComplete"/> is invoked. 
 		/// </summary>
 		/// <param name="yieldInstruction">Yield instruction.</param>
 		/// <param name="onComplete">Callback</param>
 		/// <typeparam name="TYieldInstruction">The type of yield instruction.</typeparam>
-		/// <returns>Cancelation delegate to stop waiting. If the value passed in is true, <param name="onComplete"/> will be invoked immediately, otherwise it will not be invoked.</returns>
+		/// <returns>Cancelation delegate to stop waiting. If the value passed in is <see langword="true"/>, <param name="onComplete"/> will be invoked immediately, otherwise it will not be invoked.</returns>
 		public static Action<bool> Yield<TYieldInstruction>(TYieldInstruction yieldInstruction, Action<TYieldInstruction> onComplete)
 		{
 			if (onComplete == null)
@@ -145,25 +178,30 @@ namespace ProtoPromise
 
 			// Grab from pool or create new if pool is empty.
 			Routine<TYieldInstruction> routine;
-			if (ObjectPool.TryTakeInternal(out routine))
-			{
-				if (routine._continue)
-				{
-					// The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
-					routine._continue = false;
-					routine.Current = yieldInstruction;
-					routine.onComplete = onComplete;
-					return routine.Cancel;
-				}
-			}
-			else
+			if (!objectPool.TryTakeInternal(out routine))
 			{
 				routine = new Routine<TYieldInstruction>();
 			}
-
 			routine.Current = yieldInstruction;
 			routine.onComplete = onComplete;
-			Instance.StartCoroutine(routine);
+
+			// Try to intercept.
+			Action<bool> cancel;
+			if (yieldInterceptor != null && yieldInterceptor.InterceptYieldInstruction(yieldInstruction, routine.Complete, out cancel))
+			{
+				cancel += routine.Cancel;
+				return cancel;
+			}
+
+			if (routine._continue)
+			{
+				// The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
+				routine._continue = false;
+			}
+			else
+			{
+				Instance.StartCoroutine(routine);
+			}
 
 			return routine.Cancel;
 		}
@@ -172,12 +210,13 @@ namespace ProtoPromise
 		/// Waits for <paramref name="yieldInstruction"/> to complete, then calls <paramref name="onComplete"/>.
 		/// If <paramref name="yieldInstruction"/> is not a Unity supported <see cref="YieldInstruction"/> or <see cref="CustomYieldInstruction"/>, then this will wait for 1 frame.
 		/// If you are using Unity 5.3 or later and <paramref name="yieldInstruction"/> is an <see cref="IEnumerator"/>, it will be started and yielded as a Coroutine by Unity. Earlier versions will simply wait 1 frame.
-		/// Returns a cancelation delegate, which will stop the waiting if invoked. If the value passed in is true, <paramref name="onComplete"/> will be invoked immediately, otherwise it will not be invoked.
+		/// Returns a cancelation delegate, which will stop the waiting if invoked. If the value passed in is <see langword="true"/>, <paramref name="onComplete"/> will be invoked immediately, otherwise it will not be invoked.
+		/// Note: the cancelation delegate should be discarded when it is invoked or when <paramref name="onComplete"/> is invoked. 
 		/// </summary>
 		/// <param name="yieldInstruction">Yield instruction.</param>
 		/// <param name="onComplete">Callback</param>
 		/// <typeparam name="TYieldInstruction">The type of yield instruction.</typeparam>
-		/// <returns>Cancelation delegate to stop waiting. If the value passed in is true, <param name="onComplete"/> will be invoked immediately, otherwise it will not be invoked.</returns>
+		/// <returns>Cancelation delegate to stop waiting. If the value passed in is <see langword="true"/>, <param name="onComplete"/> will be invoked immediately, otherwise it will not be invoked.</returns>
 		public static Action<bool> Yield<TYieldInstruction>(TYieldInstruction yieldInstruction, Action onComplete)
 		{
 			if (onComplete == null)
@@ -185,9 +224,16 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onComplete");
 			}
 
+			// Try to intercept.
+			Action<bool> cancel;
+			if (yieldInterceptor != null && yieldInterceptor.InterceptYieldInstruction(yieldInstruction, onComplete, out cancel))
+			{
+				return cancel;
+			}
+
 			// Grab from pool or create new if pool is empty.
 			Routine routine;
-			if (ObjectPool.TryTakeInternal(out routine))
+			if (objectPool.TryTakeInternal(out routine))
 			{
 				if (routine._continue)
 				{
@@ -221,9 +267,15 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onComplete");
 			}
 
+			// Try to intercept.
+			if (yieldInterceptor != null && yieldInterceptor.InterceptSingleFrameWait(onComplete))
+			{
+				return;
+			}
+
 			// Grab from pool or create new if pool is empty.
 			Routine routine;
-			if (ObjectPool.TryTakeInternal(out routine))
+			if (objectPool.TryTakeInternal(out routine))
 			{
 				if (routine._continue)
 				{

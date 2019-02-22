@@ -136,7 +136,7 @@ namespace ProtoPromise
 	{
 	}
 
-	internal sealed class ValueContainer<T> : ValueContainer, IValueContainer<T>
+	internal class ValueContainer<T> : ValueContainer, IValueContainer<T>
 	{
 		public T Value { get; set; }
 	}
@@ -391,6 +391,43 @@ namespace ProtoPromise
 	}
 
 
+	internal class ObjectPool
+	{
+		private Dictionary<Type, object> pool = new Dictionary<Type, object>();
+
+		public bool TryTakeInternal<T>(out T item) where T : class, ILinked<T>
+		{
+			object obj;
+			if (pool.TryGetValue(typeof(T), out obj))
+			{
+				LinkedStack<T> stack = (LinkedStack<T>) obj;
+				if (!stack.IsEmpty)
+				{
+					item = stack.Pop();
+					return true;
+				}
+			}
+			item = default(T);
+			return false;
+		}
+
+		public void AddInternal<T>(T item) where T : class, ILinked<T>
+		{
+			object obj;
+			LinkedStack<T> stack;
+			if (pool.TryGetValue(typeof(T), out obj))
+			{
+				stack = (LinkedStack<T>) obj;
+			}
+			else
+			{
+				pool.Add(typeof(T), stack = new LinkedStack<T>());
+			}
+			stack.Push(item);
+		}
+	}
+
+
 	internal interface ILinked<T> where T : class, ILinked<T>
 	{
 		T Next { get; set; }
@@ -399,7 +436,7 @@ namespace ProtoPromise
 	/// <summary>
 	///  This structure is unsuitable for general purpose.
 	/// </summary>
-	internal class LinkedStack<T> where T : class, ILinked<T>
+	internal sealed class LinkedStack<T> where T : class, ILinked<T>
 	{
 		T first;
 
@@ -465,7 +502,7 @@ namespace ProtoPromise
 	/// <summary>
 	///  This structure is unsuitable for general purpose.
 	/// </summary>
-	internal class LinkedQueue<T> where T : class, ILinked<T>
+	internal sealed class LinkedQueue<T> where T : class, ILinked<T>
 	{
 		T first;
 		T last;

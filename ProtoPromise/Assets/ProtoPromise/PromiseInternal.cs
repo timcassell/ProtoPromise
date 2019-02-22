@@ -11,7 +11,7 @@ namespace ProtoPromise
 		private static void ContinueFrom(Promise promise)
 		{
 			ValueLinkedQueue<Promise> promises = continuePromises[promise];
-			for (Promise pr = promises.Peek(); pr != null; pr = pr.NextInternal)
+			for (Promise pr = promises.Peek(); pr != null; pr = pr._nextInternal)
 			{
 				ContinueHandlingInternal(pr);
 			}
@@ -22,13 +22,13 @@ namespace ProtoPromise
 		internal static void ContinueHandlingInternal(Promise current)
 		{
 			ValueLinkedQueue<Promise> nextHandles = new ValueLinkedQueue<Promise>(current);
-			for (; current != null; current = current.NextInternal)
+			for (; current != null; current = current._nextInternal)
 			{
 				LinkedQueue<Promise> branches = current.NextBranches;
 				for (Promise next = branches.Peek(); next != null;)
 				{
 					Promise cachedPromise = next;
-					next = next.NextInternal;
+					next = next._nextInternal;
 					Promise waitPromise = cachedPromise.HandleInternal(current);
 
 					if (waitPromise == null || waitPromise.State != PromiseState.Pending)
@@ -91,7 +91,7 @@ namespace ProtoPromise
 						}
 					}
 
-					ObjectPool.AddInternal(prev);
+					prev.AddToPool();
 				}
 
 				var rejection = promise.rejectedValue;
@@ -103,7 +103,7 @@ namespace ProtoPromise
 				{
 					rejections.Enqueue(rejection);
 				}
-				ObjectPool.AddInternal(promise);
+				promise.AddToPool();
 			}
 			finallies2.Clear();
 
@@ -137,13 +137,35 @@ namespace ProtoPromise
 
 
 	// TODO: add exception filters
+
+	// This is used to hook wait for another promise. This makes the waited promise think it had a branch that resolved its rejection.
+	internal class PromiseReject : Promise, ILinked<PromiseReject>
+	{
+		PromiseReject ILinked<PromiseReject>.Next { get { return (PromiseReject) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
+
+		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
+		{
+			return null;
+		}
+	}
+
 	internal class PromiseVoidReject : Promise, ILinked<PromiseVoidReject>
 	{
-		PromiseVoidReject ILinked<PromiseVoidReject>.Next { get { return (PromiseVoidReject) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidReject ILinked<PromiseVoidReject>.Next { get { return (PromiseVoidReject) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Action rejectHandler;
-
-		public PromiseVoidReject() : base() { }
 
 		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
 		{
@@ -155,7 +177,13 @@ namespace ProtoPromise
 
 	internal class PromiseVoidReject<TReject> : Promise, ILinked<PromiseVoidReject<TReject>>
 	{
-		PromiseVoidReject<TReject> ILinked<PromiseVoidReject<TReject>>.Next { get { return (PromiseVoidReject<TReject>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidReject<TReject> ILinked<PromiseVoidReject<TReject>>.Next { get { return (PromiseVoidReject<TReject>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Action<TReject> rejectHandler;
 
@@ -177,7 +205,13 @@ namespace ProtoPromise
 
 	internal class PromiseArgReject<TArg> : Promise<TArg>, ILinked<PromiseArgReject<TArg>>
 	{
-		PromiseArgReject<TArg> ILinked<PromiseArgReject<TArg>>.Next { get { return (PromiseArgReject<TArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgReject<TArg> ILinked<PromiseArgReject<TArg>>.Next { get { return (PromiseArgReject<TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TArg> rejectHandler;
 
@@ -191,7 +225,13 @@ namespace ProtoPromise
 
 	internal class PromiseVoidRejectPromise : Promise, ILinked<PromiseVoidRejectPromise>
 	{
-		PromiseVoidRejectPromise ILinked<PromiseVoidRejectPromise>.Next { get { return (PromiseVoidRejectPromise) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidRejectPromise ILinked<PromiseVoidRejectPromise>.Next { get { return (PromiseVoidRejectPromise) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<Promise> rejectHandler;
 
@@ -206,7 +246,13 @@ namespace ProtoPromise
 
 	internal class PromiseArgReject<TReject, TArg> : Promise<TArg>, ILinked<PromiseArgReject<TReject, TArg>>
 	{
-		PromiseArgReject<TReject, TArg> ILinked<PromiseArgReject<TReject, TArg>>.Next { get { return (PromiseArgReject<TReject, TArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgReject<TReject, TArg> ILinked<PromiseArgReject<TReject, TArg>>.Next { get { return (PromiseArgReject<TReject, TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TReject, TArg> rejectHandler;
 
@@ -228,7 +274,13 @@ namespace ProtoPromise
 
 	internal class PromiseArgRejectPromise<TReject> : Promise, ILinked<PromiseArgRejectPromise<TReject>>
 	{
-		PromiseArgRejectPromise<TReject> ILinked<PromiseArgRejectPromise<TReject>>.Next { get { return (PromiseArgRejectPromise<TReject>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgRejectPromise<TReject> ILinked<PromiseArgRejectPromise<TReject>>.Next { get { return (PromiseArgRejectPromise<TReject>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TReject, Promise> rejectHandler;
 
@@ -254,7 +306,13 @@ namespace ProtoPromise
 
 	internal class PromiseArgRejectPromiseT<TArg> : Promise<TArg>, ILinked<PromiseArgRejectPromiseT<TArg>>
 	{
-		PromiseArgRejectPromiseT<TArg> ILinked<PromiseArgRejectPromiseT<TArg>>.Next { get { return (PromiseArgRejectPromiseT<TArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgRejectPromiseT<TArg> ILinked<PromiseArgRejectPromiseT<TArg>>.Next { get { return (PromiseArgRejectPromiseT<TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<Promise<TArg>> rejectHandler;
 
@@ -269,7 +327,13 @@ namespace ProtoPromise
 
 	internal class PromiseArgRejectPromiseT<TReject, TArg> : Promise<TArg>, ILinked<PromiseArgRejectPromiseT<TReject, TArg>>
 	{
-		PromiseArgRejectPromiseT<TReject, TArg> ILinked<PromiseArgRejectPromiseT<TReject, TArg>>.Next { get { return (PromiseArgRejectPromiseT<TReject, TArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgRejectPromiseT<TReject, TArg> ILinked<PromiseArgRejectPromiseT<TReject, TArg>>.Next { get { return (PromiseArgRejectPromiseT<TReject, TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TReject, Promise<TArg>> rejectHandler;
 
@@ -299,7 +363,13 @@ namespace ProtoPromise
 	{
 		private bool handlingFinals;
 
-		FinallyPromise ILinked<FinallyPromise>.Next { get { return (FinallyPromise) NextInternal; } set { NextInternal = value; } }
+		FinallyPromise ILinked<FinallyPromise>.Next { get { return (FinallyPromise) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Action finalHandler;
 
@@ -343,7 +413,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseFromDeferred : Promise, ILinked<PromiseFromDeferred>
 	{
-		PromiseFromDeferred ILinked<PromiseFromDeferred>.Next { get { return (PromiseFromDeferred) NextInternal; } set { NextInternal = value; } }
+		PromiseFromDeferred ILinked<PromiseFromDeferred>.Next { get { return (PromiseFromDeferred) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<Action<Deferred>> resolveHandler;
 
@@ -357,7 +433,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseFromDeferred<T> : Promise<T>, ILinked<PromiseFromDeferred<T>>
 	{
-		PromiseFromDeferred<T> ILinked<PromiseFromDeferred<T>>.Next { get { return (PromiseFromDeferred<T>) NextInternal; } set { NextInternal = value; } }
+		PromiseFromDeferred<T> ILinked<PromiseFromDeferred<T>>.Next { get { return (PromiseFromDeferred<T>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<Action<Deferred<T>>> resolveHandler;
 
@@ -371,7 +453,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseFromDeferredT<TValue> : Promise, ILinked<PromiseFromDeferredT<TValue>>
 	{
-		PromiseFromDeferredT<TValue> ILinked<PromiseFromDeferredT<TValue>>.Next { get { return (PromiseFromDeferredT<TValue>) NextInternal; } set { NextInternal = value; } }
+		PromiseFromDeferredT<TValue> ILinked<PromiseFromDeferredT<TValue>>.Next { get { return (PromiseFromDeferredT<TValue>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TValue, Action<Deferred>> resolveHandler;
 
@@ -385,7 +473,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseFromDeferredT<T, TValue> : Promise<T>, ILinked<PromiseFromDeferredT<T, TValue>>
 	{
-		PromiseFromDeferredT<T, TValue> ILinked<PromiseFromDeferredT<T, TValue>>.Next { get { return (PromiseFromDeferredT<T, TValue>) NextInternal; } set { NextInternal = value; } }
+		PromiseFromDeferredT<T, TValue> ILinked<PromiseFromDeferredT<T, TValue>>.Next { get { return (PromiseFromDeferredT<T, TValue>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TValue, Action<Deferred<T>>> resolveHandler;
 
@@ -400,7 +494,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseVoidFromVoidResolve : Promise, ILinked<PromiseVoidFromVoidResolve>
 	{
-		PromiseVoidFromVoidResolve ILinked<PromiseVoidFromVoidResolve>.Next { get { return (PromiseVoidFromVoidResolve) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromVoidResolve ILinked<PromiseVoidFromVoidResolve>.Next { get { return (PromiseVoidFromVoidResolve) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Action resolveHandler;
 
@@ -414,7 +514,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseVoidFromVoid : PromiseVoidReject, ILinked<PromiseVoidFromVoid>
 	{
-		PromiseVoidFromVoid ILinked<PromiseVoidFromVoid>.Next { get { return (PromiseVoidFromVoid) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromVoid ILinked<PromiseVoidFromVoid>.Next { get { return (PromiseVoidFromVoid) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Action resolveHandler;
 
@@ -428,7 +534,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseVoidFromVoid<TReject> : PromiseVoidReject<TReject>, ILinked<PromiseVoidFromVoid<TReject>>
 	{
-		PromiseVoidFromVoid<TReject> ILinked<PromiseVoidFromVoid<TReject>>.Next { get { return (PromiseVoidFromVoid<TReject>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromVoid<TReject> ILinked<PromiseVoidFromVoid<TReject>>.Next { get { return (PromiseVoidFromVoid<TReject>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Action resolveHandler;
 
@@ -444,7 +556,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseVoidFromArgResolve<TArg> : Promise, ILinked<PromiseVoidFromArgResolve<TArg>>
 	{
-		PromiseVoidFromArgResolve<TArg> ILinked<PromiseVoidFromArgResolve<TArg>>.Next { get { return (PromiseVoidFromArgResolve<TArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromArgResolve<TArg> ILinked<PromiseVoidFromArgResolve<TArg>>.Next { get { return (PromiseVoidFromArgResolve<TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Action<TArg> resolveHandler;
 
@@ -458,7 +576,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseVoidFromArg<TArg> : PromiseVoidReject, ILinked<PromiseVoidFromArg<TArg>>
 	{
-		PromiseVoidFromArg<TArg> ILinked<PromiseVoidFromArg<TArg>>.Next { get { return (PromiseVoidFromArg<TArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromArg<TArg> ILinked<PromiseVoidFromArg<TArg>>.Next { get { return (PromiseVoidFromArg<TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Action<TArg> resolveHandler;
 
@@ -472,7 +596,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseVoidFromArg<TArg, TReject> : PromiseVoidReject<TReject>, ILinked<PromiseVoidFromArg<TArg, TReject>>
 	{
-		PromiseVoidFromArg<TArg, TReject> ILinked<PromiseVoidFromArg<TArg, TReject>>.Next { get { return (PromiseVoidFromArg<TArg, TReject>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromArg<TArg, TReject> ILinked<PromiseVoidFromArg<TArg, TReject>>.Next { get { return (PromiseVoidFromArg<TArg, TReject>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Action<TArg> resolveHandler;
 
@@ -488,7 +618,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseArgFromResultResolve<TResult> : Promise<TResult>, ILinked<PromiseArgFromResultResolve<TResult>>
 	{
-		PromiseArgFromResultResolve<TResult> ILinked<PromiseArgFromResultResolve<TResult>>.Next { get { return (PromiseArgFromResultResolve<TResult>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromResultResolve<TResult> ILinked<PromiseArgFromResultResolve<TResult>>.Next { get { return (PromiseArgFromResultResolve<TResult>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TResult> resolveHandler;
 
@@ -502,7 +638,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseArgFromResult<TResult> : PromiseArgReject<TResult>, ILinked<PromiseArgFromResult<TResult>>
 	{
-		PromiseArgFromResult<TResult> ILinked<PromiseArgFromResult<TResult>>.Next { get { return (PromiseArgFromResult<TResult>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromResult<TResult> ILinked<PromiseArgFromResult<TResult>>.Next { get { return (PromiseArgFromResult<TResult>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TResult> resolveHandler;
 
@@ -516,7 +658,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseArgFromResult<TResult, TReject> : PromiseArgReject<TReject, TResult>, ILinked<PromiseArgFromResult<TResult, TReject>>
 	{
-		PromiseArgFromResult<TResult, TReject> ILinked<PromiseArgFromResult<TResult, TReject>>.Next { get { return (PromiseArgFromResult<TResult, TReject>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromResult<TResult, TReject> ILinked<PromiseArgFromResult<TResult, TReject>>.Next { get { return (PromiseArgFromResult<TResult, TReject>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TResult> resolveHandler;
 
@@ -532,7 +680,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseArgFromArgResultResolve<TArg, TResult> : Promise<TResult>, ILinked<PromiseArgFromArgResultResolve<TArg, TResult>>
 	{
-		PromiseArgFromArgResultResolve<TArg, TResult> ILinked<PromiseArgFromArgResultResolve<TArg, TResult>>.Next { get { return (PromiseArgFromArgResultResolve<TArg, TResult>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromArgResultResolve<TArg, TResult> ILinked<PromiseArgFromArgResultResolve<TArg, TResult>>.Next { get { return (PromiseArgFromArgResultResolve<TArg, TResult>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TArg, TResult> resolveHandler;
 
@@ -546,7 +700,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseArgFromArgResult<TArg, TResult> : PromiseArgReject<TResult>, ILinked<PromiseArgFromArgResult<TArg, TResult>>
 	{
-		PromiseArgFromArgResult<TArg, TResult> ILinked<PromiseArgFromArgResult<TArg, TResult>>.Next { get { return (PromiseArgFromArgResult<TArg, TResult>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromArgResult<TArg, TResult> ILinked<PromiseArgFromArgResult<TArg, TResult>>.Next { get { return (PromiseArgFromArgResult<TArg, TResult>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TArg, TResult> resolveHandler;
 
@@ -560,7 +720,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseArgFromArgResult<TArg, TResult, TReject> : PromiseArgReject<TReject, TResult>, ILinked<PromiseArgFromArgResult<TArg, TResult, TReject>>
 	{
-		PromiseArgFromArgResult<TArg, TResult, TReject> ILinked<PromiseArgFromArgResult<TArg, TResult, TReject>>.Next { get { return (PromiseArgFromArgResult<TArg, TResult, TReject>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromArgResult<TArg, TResult, TReject> ILinked<PromiseArgFromArgResult<TArg, TResult, TReject>>.Next { get { return (PromiseArgFromArgResult<TArg, TResult, TReject>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TArg, TResult> resolveHandler;
 
@@ -576,7 +742,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseVoidFromPromiseResultResolve : Promise, ILinked<PromiseVoidFromPromiseResultResolve>
 	{
-		PromiseVoidFromPromiseResultResolve ILinked<PromiseVoidFromPromiseResultResolve>.Next { get { return (PromiseVoidFromPromiseResultResolve) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromPromiseResultResolve ILinked<PromiseVoidFromPromiseResultResolve>.Next { get { return (PromiseVoidFromPromiseResultResolve) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<Promise> resolveHandler;
 
@@ -591,7 +763,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseVoidFromPromiseResult : PromiseVoidRejectPromise, ILinked<PromiseVoidFromPromiseResult>
 	{
-		PromiseVoidFromPromiseResult ILinked<PromiseVoidFromPromiseResult>.Next { get { return (PromiseVoidFromPromiseResult) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromPromiseResult ILinked<PromiseVoidFromPromiseResult>.Next { get { return (PromiseVoidFromPromiseResult) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<Promise> resolveHandler;
 
@@ -606,7 +784,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseVoidFromPromiseResult<TReject> : PromiseArgRejectPromise<TReject>, ILinked<PromiseVoidFromPromiseResult<TReject>>
 	{
-		PromiseVoidFromPromiseResult<TReject> ILinked<PromiseVoidFromPromiseResult<TReject>>.Next { get { return (PromiseVoidFromPromiseResult<TReject>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromPromiseResult<TReject> ILinked<PromiseVoidFromPromiseResult<TReject>>.Next { get { return (PromiseVoidFromPromiseResult<TReject>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<Promise> resolveHandler;
 
@@ -623,7 +807,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseVoidFromPromiseArgResultResolve<TArg> : Promise, ILinked<PromiseVoidFromPromiseArgResultResolve<TArg>>
 	{
-		PromiseVoidFromPromiseArgResultResolve<TArg> ILinked<PromiseVoidFromPromiseArgResultResolve<TArg>>.Next { get { return (PromiseVoidFromPromiseArgResultResolve<TArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromPromiseArgResultResolve<TArg> ILinked<PromiseVoidFromPromiseArgResultResolve<TArg>>.Next { get { return (PromiseVoidFromPromiseArgResultResolve<TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TArg, Promise> resolveHandler;
 
@@ -638,7 +828,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseVoidFromPromiseArgResult<TArg> : PromiseVoidRejectPromise, ILinked<PromiseVoidFromPromiseArgResult<TArg>>
 	{
-		PromiseVoidFromPromiseArgResult<TArg> ILinked<PromiseVoidFromPromiseArgResult<TArg>>.Next { get { return (PromiseVoidFromPromiseArgResult<TArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromPromiseArgResult<TArg> ILinked<PromiseVoidFromPromiseArgResult<TArg>>.Next { get { return (PromiseVoidFromPromiseArgResult<TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TArg, Promise> resolveHandler;
 
@@ -653,7 +849,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseVoidFromPromiseArgResult<TArg, TReject> : PromiseArgRejectPromise<TReject>, ILinked<PromiseVoidFromPromiseArgResult<TArg, TReject>>
 	{
-		PromiseVoidFromPromiseArgResult<TArg, TReject> ILinked<PromiseVoidFromPromiseArgResult<TArg, TReject>>.Next { get { return (PromiseVoidFromPromiseArgResult<TArg, TReject>) NextInternal; } set { NextInternal = value; } }
+		PromiseVoidFromPromiseArgResult<TArg, TReject> ILinked<PromiseVoidFromPromiseArgResult<TArg, TReject>>.Next { get { return (PromiseVoidFromPromiseArgResult<TArg, TReject>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<TArg, Promise> resolveHandler;
 
@@ -670,7 +872,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseArgFromPromiseResultResolve<TArg> : Promise<TArg>, ILinked<PromiseArgFromPromiseResultResolve<TArg>>
 	{
-		PromiseArgFromPromiseResultResolve<TArg> ILinked<PromiseArgFromPromiseResultResolve<TArg>>.Next { get { return (PromiseArgFromPromiseResultResolve<TArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromPromiseResultResolve<TArg> ILinked<PromiseArgFromPromiseResultResolve<TArg>>.Next { get { return (PromiseArgFromPromiseResultResolve<TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<Promise<TArg>> resolveHandler;
 
@@ -685,7 +893,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseArgFromPromiseResult<TArg> : PromiseArgRejectPromiseT<TArg>, ILinked<PromiseArgFromPromiseResult<TArg>>
 	{
-		PromiseArgFromPromiseResult<TArg> ILinked<PromiseArgFromPromiseResult<TArg>>.Next { get { return (PromiseArgFromPromiseResult<TArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromPromiseResult<TArg> ILinked<PromiseArgFromPromiseResult<TArg>>.Next { get { return (PromiseArgFromPromiseResult<TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<Promise<TArg>> resolveHandler;
 
@@ -700,7 +914,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseArgFromPromiseResult<TArg, TReject> : PromiseArgRejectPromiseT<TReject, TArg>, ILinked<PromiseArgFromPromiseResult<TArg, TReject>>
 	{
-		PromiseArgFromPromiseResult<TArg, TReject> ILinked<PromiseArgFromPromiseResult<TArg, TReject>>.Next { get { return (PromiseArgFromPromiseResult<TArg, TReject>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromPromiseResult<TArg, TReject> ILinked<PromiseArgFromPromiseResult<TArg, TReject>>.Next { get { return (PromiseArgFromPromiseResult<TArg, TReject>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<Promise<TArg>> resolveHandler;
 
@@ -717,7 +937,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseArgFromPromiseArgResultResolve<TArg, PArg> : Promise<TArg>, ILinked<PromiseArgFromPromiseArgResultResolve<TArg, PArg>>
 	{
-		PromiseArgFromPromiseArgResultResolve<TArg, PArg> ILinked<PromiseArgFromPromiseArgResultResolve<TArg, PArg>>.Next { get { return (PromiseArgFromPromiseArgResultResolve<TArg, PArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromPromiseArgResultResolve<TArg, PArg> ILinked<PromiseArgFromPromiseArgResultResolve<TArg, PArg>>.Next { get { return (PromiseArgFromPromiseArgResultResolve<TArg, PArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<PArg, Promise<TArg>> resolveHandler;
 
@@ -730,7 +956,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseArgFromPromiseArgResult<TArg, PArg> : PromiseArgRejectPromiseT<TArg>, ILinked<PromiseArgFromPromiseArgResult<TArg, PArg>>
 	{
-		PromiseArgFromPromiseArgResult<TArg, PArg> ILinked<PromiseArgFromPromiseArgResult<TArg, PArg>>.Next { get { return (PromiseArgFromPromiseArgResult<TArg, PArg>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromPromiseArgResult<TArg, PArg> ILinked<PromiseArgFromPromiseArgResult<TArg, PArg>>.Next { get { return (PromiseArgFromPromiseArgResult<TArg, PArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<PArg, Promise<TArg>> resolveHandler;
 
@@ -743,7 +975,13 @@ namespace ProtoPromise
 
 	internal sealed class PromiseArgFromPromiseArgResult<TArg, PArg, TReject> : PromiseArgRejectPromiseT<TReject, TArg>, ILinked<PromiseArgFromPromiseArgResult<TArg, PArg, TReject>>
 	{
-		PromiseArgFromPromiseArgResult<TArg, PArg, TReject> ILinked<PromiseArgFromPromiseArgResult<TArg, PArg, TReject>>.Next { get { return (PromiseArgFromPromiseArgResult<TArg, PArg, TReject>) NextInternal; } set { NextInternal = value; } }
+		PromiseArgFromPromiseArgResult<TArg, PArg, TReject> ILinked<PromiseArgFromPromiseArgResult<TArg, PArg, TReject>>.Next { get { return (PromiseArgFromPromiseArgResult<TArg, PArg, TReject>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPool.AddInternal(this);
+		}
 
 		internal Func<PArg, Promise<TArg>> resolveHandler;
 

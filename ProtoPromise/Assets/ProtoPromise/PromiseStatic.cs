@@ -217,22 +217,24 @@ namespace ProtoPromise
 		public static Deferred Deferred()
 		{
 			Promise promise;
-			if (!ObjectPool.TryTakeInternal(out promise))
+			if (!objectPool.TryTakeInternal(out promise))
 			{
 				promise = new Promise();
 				new Deferred(promise);
 			}
+			promise.ResetInternal();
 			return (Deferred) promise.DeferredInternal;
 		}
 
 		public static Deferred<T> Deferred<T>()
 		{
 			Promise<T> promise;
-			if (!ObjectPool.TryTakeInternal(out promise))
+			if (!objectPool.TryTakeInternal(out promise))
 			{
 				promise = new Promise<T>();
 				new Deferred<T>(promise);
 			}
+			promise.ResetInternal();
 			return (Deferred<T>) promise.DeferredInternal;
 		}
 	}
