@@ -40,9 +40,7 @@ namespace ProtoPromise
 		// Dictionaries to use less memory for expected less used functions.
 		private static Dictionary<Promise, FinallyPromise> finals = new Dictionary<Promise, FinallyPromise>();
 		private static Dictionary<Promise, Action> completeVoids = new Dictionary<Promise, Action>();
-		protected static Dictionary<Promise, Action<Promise>> completePromises = new Dictionary<Promise, Action<Promise>>(); // Used to prevent anonymous closure allocations.
 		private static Dictionary<Promise, Action> cancels = new Dictionary<Promise, Action>();
-
 
 		//private static int idCounter = 0;
 		//public readonly int id;
@@ -69,11 +67,11 @@ namespace ProtoPromise
 			}
 		}
 
-		private Promise previous;
+		protected Promise previous;
 
-		protected UnhandledException rejectedValue;
+		internal UnhandledException rejectedValueInternal;
 		
-		private LinkedQueue<Promise> NextBranches = new LinkedQueue<Promise>();
+		internal LinkedQueue<Promise> NextBranchesInternal = new LinkedQueue<Promise>();
 		internal ADeferred DeferredInternal { get; set; }
 
 		private ushort nextCount; // This is a ushort to conserve memory footprint. Change this to uint or ulong if you need to use .Then or .Catch on one promise more than 65,535 times (branching, not chaining).
@@ -82,7 +80,7 @@ namespace ProtoPromise
 		protected bool done = false;
 		private bool handling = false; // This is to handle new callbacks being added from a callback that is being invoked. e.g. promise.Complete(() => { promise.Complete(DoSomethingElse); DoSomething(); })
 
-		public PromiseState State { get; protected set; }
+		public PromiseState State { get; internal set; }
 
 		internal Promise()
 		{
@@ -102,12 +100,10 @@ namespace ProtoPromise
 
 		private void OnFinally()
 		{
-			if (nextCount > 0)
+			if (nextCount == 0)
 			{
-				return;
+				AddFinal(this);
 			}
-
-			AddFinal(this);
 		}
 
 		private void HandleComplete()
@@ -128,20 +124,14 @@ namespace ProtoPromise
 				}
 				catch (Exception e)
 				{
-					if (rejectedValue != null)
+					if (rejectedValueInternal != null)
 					{
 						UnityEngine.Debug.LogError("A new exception was encountered in a Promise.Complete callback before an old exception was handled." +
 									   " The new exception will replace the old exception propagating up the promise chain.\nOld exception:\n" +
-									   rejectedValue);
+									   rejectedValueInternal);
 					}
-					rejectedValue = new UnhandledExceptionException().SetValue(e);
+					rejectedValueInternal = new UnhandledExceptionException().SetValue(e);
 				}
-			}
-			Action<Promise> stateAdoptionCallback;
-			if (completePromises.TryGetValue(this, out stateAdoptionCallback))
-			{
-				stateAdoptionCallback.Invoke(this);
-				completePromises.Remove(this);
 			}
 			handling = false;
 		}
@@ -150,19 +140,30 @@ namespace ProtoPromise
 		{
 			HandleComplete();
 			OnFinally();
-				if (nextCount == 0 && AutoDone)
-				{
-					done = true;
-					AddFinal(this);
-				}
 		}
 
 		public Promise OnCanceled(Action onCanceled)
 		{
-			Action cancel;
-			cancels.TryGetValue(this, out cancel);
-			cancel += onCanceled;
-			cancels[this] = cancel;
+			switch (State)
+			{
+				case PromiseState.Pending:
+				{
+					Action cancel;
+					cancels.TryGetValue(this, out cancel);
+					cancel += onCanceled;
+					cancels[this] = cancel;
+					break;
+				}
+				case PromiseState.Canceled:
+				{
+					Action cancel;
+					cancels.TryGetValue(this, out cancel);
+					cancel += onCanceled;
+					cancels[this] = cancel;
+					HandleCancel();
+					break;
+				}
+			}
 			return this;
 		}
 
@@ -170,72 +171,91 @@ namespace ProtoPromise
 		/// Cancels this promise and all .Then/.Catch promises that have been chained from this.
 		/// Does nothing if this promise isn't pending.
 		/// </summary>
-		public void Cancel()
+		public virtual void Cancel()
 		{
 			if (State != PromiseState.Pending)
 			{
 				return;
 			}
 			State = PromiseState.Canceled;
-
-			// TODO
+			//if (previous != null)
+			//{
+			//	--previous.nextCount; // Just mark the count as if this was removed, but don't actually remove this from the next branches (because would be O(N) operation).
+			//}
+			NextBranchesInternal.Clear();
+			nextCount = 0;
+			// TODO: cancel all branches promises as well.
+			HandleCancel();
+			OnFinally();
 		}
 
 		private void HandleCancel()
 		{
-
+			if (handling)
+			{
+				// This is already looping higher in the stack, so just return.
+				return;
+			}
+			handling = true;
+			Action cancel;
+			while (cancels.TryGetValue(this, out cancel))
+			{
+				cancels.Remove(this);
+				cancel.Invoke();
+			}
+			handling = false;
 		}
 
-		internal Promise HandleInternal(Promise feed)
+		internal PromiseWaitHelper HandleInternal(Promise feed)
 		{
-			UnhandledException rejectVal = feed.rejectedValue;
+			UnhandledException rejectVal = feed.rejectedValueInternal;
 			return rejectVal == null ? ResolveInternal(feed) : RejectInternal(rejectVal);
 		}
 
-		internal Promise ResolveInternal(IValueContainer feed)
+		internal PromiseWaitHelper ResolveInternal(IValueContainer feed)
 		{
 			handling = true;
 			State = PromiseState.Resolved;
-			Promise promise = null;
+			PromiseWaitHelper promise = null;
 			try
 			{
-				promise = ResolveProtected(feed);
+				promise = ResolveProtectedInternal(feed);
 			}
 			catch (Exception e)
 			{
-				rejectedValue = new UnhandledExceptionException().SetValue(e);
+				rejectedValueInternal = new UnhandledExceptionException().SetValue(e);
 			}
 			handling = false;
 			OnComplete();
 			return promise;
 		}
 
-		internal virtual Promise ResolveProtected(IValueContainer feed) // private protected not supported before c# 7.2, so must use internal.
+		internal virtual PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed) // private protected not supported before c# 7.2, so must use internal.
 		{
 			return null;
 		}
 
-		internal Promise RejectInternal(UnhandledException rejectVal)
+		internal PromiseWaitHelper RejectInternal(UnhandledException rejectVal)
 		{
 			handling = true;
 			State = PromiseState.Rejected;
-			Promise promise = null;
+			PromiseWaitHelper promise = null;
 			try
 			{
-				promise = RejectProtected(rejectVal);
+				promise = RejectProtectedInternal(rejectVal);
 			}
 			catch (Exception e)
 			{
-				rejectedValue = new UnhandledExceptionException().SetValue(e);
+				rejectedValueInternal = new UnhandledExceptionException().SetValue(e);
 			}
 			handling = false;
 			OnComplete();
 			return promise;
 		}
 
-		protected virtual Promise RejectProtected(UnhandledException rejectVal)
+		internal virtual PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal) // private protected not supported before c# 7.2, so must use internal.
 		{
-			rejectedValue = rejectVal;
+			rejectedValueInternal = rejectVal;
 			return null;
 		}
 
@@ -267,9 +287,17 @@ namespace ProtoPromise
 			}
 
 			done = true;
-			if (State != PromiseState.Pending && !handling)
+			if (!handling)
 			{
-				OnFinally();
+				switch(State)
+				{
+					case PromiseState.Rejected:
+					case PromiseState.Resolved:
+					{
+						OnFinally();
+						break;
+					}
+				}
 			}
 			return this;
 		}
@@ -295,10 +323,16 @@ namespace ProtoPromise
 		{
 			FinallyPromise promise = (FinallyPromise) Finally();
 			promise.finalHandler += onFinally;
-			if (promise.State != PromiseState.Pending)
+			switch (promise.State)
 			{
-				promise.HandleFinallies();
+				case PromiseState.Rejected:
+				case PromiseState.Resolved:
+				{
+					promise.HandleFinallies();
+					break;
+				}
 			}
+		
 			return promise;
 		}
 
@@ -308,9 +342,14 @@ namespace ProtoPromise
 			completeVoids.TryGetValue(this, out temp);
 			temp += onComplete;
 			completeVoids[this] = temp;
-			if (State != PromiseState.Pending)
+			switch (State)
 			{
-				HandleComplete();
+				case PromiseState.Rejected:
+				case PromiseState.Resolved:
+					{
+						HandleComplete();
+						break;
+					}
 			}
 			return this;
 		}
@@ -325,9 +364,9 @@ namespace ProtoPromise
 			newPromise.previous = this;
 			RemoveFinal(this);
 
-			if (State == PromiseState.Pending || NextBranches.Peek() != null)
+			if (State == PromiseState.Pending || NextBranchesInternal.Peek() != null)
 			{
-				NextBranches.Enqueue(newPromise);
+				NextBranchesInternal.Enqueue(newPromise);
 			}
 			else
 			{
@@ -599,44 +638,21 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		// This is to avoid closures to save some GC allocations.
-		protected void Complete(Action<Promise> onComplete)
+		internal PromiseWaitHelper WaitHelperInternal(Promise promise)
 		{
-			Action<Promise> callback;
-			completePromises.TryGetValue(this, out callback);
-			callback += onComplete;
-			completePromises[this] = callback;
-		}
-
-		protected Promise PromiseHelper(Promise promise)
-		{
-			if (promise.State == PromiseState.Pending)
+			// If promise already has a wait helper attached, just return it.
+			PromiseWaitHelper waitHelper;
+			if (!PromiseWaitHelper.helpers.TryGetValue(promise, out waitHelper))
 			{
-				promise.Complete(p =>
+				if (!objectPool.TryTakeInternal(out waitHelper))
 				{
-					State = p.State;
-					rejectedValue = p.rejectedValue;
-					OnComplete();
-				});
-			}
-			else
-			{
-				State = promise.State;
-				rejectedValue = promise.rejectedValue;
-				OnComplete();
-			}
+					waitHelper = new PromiseWaitHelper();
+				}
+				waitHelper.ResetInternal();
 
-			// Manually add a catch in case promise.done is true.
-			PromiseReject rejectPromise;
-			if (!objectPool.TryTakeInternal(out rejectPromise))
-			{
-				rejectPromise = new PromiseReject();
+				promise.HookupNewPromise(waitHelper);
 			}
-			rejectPromise.ResetInternal();
-
-			promise.HookupNewPromise(rejectPromise);
-
-			return rejectPromise;
+			return waitHelper;
 		}
 	}
 
@@ -652,8 +668,8 @@ namespace ProtoPromise
 
 		internal Promise() : base() { }
 
-		protected T Value { get; set; }
-		T IValueContainer<T>.Value { get { return Value; } }
+		internal T ValueInternal { get; set; }
+		T IValueContainer<T>.Value { get { return ValueInternal; } }
 
 		public new Promise<T> OnCanceled(Action onCanceled)
 		{
@@ -663,17 +679,17 @@ namespace ProtoPromise
 
 		internal void ResolveInternal(T value)
 		{
-			Value = value;
+			ValueInternal = value;
 
 			State = PromiseState.Resolved;
 			OnComplete();
 		}
 
-		internal override Promise ResolveProtected(IValueContainer feed)
-		{
-			Value = ((IValueContainer<T>) feed).Value;
-			return null;
-		}
+		//internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		//{
+		//	Value = ((IValueContainer<T>) feed).Value;
+		//	return null;
+		//}
 
 		public new Promise<T> Notification<TNotify>(Action<TNotify> onNotification)
 		{
@@ -948,38 +964,23 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		protected Promise PromiseHelper(Promise<T> promise)
+		internal PromiseWaitHelper WaitHelperInternal(Promise<T> promise)
 		{
-			if (promise.State == PromiseState.Pending)
+			// If promise already has a wait helper attached, just return it.
+			PromiseWaitHelper waitHelper;
+			if (!PromiseWaitHelper.helpers.TryGetValue(promise, out waitHelper))
 			{
-				promise.Complete(p =>
+				PromiseWaitHelper<T> waitHelperT;
+				if (!objectPool.TryTakeInternal(out waitHelperT))
 				{
-					Promise<T> pt = (Promise<T>) p;
-					State = pt.State;
-					Value = pt.Value;
-					rejectedValue = pt.rejectedValue;
-					OnComplete();
-				});
-			}
-			else
-			{
-				State = promise.State;
-				Value = promise.Value;
-				rejectedValue = promise.rejectedValue;
-				OnComplete();
-			}
+					waitHelperT = new PromiseWaitHelper<T>();
+				}
+				waitHelper = waitHelperT;
+				waitHelper.ResetInternal();
 
-			// Manually add a catch that does nothing. This makes the waited promise think it had a branch that resolved its rejection.
-			PromiseReject rejectPromise;
-			if (!objectPool.TryTakeInternal(out rejectPromise))
-			{
-				rejectPromise = new PromiseReject();
+				promise.HookupNewPromise(waitHelper);
 			}
-			rejectPromise.ResetInternal();
-
-			promise.HookupNewPromise(rejectPromise);
-
-			return rejectPromise;
+			return waitHelper;
 		}
 	}
 }

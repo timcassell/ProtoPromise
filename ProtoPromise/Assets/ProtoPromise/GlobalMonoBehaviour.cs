@@ -22,7 +22,7 @@ namespace ProtoPromise
 	public class GlobalMonoBehaviour : MonoBehaviour
 	{
 		/// <summary>
-		/// Assign an object to this to use a third party or your own coroutines.
+		/// Assign an object to this to use your own or third party coroutines or other yield methods.
 		/// If this is null, or the Intercept calls return false, Unity's coroutines will be used.
 		/// </summary>
 		public static IYieldIntercept yieldInterceptor;
@@ -160,7 +160,7 @@ namespace ProtoPromise
 
 		/// <summary>
 		/// Waits for <paramref name="yieldInstruction"/> to complete, then calls <paramref name="onComplete"/>.
-		/// If <paramref name="yieldInstruction"/> is not a Unity supported <see cref="YieldInstruction"/> or <see cref="CustomYieldInstruction"/>, then this will wait for 1 frame.
+		/// If <paramref name="yieldInstruction"/> is not a Unity supported <see cref="YieldInstruction"/> or <see cref="CustomYieldInstruction"/>, and it is not intercepted, then this will wait for 1 frame.
 		/// If you are using Unity 5.3 or later and <paramref name="yieldInstruction"/> is an <see cref="IEnumerator"/>, it will be started and yielded as a Coroutine by Unity. Earlier versions will simply wait 1 frame.
 		/// Returns a cancelation delegate, which will stop the waiting if invoked. If the value passed in is <see langword="true"/>, <paramref name="onComplete"/> will be invoked immediately, otherwise it will not be invoked.
 		/// Note: the cancelation delegate should be discarded when it is invoked or when <paramref name="onComplete"/> is invoked. 
@@ -208,7 +208,7 @@ namespace ProtoPromise
 
 		/// <summary>
 		/// Waits for <paramref name="yieldInstruction"/> to complete, then calls <paramref name="onComplete"/>.
-		/// If <paramref name="yieldInstruction"/> is not a Unity supported <see cref="YieldInstruction"/> or <see cref="CustomYieldInstruction"/>, then this will wait for 1 frame.
+		/// If <paramref name="yieldInstruction"/> is not a Unity supported <see cref="YieldInstruction"/> or <see cref="CustomYieldInstruction"/>, and it is not intercepted, then this will wait for 1 frame.
 		/// If you are using Unity 5.3 or later and <paramref name="yieldInstruction"/> is an <see cref="IEnumerator"/>, it will be started and yielded as a Coroutine by Unity. Earlier versions will simply wait 1 frame.
 		/// Returns a cancelation delegate, which will stop the waiting if invoked. If the value passed in is <see langword="true"/>, <paramref name="onComplete"/> will be invoked immediately, otherwise it will not be invoked.
 		/// Note: the cancelation delegate should be discarded when it is invoked or when <paramref name="onComplete"/> is invoked. 

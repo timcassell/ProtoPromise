@@ -7,34 +7,153 @@ namespace ProtoPromise
 	{
 		public static bool AutoDone = false;
 
+
+		// Acts like a compiler-generated closure class, except this can be re-used.
+		private class PromiseClosure : ILinked<PromiseClosure>
+		{
+			PromiseClosure ILinked<PromiseClosure>.Next { get; set; }
+
+			public Promise promise;
+			public int index;
+			public AllClosure allClosure;
+
+			private Deferred AddToPoolAndGetDeferred()
+			{
+				var deferred = allClosure.masterDeferred;
+				allClosure.masterDeferred = null;
+				objectPool.AddInternal(allClosure);
+				promise = null;
+				objectPool.AddInternal(this);
+				return deferred;
+			}
+
+			public void ResolveClosure()
+			{
+				if (allClosure.masterDeferred.State == PromiseState.Pending && --allClosure.waiting == 0)
+				{
+					AddToPoolAndGetDeferred().Resolve();
+					return;
+				}
+				AddToPoolAndGetDeferred();
+			}
+
+			public void RejectClosure()
+			{
+				if (allClosure.masterDeferred.State == PromiseState.Pending)
+				{
+					var p = promise;
+					AddToPoolAndGetDeferred().RejectInternal(p.rejectedValueInternal);
+					return;
+				}
+				AddToPoolAndGetDeferred();
+			}
+		}
+
+		// Acts like a compiler-generated closure class, except this can be re-used.
+		private class AllClosure : ILinked<AllClosure>
+		{
+			AllClosure ILinked<AllClosure>.Next { get; set; }
+
+			public Deferred masterDeferred;
+			public int waiting;
+		}
+
+		// Acts like a compiler-generated closure class, except this can be re-used.
+		private class PromiseClosure<T> : ILinked<PromiseClosure<T>>
+		{
+			PromiseClosure<T> ILinked<PromiseClosure<T>>.Next { get; set; }
+
+			public Promise<T> promise;
+			public int index;
+			public AllClosure<T> allClosure;
+
+			private Deferred<T[]> AddToPoolAndGetDeferred()
+			{
+				var deferred = allClosure.masterDeferred;
+				allClosure.args = null;
+				allClosure.masterDeferred = null;
+				objectPool.AddInternal(allClosure);
+				promise = null;
+				objectPool.AddInternal(this);
+				return deferred;
+			}
+
+			public void ResolveClosure(T arg)
+			{
+				if (allClosure.masterDeferred.State == PromiseState.Pending)
+				{
+					var args = allClosure.args;
+					args[index] = arg;
+					if (--allClosure.waiting == 0)
+					{
+						AddToPoolAndGetDeferred().Resolve(args);
+						return;
+					}
+				}
+				AddToPoolAndGetDeferred();
+			}
+
+			public void RejectClosure()
+			{
+				if (allClosure.masterDeferred.State == PromiseState.Pending)
+				{
+					var p = promise;
+					AddToPoolAndGetDeferred().RejectInternal(p.rejectedValueInternal);
+					return;
+				}
+				AddToPoolAndGetDeferred();
+			}
+		}
+
+		// Acts like a compiler-generated closure class, except this can be re-used.
+		private class AllClosure<T> : ILinked<AllClosure<T>>
+		{
+			AllClosure<T> ILinked<AllClosure<T>>.Next { get; set; }
+
+			public Deferred<T[]> masterDeferred;
+			public int waiting;
+			public T[] args;
+		}
+
+
 		public static Promise<T[]> All<T>(params Promise<T>[] promises)
 		{
-			var masterDeferred = Deferred<T[]>();
+			if (promises.Length == 0)
+			{
+				throw new ArgumentException("promises.Length must be greater than zero");
+				//return Reject<T[], ArgumentException>(new ArgumentException("promises.Length must be greater than zero"));
+			}
+
+			AllClosure<T> allClosure;
+			if (!objectPool.TryTakeInternal(out allClosure))
+			{
+				allClosure = new AllClosure<T>();
+			}
 
 			int waiting = promises.Length;
-			T[] args = new T[waiting];
 
-			for (int i = 0, max = promises.Length; i < max; ++i)
+			allClosure.masterDeferred = Deferred<T[]>();
+			allClosure.waiting = waiting;
+			allClosure.args = new T[waiting];
+
+			for (int i = 0; i < waiting; ++i)
 			{
-				int index = i;
-				promises[index]
-					.Then<Exception>(x =>
-					{
-						if (masterDeferred.State != PromiseState.Pending)
-						{
-							return;
-						}
+				PromiseClosure<T> promiseClosure;
+				if (!objectPool.TryTakeInternal(out promiseClosure))
+				{
+					promiseClosure = new PromiseClosure<T>();
+				}
 
-						args[index] = x;
-						if (--waiting == 0)
-						{
-							masterDeferred.Resolve(args);
-						}
-					}, masterDeferred.Reject)
+				promiseClosure.allClosure = allClosure;
+				promiseClosure.index = i;
+				promiseClosure.promise = promises[i];
+
+				promiseClosure.promise
+					.Then(promiseClosure.ResolveClosure, promiseClosure.RejectClosure)
 					.Done();
 			}
 
-			return masterDeferred.Promise;
+			return allClosure.masterDeferred.Promise;
 		}
 
 		public static Promise<T[]> All<T>(IEnumerable<Promise<T>> promises)
@@ -44,29 +163,39 @@ namespace ProtoPromise
 
 		public static Promise All(params Promise[] promises)
 		{
-			var masterDeferred = Deferred();
+			if (promises.Length == 0)
+			{
+				throw new ArgumentException("promises.Length must be greater than zero");
+				//return Reject(new ArgumentException("promises.Length must be greater than zero"));
+			}
 
-			int waiting = promises.Length;
+			AllClosure allClosure;
+			if (!objectPool.TryTakeInternal(out allClosure))
+			{
+				allClosure = new AllClosure();
+			}
+
+			allClosure.masterDeferred = Deferred();
+			allClosure.waiting = promises.Length;
 
 			for (int i = 0, max = promises.Length; i < max; ++i)
 			{
-				promises[i]
-					.Then<Exception>(() =>
-					{
-						if (masterDeferred.State != PromiseState.Pending)
-						{
-							return;
-						}
+				PromiseClosure promiseClosure;
+				if (!objectPool.TryTakeInternal(out promiseClosure))
+				{
+					promiseClosure = new PromiseClosure();
+				}
 
-						if (--waiting == 0)
-						{
-							masterDeferred.Resolve();
-						}
-					}, masterDeferred.Reject)
+				promiseClosure.allClosure = allClosure;
+				promiseClosure.index = i;
+				promiseClosure.promise = promises[i];
+
+				promiseClosure.promise
+		            .Then(promiseClosure.ResolveClosure, promiseClosure.RejectClosure)
 					.Done();
 			}
 
-			return masterDeferred.Promise;
+			return allClosure.masterDeferred.Promise;
 		}
 
 		public static Promise All(IEnumerable<Promise> promises)
@@ -74,22 +203,92 @@ namespace ProtoPromise
 			return All(System.Linq.Enumerable.ToArray(promises));
 		}
 
+
+		// Acts like a compiler-generated closure class, except this can be re-used.
+		private class RaceClosure : ILinked<RaceClosure>
+		{
+			RaceClosure ILinked<RaceClosure>.Next { get; set; }
+
+			public Deferred deferred;
+			public Promise promise;
+
+			public void ResolveClosure()
+			{
+				var def = deferred;
+				deferred = null;
+				promise = null;
+				objectPool.AddInternal(this);
+				deferred.Resolve();
+			}
+
+			public void RejectClosure()
+			{
+				var def = deferred;
+				deferred = null;
+				var p = promise;
+				promise = null;
+				objectPool.AddInternal(this);
+				deferred.RejectInternal(p.rejectedValueInternal);
+			}
+		}
+
+		// Acts like a compiler-generated closure class, except this can be re-used.
+		private class RaceClosure<T> : ILinked<RaceClosure<T>>
+		{
+			RaceClosure<T> ILinked<RaceClosure<T>>.Next { get; set; }
+
+			public Deferred<T> deferred;
+			public Promise<T> promise;
+
+			public void ResolveClosure(T arg)
+			{
+				var def = deferred;
+				deferred = null;
+				promise = null;
+				objectPool.AddInternal(this);
+				if (deferred.State == PromiseState.Pending)
+				{
+					deferred.Resolve(arg);
+				}
+			}
+
+			public void RejectClosure()
+			{
+				var def = deferred;
+				deferred = null;
+				var p = promise;
+				promise = null;
+				objectPool.AddInternal(this);
+				if (deferred.State == PromiseState.Pending)
+				{
+					deferred.RejectInternal(p.rejectedValueInternal);
+				}
+			}
+		}
+
 		public static Promise<T> Race<T>(params Promise<T>[] promises)
 		{
+			if (promises.Length == 0)
+			{
+				throw new ArgumentException("promises.Length must be greater than zero");
+				//return Reject<T, ArgumentException>(new ArgumentException("promises.Length must be greater than zero"));
+			}
+
 			var masterDeferred = Deferred<T>();
 
 			for (int i = 0, max = promises.Length; i < max; ++i)
 			{
-				promises[i]
-					.Then<Exception>(x =>
-					{
-						if (masterDeferred.State != PromiseState.Pending)
-						{
-							return;
-						}
+				RaceClosure<T> raceClosure;
+				if (!objectPool.TryTakeInternal(out raceClosure))
+				{
+					raceClosure = new RaceClosure<T>();
+				}
 
-						masterDeferred.Resolve(x);
-					}, masterDeferred.Reject)
+				raceClosure.deferred = masterDeferred;
+				raceClosure.promise = promises[i];
+
+				raceClosure.promise
+					.Then(raceClosure.ResolveClosure, raceClosure.RejectClosure)
 					.Done();
 			}
 
@@ -103,20 +302,27 @@ namespace ProtoPromise
 
 		public static Promise Race(params Promise[] promises)
 		{
+			if (promises.Length == 0)
+			{
+				throw new ArgumentException("promises.Length must be greater than zero");
+				//return Reject(new ArgumentException("promises.Length must be greater than zero"));
+			}
+
 			var masterDeferred = Deferred();
 
 			for (int i = 0, max = promises.Length; i < max; ++i)
 			{
-				promises[i]
-					.Then<Exception>(() =>
-					{
-						if (masterDeferred.State != PromiseState.Pending)
-						{
-							return;
-						}
+				RaceClosure raceClosure;
+				if (!objectPool.TryTakeInternal(out raceClosure))
+				{
+					raceClosure = new RaceClosure();
+				}
 
-						masterDeferred.Resolve();
-					}, masterDeferred.Reject)
+				raceClosure.deferred = masterDeferred;
+				raceClosure.promise = promises[i];
+
+				raceClosure.promise
+			        .Then(raceClosure.ResolveClosure, raceClosure.RejectClosure)
 					.Done();
 			}
 
@@ -132,7 +338,8 @@ namespace ProtoPromise
 		{
 			if (funcs.Length == 0)
 			{
-				return Resolve();
+				throw new ArgumentException("funcs.Length must be greater than zero");
+				//return Reject(new ArgumentException("funcs.Length must be greater than zero"));
 			}
 			Promise promise = funcs[0].Invoke();
 			for (int i = 1, max = funcs.Length; i < max; ++i)
@@ -147,6 +354,28 @@ namespace ProtoPromise
 			return Sequence(System.Linq.Enumerable.ToArray(funcs));
 		}
 
+
+		// Acts like a compiler-generated closure class, except this can be re-used.
+		private class CancelClosure : ILinked<CancelClosure>
+		{
+			CancelClosure ILinked<CancelClosure>.Next { get; set; }
+
+			public Action<bool> cancel;
+
+			public void Invoke()
+			{
+				cancel.Invoke(false);
+				AddToPool();
+			}
+
+			public void AddToPool()
+			{
+				cancelClosures.Push(this);
+			}
+		}
+
+		private static ValueLinkedStack<CancelClosure> cancelClosures;
+
 		/// <summary>
 		/// Returns a promise that resolves with the <paramref name="yieldInstruction"/> after the <paramref name="yieldInstruction"/> has completed.
 		/// If <paramref name="yieldInstruction"/> is not a Unity supported <see cref="UnityEngine.YieldInstruction"/> or <see cref="UnityEngine.CustomYieldInstruction"/>, then the returned promise will resolve after 1 frame.
@@ -157,8 +386,12 @@ namespace ProtoPromise
 		public static Promise<TYieldInstruction> Yield<TYieldInstruction>(TYieldInstruction yieldInstruction)
 		{
 			Deferred<TYieldInstruction> deferred = Deferred<TYieldInstruction>();
-			// TODO: add cancel delegate to promise cancel callback.
-			GlobalMonoBehaviour.Yield(yieldInstruction, deferred.Resolve);
+
+			CancelClosure cancelClosure = cancelClosures.IsEmpty ? new CancelClosure() : cancelClosures.Pop();
+			cancelClosure.cancel = GlobalMonoBehaviour.Yield(yieldInstruction, deferred.Resolve);
+			deferred.Promise.OnCanceled(cancelClosure.Invoke);
+			deferred.Promise.Finally(cancelClosure.AddToPool);
+
 			return deferred.Promise;
 		}
 
@@ -200,17 +433,17 @@ namespace ProtoPromise
 			return deferred.Promise;
 		}
 
-		public static Promise<T> Reject<T, TException>(TException exception) where TException : Exception
+		public static Promise<T> Reject<T, TException>(TException exception)
 		{
 			Deferred<T> deferred = Deferred<T>();
-			deferred.Reject(exception);
+			deferred.RejectInternal(exception, 1);
 			return deferred.Promise;
 		}
 
-		public static Promise Reject<TException>(TException exception) where TException : Exception
+		public static Promise Reject<TException>(TException exception)
 		{
 			Deferred deferred = Deferred();
-			deferred.Reject(exception);
+			deferred.RejectInternal(exception, 1);
 			return deferred.Promise;
 		}
 

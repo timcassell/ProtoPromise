@@ -152,7 +152,7 @@ public class TestScript : MonoBehaviour
 		yield return null;
 		yield return null;
 
-		var cancelation = ProtoPromise.GlobalMonoBehaviour.Yield(waitFrame, Cb);
+		var cancelation = ProtoPromise.GlobalMonoBehaviour.Yield(waitFrame, CB = Cb);
 
 		//yield return new WaitForSeconds(1);
 
@@ -185,9 +185,11 @@ public class TestScript : MonoBehaviour
 
 	WaitForSeconds waitFrame = new WaitForSeconds(0f);
 
-	void Cb ()
+	Action<WaitForSeconds> CB;
+
+	void Cb (WaitForSeconds wait)
 	{
-		ProtoPromise.GlobalMonoBehaviour.Yield(Cb);
+		ProtoPromise.GlobalMonoBehaviour.Yield(wait, CB);
 	}
 
 	IEnumerator Executor()

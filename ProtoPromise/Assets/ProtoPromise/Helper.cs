@@ -1,16 +1,18 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace ProtoPromise
 {
-	public abstract class UnhandledException : Exception, ILinked<UnhandledException>
+	public class UnhandledException : Exception, ILinked<UnhandledException>
 	{
 		internal UnhandledException nextInternal;
 		UnhandledException ILinked<UnhandledException>.Next { get { return nextInternal; } set { nextInternal = value; } }
 
-		public abstract bool TryGetValueAs<U>(out U value);
+		public virtual bool TryGetValueAs<U>(out U value)
+		{
+			value = default(U);
+			return false;
+		}
 	}
 
 	public class UnhandledException<T> : UnhandledException, IValueContainer<T>, ILinked<UnhandledException<T>>
@@ -28,16 +30,13 @@ namespace ProtoPromise
 
 		public override sealed bool TryGetValueAs<U>(out U value)
 		{
-			if (typeof(T).IsValueType)
+			// This avoids boxing value types.
+			if (this is UnhandledException<U>)
 			{
-				// This avoids boxing value types.
-				if (this is UnhandledException<U>)
-				{
-					value = (this as UnhandledException<U>).Value;
-					return true;
-				}
+				value = (this as UnhandledException<U>).Value;
+				return true;
 			}
-			else
+			if (!typeof(T).IsValueType)
 			{
 				object val = Value;
 				if (typeof(U).IsAssignableFrom(typeof(T)) || (val != null && val is U))

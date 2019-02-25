@@ -5,46 +5,43 @@ namespace ProtoPromise
 {
 	public partial class Promise
 	{
-		// This is to avoid closures to save some GC allocations.
-		private static Dictionary<Promise, ValueLinkedQueue<Promise>> continuePromises = new Dictionary<Promise, ValueLinkedQueue<Promise>>();
-
-		private static void ContinueFrom(Promise promise)
-		{
-			ValueLinkedQueue<Promise> promises = continuePromises[promise];
-			for (Promise pr = promises.Peek(); pr != null; pr = pr._nextInternal)
-			{
-				ContinueHandlingInternal(pr);
-			}
-			continuePromises.Remove(promise);
-		}
-
 		// This allows infinite .Then/.Catch callbacks, since it avoids recursion.
 		internal static void ContinueHandlingInternal(Promise current)
 		{
 			ValueLinkedQueue<Promise> nextHandles = new ValueLinkedQueue<Promise>(current);
 			for (; current != null; current = current._nextInternal)
 			{
-				LinkedQueue<Promise> branches = current.NextBranches;
+				LinkedQueue<Promise> branches = current.NextBranchesInternal;
 				for (Promise next = branches.Peek(); next != null;)
 				{
 					Promise cachedPromise = next;
 					next = next._nextInternal;
-					Promise waitPromise = cachedPromise.HandleInternal(current);
+					PromiseWaitHelper waitPromise = cachedPromise.HandleInternal(current);
 
-					if (waitPromise == null || waitPromise.State != PromiseState.Pending)
+					if (waitPromise == null)
 					{
 						nextHandles.EnqueueRisky(cachedPromise);
 					}
 					else
 					{
-						ValueLinkedQueue<Promise> waitingPromises;
-						bool queued = continuePromises.TryGetValue(waitPromise, out waitingPromises);
-						waitingPromises.Enqueue(cachedPromise);
-						continuePromises[waitPromise] = waitingPromises;
-
-						if (!queued) // If queued is true, this is already going to continue, so don't subscribe to complete.
+						switch (waitPromise.State)
 						{
-							waitPromise.Complete(ContinueFrom);
+							case PromiseState.Pending:
+							{
+								waitPromise.AddWaiter(cachedPromise);
+								break;
+							}
+							case PromiseState.Canceled:
+							{
+								cachedPromise.Cancel();
+								break;
+							}
+							default:
+							{
+								waitPromise.AdoptState(cachedPromise);
+								nextHandles.EnqueueRisky(cachedPromise);
+								break;
+							}
 						}
 					}
 				}
@@ -64,7 +61,7 @@ namespace ProtoPromise
 			finallies = finallies2;
 			finallies2 = tempFinals;
 
-			ValueLinkedQueue<UnhandledException> exceptions = new ValueLinkedQueue<UnhandledException>();
+			ValueLinkedStack<UnhandledException> exceptions = new ValueLinkedStack<UnhandledException>();
 			ValueLinkedQueue<UnhandledException> rejections = new ValueLinkedQueue<UnhandledException>();
 			foreach (Promise promise in tempFinals)
 			{
@@ -94,28 +91,37 @@ namespace ProtoPromise
 					prev.AddToPool();
 				}
 
-				var rejection = promise.rejectedValue;
-				if (typeof(UnhandledExceptionException).IsAssignableFrom(typeof(UnhandledExceptionException)))
+				var rejection = promise.rejectedValueInternal;
+				if (rejection != null)
 				{
-					exceptions.Enqueue(rejection);
-				}
-				else
-				{
-					rejections.Enqueue(rejection);
+					if (rejection is UnhandledExceptionException)
+					{
+						exceptions.Push(rejection);
+					}
+					else
+					{
+						rejections.Enqueue(rejection);
+					}
 				}
 				promise.AddToPool();
 			}
 			finallies2.Clear();
 
-			// Debug log all the uncaught rejections, then throw the first uncaught exception.
-			for (var exception = exceptions.Peek(); exception != null; exception = exception.nextInternal)
+			// Debug log all the uncaught rejections, then debug log all the uncaught exceptions except the first, then throw the first uncaught exception.
+			for (var rejection = rejections.Peek(); rejection != null; rejection = rejection.nextInternal)
 			{
-				UnityEngine.Debug.LogException(exception);
+				UnityEngine.Debug.LogException(rejection);
 
 			}
-			if (rejections.Peek() != null)
+			if (!exceptions.IsEmpty)
 			{
-				throw rejections.Peek();
+				UnhandledException exception = exceptions.Pop();
+				while (!exceptions.IsEmpty)
+				{
+					UnityEngine.Debug.LogException(exception);
+					exception = exceptions.Pop();
+				}
+				throw exception;
 			}
 		}
 
@@ -136,24 +142,104 @@ namespace ProtoPromise
 	}
 
 
-	// TODO: add exception filters
-
-	// This is used to hook wait for another promise. This makes the waited promise think it had a branch that resolved its rejection.
-	internal class PromiseReject : Promise, ILinked<PromiseReject>
+	// This is used to notify the waiting promise that the previous promise has completed.
+	// An instance of this class will never be exposed publicly.
+	internal class PromiseWaitHelper : Promise, ILinked<PromiseWaitHelper>
 	{
-		PromiseReject ILinked<PromiseReject>.Next { get { return (PromiseReject) _nextInternal; } set { _nextInternal = value; } }
+		internal static Dictionary<Promise, PromiseWaitHelper> helpers = new Dictionary<Promise, PromiseWaitHelper>();
+
+		PromiseWaitHelper ILinked<PromiseWaitHelper>.Next { get { return (PromiseWaitHelper) _nextInternal; } set { _nextInternal = value; } }
+
+		internal PromiseWaitHelper() : base()
+		{
+			done = true;
+		}
 
 		protected override void AddToPool()
 		{
-			if (CantPool) return;
+			helpers.Remove(previous);
 			objectPool.AddInternal(this);
 		}
 
-		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
+		public virtual void AdoptState(Promise adopter)
 		{
+			adopter.State = State;
+			adopter.rejectedValueInternal = previous.rejectedValueInternal;
+		}
+
+		public void AddWaiter(Promise promise)
+		{
+			NextBranchesInternal.Enqueue(promise);
+		}
+
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		{
+			for (Promise promise = NextBranchesInternal.Peek(); promise != null; promise = promise._nextInternal)
+			{
+				promise.State = State;
+			}
+			NextBranchesInternal.Clear();
+			return null;
+		}
+
+		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			for (Promise promise = NextBranchesInternal.Peek(); promise != null; promise = promise._nextInternal)
+			{
+				promise.State = State;
+				promise.rejectedValueInternal = rejectVal;
+			}
+			NextBranchesInternal.Clear();
+			return null;
+		}
+
+		public override sealed void Cancel()
+		{
+			State = PromiseState.Canceled;
+			for (Promise promise = NextBranchesInternal.Peek(); promise != null; promise = promise._nextInternal)
+			{
+				promise.Cancel();
+			}
+			NextBranchesInternal.Clear();
+		}
+	}
+
+	// This is used to notify the waiting promise that the previous promise has completed.
+	// An instance of this class will never be exposed publicly.
+	internal sealed class PromiseWaitHelper<T> : PromiseWaitHelper, ILinked<PromiseWaitHelper<T>>
+	{
+		PromiseWaitHelper<T> ILinked<PromiseWaitHelper<T>>.Next { get { return (PromiseWaitHelper<T>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			helpers.Remove(previous);
+			objectPool.AddInternal(this);
+		}
+
+		public override void AdoptState(Promise adopter)
+		{
+			base.AdoptState(adopter);
+			((Promise<T>) adopter).ValueInternal = ((Promise<T>) previous).ValueInternal;
+		}
+
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		{
+			Promise<T> prevt = (Promise<T>) previous;
+			for (Promise promise = NextBranchesInternal.Peek(); promise != null; promise = promise._nextInternal)
+			{
+				Promise<T> pt = (Promise<T>) promise;
+
+				pt.State = State;
+				pt.ValueInternal = prevt.ValueInternal;
+			}
+			NextBranchesInternal.Clear();
 			return null;
 		}
 	}
+
+
+
+	// TODO: add exception filters
 
 	internal class PromiseVoidReject : Promise, ILinked<PromiseVoidReject>
 	{
@@ -167,7 +253,7 @@ namespace ProtoPromise
 
 		internal Action rejectHandler;
 
-		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
+		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
 		{
 			rejectHandler.Invoke();
 			rejectHandler = null;
@@ -187,7 +273,7 @@ namespace ProtoPromise
 
 		internal Action<TReject> rejectHandler;
 
-		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
+		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
 		{
 			TReject val;
 			if (rejectVal.TryGetValueAs(out val))
@@ -196,7 +282,7 @@ namespace ProtoPromise
 			}
 			else
 			{
-				rejectedValue = rejectVal;
+				rejectedValueInternal = rejectVal;
 			}
 			rejectHandler = null;
 			return null;
@@ -215,9 +301,9 @@ namespace ProtoPromise
 
 		internal Func<TArg> rejectHandler;
 
-		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
+		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
 		{
-			Value = rejectHandler.Invoke();
+			ValueInternal = rejectHandler.Invoke();
 			rejectHandler = null;
 			return null;
 		}
@@ -235,12 +321,12 @@ namespace ProtoPromise
 
 		internal Func<Promise> rejectHandler;
 
-		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
+		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
 		{
 			State = PromiseState.Pending;
 			var temp = rejectHandler;
 			rejectHandler = null;
-			return PromiseHelper(temp.Invoke());
+			return WaitHelperInternal(temp.Invoke());
 		}
 	}
 
@@ -256,16 +342,16 @@ namespace ProtoPromise
 
 		internal Func<TReject, TArg> rejectHandler;
 
-		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
+		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
 		{
 			TReject val;
 			if (rejectVal.TryGetValueAs(out val))
 			{
-				Value = rejectHandler.Invoke(val);
+				ValueInternal = rejectHandler.Invoke(val);
 			}
 			else
 			{
-				rejectedValue = rejectVal;
+				rejectedValueInternal = rejectVal;
 			}
 			rejectHandler = null;
 			return null;
@@ -284,19 +370,19 @@ namespace ProtoPromise
 
 		internal Func<TReject, Promise> rejectHandler;
 
-		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
+		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
 		{
 			State = PromiseState.Pending;
-			Promise promise;
+			PromiseWaitHelper promise;
 
 			TReject val;
 			if (rejectVal.TryGetValueAs(out val))
 			{
-				promise = PromiseHelper(rejectHandler.Invoke(val));
+				promise = WaitHelperInternal(rejectHandler.Invoke(val));
 			}
 			else
 			{
-				rejectedValue = rejectVal;
+				rejectedValueInternal = rejectVal;
 				promise = null;
 			}
 			rejectHandler = null;
@@ -316,12 +402,12 @@ namespace ProtoPromise
 
 		internal Func<Promise<TArg>> rejectHandler;
 
-		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
+		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
 		{
 			State = PromiseState.Pending;
 			var temp = rejectHandler;
 			rejectHandler = null;
-			return PromiseHelper(temp.Invoke());
+			return WaitHelperInternal(temp.Invoke());
 		}
 	}
 
@@ -337,19 +423,19 @@ namespace ProtoPromise
 
 		internal Func<TReject, Promise<TArg>> rejectHandler;
 
-		protected override sealed Promise RejectProtected(UnhandledException rejectVal)
+		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
 		{
 			State = PromiseState.Pending;
-			Promise promise;
+			PromiseWaitHelper promise;
 
 			TReject val;
 			if (rejectVal.TryGetValueAs(out val))
 			{
-				promise = PromiseHelper(rejectHandler.Invoke(val));
+				promise = WaitHelperInternal(rejectHandler.Invoke(val));
 			}
 			else
 			{
-				rejectedValue = rejectVal;
+				rejectedValueInternal = rejectVal;
 				promise = null;
 			}
 			rejectHandler = null;
@@ -390,13 +476,13 @@ namespace ProtoPromise
 				}
 				catch (Exception e)
 				{
-					if (rejectedValue != null)
+					if (rejectedValueInternal != null)
 					{
 						UnityEngine.Debug.LogError("A new exception was encountered in a Promise.Finally callback before an old exception was handled." +
 									   " The new exception will replace the old exception propagating up the final promise chain.\nOld exception:\n" +
-									   rejectedValue);
+									   rejectedValueInternal);
 					}
-					rejectedValue = new UnhandledExceptionException().SetValue(e);
+					rejectedValueInternal = new UnhandledExceptionException().SetValue(e);
 				}
 			}
 			handlingFinals = false;
@@ -423,11 +509,12 @@ namespace ProtoPromise
 
 		internal Func<Action<Deferred>> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(New(temp.Invoke()));
+			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
+			return WaitHelperInternal(New(temp.Invoke()));
 		}
 	}
 
@@ -443,11 +530,11 @@ namespace ProtoPromise
 
 		internal Func<Action<Deferred<T>>> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(New(temp.Invoke()));
+			return WaitHelperInternal(New(temp.Invoke()));
 		}
 	}
 
@@ -463,11 +550,11 @@ namespace ProtoPromise
 
 		internal Func<TValue, Action<Deferred>> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(New(temp.Invoke(((IValueContainer<TValue>) feed).Value)));
+			return WaitHelperInternal(New(temp.Invoke(((IValueContainer<TValue>) feed).Value)));
 		}
 	}
 
@@ -483,11 +570,11 @@ namespace ProtoPromise
 
 		internal Func<TValue, Action<Deferred<T>>> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(New(temp.Invoke(((IValueContainer<TValue>) feed).Value)));
+			return WaitHelperInternal(New(temp.Invoke(((IValueContainer<TValue>) feed).Value)));
 		}
 	}
 
@@ -504,7 +591,7 @@ namespace ProtoPromise
 
 		internal Action resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			resolveHandler.Invoke();
 			resolveHandler = null;
@@ -524,7 +611,7 @@ namespace ProtoPromise
 
 		internal Action resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			resolveHandler.Invoke();
 			resolveHandler = null;
@@ -544,7 +631,7 @@ namespace ProtoPromise
 
 		internal Action resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			resolveHandler.Invoke();
 			resolveHandler = null;
@@ -566,7 +653,7 @@ namespace ProtoPromise
 
 		internal Action<TArg> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
 			resolveHandler = null;
@@ -586,7 +673,7 @@ namespace ProtoPromise
 
 		internal Action<TArg> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
 			resolveHandler = null;
@@ -606,7 +693,7 @@ namespace ProtoPromise
 
 		internal Action<TArg> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
 			resolveHandler = null;
@@ -628,9 +715,9 @@ namespace ProtoPromise
 
 		internal Func<TResult> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
-			Value = resolveHandler.Invoke();
+			ValueInternal = resolveHandler.Invoke();
 			resolveHandler = null;
 			return null;
 		}
@@ -648,9 +735,9 @@ namespace ProtoPromise
 
 		internal Func<TResult> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
-			Value = resolveHandler.Invoke();
+			ValueInternal = resolveHandler.Invoke();
 			resolveHandler = null;
 			return null;
 		}
@@ -668,9 +755,9 @@ namespace ProtoPromise
 
 		internal Func<TResult> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
-			Value = resolveHandler.Invoke();
+			ValueInternal = resolveHandler.Invoke();
 			resolveHandler = null;
 			return null;
 		}
@@ -690,9 +777,9 @@ namespace ProtoPromise
 
 		internal Func<TArg, TResult> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
-			Value = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
+			ValueInternal = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
 			resolveHandler = null;
 			return null;
 		}
@@ -710,9 +797,9 @@ namespace ProtoPromise
 
 		internal Func<TArg, TResult> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
-			Value = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
+			ValueInternal = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
 			resolveHandler = null;
 			return null;
 		}
@@ -730,9 +817,9 @@ namespace ProtoPromise
 
 		internal Func<TArg, TResult> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
-			Value = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
+			ValueInternal = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
 			resolveHandler = null;
 			return null;
 		}
@@ -752,12 +839,12 @@ namespace ProtoPromise
 
 		internal Func<Promise> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(temp.Invoke());
+			return WaitHelperInternal(temp.Invoke());
 		}
 	}
 
@@ -773,12 +860,12 @@ namespace ProtoPromise
 
 		internal Func<Promise> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(temp.Invoke());
+			return WaitHelperInternal(temp.Invoke());
 		}
 	}
 
@@ -794,12 +881,12 @@ namespace ProtoPromise
 
 		internal Func<Promise> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(temp.Invoke());
+			return WaitHelperInternal(temp.Invoke());
 		}
 	}
 
@@ -817,12 +904,12 @@ namespace ProtoPromise
 
 		internal Func<TArg, Promise> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(temp.Invoke(((IValueContainer<TArg>) feed).Value));
+			return WaitHelperInternal(temp.Invoke(((IValueContainer<TArg>) feed).Value));
 		}
 	}
 
@@ -838,12 +925,12 @@ namespace ProtoPromise
 
 		internal Func<TArg, Promise> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(temp.Invoke(((IValueContainer<TArg>) feed).Value));
+			return WaitHelperInternal(temp.Invoke(((IValueContainer<TArg>) feed).Value));
 		}
 	}
 
@@ -859,12 +946,12 @@ namespace ProtoPromise
 
 		internal Func<TArg, Promise> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(temp.Invoke(((IValueContainer<TArg>) feed).Value));
+			return WaitHelperInternal(temp.Invoke(((IValueContainer<TArg>) feed).Value));
 		}
 	}
 
@@ -882,12 +969,12 @@ namespace ProtoPromise
 
 		internal Func<Promise<TArg>> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(temp.Invoke());
+			return WaitHelperInternal(temp.Invoke());
 		}
 	}
 
@@ -903,12 +990,12 @@ namespace ProtoPromise
 
 		internal Func<Promise<TArg>> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(temp.Invoke());
+			return WaitHelperInternal(temp.Invoke());
 		}
 	}
 
@@ -924,12 +1011,12 @@ namespace ProtoPromise
 
 		internal Func<Promise<TArg>> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return PromiseHelper(temp.Invoke());
+			return WaitHelperInternal(temp.Invoke());
 		}
 	}
 
@@ -947,10 +1034,10 @@ namespace ProtoPromise
 
 		internal Func<PArg, Promise<TArg>> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(resolveHandler.Invoke(((IValueContainer<PArg>) feed).Value));
+			return WaitHelperInternal(resolveHandler.Invoke(((IValueContainer<PArg>) feed).Value));
 		}
 	}
 
@@ -966,10 +1053,10 @@ namespace ProtoPromise
 
 		internal Func<PArg, Promise<TArg>> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(resolveHandler.Invoke(((IValueContainer<PArg>) feed).Value));
+			return WaitHelperInternal(resolveHandler.Invoke(((IValueContainer<PArg>) feed).Value));
 		}
 	}
 
@@ -985,10 +1072,10 @@ namespace ProtoPromise
 
 		internal Func<PArg, Promise<TArg>> resolveHandler;
 
-		internal override Promise ResolveProtected(IValueContainer feed)
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
 			State = PromiseState.Pending;
-			return PromiseHelper(resolveHandler.Invoke(((IValueContainer<PArg>) feed).Value));
+			return WaitHelperInternal(resolveHandler.Invoke(((IValueContainer<PArg>) feed).Value));
 		}
 	}
 }

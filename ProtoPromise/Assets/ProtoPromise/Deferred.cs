@@ -57,9 +57,20 @@ namespace ProtoPromise
 			}
 		}
 
-		private static System.Text.StringBuilder sb;
+		internal void RejectInternal(UnhandledException rejectValue)
+		{
+			_promise.RejectInternal(rejectValue);
+			Promise.ContinueHandlingInternal(_promise);
+		}
 
 		public void Reject<TReject>(TReject reason)
+		{
+			RejectInternal(reason);
+		}
+
+		private static System.Text.StringBuilder sb;
+
+		internal void RejectInternal<TReject>(TReject reason, int skipFrames = 0)
 		{
 			if (State != PromiseState.Pending)
 			{
@@ -69,7 +80,7 @@ namespace ProtoPromise
 
 			if (sb == null)
 			{
-				sb = new System.Text.StringBuilder(new System.Diagnostics.StackTrace(1, true).ToString());
+				sb = new System.Text.StringBuilder(new System.Diagnostics.StackTrace(skipFrames + 1, true).ToString());
 			}
 			else
 			{
