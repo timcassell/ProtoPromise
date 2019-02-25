@@ -607,9 +607,29 @@ namespace ProtoPromise
 			return promise.Notification(onProgress);
 		}
 
-		public static Promise Catch(this Promise promise, Action<Exception> onRejected)
+		public static Promise Catch(this Promise promise, Action<object> onRejected)
 		{
 			return promise.Catch(onRejected);
+		}
+
+		public static Promise<T> Catch<T>(this Promise promise, Func<object, T> onRejected)
+		{
+			return promise.Catch(onRejected);
+		}
+
+		public static Promise Then(this Promise promise, Action onResolved, Action<object> onRejected)
+		{
+			return promise.Then(onResolved, onRejected);
+		}
+
+		public static Promise<T> Then<T>(this Promise promise, Func<T> onResolved, Func<object, T> onRejected)
+		{
+			return promise.Then(onResolved, onRejected);
+		}
+
+		public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, T> onResolved, Func<object, T> onRejected)
+		{
+			return promise.Then(onResolved, onRejected);
 		}
 	}
 }
