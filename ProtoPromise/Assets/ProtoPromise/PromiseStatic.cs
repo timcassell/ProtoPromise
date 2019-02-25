@@ -364,12 +364,14 @@ namespace ProtoPromise
 
 			public void Invoke()
 			{
-				cancel.Invoke(false);
+				var c = cancel;
 				AddToPool();
+				c.Invoke(false);
 			}
 
 			public void AddToPool()
 			{
+				cancel = null;
 				cancelClosures.Push(this);
 			}
 		}
@@ -390,7 +392,7 @@ namespace ProtoPromise
 			CancelClosure cancelClosure = cancelClosures.IsEmpty ? new CancelClosure() : cancelClosures.Pop();
 			cancelClosure.cancel = GlobalMonoBehaviour.Yield(yieldInstruction, deferred.Resolve);
 			deferred.Promise.OnCanceled(cancelClosure.Invoke);
-			deferred.Promise.Finally(cancelClosure.AddToPool);
+			deferred.Promise.Complete(cancelClosure.AddToPool);
 
 			return deferred.Promise;
 		}
