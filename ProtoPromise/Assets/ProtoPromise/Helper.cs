@@ -612,7 +612,7 @@ namespace ProtoPromise
 			return promise.Catch(onRejected);
 		}
 
-		public static Promise<T> Catch<T>(this Promise promise, Func<object, T> onRejected)
+		public static Promise<T> Catch<T>(this Promise<T> promise, Func<object, T> onRejected)
 		{
 			return promise.Catch(onRejected);
 		}
@@ -633,7 +633,19 @@ namespace ProtoPromise
 			return promise.Then(onResolved, onRejected);
 		}
 
+		// TODO
+		public static Promise Then(this Promise promise, Action onResolved, Func<object, Promise> onRejected)
+		{
+			return promise.Then(onResolved, onRejected);
+		}
+
 		public static Promise<T> Then<T>(this Promise promise, Func<T> onResolved, Func<object, T> onRejected)
+		{
+			return promise.Then(onResolved, onRejected);
+		}
+
+		// TODO
+		public static Promise Then<T>(this Promise<T> promise, Action<T> onResolved, Func<object, Promise> onRejected)
 		{
 			return promise.Then(onResolved, onRejected);
 		}

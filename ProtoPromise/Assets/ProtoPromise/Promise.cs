@@ -370,9 +370,8 @@ namespace ProtoPromise
 			}
 			else
 			{
-				//NextBranches.Enqueue(newPromise);
-				//ContinueHandlingInternal(this);
-				newPromise.HandleInternal(this);
+				NextBranchesInternal.Enqueue(newPromise);
+				ContinueHandlingInternal(this);
 			}
 		}
 
@@ -562,6 +561,22 @@ namespace ProtoPromise
 			HookupNewPromise(promise);
 			return promise;
 		}
+
+		// TODO
+		//public Promise Then<TReject>(Action onResolved, Func<TReject, Promise> onRejected)
+		//{
+		//	PromiseVoidFromVoid<TReject> promise;
+		//	if (!objectPool.TryTakeInternal(out promise))
+		//	{
+		//		promise = new PromiseVoidFromVoid<TReject>();
+		//	}
+		//	promise.ResetInternal();
+
+		//	promise.resolveHandler = onResolved;
+		//	promise.rejectHandler = onRejected;
+		//	HookupNewPromise(promise);
+		//	return promise;
+		//}
 
 		public Promise<T> Then<T>(Func<T> onResolved, Func<T> onRejected)
 		{

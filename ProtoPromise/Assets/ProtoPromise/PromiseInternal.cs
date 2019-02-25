@@ -177,6 +177,7 @@ namespace ProtoPromise
 			for (Promise promise = NextBranchesInternal.Peek(); promise != null; promise = promise._nextInternal)
 			{
 				promise.State = State;
+				ContinueHandlingInternal(promise);
 			}
 			NextBranchesInternal.Clear();
 			return null;
@@ -188,6 +189,7 @@ namespace ProtoPromise
 			{
 				promise.State = State;
 				promise.rejectedValueInternal = rejectVal;
+				ContinueHandlingInternal(promise);
 			}
 			NextBranchesInternal.Clear();
 			return null;
@@ -231,6 +233,7 @@ namespace ProtoPromise
 
 				pt.State = State;
 				pt.ValueInternal = prevt.ValueInternal;
+				ContinueHandlingInternal(pt);
 			}
 			NextBranchesInternal.Clear();
 			return null;

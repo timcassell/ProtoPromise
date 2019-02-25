@@ -17,35 +17,43 @@ namespace ProtoPromise
 			public int index;
 			public AllClosure allClosure;
 
+			private void AddToPool()
+			{
+				promise = null;
+				objectPool.AddInternal(this);
+			}
+
 			private Deferred AddToPoolAndGetDeferred()
 			{
+				AddToPool();
 				var deferred = allClosure.masterDeferred;
 				allClosure.masterDeferred = null;
 				objectPool.AddInternal(allClosure);
-				promise = null;
-				objectPool.AddInternal(this);
 				return deferred;
 			}
 
 			public void ResolveClosure()
 			{
-				if (allClosure.masterDeferred.State == PromiseState.Pending && --allClosure.waiting == 0)
+				if (allClosure.masterDeferred.State == PromiseState.Pending)
 				{
-					AddToPoolAndGetDeferred().Resolve();
-					return;
+					if (--allClosure.waiting == 0)
+					{
+						AddToPoolAndGetDeferred().Resolve();
+						return;
+					}
 				}
-				AddToPoolAndGetDeferred();
+				AddToPool();
 			}
 
 			public void RejectClosure()
 			{
-				if (allClosure.masterDeferred.State == PromiseState.Pending)
+				if (allClosure.masterDeferred?.State == PromiseState.Pending)
 				{
 					var p = promise;
 					AddToPoolAndGetDeferred().RejectInternal(p.rejectedValueInternal);
 					return;
 				}
-				AddToPoolAndGetDeferred();
+				AddToPool();
 			}
 		}
 
@@ -67,20 +75,25 @@ namespace ProtoPromise
 			public int index;
 			public AllClosure<T> allClosure;
 
+			private void AddToPool()
+			{
+				promise = null;
+				objectPool.AddInternal(this);
+			}
+
 			private Deferred<T[]> AddToPoolAndGetDeferred()
 			{
+				AddToPool();
 				var deferred = allClosure.masterDeferred;
 				allClosure.args = null;
 				allClosure.masterDeferred = null;
 				objectPool.AddInternal(allClosure);
-				promise = null;
-				objectPool.AddInternal(this);
 				return deferred;
 			}
 
 			public void ResolveClosure(T arg)
 			{
-				if (allClosure.masterDeferred.State == PromiseState.Pending)
+				if (allClosure.masterDeferred?.State == PromiseState.Pending)
 				{
 					var args = allClosure.args;
 					args[index] = arg;
@@ -90,18 +103,18 @@ namespace ProtoPromise
 						return;
 					}
 				}
-				AddToPoolAndGetDeferred();
+				AddToPool();
 			}
 
 			public void RejectClosure()
 			{
-				if (allClosure.masterDeferred.State == PromiseState.Pending)
+				if (allClosure.masterDeferred?.State == PromiseState.Pending)
 				{
 					var p = promise;
 					AddToPoolAndGetDeferred().RejectInternal(p.rejectedValueInternal);
 					return;
 				}
-				AddToPoolAndGetDeferred();
+				AddToPool();
 			}
 		}
 
