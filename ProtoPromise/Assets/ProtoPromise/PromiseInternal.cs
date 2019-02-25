@@ -307,6 +307,13 @@ namespace ProtoPromise
 			rejectHandler = null;
 			return null;
 		}
+
+		// Just pass the value through.
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		{
+			ValueInternal = ((IValueContainer<TArg>) feed).Value;
+			return null;
+		}
 	}
 
 	internal class PromiseVoidRejectPromise : Promise, ILinked<PromiseVoidRejectPromise>
@@ -354,6 +361,13 @@ namespace ProtoPromise
 				rejectedValueInternal = rejectVal;
 			}
 			rejectHandler = null;
+			return null;
+		}
+
+		// Just pass the value through.
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		{
+			ValueInternal = ((IValueContainer<TArg>) feed).Value;
 			return null;
 		}
 	}
@@ -409,6 +423,13 @@ namespace ProtoPromise
 			rejectHandler = null;
 			return WaitHelperInternal(temp.Invoke());
 		}
+
+		// Just pass the value through.
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		{
+			ValueInternal = ((IValueContainer<TArg>) feed).Value;
+			return null;
+		}
 	}
 
 	internal class PromiseArgRejectPromiseT<TReject, TArg> : Promise<TArg>, ILinked<PromiseArgRejectPromiseT<TReject, TArg>>
@@ -440,6 +461,13 @@ namespace ProtoPromise
 			}
 			rejectHandler = null;
 			return promise;
+		}
+
+		// Just pass the value through.
+		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		{
+			ValueInternal = ((IValueContainer<TArg>) feed).Value;
+			return null;
 		}
 	}
 
@@ -779,7 +807,9 @@ namespace ProtoPromise
 
 		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
 		{
+			//UnityEngine.Debug.LogError("sending " + ((IValueContainer<TArg>) feed).Value);
 			ValueInternal = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
+			//UnityEngine.Debug.LogError("receiving " + ValueInternal);
 			resolveHandler = null;
 			return null;
 		}
