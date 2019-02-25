@@ -475,12 +475,12 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		public Promise Catch<TException>(Action<TException> onRejected)
+		public Promise Catch<TReject>(Action<TReject> onRejected)
 		{
-			PromiseVoidReject<TException> promise;
+			PromiseVoidReject<TReject> promise;
 			if (!objectPool.TryTakeInternal(out promise))
 			{
-				promise = new PromiseVoidReject<TException>();
+				promise = new PromiseVoidReject<TReject>();
 			}
 			promise.ResetInternal();
 
@@ -503,12 +503,12 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		public Promise Catch<TException>(Func<TException, Promise> onRejected)
+		public Promise Catch<TReject>(Func<TReject, Promise> onRejected)
 		{
-			PromiseArgRejectPromise<TException> promise;
+			PromiseArgRejectPromise<TReject> promise;
 			if (!objectPool.TryTakeInternal(out promise))
 			{
-				promise = new PromiseArgRejectPromise<TException>();
+				promise = new PromiseArgRejectPromise<TReject>();
 			}
 			promise.ResetInternal();
 
@@ -516,6 +516,21 @@ namespace ProtoPromise
 			HookupNewPromise(promise);
 			return promise;
 		}
+
+		// TODO: Implement deferred catches.
+		//public Promise Catch(Func<Action<Deferred>> onRejected)
+		//{
+		//	PromiseVoidRejectPromise promise;
+		//	if (!objectPool.TryTakeInternal(out promise))
+		//	{
+		//		promise = new PromiseVoidRejectPromise();
+		//	}
+		//	promise.ResetInternal();
+
+		//	promise.rejectHandler = onRejected;
+		//	HookupNewPromise(promise);
+		//	return promise;
+		//}
 
 
 		public Promise Then(Action onResolved, Action onRejected)
@@ -533,12 +548,12 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		public Promise Then<TException>(Action onResolved, Action<TException> onRejected)
+		public Promise Then<TReject>(Action onResolved, Action<TReject> onRejected)
 		{
-			PromiseVoidFromVoid<TException> promise;
+			PromiseVoidFromVoid<TReject> promise;
 			if (!objectPool.TryTakeInternal(out promise))
 			{
-				promise = new PromiseVoidFromVoid<TException>();
+				promise = new PromiseVoidFromVoid<TReject>();
 			}
 			promise.ResetInternal();
 
@@ -563,12 +578,12 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		public Promise<T> Then<T, TException>(Func<T> onResolved, Func<TException, T> onRejected)
+		public Promise<T> Then<T, TReject>(Func<T> onResolved, Func<TReject, T> onRejected)
 		{
-			PromiseArgFromResult<T, TException> promise;
+			PromiseArgFromResult<T, TReject> promise;
 			if (!objectPool.TryTakeInternal(out promise))
 			{
-				promise = new PromiseArgFromResult<T, TException>();
+				promise = new PromiseArgFromResult<T, TReject>();
 			}
 			promise.ResetInternal();
 
@@ -593,12 +608,12 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		public Promise Then<TException>(Func<Promise> onResolved, Func<TException, Promise> onRejected)
+		public Promise Then<TReject>(Func<Promise> onResolved, Func<TReject, Promise> onRejected)
 		{
-			PromiseVoidFromPromiseResult<TException> promise;
+			PromiseVoidFromPromiseResult<TReject> promise;
 			if (!objectPool.TryTakeInternal(out promise))
 			{
-				promise = new PromiseVoidFromPromiseResult<TException>();
+				promise = new PromiseVoidFromPromiseResult<TReject>();
 			}
 			promise.ResetInternal();
 
@@ -623,12 +638,12 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		public Promise<T> Then<T, TException>(Func<Promise<T>> onResolved, Func<TException, Promise<T>> onRejected)
+		public Promise<T> Then<T, TReject>(Func<Promise<T>> onResolved, Func<TReject, Promise<T>> onRejected)
 		{
-			PromiseArgFromPromiseResult<T, TException> promise;
+			PromiseArgFromPromiseResult<T, TReject> promise;
 			if (!objectPool.TryTakeInternal(out promise))
 			{
-				promise = new PromiseArgFromPromiseResult<T, TException>();
+				promise = new PromiseArgFromPromiseResult<T, TReject>();
 			}
 			promise.ResetInternal();
 
@@ -801,12 +816,12 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		public Promise<T> Catch<TException>(Func<TException, T> onRejected)
+		public Promise<T> Catch<TReject>(Func<TReject, T> onRejected)
 		{
-			PromiseArgReject<TException, T> promise;
+			PromiseArgReject<TReject, T> promise;
 			if (!objectPool.TryTakeInternal(out promise))
 			{
-				promise = new PromiseArgReject<TException, T>();
+				promise = new PromiseArgReject<TReject, T>();
 			}
 			promise.ResetInternal();
 
@@ -829,12 +844,12 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		public Promise<T> Catch<TException>(Func<TException, Promise<T>> onRejected)
+		public Promise<T> Catch<TReject>(Func<TReject, Promise<T>> onRejected)
 		{
-			PromiseArgRejectPromiseT<TException, T> promise;
+			PromiseArgRejectPromiseT<TReject, T> promise;
 			if (!objectPool.TryTakeInternal(out promise))
 			{
-				promise = new PromiseArgRejectPromiseT<TException, T>();
+				promise = new PromiseArgRejectPromiseT<TReject, T>();
 			}
 			promise.ResetInternal();
 
@@ -859,12 +874,12 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		public Promise Then<TException>(Action<T> onResolved, Action<TException> onRejected)
+		public Promise Then<TReject>(Action<T> onResolved, Action<TReject> onRejected)
 		{
-			PromiseVoidFromArg<T, TException> promise;
+			PromiseVoidFromArg<T, TReject> promise;
 			if (!objectPool.TryTakeInternal(out promise))
 			{
-				promise = new PromiseVoidFromArg<T, TException>();
+				promise = new PromiseVoidFromArg<T, TReject>();
 			}
 			promise.ResetInternal();
 
@@ -889,12 +904,12 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		public Promise<TResult> Then<TResult, TException>(Func<T, TResult> onResolved, Func<TException, TResult> onRejected)
+		public Promise<TResult> Then<TResult, TReject>(Func<T, TResult> onResolved, Func<TReject, TResult> onRejected)
 		{
-			PromiseArgFromArgResult<T, TResult, TException> promise;
+			PromiseArgFromArgResult<T, TResult, TReject> promise;
 			if (!objectPool.TryTakeInternal(out promise))
 			{
-				promise = new PromiseArgFromArgResult<T, TResult, TException>();
+				promise = new PromiseArgFromArgResult<T, TResult, TReject>();
 			}
 			promise.ResetInternal();
 
@@ -919,12 +934,12 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		public Promise Then<TException>(Func<T, Promise> onResolved, Func<TException, Promise> onRejected)
+		public Promise Then<TReject>(Func<T, Promise> onResolved, Func<TReject, Promise> onRejected)
 		{
-			PromiseVoidFromPromiseArgResult<T, TException> promise;
+			PromiseVoidFromPromiseArgResult<T, TReject> promise;
 			if (!objectPool.TryTakeInternal(out promise))
 			{
-				promise = new PromiseVoidFromPromiseArgResult<T, TException>();
+				promise = new PromiseVoidFromPromiseArgResult<T, TReject>();
 			}
 			promise.ResetInternal();
 
@@ -949,12 +964,12 @@ namespace ProtoPromise
 			return promise;
 		}
 
-		public Promise<TResult> Then<TResult, TException>(Func<T, Promise<TResult>> onResolved, Func<TException, Promise<TResult>> onRejected)
+		public Promise<TResult> Then<TResult, TReject>(Func<T, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected)
 		{
-			PromiseArgFromPromiseArgResult<TResult, T, TException> promise;
+			PromiseArgFromPromiseArgResult<TResult, T, TReject> promise;
 			if (!objectPool.TryTakeInternal(out promise))
 			{
-				promise = new PromiseArgFromPromiseArgResult<TResult, T, TException>();
+				promise = new PromiseArgFromPromiseArgResult<TResult, T, TReject>();
 			}
 			promise.ResetInternal();
 

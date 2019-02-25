@@ -435,14 +435,14 @@ namespace ProtoPromise
 			return deferred.Promise;
 		}
 
-		public static Promise<T> Reject<T, TException>(TException exception)
+		public static Promise<T> Reject<T, TReject>(TReject exception)
 		{
 			Deferred<T> deferred = Deferred<T>();
 			deferred.RejectInternal(exception, 1);
 			return deferred.Promise;
 		}
 
-		public static Promise Reject<TException>(TException exception)
+		public static Promise Reject<TReject>(TReject exception)
 		{
 			Deferred deferred = Deferred();
 			deferred.RejectInternal(exception, 1);

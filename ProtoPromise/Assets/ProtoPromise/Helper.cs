@@ -617,6 +617,17 @@ namespace ProtoPromise
 			return promise.Catch(onRejected);
 		}
 
+		public static Promise<T> Catch<T>(this Promise<T> promise, Func<object, Promise<T>> onRejected)
+		{
+			return promise.Catch(onRejected);
+		}
+
+		// TODO: Implement deferred catches.
+		//public static Promise Catch(this Promise promise, Func<object, Action<Deferred>> onRejected)
+		//{
+		//	return promise.Catch(onRejected);
+		//}
+
 		public static Promise Then(this Promise promise, Action onResolved, Action<object> onRejected)
 		{
 			return promise.Then(onResolved, onRejected);
@@ -628,6 +639,36 @@ namespace ProtoPromise
 		}
 
 		public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, T> onResolved, Func<object, T> onRejected)
+		{
+			return promise.Then(onResolved, onRejected);
+		}
+
+		public static Promise<T> Then<T>(this Promise promise, Func<T> onResolved, Func<object, Promise<T>> onRejected)
+		{
+			return promise.Then(onResolved, onRejected);
+		}
+
+		public static Promise<T> Then<T>(this Promise promise, Func<Promise<T>> onResolved, Func<object, T> onRejected)
+		{
+			return promise.Then(onResolved, onRejected);
+		}
+
+		public static Promise<T> Then<T>(this Promise promise, Func<Promise<T>> onResolved, Func<object, Promise<T>> onRejected)
+		{
+			return promise.Then(onResolved, onRejected);
+		}
+
+		public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, T> onResolved, Func<object, Promise<T>> onRejected)
+		{
+			return promise.Then(onResolved, onRejected);
+		}
+
+		public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, Promise<T>> onResolved, Func<object, T> onRejected)
+		{
+			return promise.Then(onResolved, onRejected);
+		}
+
+		public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, Promise<T>> onResolved, Func<object, Promise<T>> onRejected)
 		{
 			return promise.Then(onResolved, onRejected);
 		}
