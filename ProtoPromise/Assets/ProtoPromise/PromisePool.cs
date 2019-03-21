@@ -2,7 +2,7 @@
 {
 	public partial class Promise
 	{
-		internal static ObjectPool objectPool = new ObjectPool(); // private protected not supported before c# 7.2, so must use internal.
+		internal static ObjectPool objectPoolInternal = new ObjectPool(); // private protected not supported before c# 7.2, so must use internal.
 	}
 
 	public interface IPoolable
@@ -16,11 +16,11 @@
 		/// <summary>
 		/// IPoolables must opt in to be re-used, otherwise they will be garbage-collected.
 		/// </summary>
-		OptIn,
+		OptIn = 0,
 		/// <summary>
 		/// IPoolables will automatically be re-used. An IPoolable must opt out to be used past its completion (or unexpected behavior may occur).
 		/// </summary>
-		OptOut
+		OptOut = -1
 	}
 
 	public static class PromisePool

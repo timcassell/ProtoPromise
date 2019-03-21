@@ -3,10 +3,79 @@ using System.Collections.Generic;
 
 namespace ProtoPromise
 {
+	partial class Promise
+	{
+		private static System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(128);
+
+		// TODO: Only do this in debug mode.
+		internal static string GetStackTrace(int skipFrames)
+		{
+			string stackTrace = new System.Diagnostics.StackTrace(skipFrames, true).ToString();
+			if (string.IsNullOrEmpty(stackTrace))
+			{
+				return stackTrace;
+			}
+
+			stringBuilder.Length = 0;
+			stringBuilder.Append(stackTrace);
+
+			// Format stacktrace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
+			return stringBuilder.Remove(0, 1)
+				.Replace(":line ", ":")
+				.Replace("\n ", " \n")
+				.Replace("(", " (")
+				.Replace(") in", ") [0x00000] in") // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
+				.Append(" ")
+				.ToString();
+		}
+	}
+
+	public class NullPromiseException : Exception, ILinked<NullPromiseException>
+	{
+		NullPromiseException ILinked<NullPromiseException>.Next { get; set; }
+
+		public NullPromiseException SetStackTrace(string stackTrace)
+		{
+			_stackTrace = stackTrace;
+			return this;
+		}
+
+		private string _stackTrace;
+		public override string StackTrace { get { return _stackTrace; } }
+
+		public override string Message
+		{
+			get { return "A null promise was returned."; }
+		}
+	}
+
 	public class UnhandledException : Exception, ILinked<UnhandledException>
 	{
 		internal UnhandledException nextInternal;
 		UnhandledException ILinked<UnhandledException>.Next { get { return nextInternal; } set { nextInternal = value; } }
+
+		public UnhandledException SetStackTrace(string stackTrace)
+		{
+			_stackTrace = stackTrace;
+			return this;
+		}
+
+		protected string _stackTrace;
+		public override sealed string StackTrace
+		{
+			get
+			{
+				return _stackTrace;
+			}
+		}
+
+		public override string Message
+		{
+			get
+			{
+				return "A non-value rejection was not handled.";
+			}
+		}
 
 		public virtual bool TryGetValueAs<U>(out U value)
 		{
@@ -31,9 +100,10 @@ namespace ProtoPromise
 		public override sealed bool TryGetValueAs<U>(out U value)
 		{
 			// This avoids boxing value types.
-			if (this is UnhandledException<U>)
+			var casted = this as UnhandledException<U>;
+			if (casted != null)
 			{
-				value = (this as UnhandledException<U>).Value;
+				value = casted.Value;
 				return true;
 			}
 			if (!typeof(T).IsValueType)
@@ -47,15 +117,6 @@ namespace ProtoPromise
 			}
 			value = default(U);
 			return false;
-		}
-
-		protected string _stackTrace;
-		public override sealed string StackTrace
-		{
-			get
-			{
-				return _stackTrace;
-			}
 		}
 
 		public override string Message
@@ -96,296 +157,212 @@ namespace ProtoPromise
 		{
 			get
 			{
-				return "An exception was encountered that was not handled.";
+				return "An exception was encountered that was not handled: " + Value;
 			}
 		}
 	}
 
-
-	internal interface ITryInvokable
-	{
-		bool TryInvoke<U>(U arg, out bool invoked);
-		bool TryInvoke(out bool invoked);
-	}
-	internal interface IDelegate : ILinked<IDelegate>
-	{
-		void Invoke(IValueContainer feed);
-	}
-	internal interface IDelegateVoid : IDelegate
-	{
-		void Invoke();
-	}
-	internal interface IDelegateArg : IDelegate { }
-	internal interface IDelegateArg<TArg> : IDelegateArg
-	{
-		void Invoke(TArg arg);
-	}
-	internal interface IDelegateArgResult<TArg, TResult> : IDelegateArg<TArg>, IValueContainer<TResult> { }
-
-	internal interface IDelegateVoidResult<TResult> : IDelegateVoid, IValueContainer<TResult> { }
-
 	internal interface IValueContainer { }
-
 	internal interface IValueContainer<T> : IValueContainer
 	{
 		T Value { get; }
 	}
 
-	internal class ValueContainer : IValueContainer
+	// Used IFilter and IDelegate(Result) to reduce the amount of classes I would have to generate to handle catches. I'm less concerned about performance for catches since exceptions are expensive anyway.
+	internal interface IDelegate
 	{
+		bool TryInvoke(UnhandledException unhandledException);
+	}
+	internal interface IDelegateResult
+	{
+		bool TryInvoke<TResult>(UnhandledException unhandledException, out TResult result);
+	}
+	internal interface IDelegateArg : ILinked<IDelegateArg>
+	{
+		bool TryInvoke<TArg>(TArg arg);
+	}
+	internal interface IFilter
+	{
+		bool RunThroughFilter(UnhandledException valueToCatch);
 	}
 
-	internal class ValueContainer<T> : ValueContainer, IValueContainer<T>
+	// TODO: pool delegates.
+	internal sealed class DelegateVoidVoid : IDelegate, ILinked<DelegateVoidVoid>
 	{
-		public T Value { get; set; }
-	}
-
-	internal sealed class DelegateVoid : IDelegateVoid, ITryInvokable, ILinked<DelegateVoid>
-	{
-		DelegateVoid ILinked<DelegateVoid>.Next
-		{
-			get
-			{
-				return (DelegateVoid) Next;
-			}
-			set
-			{
-				Next = value;
-			}
-		}
-
-		public IDelegate Next { get; set; }
-
-		Action callback;
-
-		public DelegateVoid(Action action)
-		{
-			SetCallback(action);
-		}
-
-		public void SetCallback(Action action)
-		{
-			callback = action;
-		}
-
-		public void Invoke(IValueContainer feed)
-		{
-			Invoke();
-		}
+		DelegateVoidVoid ILinked<DelegateVoidVoid>.Next { get; set; }
+		
+		internal Action callback;
 
 		public void Invoke()
 		{
-			callback.Invoke();
+			var temp = callback;
+			callback = null;
+			temp.Invoke();
 		}
 
-		public bool TryInvoke<U>(U arg, out bool invoked)
+		public bool TryInvoke(UnhandledException unhandledException)
 		{
-			return TryInvoke(out invoked);
-		}
-
-		public bool TryInvoke(out bool invoked)
-		{
-			invoked = true;
 			Invoke();
 			return true;
 		}
 	}
 
-	internal sealed class DelegateArg<TArg> : IDelegateArg<TArg>, ITryInvokable, ILinked<DelegateArg<TArg>>
+	internal sealed class DelegateArgVoid<TArg> : IDelegate, IDelegateArg, ILinked<DelegateArgVoid<TArg>>
 	{
-		DelegateArg<TArg> ILinked<DelegateArg<TArg>>.Next
-		{
-			get
-			{
-				return (DelegateArg<TArg>) Next;
-			}
-			set
-			{
-				Next = value;
-			}
-		}
+		DelegateArgVoid<TArg> ILinked<DelegateArgVoid<TArg>>.Next { get { return (DelegateArgVoid<TArg>) Next; } set { Next = value; } }
 
-		public IDelegate Next { get; set; }
+		public IDelegateArg Next { get; set; }
 
-		Action<TArg> callback;
-
-		public DelegateArg(Action<TArg> action)
-		{
-			SetCallback(action);
-		}
-
-		public void SetCallback(Action<TArg> action)
-		{
-			callback = action;
-		}
-
-		public void AddCallback(Action<TArg> action)
-		{
-			callback += action;
-		}
-
-		public void Invoke(IValueContainer feed)
-		{
-			Invoke(((IValueContainer<TArg>) feed).Value);
-		}
+		internal Action<TArg> callback;
 
 		public void Invoke(TArg arg)
 		{
-			callback.Invoke(arg);
+			var temp = callback;
+			callback = null;
+			temp.Invoke(arg);
 		}
 
-		public bool TryInvoke<U>(U arg, out bool invoked)
+		public bool TryInvoke<TArg1>(TArg1 arg)
 		{
-			if (typeof(TArg).IsValueType)
+			// This avoids boxing value types.
+			var casted = this as DelegateArgVoid<TArg1>;
+			if (casted != null)
 			{
-				// This avoids boxing value types.
-				if (this is DelegateArg<U>)
-				{
-					invoked = true;
-					(this as DelegateArg<U>).Invoke(arg);
-					return true;
-				}
+				casted.Invoke(arg);
+				return true;
 			}
-			else
+			if (!typeof(TArg).IsValueType)
 			{
 				object val = arg;
-				if (typeof(TArg).IsAssignableFrom(typeof(U)) || (val != null && arg is TArg))
+				if (typeof(TArg).IsAssignableFrom(typeof(TArg1)) || (val != null && arg is TArg))
 				{
-					invoked = true;
 					Invoke((TArg) val);
 					return true;
 				}
 			}
-			return invoked = false;
+			return false;
 		}
 
-		public bool TryInvoke(out bool invoked)
+		public bool TryInvoke(UnhandledException unhandledException)
 		{
-			return invoked = false;
-		}
-	}
-
-	internal class DelegateVoidResult<TResult> : IDelegateVoidResult<TResult>, ITryInvokable, ILinked<DelegateVoidResult<TResult>>
-	{
-		DelegateVoidResult<TResult> ILinked<DelegateVoidResult<TResult>>.Next
-		{
-			get
+			TArg arg;
+			if (!unhandledException.TryGetValueAs(out arg))
 			{
-				return (DelegateVoidResult<TResult>) Next;
+				return false;
 			}
-			set
-			{
-				Next = value;
-			}
-		}
-
-		public IDelegate Next { get; set; }
-
-		Func<TResult> callback;
-
-		public TResult Value { get; private set; }
-
-		public DelegateVoidResult(Func<TResult> func)
-		{
-			SetCallback(func);
-		}
-
-		public void SetCallback(Func<TResult> func)
-		{
-			callback = func;
-		}
-
-		public virtual void Invoke(IValueContainer feed)
-		{
-			Invoke();
-		}
-
-		public void Invoke()
-		{
-			Value = callback.Invoke();
-		}
-
-		public bool TryInvoke<U>(U arg, out bool invoked)
-		{
-			return TryInvoke(out invoked);
-		}
-
-		public bool TryInvoke(out bool invoked)
-		{
-			invoked = true;
-			Invoke();
+			Invoke(arg);
 			return true;
 		}
 	}
 
-	internal sealed class DelegateArgResult<TArg, TResult> : IDelegateArgResult<TArg, TResult>, ITryInvokable, ILinked<DelegateArgResult<TArg, TResult>>
+	internal class DelegateVoidResult<TResult> : IDelegateResult, ILinked<DelegateVoidResult<TResult>>
 	{
-		DelegateArgResult<TArg, TResult> ILinked<DelegateArgResult<TArg, TResult>>.Next
+		DelegateVoidResult<TResult> ILinked<DelegateVoidResult<TResult>>.Next { get; set; }
+
+		internal Func<TResult> callback;
+
+		public TResult Invoke()
 		{
-			get
+			var temp = callback;
+			callback = null;
+			return temp.Invoke();
+		}
+
+		public bool TryInvoke<TResult1>(UnhandledException unhandledException, out TResult1 result)
+		{
+			// This avoids boxing value types.
+			var casted = this as DelegateVoidResult<TResult1>;
+			if (casted != null)
 			{
-				return (DelegateArgResult<TArg, TResult>) Next;
+				result = casted.Invoke();
+				return true;
 			}
-			set
+			if (typeof(TResult1).IsAssignableFrom(typeof(TResult)))
 			{
-				Next = value;
+				result = (TResult1) (object) Invoke();
+				return true;
 			}
+			result = default(TResult1);
+			return false;
+		}
+	}
+
+	internal class DelegateArgResult<TArg, TResult> : IDelegateResult, ILinked<DelegateArgResult<TArg, TResult>>
+	{
+		DelegateArgResult<TArg, TResult> ILinked<DelegateArgResult<TArg, TResult>>.Next { get; set; }
+
+		internal Func<TArg, TResult> callback;
+
+		public TResult Invoke(TArg arg)
+		{
+			var temp = callback;
+			callback = null;
+			return temp.Invoke(arg);
 		}
 
-		public IDelegate Next { get; set; }
-
-		Func<TArg, TResult> callback;
-
-		public TResult Value { get; private set; }
-
-		public DelegateArgResult(Func<TArg, TResult> func)
+		public bool TryInvoke<TResult1>(UnhandledException unhandledException, out TResult1 result)
 		{
-			SetCallback(func);
-		}
-
-		public void SetCallback(Func<TArg, TResult> func)
-		{
-			callback = func;
-		}
-
-		public void Invoke(IValueContainer feed)
-		{
-			Invoke(((IValueContainer<TArg>) feed).Value);
-		}
-
-		public void Invoke(TArg arg)
-		{
-			Value = callback.Invoke(arg);
-		}
-
-		public bool TryInvoke<U>(U arg, out bool invoked)
-		{
-			if (typeof(TArg).IsValueType)
+			TArg arg;
+			if (!unhandledException.TryGetValueAs(out arg))
 			{
-				// This avoids boxing value types.
-				if (this is DelegateArg<U>)
-				{
-					invoked = true;
-					(this as DelegateArg<U>).Invoke(arg);
-					return true;
-				}
+				result = default(TResult1);
+				return false;
 			}
-			else
-			{
-				object val = arg;
-				if (typeof(TArg).IsAssignableFrom(typeof(U)) || (val != null && arg is TArg))
-				{
-					invoked = true;
-					Invoke((TArg) val);
-					return true;
-				}
-			}
-			return invoked = false;
-		}
 
-		public bool TryInvoke(out bool invoked)
+			// This avoids boxing value types.
+			var casted = this as DelegateArgResult<TArg, TResult1>;
+			if (casted != null)
+			{
+				result = casted.Invoke(arg);
+				return true;
+			}
+			if (typeof(TResult1).IsAssignableFrom(typeof(TResult)))
+			{
+				result = (TResult1) (object) Invoke(arg);
+				return true;
+			}
+			result = default(TResult1);
+			return false;
+		}
+	}
+
+	internal sealed class Filter : DelegateVoidResult<bool>, IFilter
+	{
+		public bool RunThroughFilter(UnhandledException valueToCatch)
 		{
-			return invoked = false;
+			try
+			{
+				return Invoke();
+			}
+			catch (Exception e)
+			{
+				UnityEngine.Debug.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
+				UnityEngine.Debug.LogException(e);
+				return false;
+			}
+		}
+	}
+
+	internal sealed class Filter<TArg> : DelegateArgResult<TArg, bool>, IFilter
+	{
+		public bool RunThroughFilter(UnhandledException valueToCatch)
+		{
+			TArg arg;
+			if (!valueToCatch.TryGetValueAs(out arg))
+			{
+				return false;
+			}
+
+			try
+			{
+				return Invoke(arg);
+			}
+			catch (Exception e)
+			{
+				UnityEngine.Debug.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
+				UnityEngine.Debug.LogException(e);
+				return false;
+			}
 		}
 	}
 
@@ -506,6 +483,8 @@ namespace ProtoPromise
 		T first;
 		T last;
 
+		public bool IsEmpty { get { return first == null; } }
+
 		public LinkedQueue() { }
 
 		public LinkedQueue(T item)
@@ -546,6 +525,8 @@ namespace ProtoPromise
 	{
 		T first;
 		T last;
+
+		public bool IsEmpty { get { return first == null; } }
 
 		public ValueLinkedQueue(T item)
 		{
@@ -589,100 +570,100 @@ namespace ProtoPromise
 		}
 	}
 
-	public static class PromiseExtensions
-	{
-		/// <summary>
-		/// Helper method for promise.Notification{<see cref="float"/>}(onProgress).
-		/// </summary>
-		public static Promise Progress(this Promise promise, Action<float> onProgress)
-		{
-			return promise.Notification(onProgress);
-		}
+	//public static class PromiseExtensions
+	//{
+	//	/// <summary>
+	//	/// Helper method for promise.Notification{<see cref="float"/>}(onProgress).
+	//	/// </summary>
+	//	public static Promise Progress(this Promise promise, Action<float> onProgress)
+	//	{
+	//		return promise.Notification(onProgress);
+	//	}
 
-		/// <summary>
-		/// Helper method for promise.Notification{<see cref="float"/>}(onProgress).
-		/// </summary>
-		public static Promise<T> Progress<T>(this Promise<T> promise, Action<float> onProgress)
-		{
-			return promise.Notification(onProgress);
-		}
+	//	/// <summary>
+	//	/// Helper method for promise.Notification{<see cref="float"/>}(onProgress).
+	//	/// </summary>
+	//	public static Promise<T> Progress<T>(this Promise<T> promise, Action<float> onProgress)
+	//	{
+	//		return promise.Notification(onProgress);
+	//	}
 
-		public static Promise Catch(this Promise promise, Action<object> onRejected)
-		{
-			return promise.Catch(onRejected);
-		}
+	//	public static Promise Catch(this Promise promise, Action<object> onRejected)
+	//	{
+	//		return promise.Catch(onRejected);
+	//	}
 
-		public static Promise<T> Catch<T>(this Promise<T> promise, Func<object, T> onRejected)
-		{
-			return promise.Catch(onRejected);
-		}
+	//	public static Promise<T> Catch<T>(this Promise<T> promise, Func<object, T> onRejected)
+	//	{
+	//		return promise.Catch(onRejected);
+	//	}
 
-		public static Promise<T> Catch<T>(this Promise<T> promise, Func<object, Promise<T>> onRejected)
-		{
-			return promise.Catch(onRejected);
-		}
+	//	public static Promise<T> Catch<T>(this Promise<T> promise, Func<object, Promise<T>> onRejected)
+	//	{
+	//		return promise.Catch(onRejected);
+	//	}
 
-		// TODO: Implement deferred catches.
-		//public static Promise Catch(this Promise promise, Func<object, Action<Deferred>> onRejected)
-		//{
-		//	return promise.Catch(onRejected);
-		//}
+	//	// TODO: Implement deferred catches.
+	//	//public static Promise Catch(this Promise promise, Func<object, Action<Deferred>> onRejected)
+	//	//{
+	//	//	return promise.Catch(onRejected);
+	//	//}
 
-		public static Promise Then(this Promise promise, Action onResolved, Action<object> onRejected)
-		{
-			return promise.Then(onResolved, onRejected);
-		}
+	//	public static Promise Then(this Promise promise, Action onResolved, Action<object> onRejected)
+	//	{
+	//		return promise.Then(onResolved, onRejected);
+	//	}
 
-		// TODO
-		public static Promise Then(this Promise promise, Action onResolved, Func<object, Promise> onRejected)
-		{
-			return promise.Then(onResolved, onRejected);
-		}
+	//	// TODO
+	//	public static Promise Then(this Promise promise, Action onResolved, Func<object, Promise> onRejected)
+	//	{
+	//		return promise.Then(onResolved, onRejected);
+	//	}
 
-		public static Promise<T> Then<T>(this Promise promise, Func<T> onResolved, Func<object, T> onRejected)
-		{
-			return promise.Then(onResolved, onRejected);
-		}
+	//	public static Promise<T> Then<T>(this Promise promise, Func<T> onResolved, Func<object, T> onRejected)
+	//	{
+	//		return promise.Then(onResolved, onRejected);
+	//	}
 
-		// TODO
-		public static Promise Then<T>(this Promise<T> promise, Action<T> onResolved, Func<object, Promise> onRejected)
-		{
-			return promise.Then(onResolved, onRejected);
-		}
+	//	// TODO
+	//	public static Promise Then<T>(this Promise<T> promise, Action<T> onResolved, Func<object, Promise> onRejected)
+	//	{
+	//		return promise.Then(onResolved, onRejected);
+	//	}
 
-		public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, T> onResolved, Func<object, T> onRejected)
-		{
-			return promise.Then(onResolved, onRejected);
-		}
+	//	public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, T> onResolved, Func<object, T> onRejected)
+	//	{
+	//		return promise.Then(onResolved, onRejected);
+	//	}
 
-		public static Promise<T> Then<T>(this Promise promise, Func<T> onResolved, Func<object, Promise<T>> onRejected)
-		{
-			return promise.Then(onResolved, onRejected);
-		}
+	//	public static Promise<T> Then<T>(this Promise promise, Func<T> onResolved, Func<object, Promise<T>> onRejected)
+	//	{
+	//		return promise.Then(onResolved, onRejected);
+	//	}
 
-		public static Promise<T> Then<T>(this Promise promise, Func<Promise<T>> onResolved, Func<object, T> onRejected)
-		{
-			return promise.Then(onResolved, onRejected);
-		}
+	//	public static Promise<T> Then<T>(this Promise promise, Func<Promise<T>> onResolved, Func<object, T> onRejected)
+	//	{
+	//		return promise.Then(onResolved, onRejected);
+	//	}
 
-		public static Promise<T> Then<T>(this Promise promise, Func<Promise<T>> onResolved, Func<object, Promise<T>> onRejected)
-		{
-			return promise.Then(onResolved, onRejected);
-		}
+	//	public static Promise<T> Then<T>(this Promise promise, Func<Promise<T>> onResolved, Func<object, Promise<T>> onRejected)
+	//	{
+	//		return promise.Then(onResolved, onRejected);
+	//	}
 
-		public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, T> onResolved, Func<object, Promise<T>> onRejected)
-		{
-			return promise.Then(onResolved, onRejected);
-		}
+	//	//public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, T> onResolved, Func<object, Promise<T>> onRejected)
+	//	//{
+	//	//	return promise.Then(onResolved, onRejected);
+	//	//}
 
-		public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, Promise<T>> onResolved, Func<object, T> onRejected)
-		{
-			return promise.Then(onResolved, onRejected);
-		}
+	//	public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, Promise<T>> onResolved, Func<object, T> onRejected)
+	//	{
+	//		return promise.Then(onResolved, onRejected);
+	//	}
 
-		public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, Promise<T>> onResolved, Func<object, Promise<T>> onRejected)
-		{
-			return promise.Then(onResolved, onRejected);
-		}
-	}
+	//	public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, Promise<T>> onResolved, Func<object, Promise<T>> onRejected)
+	//	{
+	//		return promise.Then(onResolved, onRejected);
+	//	}
+	//}
 }

@@ -1,52 +1,383 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace ProtoPromise
 {
-	public partial class Promise
+	public partial class Promise : IValueContainer, ILinked<Promise>, IPoolable
 	{
+		[Flags]
+		private enum Flag : byte
+		{
+			Done = 1 << 0,
+			Handling = 1 << 1,
+			WasWaitedOn = 1 << 2,
+			IsContinuingHandle = 1 << 3
+		}
+
+		internal Promise _nextInternal;
+		Promise ILinked<Promise>.Next { get { return _nextInternal; } set { _nextInternal = value; } }
+
+		// This is necessary to override in order to use the generic add function.
+		protected virtual void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		// Dictionaries to use less memory for expected less used functions.
+		private static Dictionary<Promise, FinallyPromise> finals = new Dictionary<Promise, FinallyPromise>();
+		// TODO: rip this out.
+		private static Dictionary<Promise, Action> completeVoids = new Dictionary<Promise, Action>();
+		private static Dictionary<Promise, Action> cancels = new Dictionary<Promise, Action>();
+
+		// TODO: DEBUG flag these.
+		internal string createdStackTrace;
+		private static int idCounter = 0;
+		public readonly int id;
+
+		protected bool CantPool { get { return poolOptsInternal >= 0; } }
+
+		void IPoolable.OptIn()
+		{
+			checked
+			{
+				--poolOptsInternal;
+			}
+			if (poolOptsInternal == -1 && _state != PromiseState.Pending && done)
+			{
+				AddToPool();
+			}
+		}
+
+		void IPoolable.OptOut()
+		{
+			checked
+			{
+				++poolOptsInternal;
+			}
+		}
+
+		protected Promise previous;
+
+		internal UnhandledException rejectedValueInternal;
+
+		internal LinkedQueue<Promise> NextBranchesInternal = new LinkedQueue<Promise>();
+		internal ADeferred deferredInternal;
+
+		private ushort nextCount; // This is a ushort to conserve memory footprint. Change this to uint or ulong if you need to use .Then or .Catch on one promise more than 65,535 times (branching, not chaining).
+		private short poolOptsInternal; // This is a short to conserve memory footprint. Change this to int or long if you need to perpetually use one promise in more than 32,768 places.
+
+		private Flag flags; // bitmask to conserve memory.
+
+		private bool done // This tells the finally handler whether any more .Then or .Catch will be chained from this promise.
+		{
+			get
+			{
+				return (flags & Flag.Done) != 0;
+			}
+			set
+			{
+				if (value)
+				{
+					flags |= Flag.Done; // Flip bit on.
+				}
+				else
+				{
+					flags &= ~Flag.Done; // Flip bit off.
+				}
+			}
+		}
+
+		private bool handling // This is to handle new callbacks being added from a callback that is being invoked. e.g. promise.Complete(() => { promise.Complete(DoSomethingElse); DoSomething(); })
+		{
+			get
+			{
+				return (flags & Flag.Handling) != 0;
+			}
+			set
+			{
+				if (value)
+				{
+					flags |= Flag.Handling; // Flip bit on.
+				}
+				else
+				{
+					flags &= ~Flag.Handling; // Flip bit off.
+				}
+			}
+		}
+
+		private bool wasWaitedOn // This tells the finally handler that another promise waited on this promise (either by .Then/.Catch from this promise, or by returning this promise in another promise's .Then/.Catch)
+		{
+			get
+			{
+				return (flags & Flag.WasWaitedOn) != 0;
+			}
+			set
+			{
+				if (value)
+				{
+					flags |= Flag.WasWaitedOn; // Flip bit on.
+				}
+				else
+				{
+					flags &= ~Flag.WasWaitedOn; // Flip bit off.
+				}
+			}
+		}
+
+		private bool isContinuingHandle // Is this promise being handled in ContinueHandlingInternal
+		{
+			get
+			{
+				return (flags & Flag.IsContinuingHandle) != 0;
+			}
+			set
+			{
+				if (value)
+				{
+					flags |= Flag.IsContinuingHandle; // Flip bit on.
+				}
+				else
+				{
+					flags &= ~Flag.IsContinuingHandle; // Flip bit off.
+				}
+			}
+		}
+
+		internal PromiseState _state;
+
+		internal Promise()
+		{
+			id = idCounter++;
+		}
+
+		internal void ResetInternal(int skipFrames = 3)
+		{
+			_state = PromiseState.Pending;
+			done = false;
+			previous = null;
+			poolOptsInternal = (short) PromisePool.poolType; // Set to -1 to opt in if the poolType is OptOut.
+
+#if DEBUG
+			createdStackTrace = GetStackTrace(skipFrames);
+#endif
+		}
+
+		private void OnFinally()
+		{
+			if (nextCount == 0)
+			{
+				AddFinal(this);
+			}
+		}
+
+		private void HandleComplete()
+		{
+			if (handling)
+			{
+				// This is already looping higher in the stack, so just return.
+				return;
+			}
+			handling = true;
+			Action temp;
+			while (completeVoids.TryGetValue(this, out temp)) // Keep looping in case more onComplete callbacks are added from the invoke. This avoids recursion to prevent StackOverflows.
+			{
+				completeVoids.Remove(this);
+				try
+				{
+					temp.Invoke();
+				}
+				catch (Exception e)
+				{
+					if (rejectedValueInternal != null)
+					{
+						UnityEngine.Debug.LogError("A new exception was encountered in a Promise.Complete callback before an old exception was handled." +
+									   " The new exception will replace the old exception propagating up the promise chain.\nOld exception:\n" +
+									   rejectedValueInternal);
+					}
+					rejectedValueInternal = new UnhandledExceptionException().SetValue(e);
+				}
+			}
+			handling = false;
+		}
+
+		protected void OnComplete()
+		{
+			HandleComplete();
+			OnFinally();
+		}
+
+		private void HandleCancel()
+		{
+			if (handling)
+			{
+				// This is already looping higher in the stack, so just return.
+				return;
+			}
+			handling = true;
+			Action cancel;
+			while (cancels.TryGetValue(this, out cancel))
+			{
+				cancels.Remove(this);
+				cancel.Invoke();
+			}
+			handling = false;
+		}
+
+		internal Promise ResolveInternal(IValueContainer feed)
+		{
+			handling = true;
+			_state = PromiseState.Resolved;
+			Promise promise = null;
+			try
+			{
+				promise = ResolveProtectedInternal(feed);
+			}
+			catch (Exception e)
+			{
+				_state = PromiseState.Resolved; // In case the callback throws an exception before returning a promise.
+				rejectedValueInternal = new UnhandledExceptionException().SetValue(e);
+			}
+			handling = false;
+			OnComplete();
+			return promise;
+		}
+
+		internal virtual Promise ResolveProtectedInternal(IValueContainer feed) // private protected not supported before c# 7.2, so must use internal.
+		{
+			return null;
+		}
+
+		internal Promise RejectInternal(UnhandledException rejectVal)
+		{
+			handling = true;
+			_state = PromiseState.Rejected;
+			Promise promise = null;
+			try
+			{
+				promise = RejectProtectedInternal(rejectVal);
+			}
+			catch (Exception e)
+			{
+				_state = PromiseState.Rejected; // In case the callback throws an exception before returning a promise.
+				rejectedValueInternal = new UnhandledExceptionException().SetValue(e);
+			}
+			handling = false;
+			OnComplete();
+			return promise;
+		}
+
+		internal virtual Promise RejectProtectedInternal(UnhandledException rejectVal) // private protected not supported before c# 7.2, so must use internal.
+		{
+			rejectedValueInternal = rejectVal;
+			return null;
+		}
+
+		public virtual void AdoptState(Promise adoptee)
+		{
+			_state = adoptee._state;
+			rejectedValueInternal = adoptee.rejectedValueInternal;
+			adoptee.wasWaitedOn = true;
+		}
+
+		protected void HookupNewPromise(Promise newPromise)
+		{
+			bool shouldContinue = NextBranchesInternal.IsEmpty & !isContinuingHandle;
+			AddWaiter(newPromise);
+			newPromise.deferredInternal = deferredInternal;
+			newPromise.previous = this;
+			RemoveFinal(this);
+
+			// Continue handling if this isn't pending and it's not already looping in ContinueHandlingInternal.
+			if (_state != PromiseState.Pending && shouldContinue)
+			{
+				ContinueHandlingInternal(this);
+			}
+		}
+
+		private void AddWaiter(Promise promise)
+		{
+			checked
+			{
+				++nextCount;
+			}
+			wasWaitedOn = true;
+
+			NextBranchesInternal.Enqueue(promise);
+		}
+
+		// Handle promises in a breadth-first manner.
+		private static ValueLinkedQueue<Promise> nextHandles;
+		
 		// This allows infinite .Then/.Catch callbacks, since it avoids recursion.
 		internal static void ContinueHandlingInternal(Promise current)
 		{
-			ValueLinkedQueue<Promise> nextHandles = new ValueLinkedQueue<Promise>(current);
-			for (; current != null; current = current._nextInternal)
+			if (nextHandles.IsEmpty)
 			{
+				nextHandles = new ValueLinkedQueue<Promise>(current);
+			}
+			else
+			{
+				// ContinueHandlingInternal is running higher in the stack, so just return after adding to the queue.
+				nextHandles.EnqueueRisky(current);
+				current.isContinuingHandle = true;
+				return;
+			}
+
+			for (; current != null; current.isContinuingHandle = false, current = current._nextInternal)
+			{
+				current.isContinuingHandle = true;
+
 				LinkedQueue<Promise> branches = current.NextBranchesInternal;
-				for (Promise next = branches.Peek(); next != null;)
+				Promise next = branches.Peek();
+				while (next != null)
 				{
 					Promise cachedPromise = next;
 					next = next._nextInternal;
-					PromiseWaitHelper waitPromise = cachedPromise.HandleInternal(current);
 
+					if (cachedPromise._state == PromiseState.Canceled)
+					{
+						// Don't do anything with a canceled promise, just mark the current that it was handled.
+						--current.nextCount;
+						continue;
+					}
+
+					// Resolve or reject the next promise.
+					UnhandledException rejectVal = current.rejectedValueInternal;
+					Promise waitPromise = rejectVal == null ? cachedPromise.ResolveInternal(current) : cachedPromise.RejectInternal(rejectVal);
+
+					// Did the .Then/.Catch callback return a promise?
 					if (waitPromise == null)
 					{
 						nextHandles.EnqueueRisky(cachedPromise);
 					}
 					else
 					{
-						switch (waitPromise.State)
+						switch (waitPromise._state)
 						{
 							case PromiseState.Pending:
-							{
-								waitPromise.AddWaiter(cachedPromise);
-								break;
-							}
+								{
+									waitPromise.AddWaiter(cachedPromise);
+									break;
+								}
 							case PromiseState.Canceled:
-							{
-								cachedPromise.Cancel();
-								break;
-							}
+								{
+									cachedPromise.Cancel();
+									break;
+								}
 							default:
-							{
-								waitPromise.AdoptState(cachedPromise);
-								nextHandles.EnqueueRisky(cachedPromise);
-								break;
-							}
+								{
+									cachedPromise.AdoptState(waitPromise);
+									nextHandles.EnqueueRisky(cachedPromise);
+									break;
+								}
 						}
 					}
 				}
 				branches.Clear();
 			}
+			nextHandles.Clear();
 		}
 
 		private static readonly UnityEngine.WaitForEndOfFrame waitForEndOfFrame = new UnityEngine.WaitForEndOfFrame();
@@ -61,20 +392,24 @@ namespace ProtoPromise
 			finallies = finallies2;
 			finallies2 = tempFinals;
 
+			ValueLinkedQueue<Promise> finalPromises = new ValueLinkedQueue<Promise>();
+
 			ValueLinkedStack<UnhandledException> exceptions = new ValueLinkedStack<UnhandledException>();
 			ValueLinkedQueue<UnhandledException> rejections = new ValueLinkedQueue<UnhandledException>();
 			foreach (Promise promise in tempFinals)
 			{
-				promise.done |= AutoDone;
+				promise.done |= promise.wasWaitedOn | AutoDone;
 				if (!promise.done)
 				{
-					// Only resolve final and throw uncaught exceptions if promise is marked done.
+					// Only resolve final and throw uncaught exceptions if promise is marked done or another promise waited on it.
 					continue;
 				}
+
 				FinallyPromise final;
 				if (finals.TryGetValue(promise, out final))
 				{
 					final.ResolveInternal();
+					finalPromises.Enqueue(final);
 				}
 
 				for (Promise prev = promise.previous; prev != null; prev = prev.previous)
@@ -85,6 +420,7 @@ namespace ProtoPromise
 						if (finals.TryGetValue(prev, out final))
 						{
 							final.ResolveInternal();
+							finalPromises.Enqueue(final);
 						}
 					}
 
@@ -123,6 +459,16 @@ namespace ProtoPromise
 				}
 				throw exception;
 			}
+
+			// Handle any .Then/.Catch attached to the finallies.
+			var finalPromise = finalPromises.Peek();
+			while (finalPromise != null)
+			{
+				var cachedPromise = finalPromise;
+				finalPromise = finalPromise._nextInternal;
+
+				ContinueHandlingInternal(cachedPromise);
+			}
 		}
 
 		private static void AddFinal(Promise finallyPromise)
@@ -141,339 +487,38 @@ namespace ProtoPromise
 		}
 	}
 
-
-	// This is used to notify the waiting promise that the previous promise has completed.
-	// An instance of this class will never be exposed publicly.
-	internal class PromiseWaitHelper : Promise, ILinked<PromiseWaitHelper>
+	public partial class Promise<T> : ILinked<Promise<T>>
 	{
-		internal static Dictionary<Promise, PromiseWaitHelper> helpers = new Dictionary<Promise, PromiseWaitHelper>();
+		Promise<T> ILinked<Promise<T>>.Next { get { return (Promise<T>) _nextInternal; } set { _nextInternal = value; } }
 
-		PromiseWaitHelper ILinked<PromiseWaitHelper>.Next { get { return (PromiseWaitHelper) _nextInternal; } set { _nextInternal = value; } }
-
-		internal PromiseWaitHelper() : base()
-		{
-			done = true;
-		}
-
-		protected override void AddToPool()
-		{
-			helpers.Remove(previous);
-			objectPool.AddInternal(this);
-		}
-
-		public virtual void AdoptState(Promise adopter)
-		{
-			adopter.State = State;
-			adopter.rejectedValueInternal = previous.rejectedValueInternal;
-		}
-
-		public void AddWaiter(Promise promise)
-		{
-			NextBranchesInternal.Enqueue(promise);
-		}
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			for (Promise promise = NextBranchesInternal.Peek(); promise != null; promise = promise._nextInternal)
-			{
-				promise.State = State;
-				ContinueHandlingInternal(promise);
-			}
-			NextBranchesInternal.Clear();
-			return null;
-		}
-
-		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
-		{
-			for (Promise promise = NextBranchesInternal.Peek(); promise != null; promise = promise._nextInternal)
-			{
-				promise.State = State;
-				promise.rejectedValueInternal = rejectVal;
-				ContinueHandlingInternal(promise);
-			}
-			NextBranchesInternal.Clear();
-			return null;
-		}
-
-		public override sealed void Cancel()
-		{
-			State = PromiseState.Canceled;
-			for (Promise promise = NextBranchesInternal.Peek(); promise != null; promise = promise._nextInternal)
-			{
-				promise.Cancel();
-			}
-			NextBranchesInternal.Clear();
-		}
-	}
-
-	// This is used to notify the waiting promise that the previous promise has completed.
-	// An instance of this class will never be exposed publicly.
-	internal sealed class PromiseWaitHelper<T> : PromiseWaitHelper, ILinked<PromiseWaitHelper<T>>
-	{
-		PromiseWaitHelper<T> ILinked<PromiseWaitHelper<T>>.Next { get { return (PromiseWaitHelper<T>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			helpers.Remove(previous);
-			objectPool.AddInternal(this);
-		}
-
-		public override void AdoptState(Promise adopter)
-		{
-			base.AdoptState(adopter);
-			((Promise<T>) adopter).ValueInternal = ((Promise<T>) previous).ValueInternal;
-		}
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			Promise<T> prevt = (Promise<T>) previous;
-			for (Promise promise = NextBranchesInternal.Peek(); promise != null; promise = promise._nextInternal)
-			{
-				Promise<T> pt = (Promise<T>) promise;
-
-				pt.State = State;
-				pt.ValueInternal = prevt.ValueInternal;
-				ContinueHandlingInternal(pt);
-			}
-			NextBranchesInternal.Clear();
-			return null;
-		}
-	}
-
-
-
-	// TODO: add exception filters
-
-	internal class PromiseVoidReject : Promise, ILinked<PromiseVoidReject>
-	{
-		PromiseVoidReject ILinked<PromiseVoidReject>.Next { get { return (PromiseVoidReject) _nextInternal; } set { _nextInternal = value; } }
+		internal Promise() : base() { }
 
 		protected override void AddToPool()
 		{
 			if (CantPool) return;
-			objectPool.AddInternal(this);
+			objectPoolInternal.AddInternal(this);
 		}
 
-		internal Action rejectHandler;
-
-		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
+		public override sealed void AdoptState(Promise adoptee)
 		{
-			rejectHandler.Invoke();
-			rejectHandler = null;
+			base.AdoptState(adoptee);
+			_valueInternal = ((Promise<T>) adoptee)._valueInternal;
+		}
+
+		internal void ResolveInternal(T value)
+		{
+			_valueInternal = value;
+
+			_state = PromiseState.Resolved;
+			OnComplete();
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			_valueInternal = ((IValueContainer<T>) feed).Value;
 			return null;
 		}
 	}
-
-	internal class PromiseVoidReject<TReject> : Promise, ILinked<PromiseVoidReject<TReject>>
-	{
-		PromiseVoidReject<TReject> ILinked<PromiseVoidReject<TReject>>.Next { get { return (PromiseVoidReject<TReject>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Action<TReject> rejectHandler;
-
-		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
-		{
-			TReject val;
-			if (rejectVal.TryGetValueAs(out val))
-			{
-				rejectHandler.Invoke(val);
-			}
-			else
-			{
-				rejectedValueInternal = rejectVal;
-			}
-			rejectHandler = null;
-			return null;
-		}
-	}
-
-	internal class PromiseArgReject<TArg> : Promise<TArg>, ILinked<PromiseArgReject<TArg>>
-	{
-		PromiseArgReject<TArg> ILinked<PromiseArgReject<TArg>>.Next { get { return (PromiseArgReject<TArg>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<TArg> rejectHandler;
-
-		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
-		{
-			ValueInternal = rejectHandler.Invoke();
-			rejectHandler = null;
-			return null;
-		}
-
-		// Just pass the value through.
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			ValueInternal = ((IValueContainer<TArg>) feed).Value;
-			return null;
-		}
-	}
-
-	internal class PromiseVoidRejectPromise : Promise, ILinked<PromiseVoidRejectPromise>
-	{
-		PromiseVoidRejectPromise ILinked<PromiseVoidRejectPromise>.Next { get { return (PromiseVoidRejectPromise) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<Promise> rejectHandler;
-
-		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
-		{
-			State = PromiseState.Pending;
-			var temp = rejectHandler;
-			rejectHandler = null;
-			return WaitHelperInternal(temp.Invoke());
-		}
-	}
-
-	internal class PromiseArgReject<TReject, TArg> : Promise<TArg>, ILinked<PromiseArgReject<TReject, TArg>>
-	{
-		PromiseArgReject<TReject, TArg> ILinked<PromiseArgReject<TReject, TArg>>.Next { get { return (PromiseArgReject<TReject, TArg>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<TReject, TArg> rejectHandler;
-
-		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
-		{
-			TReject val;
-			if (rejectVal.TryGetValueAs(out val))
-			{
-				ValueInternal = rejectHandler.Invoke(val);
-			}
-			else
-			{
-				rejectedValueInternal = rejectVal;
-			}
-			rejectHandler = null;
-			return null;
-		}
-
-		// Just pass the value through.
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			ValueInternal = ((IValueContainer<TArg>) feed).Value;
-			return null;
-		}
-	}
-
-	internal class PromiseArgRejectPromise<TReject> : Promise, ILinked<PromiseArgRejectPromise<TReject>>
-	{
-		PromiseArgRejectPromise<TReject> ILinked<PromiseArgRejectPromise<TReject>>.Next { get { return (PromiseArgRejectPromise<TReject>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<TReject, Promise> rejectHandler;
-
-		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
-		{
-			State = PromiseState.Pending;
-			PromiseWaitHelper promise;
-
-			TReject val;
-			if (rejectVal.TryGetValueAs(out val))
-			{
-				promise = WaitHelperInternal(rejectHandler.Invoke(val));
-			}
-			else
-			{
-				rejectedValueInternal = rejectVal;
-				promise = null;
-			}
-			rejectHandler = null;
-			return promise;
-		}
-	}
-
-	internal class PromiseArgRejectPromiseT<TArg> : Promise<TArg>, ILinked<PromiseArgRejectPromiseT<TArg>>
-	{
-		PromiseArgRejectPromiseT<TArg> ILinked<PromiseArgRejectPromiseT<TArg>>.Next { get { return (PromiseArgRejectPromiseT<TArg>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<Promise<TArg>> rejectHandler;
-
-		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
-		{
-			State = PromiseState.Pending;
-			var temp = rejectHandler;
-			rejectHandler = null;
-			return WaitHelperInternal(temp.Invoke());
-		}
-
-		// Just pass the value through.
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			ValueInternal = ((IValueContainer<TArg>) feed).Value;
-			return null;
-		}
-	}
-
-	internal class PromiseArgRejectPromiseT<TReject, TArg> : Promise<TArg>, ILinked<PromiseArgRejectPromiseT<TReject, TArg>>
-	{
-		PromiseArgRejectPromiseT<TReject, TArg> ILinked<PromiseArgRejectPromiseT<TReject, TArg>>.Next { get { return (PromiseArgRejectPromiseT<TReject, TArg>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<TReject, Promise<TArg>> rejectHandler;
-
-		internal override sealed PromiseWaitHelper RejectProtectedInternal(UnhandledException rejectVal)
-		{
-			State = PromiseState.Pending;
-			PromiseWaitHelper promise;
-
-			TReject val;
-			if (rejectVal.TryGetValueAs(out val))
-			{
-				promise = WaitHelperInternal(rejectHandler.Invoke(val));
-			}
-			else
-			{
-				rejectedValueInternal = rejectVal;
-				promise = null;
-			}
-			rejectHandler = null;
-			return promise;
-		}
-
-		// Just pass the value through.
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			ValueInternal = ((IValueContainer<TArg>) feed).Value;
-			return null;
-		}
-	}
-
 
 
 	internal sealed class FinallyPromise : Promise, ILinked<FinallyPromise>
@@ -485,7 +530,7 @@ namespace ProtoPromise
 		protected override void AddToPool()
 		{
 			if (CantPool) return;
-			objectPool.AddInternal(this);
+			objectPoolInternal.AddInternal(this);
 		}
 
 		internal Action finalHandler;
@@ -521,594 +566,1225 @@ namespace ProtoPromise
 
 		internal void ResolveInternal()
 		{
-			State = PromiseState.Resolved;
+			_state = PromiseState.Resolved;
 			HandleFinallies();
 			OnComplete();
 		}
 	}
 
+	// Sadly, C# does not allow multi-inheritance. Hence all the copy-pasted code...
 
-	internal sealed class PromiseFromDeferred : Promise, ILinked<PromiseFromDeferred>
+	#region RejectHandlers
+	// Used IFilter and IDelegate(Result) to reduce the amount of classes I would have to generate to handle catches. I'm less concerned about performance for catches since exceptions are expensive anyway.
+	internal class PromiseReject : Promise, ILinked<PromiseReject>
 	{
-		PromiseFromDeferred ILinked<PromiseFromDeferred>.Next { get { return (PromiseFromDeferred) _nextInternal; } set { _nextInternal = value; } }
+		PromiseReject ILinked<PromiseReject>.Next { get { return (PromiseReject) _nextInternal; } set { _nextInternal = value; } }
 
 		protected override void AddToPool()
 		{
 			if (CantPool) return;
-			objectPool.AddInternal(this);
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal IFilter filter;
+		internal IDelegate rejectHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			var tempRej = rejectHandler;
+			rejectHandler = null;
+			var tempFilter = filter;
+			filter = null;
+			// Try to run rejectVal through the filter, then try to run it through the rejectHandler.
+			if ((tempFilter == null || tempFilter.RunThroughFilter(rejectVal)) && tempRej.TryInvoke(rejectVal))
+			{
+				return null;
+			}
+			rejectedValueInternal = rejectVal;
+			return null;
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+			return base.ResolveProtectedInternal(feed);
+		}
+	}
+
+	internal class PromiseReject<T> : Promise<T>, ILinked<PromiseReject<T>>
+	{
+		PromiseReject<T> ILinked<PromiseReject<T>>.Next { get { return (PromiseReject<T>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal IFilter filter;
+		internal IDelegateResult rejectHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			var tempRej = rejectHandler;
+			rejectHandler = null;
+			var tempFilter = filter;
+			filter = null;
+			// Try to run rejectVal through the filter, then try to run it through the rejectHandler.
+			if ((tempFilter == null || tempFilter.RunThroughFilter(rejectVal)) && tempRej.TryInvoke(rejectVal, out _valueInternal))
+			{
+				return null;
+			}
+			rejectedValueInternal = rejectVal;
+			return null;
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+			return base.ResolveProtectedInternal(feed);
+		}
+	}
+
+	internal class PromiseRejectPromise : Promise, ILinked<PromiseRejectPromise>
+	{
+		PromiseRejectPromise ILinked<PromiseRejectPromise>.Next { get { return (PromiseRejectPromise) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal IFilter filter;
+		internal IDelegateResult rejectHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			if (rejectHandler == null)
+			{
+				// The returned promise is rejecting this.
+				return base.RejectProtectedInternal(rejectVal);
+			}
+
+			_state = PromiseState.Pending;
+			Promise promise = null;
+			var tempRej = rejectHandler;
+			rejectHandler = null;
+			var tempFilter = filter;
+			filter = null;
+			// Try to run rejectVal through the filter, then try to run it through the rejectHandler.
+			if ((tempFilter == null || tempFilter.RunThroughFilter(rejectVal)) && tempRej.TryInvoke(rejectVal, out promise))
+			{
+				if (promise == null)
+				{
+					_state = PromiseState.Rejected;
+					throw null;
+				}
+				return promise;
+			}
+			rejectedValueInternal = rejectVal;
+			return null;
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+			return base.ResolveProtectedInternal(feed);
+		}
+	}
+
+	internal class PromiseRejectPromise<TPromise> : Promise<TPromise>, ILinked<PromiseRejectPromise<TPromise>>
+	{
+		PromiseRejectPromise<TPromise> ILinked<PromiseRejectPromise<TPromise>>.Next { get { return (PromiseRejectPromise<TPromise>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal IFilter filter;
+		internal IDelegateResult rejectHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			if (rejectHandler == null)
+			{
+				// The returned promise is rejecting this.
+				return base.RejectProtectedInternal(rejectVal);
+			}
+
+			_state = PromiseState.Pending;
+			Promise<TPromise> promise = null;
+			var tempRej = rejectHandler;
+			rejectHandler = null;
+			var tempFilter = filter;
+			filter = null;
+			// Try to run rejectVal through the filter, then try to run it through the rejectHandler.
+			if ((tempFilter == null || tempFilter.RunThroughFilter(rejectVal)) && tempRej.TryInvoke(rejectVal, out promise))
+			{
+				if (promise == null)
+				{
+					_state = PromiseState.Rejected;
+					throw null;
+				}
+				return promise;
+			}
+			rejectedValueInternal = rejectVal;
+			return null;
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+			return base.ResolveProtectedInternal(feed);
+		}
+	}
+
+	internal class PromiseRejectDeferred : Promise, ILinked<PromiseRejectDeferred>
+	{
+		PromiseRejectDeferred ILinked<PromiseRejectDeferred>.Next { get { return (PromiseRejectDeferred) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal IFilter filter;
+		internal IDelegateResult rejectHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			if (rejectHandler == null)
+			{
+				// The returned promise is rejecting this.
+				return base.RejectProtectedInternal(rejectVal);
+			}
+
+			_state = PromiseState.Pending;
+			Action<Deferred> deferred = null;
+			var tempRej = rejectHandler;
+			rejectHandler = null;
+			var tempFilter = filter;
+			filter = null;
+			// Try to run rejectVal through the filter, then try to run it through the rejectHandler.
+			if ((tempFilter == null || tempFilter.RunThroughFilter(rejectVal)) && tempRej.TryInvoke(rejectVal, out deferred))
+			{
+				if (deferred == null)
+				{
+					_state = PromiseState.Rejected;
+					throw null;
+				}
+				// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
+				return New(deferred);
+			}
+			rejectedValueInternal = rejectVal;
+			return null;
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+			return base.ResolveProtectedInternal(feed);
+		}
+	}
+
+	internal class PromiseRejectDeferred<TDeferred> : Promise<TDeferred>, ILinked<PromiseRejectDeferred<TDeferred>>
+	{
+		PromiseRejectDeferred<TDeferred> ILinked<PromiseRejectDeferred<TDeferred>>.Next { get { return (PromiseRejectDeferred<TDeferred>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal IFilter filter;
+		internal IDelegateResult rejectHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			if (rejectHandler == null)
+			{
+				// The returned promise is rejecting this.
+				return base.RejectProtectedInternal(rejectVal);
+			}
+
+			_state = PromiseState.Pending;
+			Action<Deferred<TDeferred>> deferred = null;
+			var tempRej = rejectHandler;
+			rejectHandler = null;
+			var tempFilter = filter;
+			filter = null;
+			// Try to run rejectVal through the filter, then try to run it through the rejectHandler.
+			if ((tempFilter == null || tempFilter.RunThroughFilter(rejectVal)) && tempRej.TryInvoke(rejectVal, out deferred))
+			{
+				if (deferred == null)
+				{
+					_state = PromiseState.Rejected;
+					throw null;
+				}
+				// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
+				return New(deferred);
+			}
+			rejectedValueInternal = rejectVal;
+			return null;
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+			return base.ResolveProtectedInternal(feed);
+		}
+	}
+	#endregion
+
+	#region NormalCallbacks
+	internal sealed class PromiseVoidResolve : Promise, ILinked<PromiseVoidResolve>
+	{
+		PromiseVoidResolve ILinked<PromiseVoidResolve>.Next { get { return (PromiseVoidResolve) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Action resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			tempResolve.Invoke();
+			return null;
+		}
+	}
+
+	internal sealed class PromiseVoidResolveReject : PromiseReject, ILinked<PromiseVoidResolveReject>
+	{
+		PromiseVoidResolveReject ILinked<PromiseVoidResolveReject>.Next { get { return (PromiseVoidResolveReject) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Action resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			tempResolve.Invoke();
+			return null;
+		}
+	}
+
+
+	internal sealed class PromiseArgResolve<TArg> : Promise, ILinked<PromiseArgResolve<TArg>>
+	{
+		PromiseArgResolve<TArg> ILinked<PromiseArgResolve<TArg>>.Next { get { return (PromiseArgResolve<TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Action<TArg> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			tempResolve.Invoke(((IValueContainer<TArg>) feed).Value);
+			return null;
+		}
+	}
+
+	internal sealed class PromiseArgResolveReject<TArg> : PromiseReject, ILinked<PromiseArgResolveReject<TArg>>
+	{
+		PromiseArgResolveReject<TArg> ILinked<PromiseArgResolveReject<TArg>>.Next { get { return (PromiseArgResolveReject<TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Action<TArg> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			tempResolve.Invoke(((IValueContainer<TArg>) feed).Value);
+			return null;
+		}
+	}
+
+
+	internal sealed class PromiseVoidResolve<TResult> : Promise<TResult>, ILinked<PromiseVoidResolve<TResult>>
+	{
+		PromiseVoidResolve<TResult> ILinked<PromiseVoidResolve<TResult>>.Next { get { return (PromiseVoidResolve<TResult>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Func<TResult> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			_valueInternal = tempResolve.Invoke();
+			return null;
+		}
+	}
+
+	internal sealed class PromiseVoidResolveReject<TResult> : PromiseReject<TResult>, ILinked<PromiseVoidResolveReject<TResult>>
+	{
+		PromiseVoidResolveReject<TResult> ILinked<PromiseVoidResolveReject<TResult>>.Next { get { return (PromiseVoidResolveReject<TResult>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Func<TResult> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			_valueInternal = tempResolve.Invoke();
+			return null;
+		}
+	}
+
+
+	internal sealed class PromiseArgResolve<TArg, TResult> : Promise<TResult>, ILinked<PromiseArgResolve<TArg, TResult>>
+	{
+		PromiseArgResolve<TArg, TResult> ILinked<PromiseArgResolve<TArg, TResult>>.Next { get { return (PromiseArgResolve<TArg, TResult>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Func<TArg, TResult> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			_valueInternal = tempResolve.Invoke(((IValueContainer<TArg>) feed).Value);
+			return null;
+		}
+	}
+
+	internal sealed class PromiseArgResolveReject<TArg, TResult> : PromiseReject<TResult>, ILinked<PromiseArgResolveReject<TArg, TResult>>
+	{
+		PromiseArgResolveReject<TArg, TResult> ILinked<PromiseArgResolveReject<TArg, TResult>>.Next { get { return (PromiseArgResolveReject<TArg, TResult>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Func<TArg, TResult> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			_valueInternal = tempResolve.Invoke(((IValueContainer<TArg>) feed).Value);
+			return null;
+		}
+	}
+	#endregion
+
+	#region PromiseReturns
+	internal sealed class PromiseVoidResolvePromise : Promise, ILinked<PromiseVoidResolvePromise>
+	{
+		PromiseVoidResolvePromise ILinked<PromiseVoidResolvePromise>.Next { get { return (PromiseVoidResolvePromise) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Func<Promise> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+
+			_state = PromiseState.Pending;
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			var promise = tempResolve.Invoke();
+			if (promise == null)
+			{
+				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
+				_state = PromiseState.Resolved;
+				//throw null;
+				rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
+			}
+			return promise;
+		}
+	}
+
+	internal sealed class PromiseVoidResolveRejectPromise : PromiseRejectPromise, ILinked<PromiseVoidResolveRejectPromise>
+	{
+		PromiseVoidResolveRejectPromise ILinked<PromiseVoidResolveRejectPromise>.Next { get { return (PromiseVoidResolveRejectPromise) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Func<Promise> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+
+
+			_state = PromiseState.Pending;
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			var promise = tempResolve.Invoke();
+			if (promise == null)
+			{
+				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
+				_state = PromiseState.Resolved;
+				throw null;
+				//rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
+			}
+			return promise;
+		}
+	}
+
+
+	internal sealed class PromiseArgResolvePromise<TArg> : Promise, ILinked<PromiseArgResolvePromise<TArg>>
+	{
+		PromiseArgResolvePromise<TArg> ILinked<PromiseArgResolvePromise<TArg>>.Next { get { return (PromiseArgResolvePromise<TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Func<TArg, Promise> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+
+			_state = PromiseState.Pending;
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			var promise = tempResolve.Invoke(((IValueContainer<TArg>) feed).Value);
+			if (promise == null)
+			{
+				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
+				_state = PromiseState.Resolved;
+				throw null;
+				//rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
+			}
+			return promise;
+		}
+	}
+
+	internal sealed class PromiseArgResolveRejectPromise<TArg> : PromiseRejectPromise, ILinked<PromiseArgResolveRejectPromise<TArg>>
+	{
+		PromiseArgResolveRejectPromise<TArg> ILinked<PromiseArgResolveRejectPromise<TArg>>.Next { get { return (PromiseArgResolveRejectPromise<TArg>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Func<TArg, Promise> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+
+			_state = PromiseState.Pending;
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			var promise = tempResolve.Invoke(((IValueContainer<TArg>) feed).Value);
+			if (promise == null)
+			{
+				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
+				_state = PromiseState.Resolved;
+				throw null;
+				//rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
+			}
+			return promise;
+		}
+	}
+
+
+	internal sealed class PromiseVoidResolvePromise<TPromise> : Promise<TPromise>, ILinked<PromiseVoidResolvePromise<TPromise>>
+	{
+		PromiseVoidResolvePromise<TPromise> ILinked<PromiseVoidResolvePromise<TPromise>>.Next { get { return (PromiseVoidResolvePromise<TPromise>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Func<Promise<TPromise>> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+			_state = PromiseState.Pending;
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			var promise = tempResolve.Invoke();
+			if (promise == null)
+			{
+				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
+				_state = PromiseState.Resolved;
+				//throw null;
+				rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
+			}
+			return promise;
+		}
+	}
+
+	internal sealed class PromiseVoidResolveRejectPromise<TPromise> : PromiseRejectPromise<TPromise>, ILinked<PromiseVoidResolveRejectPromise<TPromise>>
+	{
+		PromiseVoidResolveRejectPromise<TPromise> ILinked<PromiseVoidResolveRejectPromise<TPromise>>.Next { get { return (PromiseVoidResolveRejectPromise<TPromise>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Func<Promise<TPromise>> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+
+			_state = PromiseState.Pending;
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			var promise = tempResolve.Invoke();
+			if (promise == null)
+			{
+				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
+				_state = PromiseState.Resolved;
+				throw null;
+				//rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
+			}
+			return promise;
+		}
+	}
+
+
+	internal sealed class PromiseArgResolvePromise<TArg, TPRomise> : Promise<TPRomise>, ILinked<PromiseArgResolvePromise<TArg, TPRomise>>
+	{
+		PromiseArgResolvePromise<TArg, TPRomise> ILinked<PromiseArgResolvePromise<TArg, TPRomise>>.Next { get { return (PromiseArgResolvePromise<TArg, TPRomise>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Func<TArg, Promise<TPRomise>> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+
+			_state = PromiseState.Pending;
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			var promise = tempResolve.Invoke(((IValueContainer<TArg>) feed).Value);
+			if (promise == null)
+			{
+				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
+				_state = PromiseState.Resolved;
+				throw null;
+				//rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
+			}
+			return promise;
+		}
+	}
+
+	internal sealed class PromiseArgResolveRejectPromise<TArg, TPromise> : PromiseRejectPromise<TPromise>, ILinked<PromiseArgResolveRejectPromise<TArg, TPromise>>
+	{
+		PromiseArgResolveRejectPromise<TArg, TPromise> ILinked<PromiseArgResolveRejectPromise<TArg, TPromise>>.Next { get { return (PromiseArgResolveRejectPromise<TArg, TPromise>) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
+		}
+
+		internal Func<TArg, Promise<TPromise>> resolveHandler;
+
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
+		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+
+			_state = PromiseState.Pending;
+			var tempResolve = resolveHandler;
+			resolveHandler = null;
+			var promise = tempResolve.Invoke(((IValueContainer<TArg>) feed).Value);
+			if (promise == null)
+			{
+				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
+				_state = PromiseState.Resolved;
+				throw null;
+				//rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
+			}
+			return promise;
+		}
+	}
+	#endregion
+
+	#region DeferredReturns
+	internal sealed class PromiseVoidResolveDeferred : Promise, ILinked<PromiseVoidResolveDeferred>
+	{
+		PromiseVoidResolveDeferred ILinked<PromiseVoidResolveDeferred>.Next { get { return (PromiseVoidResolveDeferred) _nextInternal; } set { _nextInternal = value; } }
+
+		protected override void AddToPool()
+		{
+			if (CantPool) return;
+			objectPoolInternal.AddInternal(this);
 		}
 
 		internal Func<Action<Deferred>> resolveHandler;
 
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
 		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+
+			_state = PromiseState.Pending;
+			Action<Deferred> deferred = null;
 			var temp = resolveHandler;
 			resolveHandler = null;
+			deferred = temp.Invoke();
+			if (deferred == null)
+			{
+				_state = PromiseState.Rejected;
+				throw null;
+			}
 			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
-			return WaitHelperInternal(New(temp.Invoke()));
+			var promise = New(deferred);
+			return promise;
 		}
 	}
 
-	internal sealed class PromiseFromDeferred<T> : Promise<T>, ILinked<PromiseFromDeferred<T>>
+	internal sealed class PromiseVoidResolveRejectDeferred : PromiseRejectDeferred, ILinked<PromiseVoidResolveRejectDeferred>
 	{
-		PromiseFromDeferred<T> ILinked<PromiseFromDeferred<T>>.Next { get { return (PromiseFromDeferred<T>) _nextInternal; } set { _nextInternal = value; } }
+		PromiseVoidResolveRejectDeferred ILinked<PromiseVoidResolveRejectDeferred>.Next { get { return (PromiseVoidResolveRejectDeferred) _nextInternal; } set { _nextInternal = value; } }
 
 		protected override void AddToPool()
 		{
 			if (CantPool) return;
-			objectPool.AddInternal(this);
+			objectPoolInternal.AddInternal(this);
 		}
 
-		internal Func<Action<Deferred<T>>> resolveHandler;
+		internal Func<Action<Deferred>> resolveHandler;
 
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
 		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+
+			_state = PromiseState.Pending;
+			Action<Deferred> deferred = null;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return WaitHelperInternal(New(temp.Invoke()));
+			deferred = temp.Invoke();
+			if (deferred == null)
+			{
+				_state = PromiseState.Rejected;
+				throw null;
+			}
+			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
+			var promise = New(deferred);
+			return promise;
 		}
 	}
 
-	internal sealed class PromiseFromDeferredT<TValue> : Promise, ILinked<PromiseFromDeferredT<TValue>>
+
+	internal sealed class PromiseVoidResolveDeferred<TDeferred> : Promise<TDeferred>, ILinked<PromiseVoidResolveDeferred<TDeferred>>
 	{
-		PromiseFromDeferredT<TValue> ILinked<PromiseFromDeferredT<TValue>>.Next { get { return (PromiseFromDeferredT<TValue>) _nextInternal; } set { _nextInternal = value; } }
+		PromiseVoidResolveDeferred<TDeferred> ILinked<PromiseVoidResolveDeferred<TDeferred>>.Next { get { return (PromiseVoidResolveDeferred<TDeferred>) _nextInternal; } set { _nextInternal = value; } }
 
 		protected override void AddToPool()
 		{
 			if (CantPool) return;
-			objectPool.AddInternal(this);
+			objectPoolInternal.AddInternal(this);
 		}
 
-		internal Func<TValue, Action<Deferred>> resolveHandler;
+		internal Func<Action<Deferred<TDeferred>>> resolveHandler;
 
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
 		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+
+			_state = PromiseState.Pending;
+			Action<Deferred<TDeferred>> deferred = null;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return WaitHelperInternal(New(temp.Invoke(((IValueContainer<TValue>) feed).Value)));
+			deferred = temp.Invoke();
+			if (deferred == null)
+			{
+				_state = PromiseState.Rejected;
+				throw null;
+			}
+			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
+			var promise = New(deferred);
+			return promise;
 		}
 	}
 
-	internal sealed class PromiseFromDeferredT<T, TValue> : Promise<T>, ILinked<PromiseFromDeferredT<T, TValue>>
+	internal sealed class PromiseVoidResolveRejectDeferred<TDeferred> : PromiseRejectDeferred<TDeferred>, ILinked<PromiseVoidResolveRejectDeferred<TDeferred>>
 	{
-		PromiseFromDeferredT<T, TValue> ILinked<PromiseFromDeferredT<T, TValue>>.Next { get { return (PromiseFromDeferredT<T, TValue>) _nextInternal; } set { _nextInternal = value; } }
+		PromiseVoidResolveRejectDeferred<TDeferred> ILinked<PromiseVoidResolveRejectDeferred<TDeferred>>.Next { get { return (PromiseVoidResolveRejectDeferred<TDeferred>) _nextInternal; } set { _nextInternal = value; } }
 
 		protected override void AddToPool()
 		{
 			if (CantPool) return;
-			objectPool.AddInternal(this);
+			objectPoolInternal.AddInternal(this);
 		}
 
-		internal Func<TValue, Action<Deferred<T>>> resolveHandler;
+		internal Func<Action<Deferred<TDeferred>>> resolveHandler;
 
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
 		{
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+
+			_state = PromiseState.Pending;
+			Action<Deferred<TDeferred>> deferred = null;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return WaitHelperInternal(New(temp.Invoke(((IValueContainer<TValue>) feed).Value)));
+			deferred = temp.Invoke();
+			if (deferred == null)
+			{
+				_state = PromiseState.Rejected;
+				throw null;
+			}
+			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
+			var promise = New(deferred);
+			return promise;
 		}
 	}
 
 
-	internal sealed class PromiseVoidFromVoidResolve : Promise, ILinked<PromiseVoidFromVoidResolve>
+	internal sealed class PromiseArgResolveDeferred<TArg> : Promise, ILinked<PromiseArgResolveDeferred<TArg>>
 	{
-		PromiseVoidFromVoidResolve ILinked<PromiseVoidFromVoidResolve>.Next { get { return (PromiseVoidFromVoidResolve) _nextInternal; } set { _nextInternal = value; } }
+		PromiseArgResolveDeferred<TArg> ILinked<PromiseArgResolveDeferred<TArg>>.Next { get { return (PromiseArgResolveDeferred<TArg>) _nextInternal; } set { _nextInternal = value; } }
 
 		protected override void AddToPool()
 		{
 			if (CantPool) return;
-			objectPool.AddInternal(this);
+			objectPoolInternal.AddInternal(this);
 		}
 
-		internal Action resolveHandler;
+		internal Func<TArg, Action<Deferred>> resolveHandler;
 
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
 		{
-			resolveHandler.Invoke();
 			resolveHandler = null;
-			return null;
-		}
-	}
-
-	internal sealed class PromiseVoidFromVoid : PromiseVoidReject, ILinked<PromiseVoidFromVoid>
-	{
-		PromiseVoidFromVoid ILinked<PromiseVoidFromVoid>.Next { get { return (PromiseVoidFromVoid) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
+			return base.RejectProtectedInternal(rejectVal);
 		}
 
-		internal Action resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
 		{
-			resolveHandler.Invoke();
-			resolveHandler = null;
-			return null;
-		}
-	}
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
 
-	internal sealed class PromiseVoidFromVoid<TReject> : PromiseVoidReject<TReject>, ILinked<PromiseVoidFromVoid<TReject>>
-	{
-		PromiseVoidFromVoid<TReject> ILinked<PromiseVoidFromVoid<TReject>>.Next { get { return (PromiseVoidFromVoid<TReject>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Action resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			resolveHandler.Invoke();
-			resolveHandler = null;
-			return null;
-		}
-	}
-
-
-
-	internal sealed class PromiseVoidFromArgResolve<TArg> : Promise, ILinked<PromiseVoidFromArgResolve<TArg>>
-	{
-		PromiseVoidFromArgResolve<TArg> ILinked<PromiseVoidFromArgResolve<TArg>>.Next { get { return (PromiseVoidFromArgResolve<TArg>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Action<TArg> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
-			resolveHandler = null;
-			return null;
-		}
-	}
-
-	internal sealed class PromiseVoidFromArg<TArg> : PromiseVoidReject, ILinked<PromiseVoidFromArg<TArg>>
-	{
-		PromiseVoidFromArg<TArg> ILinked<PromiseVoidFromArg<TArg>>.Next { get { return (PromiseVoidFromArg<TArg>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Action<TArg> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
-			resolveHandler = null;
-			return null;
-		}
-	}
-
-	internal sealed class PromiseVoidFromArg<TArg, TReject> : PromiseVoidReject<TReject>, ILinked<PromiseVoidFromArg<TArg, TReject>>
-	{
-		PromiseVoidFromArg<TArg, TReject> ILinked<PromiseVoidFromArg<TArg, TReject>>.Next { get { return (PromiseVoidFromArg<TArg, TReject>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Action<TArg> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
-			resolveHandler = null;
-			return null;
-		}
-	}
-
-
-
-	internal sealed class PromiseArgFromResultResolve<TResult> : Promise<TResult>, ILinked<PromiseArgFromResultResolve<TResult>>
-	{
-		PromiseArgFromResultResolve<TResult> ILinked<PromiseArgFromResultResolve<TResult>>.Next { get { return (PromiseArgFromResultResolve<TResult>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<TResult> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			ValueInternal = resolveHandler.Invoke();
-			resolveHandler = null;
-			return null;
-		}
-	}
-
-	internal sealed class PromiseArgFromResult<TResult> : PromiseArgReject<TResult>, ILinked<PromiseArgFromResult<TResult>>
-	{
-		PromiseArgFromResult<TResult> ILinked<PromiseArgFromResult<TResult>>.Next { get { return (PromiseArgFromResult<TResult>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<TResult> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			ValueInternal = resolveHandler.Invoke();
-			resolveHandler = null;
-			return null;
-		}
-	}
-
-	internal sealed class PromiseArgFromResult<TResult, TReject> : PromiseArgReject<TReject, TResult>, ILinked<PromiseArgFromResult<TResult, TReject>>
-	{
-		PromiseArgFromResult<TResult, TReject> ILinked<PromiseArgFromResult<TResult, TReject>>.Next { get { return (PromiseArgFromResult<TResult, TReject>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<TResult> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			ValueInternal = resolveHandler.Invoke();
-			resolveHandler = null;
-			return null;
-		}
-	}
-
-
-
-	internal sealed class PromiseArgFromArgResultResolve<TArg, TResult> : Promise<TResult>, ILinked<PromiseArgFromArgResultResolve<TArg, TResult>>
-	{
-		PromiseArgFromArgResultResolve<TArg, TResult> ILinked<PromiseArgFromArgResultResolve<TArg, TResult>>.Next { get { return (PromiseArgFromArgResultResolve<TArg, TResult>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<TArg, TResult> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			//UnityEngine.Debug.LogError("sending " + ((IValueContainer<TArg>) feed).Value);
-			ValueInternal = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
-			//UnityEngine.Debug.LogError("receiving " + ValueInternal);
-			resolveHandler = null;
-			return null;
-		}
-	}
-
-	internal sealed class PromiseArgFromArgResult<TArg, TResult> : PromiseArgReject<TResult>, ILinked<PromiseArgFromArgResult<TArg, TResult>>
-	{
-		PromiseArgFromArgResult<TArg, TResult> ILinked<PromiseArgFromArgResult<TArg, TResult>>.Next { get { return (PromiseArgFromArgResult<TArg, TResult>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<TArg, TResult> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			ValueInternal = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
-			resolveHandler = null;
-			return null;
-		}
-	}
-
-	internal sealed class PromiseArgFromArgResult<TArg, TResult, TReject> : PromiseArgReject<TReject, TResult>, ILinked<PromiseArgFromArgResult<TArg, TResult, TReject>>
-	{
-		PromiseArgFromArgResult<TArg, TResult, TReject> ILinked<PromiseArgFromArgResult<TArg, TResult, TReject>>.Next { get { return (PromiseArgFromArgResult<TArg, TResult, TReject>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<TArg, TResult> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			ValueInternal = resolveHandler.Invoke(((IValueContainer<TArg>) feed).Value);
-			resolveHandler = null;
-			return null;
-		}
-	}
-
-
-
-	internal sealed class PromiseVoidFromPromiseResultResolve : Promise, ILinked<PromiseVoidFromPromiseResultResolve>
-	{
-		PromiseVoidFromPromiseResultResolve ILinked<PromiseVoidFromPromiseResultResolve>.Next { get { return (PromiseVoidFromPromiseResultResolve) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<Promise> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			State = PromiseState.Pending;
+			_state = PromiseState.Pending;
+			Action<Deferred> deferred = null;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return WaitHelperInternal(temp.Invoke());
+			deferred = temp.Invoke(((IValueContainer<TArg>) feed).Value);
+			if (deferred == null)
+			{
+				_state = PromiseState.Rejected;
+				throw null;
+			}
+			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
+			var promise = New(deferred);
+			return promise;
 		}
 	}
 
-	internal sealed class PromiseVoidFromPromiseResult : PromiseVoidRejectPromise, ILinked<PromiseVoidFromPromiseResult>
+	internal sealed class PromiseArgResolveRejectDeferred<TArg> : PromiseRejectDeferred, ILinked<PromiseArgResolveRejectDeferred<TArg>>
 	{
-		PromiseVoidFromPromiseResult ILinked<PromiseVoidFromPromiseResult>.Next { get { return (PromiseVoidFromPromiseResult) _nextInternal; } set { _nextInternal = value; } }
+		PromiseArgResolveRejectDeferred<TArg> ILinked<PromiseArgResolveRejectDeferred<TArg>>.Next { get { return (PromiseArgResolveRejectDeferred<TArg>) _nextInternal; } set { _nextInternal = value; } }
 
 		protected override void AddToPool()
 		{
 			if (CantPool) return;
-			objectPool.AddInternal(this);
+			objectPoolInternal.AddInternal(this);
 		}
 
-		internal Func<Promise> resolveHandler;
+		internal Func<TArg, Action<Deferred>> resolveHandler;
 
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
 		{
-			State = PromiseState.Pending;
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+
+			_state = PromiseState.Pending;
+			Action<Deferred> deferred = null;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return WaitHelperInternal(temp.Invoke());
+			deferred = temp.Invoke(((IValueContainer<TArg>) feed).Value);
+			if (deferred == null)
+			{
+				_state = PromiseState.Rejected;
+				throw null;
+			}
+			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
+			var promise = New(deferred);
+			return promise;
 		}
 	}
 
-	internal sealed class PromiseVoidFromPromiseResult<TReject> : PromiseArgRejectPromise<TReject>, ILinked<PromiseVoidFromPromiseResult<TReject>>
+
+	internal sealed class PromiseArgResolveDeferred<TArg, TDeferred> : Promise<TDeferred>, ILinked<PromiseArgResolveDeferred<TArg, TDeferred>>
 	{
-		PromiseVoidFromPromiseResult<TReject> ILinked<PromiseVoidFromPromiseResult<TReject>>.Next { get { return (PromiseVoidFromPromiseResult<TReject>) _nextInternal; } set { _nextInternal = value; } }
+		PromiseArgResolveDeferred<TArg, TDeferred> ILinked<PromiseArgResolveDeferred<TArg, TDeferred>>.Next { get { return (PromiseArgResolveDeferred<TArg, TDeferred>) _nextInternal; } set { _nextInternal = value; } }
 
 		protected override void AddToPool()
 		{
 			if (CantPool) return;
-			objectPool.AddInternal(this);
+			objectPoolInternal.AddInternal(this);
 		}
 
-		internal Func<Promise> resolveHandler;
+		internal Func<TArg, Action<Deferred<TDeferred>>> resolveHandler;
 
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
 		{
-			State = PromiseState.Pending;
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+
+			_state = PromiseState.Pending;
+			Action<Deferred<TDeferred>> deferred = null;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return WaitHelperInternal(temp.Invoke());
+			deferred = temp.Invoke(((IValueContainer<TArg>) feed).Value);
+			if (deferred == null)
+			{
+				_state = PromiseState.Rejected;
+				throw null;
+			}
+			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
+			var promise = New(deferred);
+			return promise;
 		}
 	}
 
-
-
-	internal sealed class PromiseVoidFromPromiseArgResultResolve<TArg> : Promise, ILinked<PromiseVoidFromPromiseArgResultResolve<TArg>>
+	internal sealed class PromiseArgResolveRejectDeferred<TArg, TDeferred> : PromiseRejectDeferred<TDeferred>, ILinked<PromiseArgResolveRejectDeferred<TArg, TDeferred>>
 	{
-		PromiseVoidFromPromiseArgResultResolve<TArg> ILinked<PromiseVoidFromPromiseArgResultResolve<TArg>>.Next { get { return (PromiseVoidFromPromiseArgResultResolve<TArg>) _nextInternal; } set { _nextInternal = value; } }
+		PromiseArgResolveRejectDeferred<TArg, TDeferred> ILinked<PromiseArgResolveRejectDeferred<TArg, TDeferred>>.Next { get { return (PromiseArgResolveRejectDeferred<TArg, TDeferred>) _nextInternal; } set { _nextInternal = value; } }
 
 		protected override void AddToPool()
 		{
 			if (CantPool) return;
-			objectPool.AddInternal(this);
+			objectPoolInternal.AddInternal(this);
 		}
 
-		internal Func<TArg, Promise> resolveHandler;
+		internal Func<TArg, Action<Deferred<TDeferred>>> resolveHandler;
 
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
+		internal override Promise RejectProtectedInternal(UnhandledException rejectVal)
 		{
-			State = PromiseState.Pending;
+			resolveHandler = null;
+			return base.RejectProtectedInternal(rejectVal);
+		}
+
+		internal override Promise ResolveProtectedInternal(IValueContainer feed)
+		{
+			if (resolveHandler == null)
+			{
+				// The returned promise is resolving this.
+				return base.ResolveProtectedInternal(feed);
+			}
+			// Null out the reject delegates
+			filter = null;
+			rejectHandler = null;
+
+			_state = PromiseState.Pending;
+			Action<Deferred<TDeferred>> deferred = null;
 			var temp = resolveHandler;
 			resolveHandler = null;
-			return WaitHelperInternal(temp.Invoke(((IValueContainer<TArg>) feed).Value));
+			deferred = temp.Invoke(((IValueContainer<TArg>) feed).Value);
+			if (deferred == null)
+			{
+				_state = PromiseState.Rejected;
+				throw null;
+			}
+			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
+			var promise = New(deferred);
+			return promise;
 		}
 	}
-
-	internal sealed class PromiseVoidFromPromiseArgResult<TArg> : PromiseVoidRejectPromise, ILinked<PromiseVoidFromPromiseArgResult<TArg>>
-	{
-		PromiseVoidFromPromiseArgResult<TArg> ILinked<PromiseVoidFromPromiseArgResult<TArg>>.Next { get { return (PromiseVoidFromPromiseArgResult<TArg>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<TArg, Promise> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			State = PromiseState.Pending;
-			var temp = resolveHandler;
-			resolveHandler = null;
-			return WaitHelperInternal(temp.Invoke(((IValueContainer<TArg>) feed).Value));
-		}
-	}
-
-	internal sealed class PromiseVoidFromPromiseArgResult<TArg, TReject> : PromiseArgRejectPromise<TReject>, ILinked<PromiseVoidFromPromiseArgResult<TArg, TReject>>
-	{
-		PromiseVoidFromPromiseArgResult<TArg, TReject> ILinked<PromiseVoidFromPromiseArgResult<TArg, TReject>>.Next { get { return (PromiseVoidFromPromiseArgResult<TArg, TReject>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<TArg, Promise> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			State = PromiseState.Pending;
-			var temp = resolveHandler;
-			resolveHandler = null;
-			return WaitHelperInternal(temp.Invoke(((IValueContainer<TArg>) feed).Value));
-		}
-	}
-
-
-
-	internal sealed class PromiseArgFromPromiseResultResolve<TArg> : Promise<TArg>, ILinked<PromiseArgFromPromiseResultResolve<TArg>>
-	{
-		PromiseArgFromPromiseResultResolve<TArg> ILinked<PromiseArgFromPromiseResultResolve<TArg>>.Next { get { return (PromiseArgFromPromiseResultResolve<TArg>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<Promise<TArg>> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			State = PromiseState.Pending;
-			var temp = resolveHandler;
-			resolveHandler = null;
-			return WaitHelperInternal(temp.Invoke());
-		}
-	}
-
-	internal sealed class PromiseArgFromPromiseResult<TArg> : PromiseArgRejectPromiseT<TArg>, ILinked<PromiseArgFromPromiseResult<TArg>>
-	{
-		PromiseArgFromPromiseResult<TArg> ILinked<PromiseArgFromPromiseResult<TArg>>.Next { get { return (PromiseArgFromPromiseResult<TArg>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<Promise<TArg>> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			State = PromiseState.Pending;
-			var temp = resolveHandler;
-			resolveHandler = null;
-			return WaitHelperInternal(temp.Invoke());
-		}
-	}
-
-	internal sealed class PromiseArgFromPromiseResult<TArg, TReject> : PromiseArgRejectPromiseT<TReject, TArg>, ILinked<PromiseArgFromPromiseResult<TArg, TReject>>
-	{
-		PromiseArgFromPromiseResult<TArg, TReject> ILinked<PromiseArgFromPromiseResult<TArg, TReject>>.Next { get { return (PromiseArgFromPromiseResult<TArg, TReject>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<Promise<TArg>> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			State = PromiseState.Pending;
-			var temp = resolveHandler;
-			resolveHandler = null;
-			return WaitHelperInternal(temp.Invoke());
-		}
-	}
-
-
-
-	internal sealed class PromiseArgFromPromiseArgResultResolve<TArg, PArg> : Promise<TArg>, ILinked<PromiseArgFromPromiseArgResultResolve<TArg, PArg>>
-	{
-		PromiseArgFromPromiseArgResultResolve<TArg, PArg> ILinked<PromiseArgFromPromiseArgResultResolve<TArg, PArg>>.Next { get { return (PromiseArgFromPromiseArgResultResolve<TArg, PArg>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<PArg, Promise<TArg>> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			State = PromiseState.Pending;
-			return WaitHelperInternal(resolveHandler.Invoke(((IValueContainer<PArg>) feed).Value));
-		}
-	}
-
-	internal sealed class PromiseArgFromPromiseArgResult<TArg, PArg> : PromiseArgRejectPromiseT<TArg>, ILinked<PromiseArgFromPromiseArgResult<TArg, PArg>>
-	{
-		PromiseArgFromPromiseArgResult<TArg, PArg> ILinked<PromiseArgFromPromiseArgResult<TArg, PArg>>.Next { get { return (PromiseArgFromPromiseArgResult<TArg, PArg>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<PArg, Promise<TArg>> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			State = PromiseState.Pending;
-			return WaitHelperInternal(resolveHandler.Invoke(((IValueContainer<PArg>) feed).Value));
-		}
-	}
-
-	internal sealed class PromiseArgFromPromiseArgResult<TArg, PArg, TReject> : PromiseArgRejectPromiseT<TReject, TArg>, ILinked<PromiseArgFromPromiseArgResult<TArg, PArg, TReject>>
-	{
-		PromiseArgFromPromiseArgResult<TArg, PArg, TReject> ILinked<PromiseArgFromPromiseArgResult<TArg, PArg, TReject>>.Next { get { return (PromiseArgFromPromiseArgResult<TArg, PArg, TReject>) _nextInternal; } set { _nextInternal = value; } }
-
-		protected override void AddToPool()
-		{
-			if (CantPool) return;
-			objectPool.AddInternal(this);
-		}
-
-		internal Func<PArg, Promise<TArg>> resolveHandler;
-
-		internal override PromiseWaitHelper ResolveProtectedInternal(IValueContainer feed)
-		{
-			State = PromiseState.Pending;
-			return WaitHelperInternal(resolveHandler.Invoke(((IValueContainer<PArg>) feed).Value));
-		}
-	}
+	#endregion
 }

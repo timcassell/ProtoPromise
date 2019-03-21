@@ -54,7 +54,17 @@ namespace ProtoPromise
 				Current = null;
 				// Place this back in the pool before invoking in case the invocation will re-use this.
 				objectPool.AddInternal(this);
-				comp.Invoke();
+
+				try
+				{
+					comp.Invoke();
+				}
+				catch
+				{
+					// Reset the flag if there was an error.
+					_continue = false;
+					throw;
+				}
 			}
 
 			public void Cancel(bool invokeOnComplete)
@@ -66,7 +76,7 @@ namespace ProtoPromise
 				}
 
 				_continue = false;
-				_instance.StopCoroutine(this);
+				_instance._StopCoroutine(this);
 				if (invokeOnComplete)
 				{
 					Complete();
@@ -97,7 +107,6 @@ namespace ProtoPromise
 				if (_continue)
 				{
 					Complete();
-					return false;
 				}
 				return _continue = !_continue;
 			}
@@ -110,7 +119,17 @@ namespace ProtoPromise
 				Current = default(T);
 				// Place this back in the pool before invoking in case the invocation will re-use this.
 				objectPool.AddInternal(this);
-				comp.Invoke(tempObj);
+
+				try
+				{
+					comp.Invoke(tempObj);
+				}
+				catch
+				{
+					// Reset the flag if there was an error.
+					_continue = false;
+					throw;
+				}
 			}
 
 			public void Cancel(bool invokeOnComplete)
@@ -124,7 +143,7 @@ namespace ProtoPromise
 				if (_continue) // If the yieldInstruction was intercepted, _continue will be false, so no need to stop Unity's coroutine.
 				{
 					_continue = false;
-					_instance.StopCoroutine(this);
+					_instance._StopCoroutine(this);
 				}
 				if (invokeOnComplete)
 				{
@@ -200,7 +219,7 @@ namespace ProtoPromise
 			}
 			else
 			{
-				Instance.StartCoroutine(routine);
+				StartCoroutine(routine);
 			}
 
 			return routine.Cancel;
@@ -251,7 +270,7 @@ namespace ProtoPromise
 
 			routine.Current = yieldInstruction;
 			routine.onComplete = onComplete;
-			Instance.StartCoroutine(routine);
+			StartCoroutine(routine);
 
 			return routine.Cancel;
 		}
@@ -291,7 +310,37 @@ namespace ProtoPromise
 			}
 
 			routine.onComplete = onComplete;
-			Instance.StartCoroutine(routine);
+			StartCoroutine(routine);
+		}
+
+		public static new Coroutine StartCoroutine(IEnumerator routine)
+		{
+			return Instance._StartCoroutine(routine);
+		}
+
+		private Coroutine _StartCoroutine(IEnumerator routine)
+		{
+			return base.StartCoroutine(routine);
+		}
+
+		public static new void StopCoroutine(IEnumerator routine)
+		{
+			Instance._StopCoroutine(routine);
+		}
+
+		private void _StopCoroutine(IEnumerator routine)
+		{
+			base.StopCoroutine(routine);
+		}
+
+		public static new void StopCoroutine(Coroutine routine)
+		{
+			Instance._StopCoroutine(routine);
+		}
+
+		private void _StopCoroutine(Coroutine routine)
+		{
+			base.StopCoroutine(routine);
 		}
 	}
 }
