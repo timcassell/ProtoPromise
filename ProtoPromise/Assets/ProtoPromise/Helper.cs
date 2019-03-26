@@ -5,11 +5,21 @@ namespace ProtoPromise
 {
 	partial class Promise
 	{
+#if !DEBUG
+		public static bool GenerateDebugStacktrace { get { return false; } set { } }
+#else
+		public static bool GenerateDebugStacktrace { get; set; }
+
 		private static System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(128);
 
 		// TODO: Only do this in debug mode.
 		internal static string GetStackTrace(int skipFrames)
 		{
+			if (!GenerateDebugStacktrace)
+			{
+				return string.Empty;
+			}
+
 			string stackTrace = new System.Diagnostics.StackTrace(skipFrames, true).ToString();
 			if (string.IsNullOrEmpty(stackTrace))
 			{
@@ -28,6 +38,7 @@ namespace ProtoPromise
 				.Append(" ")
 				.ToString();
 		}
+#endif
 	}
 
 	public class NullPromiseException : Exception, ILinked<NullPromiseException>
@@ -54,10 +65,9 @@ namespace ProtoPromise
 		internal UnhandledException nextInternal;
 		UnhandledException ILinked<UnhandledException>.Next { get { return nextInternal; } set { nextInternal = value; } }
 
-		public UnhandledException SetStackTrace(string stackTrace)
+		public void SetStackTrace(string stackTrace)
 		{
 			_stackTrace = stackTrace;
-			return this;
 		}
 
 		protected string _stackTrace;
@@ -90,10 +100,9 @@ namespace ProtoPromise
 
 		public T Value { get; private set; }
 
-		public UnhandledException<T> SetValue(T value, string stackTrace)
+		public UnhandledException<T> SetValue(T value)
 		{
 			Value = value;
-			_stackTrace = stackTrace;
 			return this;
 		}
 
@@ -135,21 +144,12 @@ namespace ProtoPromise
 		// value is never null
 		public UnhandledExceptionException SetValue(Exception value)
 		{
-			base.SetValue(value, value.StackTrace);
-			return this;
-		}
-
-		public new UnhandledExceptionException SetValue(Exception value, string stackTrace)
-		{
 			if (value == null)
 			{
 				value = new NullReferenceException();
 			}
-			else
-			{
-				stackTrace = value.StackTrace + "\n" + stackTrace;
-			}
-			base.SetValue(value, stackTrace);
+			base.SetValue(value);
+			SetStackTrace(value.StackTrace);
 			return this;
 		}
 
@@ -169,7 +169,7 @@ namespace ProtoPromise
 	}
 
 	// Used IFilter and IDelegate(Result) to reduce the amount of classes I would have to generate to handle catches. I'm less concerned about performance for catches since exceptions are expensive anyway.
-	internal interface IDelegate
+	internal interface IDelegate : ILinked<IDelegate>
 	{
 		bool TryInvoke(UnhandledException unhandledException);
 	}
@@ -177,7 +177,7 @@ namespace ProtoPromise
 	{
 		bool TryInvoke<TResult>(UnhandledException unhandledException, out TResult result);
 	}
-	internal interface IDelegateArg : ILinked<IDelegateArg>
+	internal interface IDelegateArg
 	{
 		bool TryInvoke<TArg>(TArg arg);
 	}
@@ -189,7 +189,9 @@ namespace ProtoPromise
 	// TODO: pool delegates.
 	internal sealed class DelegateVoidVoid : IDelegate, ILinked<DelegateVoidVoid>
 	{
-		DelegateVoidVoid ILinked<DelegateVoidVoid>.Next { get; set; }
+		public IDelegate Next { get; set; }
+
+		DelegateVoidVoid ILinked<DelegateVoidVoid>.Next { get { return (DelegateVoidVoid) Next; } set { Next = value; } }
 		
 		internal Action callback;
 
@@ -209,9 +211,9 @@ namespace ProtoPromise
 
 	internal sealed class DelegateArgVoid<TArg> : IDelegate, IDelegateArg, ILinked<DelegateArgVoid<TArg>>
 	{
-		DelegateArgVoid<TArg> ILinked<DelegateArgVoid<TArg>>.Next { get { return (DelegateArgVoid<TArg>) Next; } set { Next = value; } }
+		public IDelegate Next { get; set; }
 
-		public IDelegateArg Next { get; set; }
+		DelegateArgVoid<TArg> ILinked<DelegateArgVoid<TArg>>.Next { get { return (DelegateArgVoid<TArg>) Next; } set { Next = value; } }
 
 		internal Action<TArg> callback;
 

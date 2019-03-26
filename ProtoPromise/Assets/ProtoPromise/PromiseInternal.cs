@@ -26,14 +26,25 @@ namespace ProtoPromise
 
 		// Dictionaries to use less memory for expected less used functions.
 		private static Dictionary<Promise, FinallyPromise> finals = new Dictionary<Promise, FinallyPromise>();
+		private static Dictionary<Promise, ValueLinkedQueue<IDelegate>> cancels = new Dictionary<Promise, ValueLinkedQueue<IDelegate>>();
+
 		// TODO: rip this out.
 		private static Dictionary<Promise, Action> completeVoids = new Dictionary<Promise, Action>();
-		private static Dictionary<Promise, Action> cancels = new Dictionary<Promise, Action>();
 
-		// TODO: DEBUG flag these.
+#if DEBUG
 		internal string createdStackTrace;
 		private static int idCounter = 0;
-		public readonly int id;
+		protected readonly int id;
+#endif
+
+		public override string ToString()
+		{
+#if DEBUG
+			return string.Format("Type: Promise, Id: {0}, State: {1}", id, State);
+#else
+			return string.Format("Type: Promise, State: {0}", State);
+#endif
+		}
 
 		protected bool CantPool { get { return poolOptsInternal >= 0; } }
 
@@ -59,7 +70,7 @@ namespace ProtoPromise
 
 		protected Promise previous;
 
-		internal UnhandledException rejectedValueInternal;
+		internal UnhandledException rejectedOrCanceledValueInternal;
 
 		internal LinkedQueue<Promise> NextBranchesInternal = new LinkedQueue<Promise>();
 		internal ADeferred deferredInternal;
@@ -149,7 +160,9 @@ namespace ProtoPromise
 
 		internal Promise()
 		{
+#if DEBUG
 			id = idCounter++;
+#endif
 		}
 
 		internal void ResetInternal(int skipFrames = 3)
@@ -158,6 +171,7 @@ namespace ProtoPromise
 			done = false;
 			previous = null;
 			poolOptsInternal = (short) PromisePool.poolType; // Set to -1 to opt in if the poolType is OptOut.
+			rejectedOrCanceledValueInternal = null;
 
 #if DEBUG
 			createdStackTrace = GetStackTrace(skipFrames);
@@ -190,13 +204,13 @@ namespace ProtoPromise
 				}
 				catch (Exception e)
 				{
-					if (rejectedValueInternal != null)
+					if (rejectedOrCanceledValueInternal != null)
 					{
 						UnityEngine.Debug.LogError("A new exception was encountered in a Promise.Complete callback before an old exception was handled." +
 									   " The new exception will replace the old exception propagating up the promise chain.\nOld exception:\n" +
-									   rejectedValueInternal);
+									   rejectedOrCanceledValueInternal);
 					}
-					rejectedValueInternal = new UnhandledExceptionException().SetValue(e);
+					rejectedOrCanceledValueInternal = new UnhandledExceptionException().SetValue(e);
 				}
 			}
 			handling = false;
@@ -210,19 +224,22 @@ namespace ProtoPromise
 
 		private void HandleCancel()
 		{
-			if (handling)
+			_state = PromiseState.Canceled;
+
+			ValueLinkedQueue<IDelegate> cancelQueue;
+			cancels.TryGetValue(this, out cancelQueue);
+
+			// Note: even though the queue is a value type and is re-written to the dictionary on every delegate add,
+			// this will still work because the ILinked.Next is part of the referenced objects.
+
+			for (IDelegate current = cancelQueue.Peek(); current != null; current = current.Next)
 			{
-				// This is already looping higher in the stack, so just return.
-				return;
+				current.TryInvoke(rejectedOrCanceledValueInternal);
+				// TODO: add cachedDelegate to pool here.
 			}
-			handling = true;
-			Action cancel;
-			while (cancels.TryGetValue(this, out cancel))
-			{
-				cancels.Remove(this);
-				cancel.Invoke();
-			}
-			handling = false;
+
+			cancels.Remove(this);
+			OnFinally();
 		}
 
 		internal Promise ResolveInternal(IValueContainer feed)
@@ -237,7 +254,7 @@ namespace ProtoPromise
 			catch (Exception e)
 			{
 				_state = PromiseState.Resolved; // In case the callback throws an exception before returning a promise.
-				rejectedValueInternal = new UnhandledExceptionException().SetValue(e);
+				rejectedOrCanceledValueInternal = new UnhandledExceptionException().SetValue(e);
 			}
 			handling = false;
 			OnComplete();
@@ -261,7 +278,7 @@ namespace ProtoPromise
 			catch (Exception e)
 			{
 				_state = PromiseState.Rejected; // In case the callback throws an exception before returning a promise.
-				rejectedValueInternal = new UnhandledExceptionException().SetValue(e);
+				rejectedOrCanceledValueInternal = new UnhandledExceptionException().SetValue(e);
 			}
 			handling = false;
 			OnComplete();
@@ -270,14 +287,14 @@ namespace ProtoPromise
 
 		internal virtual Promise RejectProtectedInternal(UnhandledException rejectVal) // private protected not supported before c# 7.2, so must use internal.
 		{
-			rejectedValueInternal = rejectVal;
+			rejectedOrCanceledValueInternal = rejectVal;
 			return null;
 		}
 
 		public virtual void AdoptState(Promise adoptee)
 		{
 			_state = adoptee._state;
-			rejectedValueInternal = adoptee.rejectedValueInternal;
+			rejectedOrCanceledValueInternal = adoptee.rejectedOrCanceledValueInternal;
 			adoptee.wasWaitedOn = true;
 		}
 
@@ -333,47 +350,56 @@ namespace ProtoPromise
 				Promise next = branches.Peek();
 				while (next != null)
 				{
-					Promise cachedPromise = next;
-					next = next._nextInternal;
-
-					if (cachedPromise._state == PromiseState.Canceled)
+					if (next._state == PromiseState.Canceled)
 					{
-						// Don't do anything with a canceled promise, just mark the current that it was handled.
-						--current.nextCount;
-						continue;
+						// If the next promise is already canceled, don't do anything.
+						goto Continue;
+					}
+
+					// TODO: Handle all cancels before handling other resolves/rejects.
+					if (current.State == PromiseState.Canceled)
+					{
+						// If current is canceled, cancel its branches.
+						next.rejectedOrCanceledValueInternal = current.rejectedOrCanceledValueInternal;
+						next.HandleCancel();
+						goto EnqueueAndContinue;
 					}
 
 					// Resolve or reject the next promise.
-					UnhandledException rejectVal = current.rejectedValueInternal;
-					Promise waitPromise = rejectVal == null ? cachedPromise.ResolveInternal(current) : cachedPromise.RejectInternal(rejectVal);
+					UnhandledException rejectVal = current.rejectedOrCanceledValueInternal;
+					Promise waitPromise = rejectVal == null ? next.ResolveInternal(current) : next.RejectInternal(rejectVal);
 
 					// Did the .Then/.Catch callback return a promise?
-					if (waitPromise == null)
-					{
-						nextHandles.EnqueueRisky(cachedPromise);
-					}
-					else
+					if (waitPromise != null)
 					{
 						switch (waitPromise._state)
 						{
 							case PromiseState.Pending:
-								{
-									waitPromise.AddWaiter(cachedPromise);
-									break;
-								}
+							{
+								waitPromise.AddWaiter(next);
+								goto Continue;
+							}
 							case PromiseState.Canceled:
-								{
-									cachedPromise.Cancel();
-									break;
-								}
+							{
+								next.HandleCancel();
+								goto EnqueueAndContinue;
+							}
 							default:
-								{
-									cachedPromise.AdoptState(waitPromise);
-									nextHandles.EnqueueRisky(cachedPromise);
-									break;
-								}
+							{
+								next.AdoptState(waitPromise);
+								goto EnqueueAndContinue;
+							}
 						}
 					}
+
+					EnqueueAndContinue:
+					Promise temp = next;
+					next = next._nextInternal;
+					nextHandles.EnqueueRisky(temp);
+					continue;
+
+					Continue:
+					next = next._nextInternal;
 				}
 				branches.Clear();
 			}
@@ -427,16 +453,20 @@ namespace ProtoPromise
 					prev.AddToPool();
 				}
 
-				var rejection = promise.rejectedValueInternal;
-				if (rejection != null)
+				// Don't check reject value if promise was canceled, since that value is used as the cancel value.
+				if (promise.State != PromiseState.Canceled)
 				{
-					if (rejection is UnhandledExceptionException)
+					var rejection = promise.rejectedOrCanceledValueInternal;
+					if (rejection != null)
 					{
-						exceptions.Push(rejection);
-					}
-					else
-					{
-						rejections.Enqueue(rejection);
+						if (rejection is UnhandledExceptionException)
+						{
+							exceptions.Push(rejection);
+						}
+						else
+						{
+							rejections.Enqueue(rejection);
+						}
 					}
 				}
 				promise.AddToPool();
@@ -518,6 +548,15 @@ namespace ProtoPromise
 			_valueInternal = ((IValueContainer<T>) feed).Value;
 			return null;
 		}
+
+		public override string ToString()
+		{
+#if DEBUG
+			return string.Format("Type: Promise<{0}>, Id: {1}, State: {2}", typeof(T), id, State);
+#else
+			return string.Format("Type: Promise<{0}>, State: {2}", typeof(T), State);
+#endif
+		}
 	}
 
 
@@ -552,13 +591,13 @@ namespace ProtoPromise
 				}
 				catch (Exception e)
 				{
-					if (rejectedValueInternal != null)
+					if (rejectedOrCanceledValueInternal != null)
 					{
 						UnityEngine.Debug.LogError("A new exception was encountered in a Promise.Finally callback before an old exception was handled." +
 									   " The new exception will replace the old exception propagating up the final promise chain.\nOld exception:\n" +
-									   rejectedValueInternal);
+									   rejectedOrCanceledValueInternal);
 					}
-					rejectedValueInternal = new UnhandledExceptionException().SetValue(e);
+					rejectedOrCanceledValueInternal = new UnhandledExceptionException().SetValue(e);
 				}
 			}
 			handlingFinals = false;
@@ -574,7 +613,7 @@ namespace ProtoPromise
 
 	// Sadly, C# does not allow multi-inheritance. Hence all the copy-pasted code...
 
-	#region RejectHandlers
+#region RejectHandlers
 	// Used IFilter and IDelegate(Result) to reduce the amount of classes I would have to generate to handle catches. I'm less concerned about performance for catches since exceptions are expensive anyway.
 	internal class PromiseReject : Promise, ILinked<PromiseReject>
 	{
@@ -600,7 +639,7 @@ namespace ProtoPromise
 			{
 				return null;
 			}
-			rejectedValueInternal = rejectVal;
+			rejectedOrCanceledValueInternal = rejectVal;
 			return null;
 		}
 
@@ -637,7 +676,7 @@ namespace ProtoPromise
 			{
 				return null;
 			}
-			rejectedValueInternal = rejectVal;
+			rejectedOrCanceledValueInternal = rejectVal;
 			return null;
 		}
 
@@ -687,7 +726,7 @@ namespace ProtoPromise
 				}
 				return promise;
 			}
-			rejectedValueInternal = rejectVal;
+			rejectedOrCanceledValueInternal = rejectVal;
 			return null;
 		}
 
@@ -737,7 +776,7 @@ namespace ProtoPromise
 				}
 				return promise;
 			}
-			rejectedValueInternal = rejectVal;
+			rejectedOrCanceledValueInternal = rejectVal;
 			return null;
 		}
 
@@ -788,7 +827,7 @@ namespace ProtoPromise
 				// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
 				return New(deferred);
 			}
-			rejectedValueInternal = rejectVal;
+			rejectedOrCanceledValueInternal = rejectVal;
 			return null;
 		}
 
@@ -839,7 +878,7 @@ namespace ProtoPromise
 				// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
 				return New(deferred);
 			}
-			rejectedValueInternal = rejectVal;
+			rejectedOrCanceledValueInternal = rejectVal;
 			return null;
 		}
 
@@ -851,9 +890,9 @@ namespace ProtoPromise
 			return base.ResolveProtectedInternal(feed);
 		}
 	}
-	#endregion
+#endregion
 
-	#region NormalCallbacks
+#region NormalCallbacks
 	internal sealed class PromiseVoidResolve : Promise, ILinked<PromiseVoidResolve>
 	{
 		PromiseVoidResolve ILinked<PromiseVoidResolve>.Next { get { return (PromiseVoidResolve) _nextInternal; } set { _nextInternal = value; } }
@@ -1088,9 +1127,9 @@ namespace ProtoPromise
 			return null;
 		}
 	}
-	#endregion
+#endregion
 
-	#region PromiseReturns
+#region PromiseReturns
 	internal sealed class PromiseVoidResolvePromise : Promise, ILinked<PromiseVoidResolvePromise>
 	{
 		PromiseVoidResolvePromise ILinked<PromiseVoidResolvePromise>.Next { get { return (PromiseVoidResolvePromise) _nextInternal; } set { _nextInternal = value; } }
@@ -1125,8 +1164,11 @@ namespace ProtoPromise
 			{
 				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
 				_state = PromiseState.Resolved;
-				//throw null;
-				rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
+				NullPromiseException nullPromiseException = new NullPromiseException();
+#if DEBUG
+				nullPromiseException.SetStackTrace(createdStackTrace);
+#endif
+				throw nullPromiseException;
 			}
 			return promise;
 		}
@@ -1297,8 +1339,11 @@ namespace ProtoPromise
 			{
 				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
 				_state = PromiseState.Resolved;
-				//throw null;
-				rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
+				NullPromiseException nullPromiseException = new NullPromiseException();
+#if DEBUG
+				nullPromiseException.SetStackTrace(createdStackTrace);
+#endif
+				throw nullPromiseException;
 			}
 			return promise;
 		}
@@ -1433,9 +1478,9 @@ namespace ProtoPromise
 			return promise;
 		}
 	}
-	#endregion
+#endregion
 
-	#region DeferredReturns
+#region DeferredReturns
 	internal sealed class PromiseVoidResolveDeferred : Promise, ILinked<PromiseVoidResolveDeferred>
 	{
 		PromiseVoidResolveDeferred ILinked<PromiseVoidResolveDeferred>.Next { get { return (PromiseVoidResolveDeferred) _nextInternal; } set { _nextInternal = value; } }
@@ -1786,5 +1831,5 @@ namespace ProtoPromise
 			return promise;
 		}
 	}
-	#endregion
+#endregion
 }

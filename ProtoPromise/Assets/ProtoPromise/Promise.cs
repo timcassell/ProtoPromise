@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace ProtoPromise
 {
@@ -35,23 +34,62 @@ namespace ProtoPromise
 			{
 				case PromiseState.Pending:
 				{
-					Action cancel;
-					cancels.TryGetValue(this, out cancel);
-					cancel += onCanceled;
-					cancels[this] = cancel;
+					HookUpCancelCallback(onCanceled);
 					break;
 				}
 				case PromiseState.Canceled:
 				{
-					Action cancel;
-					cancels.TryGetValue(this, out cancel);
-					cancel += onCanceled;
-					cancels[this] = cancel;
-					HandleCancel();
+					if (HookUpCancelCallback(onCanceled))
+					{
+						HandleCancel();
+					}
 					break;
 				}
 			}
 			return this;
+		}
+
+		public Promise Canceled<TCancel>(Action<TCancel> onCanceled)
+		{
+			switch (_state)
+			{
+				case PromiseState.Pending:
+					{
+						HookUpCancelCallback(onCanceled);
+						break;
+					}
+				case PromiseState.Canceled:
+					{
+						if (HookUpCancelCallback(onCanceled))
+						{
+							HandleCancel();
+						}
+						break;
+					}
+			}
+			return this;
+		}
+
+		// Returns true if this is the first item added to the queue.
+		bool HookUpCancelCallback(Action onCanceled)
+		{
+			ValueLinkedQueue<IDelegate> cancelQueue;
+			bool newAdd = !cancels.TryGetValue(this, out cancelQueue);
+			// TODO: pool delegate
+			cancelQueue.Enqueue(new DelegateVoidVoid() { callback = onCanceled });
+			cancels[this] = cancelQueue;
+			return newAdd;
+		}
+
+		// Returns true if this is the first item added to the queue.
+		bool HookUpCancelCallback<TCancel>(Action<TCancel> onCanceled)
+		{
+			ValueLinkedQueue<IDelegate> cancelQueue;
+			bool newAdd = !cancels.TryGetValue(this, out cancelQueue);
+			// TODO: pool delegate
+			cancelQueue.Enqueue(new DelegateArgVoid<TCancel>() { callback = onCanceled });
+			cancels[this] = cancelQueue;
+			return newAdd;
 		}
 
 		/// <summary>
@@ -64,17 +102,30 @@ namespace ProtoPromise
 			{
 				return;
 			}
-			_state = PromiseState.Canceled;
-			//if (previous != null)
-			//{
-			//	--previous.nextCount; // Just mark the count as if this was removed, but don't actually remove this from the next branches (because would be O(N) operation).
-			//}
-			NextBranchesInternal.Clear();
-			nextCount = 0;
-			// TODO: cancel all branched promises as well.
-			// TODO: handle if a promise waiting on another promise is canceled.
+			// TODO: pool exception.
+			// Use reject value as cancel value.
+			rejectedOrCanceledValueInternal = new UnhandledException();
+
 			HandleCancel();
-			OnFinally();
+			ContinueHandlingInternal(this);
+		}
+
+		/// <summary>
+		/// Cancels this promise and all .Then/.Catch promises that have been chained from this with the provided cancel reason.
+		/// Does nothing if this promise isn't pending.
+		/// </summary>
+		public virtual void Cancel<TCancel>(TCancel reason)
+		{
+			if (_state != PromiseState.Pending)
+			{
+				return;
+			}
+			// TODO: pool exception.
+			// Use reject value as cancel value.
+			rejectedOrCanceledValueInternal = new UnhandledException<TCancel>().SetValue(reason);
+
+			HandleCancel();
+			ContinueHandlingInternal(this);
 		}
 
 		public override bool keepWaiting
@@ -108,8 +159,9 @@ namespace ProtoPromise
 			{
 				switch(_state)
 				{
-					case PromiseState.Rejected:
 					case PromiseState.Resolved:
+					case PromiseState.Rejected:
+					case PromiseState.Canceled:
 					{
 						OnFinally();
 						break;
@@ -153,6 +205,7 @@ namespace ProtoPromise
 			return promise;
 		}
 
+		// TODO: treat this the same as Then(onComplete, onComplete).
 		public Promise Complete(Action onComplete)
 		{
 			Action temp;
@@ -677,6 +730,7 @@ namespace ProtoPromise
 
 	public partial class Promise<T> : Promise, IValueContainer<T>
 	{
+		// TODO: Set this to default(T) when finally runs.
 		internal T _valueInternal;
 		T IValueContainer<T>.Value { get { return _valueInternal; } }
 

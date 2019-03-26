@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace ProtoPromise
 {
@@ -26,45 +27,26 @@ namespace ProtoPromise
 			_promise = promise;
 		}
 
-		// TODO
-		internal void NotificationInternal<T>(Action<T> onNotification)
+		/// <summary>
+		/// Report progress between 0 and 1.
+		/// </summary>
+		public void ReportProgress(float progress)
 		{
-			//Type type = typeof(T);
-			//if (notificationsInternal == null)
-			//{
-			//	notificationsInternal = new Dictionary<Type, IDelegateArg>(1)
-			//	{
-			//		{ type, new DelegateArgVoid<T>(onNotification) }
-			//	};
-			//	return;
-			//}
-			//IDelegateArg del;
-			//if (notificationsInternal.TryGetValue(type, out del))
-			//{
-			//	((DelegateArgVoid<T>) del).AddCallback(onNotification);
-			//}
-			//else
-			//{
-			//	notificationsInternal.Add(type, new DelegateArgVoid<T>(onNotification));
-			//}
-		}
-
-		public void Notify<T>(T value)
-		{
+#if DEBUG
+			if (progress < 0f || progress > 1f)
+			{
+				throw new ArgumentOutOfRangeException("progress", "Must be between 0 and 1 inclusive.");
+			}
+#endif
 			if (State != PromiseState.Pending)
 			{
-				UnityEngine.Debug.LogWarning("Deferred.Notify - Deferred is not in the pending state.");
+				UnityEngine.Debug.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
 				return;
 			}
-			//if (notificationsInternal == null)
-			//{
-			//	return;
-			//}
-			//IDelegateArg del;
-			//if (notificationsInternal.TryGetValue(typeof(T), out del))
-			//{
-			//	((DelegateArgVoid<T>) del).Invoke(value);
-			//}
+
+			// TODO: Hook this up.
+			// promise1.Then(() => promise2).Then(() => promise3).Progress(value => {})
+			// should be reported as (promise1Progress + promise2Progress + promise3Progress)/3
 		}
 
 		public void Cancel()
@@ -76,6 +58,17 @@ namespace ProtoPromise
 			}
 
 			_promise.Cancel();
+		}
+
+		public void Cancel<TCancel>(TCancel reason)
+		{
+			if (State != PromiseState.Pending)
+			{
+				UnityEngine.Debug.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+				return;
+			}
+
+			_promise.Cancel(reason);
 		}
 
 		public void Reject<TReject>(TReject reason)
@@ -96,8 +89,11 @@ namespace ProtoPromise
 
 		internal void RejectInternal()
 		{
-			string stackTrace = Promise.GetStackTrace(3);
-			UnhandledException rejectValue = new UnhandledException().SetStackTrace(stackTrace);
+			// TODO: pool exceptions
+			UnhandledException rejectValue = new UnhandledException();
+#if DEBUG
+			rejectValue.SetStackTrace(Promise.GetStackTrace(3));
+#endif
 			RejectInternal(rejectValue);
 		}
 
@@ -115,16 +111,21 @@ namespace ProtoPromise
 				return;
 			}
 
-			string stackTrace = Promise.GetStackTrace(3);
-
 			UnhandledException rejectValue;
+			// Is reason an exception (including if it's null)?
 			if (typeof(Exception).IsAssignableFrom(typeof(TReject)))
 			{
-				rejectValue = new UnhandledExceptionException().SetValue(reason as Exception, stackTrace);
+				rejectValue = new UnhandledExceptionException().SetValue(reason as Exception);
+#if DEBUG
+				rejectValue.SetStackTrace(Promise.GetStackTrace(3));
+#endif
 			}
 			else
 			{
-				rejectValue = new UnhandledException<TReject>().SetValue(reason, stackTrace);
+				rejectValue = new UnhandledException<TReject>().SetValue(reason);
+#if DEBUG
+				rejectValue.SetStackTrace(Promise.GetStackTrace(3));
+#endif
 			}
 
 			RejectInternal(rejectValue);

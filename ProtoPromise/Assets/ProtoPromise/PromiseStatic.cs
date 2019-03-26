@@ -52,7 +52,7 @@ namespace ProtoPromise
 				{
 					var p = promise;
 					AddAllToPool();
-					deferred.RejectInternal(p.rejectedValueInternal);
+					deferred.RejectInternal(p.rejectedOrCanceledValueInternal);
 					return;
 				}
 				AddToPool();
@@ -115,7 +115,7 @@ namespace ProtoPromise
 				{
 					var p = promise;
 					AddAllToPool();
-					deferred.RejectInternal(p.rejectedValueInternal);
+					deferred.RejectInternal(p.rejectedOrCanceledValueInternal);
 					return;
 				}
 				AddToPool();
@@ -261,7 +261,7 @@ namespace ProtoPromise
 					return;
 				}
 				var temp = deferred;
-				var rejectValue = promises[index].rejectedValueInternal;
+				var rejectValue = promises[index].rejectedOrCanceledValueInternal;
 				AddToPool();
 				temp.RejectInternal(rejectValue);
 			}
@@ -340,7 +340,7 @@ namespace ProtoPromise
 				objectPoolInternal.AddInternal(this);
 				if (def.State == PromiseState.Pending)
 				{
-					def.RejectInternal(p.rejectedValueInternal);
+					def.RejectInternal(p.rejectedOrCanceledValueInternal);
 				}
 			}
 		}
@@ -374,7 +374,7 @@ namespace ProtoPromise
 				objectPoolInternal.AddInternal(this);
 				if (def.State == PromiseState.Pending)
 				{
-					def.RejectInternal(p.rejectedValueInternal);
+					def.RejectInternal(p.rejectedOrCanceledValueInternal);
 				}
 			}
 		}
