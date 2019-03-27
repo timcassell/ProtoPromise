@@ -453,8 +453,8 @@ namespace ProtoPromise
 					prev.AddToPool();
 				}
 
-				// Don't check reject value if promise was canceled, since that value is used as the cancel value.
-				if (promise.State != PromiseState.Canceled)
+				// Don't check reject value if promise was canceled or another promise waited on it.
+				if (promise.State != PromiseState.Canceled & !promise.wasWaitedOn)
 				{
 					var rejection = promise.rejectedOrCanceledValueInternal;
 					if (rejection != null)
@@ -477,7 +477,6 @@ namespace ProtoPromise
 			for (var rejection = rejections.Peek(); rejection != null; rejection = rejection.nextInternal)
 			{
 				UnityEngine.Debug.LogException(rejection);
-
 			}
 			if (!exceptions.IsEmpty)
 			{
