@@ -136,9 +136,9 @@ namespace ProtoPromise
 			}
 		}
 
-		public Promise Notification<TNotify>(Action<TNotify> onNotification)
+		public Promise Progress(Action<float> onProgress)
 		{
-			deferredInternal.NotificationInternal(onNotification);
+			// TODO
 			return this;
 		}
 
@@ -740,9 +740,9 @@ namespace ProtoPromise
 			return this;
 		}
 
-		public new Promise<T> Notification<TNotify>(Action<TNotify> onNotification)
+		public new Promise<T> Progress(Action<float> onProgress)
 		{
-			deferredInternal.NotificationInternal(onNotification);
+			base.Progress(onProgress);
 			return this;
 		}
 
