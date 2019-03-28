@@ -40,7 +40,7 @@ namespace ProtoPromise
 #endif
 			if (State != PromiseState.Pending)
 			{
-				UnityEngine.Debug.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
+				Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
 				return;
 			}
 
@@ -53,7 +53,7 @@ namespace ProtoPromise
 		{
 			if (State != PromiseState.Pending)
 			{
-				UnityEngine.Debug.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+				Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
 				return;
 			}
 
@@ -64,7 +64,7 @@ namespace ProtoPromise
 		{
 			if (State != PromiseState.Pending)
 			{
-				UnityEngine.Debug.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+				Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
 				return;
 			}
 
@@ -80,7 +80,7 @@ namespace ProtoPromise
 		{
 			if (State != PromiseState.Pending)
 			{
-				UnityEngine.Debug.LogError("Deferred.Reject - Deferred is not in the pending state.");
+				Logger.LogError("Deferred.Reject - Deferred is not in the pending state.");
 				return;
 			}
 
@@ -107,7 +107,7 @@ namespace ProtoPromise
 		{
 			if (State != PromiseState.Pending)
 			{
-				UnityEngine.Debug.LogError("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
+				Logger.LogError("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
 				return;
 			}
 
@@ -142,7 +142,7 @@ namespace ProtoPromise
 		{
 			if (State != PromiseState.Pending)
 			{
-				UnityEngine.Debug.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+				Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
 				return;
 			}
 
@@ -161,7 +161,7 @@ namespace ProtoPromise
 		{
 			if (State != PromiseState.Pending)
 			{
-				UnityEngine.Debug.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+				Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
 				return;
 			}
 

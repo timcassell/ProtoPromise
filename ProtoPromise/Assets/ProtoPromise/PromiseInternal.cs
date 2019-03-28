@@ -206,7 +206,7 @@ namespace ProtoPromise
 				{
 					if (rejectedOrCanceledValueInternal != null)
 					{
-						UnityEngine.Debug.LogError("A new exception was encountered in a Promise.Complete callback before an old exception was handled." +
+						Logger.LogError("A new exception was encountered in a Promise.Complete callback before an old exception was handled." +
 									   " The new exception will replace the old exception propagating up the promise chain.\nOld exception:\n" +
 									   rejectedOrCanceledValueInternal);
 					}
@@ -476,14 +476,14 @@ namespace ProtoPromise
 			// Debug log all the uncaught rejections, then debug log all the uncaught exceptions except the first, then throw the first uncaught exception.
 			for (var rejection = rejections.Peek(); rejection != null; rejection = rejection.nextInternal)
 			{
-				UnityEngine.Debug.LogException(rejection);
+				Logger.LogException(rejection);
 			}
 			if (!exceptions.IsEmpty)
 			{
 				UnhandledException exception = exceptions.Pop();
 				while (!exceptions.IsEmpty)
 				{
-					UnityEngine.Debug.LogException(exception);
+					Logger.LogException(exception);
 					exception = exceptions.Pop();
 				}
 				throw exception;
@@ -592,7 +592,7 @@ namespace ProtoPromise
 				{
 					if (rejectedOrCanceledValueInternal != null)
 					{
-						UnityEngine.Debug.LogError("A new exception was encountered in a Promise.Finally callback before an old exception was handled." +
+						Logger.LogError("A new exception was encountered in a Promise.Finally callback before an old exception was handled." +
 									   " The new exception will replace the old exception propagating up the final promise chain.\nOld exception:\n" +
 									   rejectedOrCanceledValueInternal);
 					}

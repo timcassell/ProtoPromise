@@ -383,7 +383,7 @@ namespace ProtoPromise
 		{
 			if (promises.Length == 0)
 			{
-				UnityEngine.Debug.LogWarning("Promise.Race - Race started with an empty collection. Returned promise will never resolve!");
+				Logger.LogWarning("Promise.Race - Race started with an empty collection. Returned promise will never resolve!");
 			}
 
 			var masterDeferred = GetDeferred<T>();
@@ -416,7 +416,7 @@ namespace ProtoPromise
 		{
 			if (promises.Length == 0)
 			{
-				UnityEngine.Debug.LogWarning("Promise.Race - Race started with an empty collection. Returned promise will never resolve!");
+				Logger.LogWarning("Promise.Race - Race started with an empty collection. Returned promise will never resolve!");
 			}
 
 			var masterDeferred = GetDeferred();

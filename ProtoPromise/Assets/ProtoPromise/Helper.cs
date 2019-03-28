@@ -338,8 +338,8 @@ namespace ProtoPromise
 			}
 			catch (Exception e)
 			{
-				UnityEngine.Debug.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
-				UnityEngine.Debug.LogException(e);
+				Logger.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
+				Logger.LogException(e);
 				return false;
 			}
 		}
@@ -361,8 +361,8 @@ namespace ProtoPromise
 			}
 			catch (Exception e)
 			{
-				UnityEngine.Debug.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
-				UnityEngine.Debug.LogException(e);
+				Logger.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
+				Logger.LogException(e);
 				return false;
 			}
 		}
