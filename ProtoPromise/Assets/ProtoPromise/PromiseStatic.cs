@@ -14,7 +14,6 @@ namespace ProtoPromise
 			PromiseClosure ILinked<PromiseClosure>.Next { get; set; }
 
 			public Promise promise;
-			public int index;
 			public AllClosure allClosure;
 
 			private void AddToPool()
@@ -25,7 +24,6 @@ namespace ProtoPromise
 
 			private void AddAllToPool()
 			{
-				AddToPool();
 				allClosure.masterDeferred = null;
 				objectPoolInternal.AddInternal(allClosure);
 			}
@@ -33,13 +31,12 @@ namespace ProtoPromise
 			public void ResolveClosure()
 			{
 				var deferred = allClosure.masterDeferred;
-				if (deferred != null)
+				if (--allClosure.waiting == 0)
 				{
-					if (--allClosure.waiting == 0)
+					AddAllToPool();
+					if (deferred != null)
 					{
-						AddAllToPool();
 						deferred.Resolve();
-						return;
 					}
 				}
 				AddToPool();
@@ -48,12 +45,13 @@ namespace ProtoPromise
 			public void RejectClosure()
 			{
 				var deferred = allClosure.masterDeferred;
+				if (--allClosure.waiting == 0)
+				{
+					AddAllToPool();
+				}
 				if (deferred != null)
 				{
-					var p = promise;
-					AddAllToPool();
-					deferred.RejectInternal(p.rejectedOrCanceledValueInternal);
-					return;
+					deferred.RejectInternal(promise.rejectedOrCanceledValueInternal);
 				}
 				AddToPool();
 			}
@@ -94,15 +92,14 @@ namespace ProtoPromise
 			public void ResolveClosure(T arg)
 			{
 				var deferred = allClosure.masterDeferred;
-				if (deferred != null)
+				if (--allClosure.waiting == 0)
 				{
 					var args = allClosure.args;
 					args[index] = arg;
-					if (--allClosure.waiting == 0)
+					AddAllToPool();
+					if (deferred != null)
 					{
-						AddAllToPool();
 						deferred.Resolve(args);
-						return;
 					}
 				}
 				AddToPool();
@@ -111,12 +108,13 @@ namespace ProtoPromise
 			public void RejectClosure()
 			{
 				var deferred = allClosure.masterDeferred;
+				if (--allClosure.waiting == 0)
+				{
+					AddAllToPool();
+				}
 				if (deferred != null)
 				{
-					var p = promise;
-					AddAllToPool();
-					deferred.RejectInternal(p.rejectedOrCanceledValueInternal);
-					return;
+					deferred.RejectInternal(promise.rejectedOrCanceledValueInternal);
 				}
 				AddToPool();
 			}
@@ -132,7 +130,7 @@ namespace ProtoPromise
 			public T[] args;
 		}
 
-
+		// TODO: handle canceled promises.
 		public static Promise<T[]> All<T>(params Promise<T>[] promises)
 		{
 			if (promises.Length == 0)
@@ -149,7 +147,7 @@ namespace ProtoPromise
 			int waiting = promises.Length;
 
 			allClosure.masterDeferred = GetDeferred<T[]>();
-			var promise = allClosure.masterDeferred.Promise; // Cache the promise in case they all resolve instantly.
+			var promise = allClosure.masterDeferred.Promise; // Cache the promise in case they all resolve synchronously.
 			allClosure.waiting = waiting;
 			allClosure.args = new T[waiting];
 
@@ -192,7 +190,7 @@ namespace ProtoPromise
 			}
 
 			allClosure.masterDeferred = GetDeferred();
-			var promise = allClosure.masterDeferred.Promise; // Cache the promise in case they all resolve instantly.
+			var promise = allClosure.masterDeferred.Promise; // Cache the promise in case they all resolve synchronously.
 			allClosure.waiting = promises.Length;
 
 			for (int i = 0, max = promises.Length; i < max; ++i)
@@ -204,7 +202,6 @@ namespace ProtoPromise
 				}
 
 				promiseClosure.allClosure = allClosure;
-				promiseClosure.index = i;
 				promiseClosure.promise = promises[i];
 
 				promiseClosure.promise
@@ -245,25 +242,29 @@ namespace ProtoPromise
 
 			private void ResolveComplete()
 			{
-				if (deferred == null)
+				if (--waiting == 0)
 				{
-					return;
+					AddToPool();
+					var temp = deferred;
+					if (temp != null)
+					{
+						temp.Resolve(value);
+					}
 				}
-				var temp = deferred;
-				AddToPool();
-				temp.Resolve(value);
 			}
 
 			void RejectComplete(int index)
 			{
-				if (deferred == null)
-				{
-					return;
-				}
 				var temp = deferred;
 				var rejectValue = promises[index].rejectedOrCanceledValueInternal;
-				AddToPool();
-				temp.RejectInternal(rejectValue);
+				if (--waiting == 0)
+				{
+					AddToPool();
+				}
+				if (temp != null)
+				{
+					temp.RejectInternal(rejectValue);
+				}
 			}
 
 			public void ResolveClosure()
@@ -300,13 +301,14 @@ namespace ProtoPromise
 			}
 
 			allClosure.deferred = GetDeferred<T1>();
+			var promise = allClosure.deferred.Promise; // Cache the promise in case they all resolve synchronously.
 			allClosure.promises[0] = promise1;
 			allClosure.promises[1] = promise2;
 
 			promise1.Then(allClosure.ResolveClosure, allClosure.RejectClosure0);
 			promise2.Then(allClosure.ResolveClosure, allClosure.RejectClosure1);
 
-			return allClosure.deferred.Promise;
+			return promise;
 		}
 
 
