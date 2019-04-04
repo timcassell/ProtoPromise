@@ -561,7 +561,7 @@ namespace ProtoPromise
 #if DEBUG
 			return string.Format("Type: Promise<{0}>, Id: {1}, State: {2}", typeof(T), id, State);
 #else
-			return string.Format("Type: Promise<{0}>, State: {2}", typeof(T), State);
+			return string.Format("Type: Promise<{0}>, State: {1}", typeof(T), State);
 #endif
 		}
 	}
