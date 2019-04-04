@@ -254,7 +254,11 @@ namespace ProtoPromise
 			catch (Exception e)
 			{
 				_state = PromiseState.Resolved; // In case the callback throws an exception before returning a promise.
-				rejectedOrCanceledValueInternal = new UnhandledExceptionException().SetValue(e);
+				var ex = new UnhandledExceptionException().SetValue(e);
+#if DEBUG
+				ex.SetStackTrace(createdStackTrace);
+#endif
+				rejectedOrCanceledValueInternal = ex;
 			}
 			handling = false;
 			OnComplete();
@@ -278,7 +282,11 @@ namespace ProtoPromise
 			catch (Exception e)
 			{
 				_state = PromiseState.Rejected; // In case the callback throws an exception before returning a promise.
-				rejectedOrCanceledValueInternal = new UnhandledExceptionException().SetValue(e);
+				var ex = new UnhandledExceptionException().SetValue(e);
+#if DEBUG
+				ex.SetStackTrace(createdStackTrace);
+#endif
+				rejectedOrCanceledValueInternal = ex;
 			}
 			handling = false;
 			OnComplete();

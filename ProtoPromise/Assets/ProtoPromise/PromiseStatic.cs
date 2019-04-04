@@ -244,8 +244,8 @@ namespace ProtoPromise
 			{
 				if (--waiting == 0)
 				{
-					AddToPool();
 					var temp = deferred;
+					AddToPool();
 					if (temp != null)
 					{
 						temp.Resolve(value);
@@ -269,16 +269,13 @@ namespace ProtoPromise
 
 			public void ResolveClosure()
 			{
-				if (--waiting == 0)
-				{
-					ResolveComplete();
-				}
+				ResolveComplete();
 			}
 
 			public void ResolveClosure(T1 arg)
 			{
 				value = arg;
-				ResolveClosure();
+				ResolveComplete();
 			}
 
 			public void RejectClosure0()
