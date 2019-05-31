@@ -5,21 +5,12 @@ namespace ProtoPromise
 {
 	partial class Promise
 	{
-#if !DEBUG
-		public static bool GenerateDebugStacktrace { get { return false; } set { } }
-#else
-		public static bool GenerateDebugStacktrace { get; set; }
-
+#if DEBUG
 		private static System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(128);
 
 		// TODO: Only do this in debug mode.
 		internal static string GetStackTrace(int skipFrames)
 		{
-			if (!GenerateDebugStacktrace)
-			{
-				return string.Empty;
-			}
-
 			string stackTrace = new System.Diagnostics.StackTrace(skipFrames, true).ToString();
 			if (string.IsNullOrEmpty(stackTrace))
 			{
@@ -41,11 +32,11 @@ namespace ProtoPromise
 #endif
 	}
 
-	public class NullPromiseException : Exception, ILinked<NullPromiseException>
+	public class InvalidReturnException : InvalidOperationException, ILinked<InvalidReturnException>
 	{
-		NullPromiseException ILinked<NullPromiseException>.Next { get; set; }
+		InvalidReturnException ILinked<InvalidReturnException>.Next { get; set; }
 
-		public NullPromiseException SetStackTrace(string stackTrace)
+		internal InvalidReturnException SetStackTrace(string stackTrace)
 		{
 			_stackTrace = stackTrace;
 			return this;
@@ -54,9 +45,16 @@ namespace ProtoPromise
 		private string _stackTrace;
 		public override string StackTrace { get { return _stackTrace; } }
 
+		internal InvalidReturnException SetMessage(string message)
+		{
+			_message = message;
+			return this;
+		}
+
+		private string _message;
 		public override string Message
 		{
-			get { return "A null promise was returned."; }
+			get { return _message; }
 		}
 	}
 
@@ -65,12 +63,19 @@ namespace ProtoPromise
 		internal UnhandledException nextInternal;
 		UnhandledException ILinked<UnhandledException>.Next { get { return nextInternal; } set { nextInternal = value; } }
 
-		public void SetStackTrace(string stackTrace)
+		public UnhandledException() { }
+
+		protected UnhandledException(Exception innerException) : base(null, innerException) { }
+
+		internal bool unhandled = true;
+
+		public UnhandledException SetStackTrace(string stackTrace)
 		{
 			_stackTrace = stackTrace;
+			return this;
 		}
 
-		protected string _stackTrace;
+		private string _stackTrace;
 		public override sealed string StackTrace
 		{
 			get
@@ -94,7 +99,7 @@ namespace ProtoPromise
 		}
 	}
 
-	public class UnhandledException<T> : UnhandledException, IValueContainer<T>, ILinked<UnhandledException<T>>
+	public sealed class UnhandledException<T> : UnhandledException, IValueContainer<T>, ILinked<UnhandledException<T>>
 	{
 		UnhandledException<T> ILinked<UnhandledException<T>>.Next { get { return (UnhandledException<T>) nextInternal; } set { nextInternal = value; } }
 
@@ -106,7 +111,13 @@ namespace ProtoPromise
 			return this;
 		}
 
-		public override sealed bool TryGetValueAs<U>(out U value)
+		public new UnhandledException<T> SetStackTrace(string stackTrace)
+		{
+			base.SetStackTrace(stackTrace);
+			return this;
+		}
+
+		public override bool TryGetValueAs<U>(out U value)
 		{
 			// This avoids boxing value types.
 			var casted = this as UnhandledException<U>;
@@ -137,19 +148,16 @@ namespace ProtoPromise
 		}
 	}
 
-	public sealed class UnhandledExceptionException : UnhandledException<Exception>, ILinked<UnhandledExceptionException>
+	// Don't care about re-using this exception for 2 reasons:
+	// exceptions create garbage themselves, creating a little more with this one is negligible,
+	// and it's too difficult to try to replicate the formatting for Unity to pick it up by using a cached local variable like in UnhandledException<T>, and prefer not to use reflection to assign innerException
+	public sealed class UnhandledExceptionException : UnhandledException
 	{
-		UnhandledExceptionException ILinked<UnhandledExceptionException>.Next { get { return (UnhandledExceptionException) nextInternal; } set { nextInternal = value; } }
+		public UnhandledExceptionException(Exception innerException) : base(innerException) { }
 
-		// value is never null
-		public UnhandledExceptionException SetValue(Exception value)
+		public new UnhandledExceptionException SetStackTrace(string stackTrace)
 		{
-			if (value == null)
-			{
-				value = new NullReferenceException();
-			}
-			base.SetValue(value);
-			SetStackTrace(value.StackTrace);
+			base.SetStackTrace(stackTrace);
 			return this;
 		}
 
@@ -157,9 +165,26 @@ namespace ProtoPromise
 		{
 			get
 			{
-				return "An exception was encountered that was not handled: " + Value;
+				return "An exception was encountered that was not handled.";
 			}
 		}
+
+		public override bool TryGetValueAs<U>(out U value)
+		{
+			if (InnerException is U)
+			{
+				value = (U) (object) InnerException;
+				return true;
+			}
+			value = default(U);
+			return false;
+		}
+	}
+
+	public interface ICancelable
+	{
+		void Cancel();
+		void Cancel<TCancel>(TCancel reason);
 	}
 
 	internal interface IValueContainer { }
@@ -168,7 +193,8 @@ namespace ProtoPromise
 		T Value { get; }
 	}
 
-	// Used IFilter and IDelegate(Result) to reduce the amount of classes I would have to generate to handle catches. I'm less concerned about performance for catches since exceptions are expensive anyway.
+	// Used IFilter and IDelegate(Result) to reduce the amount of classes I would have to generate to handle catches (Composition over inheritance).
+	// I'm less concerned about performance for catches since exceptions are expensive anyway.
 	internal interface IDelegate : ILinked<IDelegate>
 	{
 		bool TryInvoke(UnhandledException unhandledException);
@@ -452,6 +478,7 @@ namespace ProtoPromise
 		T first;
 
 		public bool IsEmpty { get { return first == null; } }
+		public bool IsNotEmpty { get { return first != null; } }
 
 		public void Clear()
 		{
@@ -486,6 +513,7 @@ namespace ProtoPromise
 		T last;
 
 		public bool IsEmpty { get { return first == null; } }
+		public bool IsNotEmpty { get { return first != null; } }
 
 		public LinkedQueue() { }
 
@@ -529,6 +557,7 @@ namespace ProtoPromise
 		T last;
 
 		public bool IsEmpty { get { return first == null; } }
+		public bool IsNotEmpty { get { return first != null; } }
 
 		public ValueLinkedQueue(T item)
 		{

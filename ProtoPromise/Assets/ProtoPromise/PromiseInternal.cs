@@ -5,13 +5,23 @@ namespace ProtoPromise
 {
 	public partial class Promise : IValueContainer, ILinked<Promise>, IPoolable
 	{
-		[Flags]
-		private enum Flag : byte
+		public enum GeneratedStacktrace
 		{
-			Done = 1 << 0,
-			Handling = 1 << 1,
-			WasWaitedOn = 1 << 2,
-			IsContinuingHandle = 1 << 3
+			/// <summary>
+			/// Don't generate any extra stack traces.
+			/// </summary>
+			None,
+			/// <summary>
+			/// Generate stack traces when Deferred.Reject is called.
+			/// If Reject is called with an exception, the generated stack trace is appended to the exception's stacktrace.
+			/// </summary>
+			Rejections,
+			/// <summary>
+			/// Generate stack traces when Deferred.Reject is called.
+			/// Also generate stack traces every time a promise is created (i.e. with .Then). This can help debug where an invalid object was returned from a .Then delegate.
+			/// NOTE: This can be extremely expensive, so you should only enable this if you ran into an error and you are not sure where it came from.
+			/// </summary>
+			All
 		}
 
 		internal Promise _nextInternal;
@@ -32,19 +42,75 @@ namespace ProtoPromise
 		private static Dictionary<Promise, Action> completeVoids = new Dictionary<Promise, Action>();
 
 #if DEBUG
+		public static GeneratedStacktrace DebugStacktraceGenerator { get; set; }
+#else
+#pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
+        public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
+#pragma warning restore RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
+#endif
+
+        internal void ResetInternal(int skipFrames = 3)
+		{
+			_state = PromiseState.Pending;
+			done = false;
+			previous = null;
+			poolOptsInternal = (short) PromisePool.poolType; // Set to -1 to opt in if the poolType is OptOut.
+			rejectedOrCanceledValueInternal = null;
+
+#if DEBUG
+			if (DebugStacktraceGenerator == GeneratedStacktrace.All)
+			{
+				createdStackTrace = GetStackTrace(skipFrames);
+			}
+#endif
+		}
+
+#if DEBUG
+		protected void Validate(Promise other)
+		{
+			if (other == null)
+			{
+				// Returning a null from the callback is not allowed.
+				throw new InvalidReturnException()
+					.SetMessage("A null promise was returned.");
+			}
+
+			// A promise cannot wait on itself.
+			for (var prev = other; prev != null; prev = prev.previous)
+			{
+				if (prev == this)
+				{
+					throw new InvalidReturnException()
+						.SetMessage(string.Format("Circular Promise chain detected."))
+						.SetStackTrace(other.createdStackTrace);
+				}
+			}
+		}
+
+		protected void Validate(Delegate other)
+		{
+			if (other == null)
+			{
+				// Returning a null from the callback is not allowed.
+				throw new InvalidReturnException()
+					.SetMessage("A null delegate was returned.");
+			}
+		}
+
 		internal string createdStackTrace;
 		private static int idCounter = 0;
 		protected readonly int id;
-#endif
 
 		public override string ToString()
 		{
-#if DEBUG
 			return string.Format("Type: Promise, Id: {0}, State: {1}", id, State);
-#else
-			return string.Format("Type: Promise, State: {0}", State);
-#endif
 		}
+#else
+		public override string ToString()
+		{
+			return string.Format("Type: Promise, State: {0}", State);
+		}
+#endif
 
 		protected bool CantPool { get { return poolOptsInternal >= 0; } }
 
@@ -72,89 +138,15 @@ namespace ProtoPromise
 
 		internal UnhandledException rejectedOrCanceledValueInternal;
 
-		internal LinkedQueue<Promise> NextBranchesInternal = new LinkedQueue<Promise>();
+		internal ValueLinkedQueue<Promise> NextBranchesInternal = new ValueLinkedQueue<Promise>();
 		internal ADeferred deferredInternal;
 
 		private ushort nextCount; // This is a ushort to conserve memory footprint. Change this to uint or ulong if you need to use .Then or .Catch on one promise more than 65,535 times (branching, not chaining).
 		private short poolOptsInternal; // This is a short to conserve memory footprint. Change this to int or long if you need to perpetually use one promise in more than 32,768 places.
 
-		private Flag flags; // bitmask to conserve memory.
-
-		private bool done // This tells the finally handler whether any more .Then or .Catch will be chained from this promise.
-		{
-			get
-			{
-				return (flags & Flag.Done) != 0;
-			}
-			set
-			{
-				if (value)
-				{
-					flags |= Flag.Done; // Flip bit on.
-				}
-				else
-				{
-					flags &= ~Flag.Done; // Flip bit off.
-				}
-			}
-		}
-
-		private bool handling // This is to handle new callbacks being added from a callback that is being invoked. e.g. promise.Complete(() => { promise.Complete(DoSomethingElse); DoSomething(); })
-		{
-			get
-			{
-				return (flags & Flag.Handling) != 0;
-			}
-			set
-			{
-				if (value)
-				{
-					flags |= Flag.Handling; // Flip bit on.
-				}
-				else
-				{
-					flags &= ~Flag.Handling; // Flip bit off.
-				}
-			}
-		}
-
-		private bool wasWaitedOn // This tells the finally handler that another promise waited on this promise (either by .Then/.Catch from this promise, or by returning this promise in another promise's .Then/.Catch)
-		{
-			get
-			{
-				return (flags & Flag.WasWaitedOn) != 0;
-			}
-			set
-			{
-				if (value)
-				{
-					flags |= Flag.WasWaitedOn; // Flip bit on.
-				}
-				else
-				{
-					flags &= ~Flag.WasWaitedOn; // Flip bit off.
-				}
-			}
-		}
-
-		private bool isContinuingHandle // Is this promise being handled in ContinueHandlingInternal
-		{
-			get
-			{
-				return (flags & Flag.IsContinuingHandle) != 0;
-			}
-			set
-			{
-				if (value)
-				{
-					flags |= Flag.IsContinuingHandle; // Flip bit on.
-				}
-				else
-				{
-					flags &= ~Flag.IsContinuingHandle; // Flip bit off.
-				}
-			}
-		}
+		private bool done; // This tells the finally handler whether any more .Then or .Catch will be chained from this promise.
+		private bool handling; // This is to handle new callbacks being added from a callback that is being invoked. e.g. promise.Complete(() => { promise.Complete(DoSomethingElse); DoSomething(); })
+		private bool wasWaitedOn; // This tells the finally handler that another promise waited on this promise (either by .Then/.Catch from this promise, or by returning this promise in another promise's .Then/.Catch)
 
 		internal PromiseState _state;
 
@@ -162,19 +154,6 @@ namespace ProtoPromise
 		{
 #if DEBUG
 			id = idCounter++;
-#endif
-		}
-
-		internal void ResetInternal(int skipFrames = 3)
-		{
-			_state = PromiseState.Pending;
-			done = false;
-			previous = null;
-			poolOptsInternal = (short) PromisePool.poolType; // Set to -1 to opt in if the poolType is OptOut.
-			rejectedOrCanceledValueInternal = null;
-
-#if DEBUG
-			createdStackTrace = GetStackTrace(skipFrames);
 #endif
 		}
 
@@ -210,7 +189,7 @@ namespace ProtoPromise
 									   " The new exception will replace the old exception propagating up the promise chain.\nOld exception:\n" +
 									   rejectedOrCanceledValueInternal);
 					}
-					rejectedOrCanceledValueInternal = new UnhandledExceptionException().SetValue(e);
+					rejectedOrCanceledValueInternal = new UnhandledExceptionException(e);
 				}
 			}
 			handling = false;
@@ -254,7 +233,7 @@ namespace ProtoPromise
 			catch (Exception e)
 			{
 				_state = PromiseState.Resolved; // In case the callback throws an exception before returning a promise.
-				var ex = new UnhandledExceptionException().SetValue(e);
+				var ex = new UnhandledExceptionException(e);
 #if DEBUG
 				ex.SetStackTrace(createdStackTrace);
 #endif
@@ -282,7 +261,7 @@ namespace ProtoPromise
 			catch (Exception e)
 			{
 				_state = PromiseState.Rejected; // In case the callback throws an exception before returning a promise.
-				var ex = new UnhandledExceptionException().SetValue(e);
+				var ex = new UnhandledExceptionException(e);
 #if DEBUG
 				ex.SetStackTrace(createdStackTrace);
 #endif
@@ -308,14 +287,14 @@ namespace ProtoPromise
 
 		protected void HookupNewPromise(Promise newPromise)
 		{
-			bool shouldContinue = NextBranchesInternal.IsEmpty & !isContinuingHandle;
+			bool shouldContinue = _state != PromiseState.Pending & NextBranchesInternal.IsEmpty;
 			AddWaiter(newPromise);
 			newPromise.deferredInternal = deferredInternal;
 			newPromise.previous = this;
 			RemoveFinal(this);
 
 			// Continue handling if this isn't pending and it's not already looping in ContinueHandlingInternal.
-			if (_state != PromiseState.Pending && shouldContinue)
+			if (shouldContinue)
 			{
 				ContinueHandlingInternal(this);
 			}
@@ -333,49 +312,49 @@ namespace ProtoPromise
 		}
 
 		// Handle promises in a breadth-first manner.
-		private static ValueLinkedQueue<Promise> nextHandles;
+		//private static ValueLinkedQueue<Promise> nextHandles;
 		
 		// This allows infinite .Then/.Catch callbacks, since it avoids recursion.
 		internal static void ContinueHandlingInternal(Promise current)
 		{
-			if (nextHandles.IsEmpty)
-			{
-				nextHandles = new ValueLinkedQueue<Promise>(current);
-			}
-			else
-			{
-				// ContinueHandlingInternal is running higher in the stack, so just return after adding to the queue.
-				nextHandles.EnqueueRisky(current);
-				current.isContinuingHandle = true;
-				return;
-			}
+			var nextHandles = new ValueLinkedQueue<Promise>(current);
+			//if (nextHandles.IsEmpty)
+			//{
+			//	nextHandles = new ValueLinkedQueue<Promise>(current);
+			//}
+			//else
+			//{
+			//	// ContinueHandlingInternal is running higher in the program stack, so just return after adding to the queue.
+			//	nextHandles.EnqueueRisky(current);
+			//	return;
+			//}
 
-			for (; current != null; current.isContinuingHandle = false, current = current._nextInternal)
+			for (; current != null; current = current._nextInternal)
 			{
-				current.isContinuingHandle = true;
-
-				LinkedQueue<Promise> branches = current.NextBranchesInternal;
-				Promise next = branches.Peek();
+				Promise next = current.NextBranchesInternal.Peek();
 				while (next != null)
 				{
-					if (next._state == PromiseState.Canceled)
+					Promise cached = next;
+					next = cached._nextInternal;
+
+					if (cached._state == PromiseState.Canceled)
 					{
 						// If the next promise is already canceled, don't do anything.
-						goto Continue;
+						continue;
 					}
 
 					// TODO: Handle all cancels before handling other resolves/rejects.
 					if (current.State == PromiseState.Canceled)
 					{
 						// If current is canceled, cancel its branches.
-						next.rejectedOrCanceledValueInternal = current.rejectedOrCanceledValueInternal;
-						next.HandleCancel();
+						cached.rejectedOrCanceledValueInternal = current.rejectedOrCanceledValueInternal;
+						cached.HandleCancel();
 						goto EnqueueAndContinue;
 					}
 
 					// Resolve or reject the next promise.
 					UnhandledException rejectVal = current.rejectedOrCanceledValueInternal;
-					Promise waitPromise = rejectVal == null ? next.ResolveInternal(current) : next.RejectInternal(rejectVal);
+					Promise waitPromise = rejectVal == null ? cached.ResolveInternal(current) : cached.RejectInternal(rejectVal);
 
 					// Did the .Then/.Catch callback return a promise?
 					if (waitPromise != null)
@@ -384,32 +363,26 @@ namespace ProtoPromise
 						{
 							case PromiseState.Pending:
 							{
-								waitPromise.AddWaiter(next);
-								goto Continue;
+								waitPromise.AddWaiter(cached);
+								continue;
 							}
 							case PromiseState.Canceled:
 							{
-								next.HandleCancel();
-								goto EnqueueAndContinue;
+								cached.HandleCancel();
+								break;
 							}
 							default:
 							{
-								next.AdoptState(waitPromise);
-								goto EnqueueAndContinue;
+								cached.AdoptState(waitPromise);
+								break;
 							}
 						}
 					}
 
 					EnqueueAndContinue:
-					Promise temp = next;
-					next = next._nextInternal;
-					nextHandles.EnqueueRisky(temp);
-					continue;
-
-					Continue:
-					next = next._nextInternal;
+					nextHandles.EnqueueRisky(cached);
 				}
-				branches.Clear();
+				current.NextBranchesInternal.Clear();
 			}
 			nextHandles.Clear();
 		}
@@ -465,8 +438,9 @@ namespace ProtoPromise
 				if (promise.State != PromiseState.Canceled & !promise.wasWaitedOn)
 				{
 					var rejection = promise.rejectedOrCanceledValueInternal;
-					if (rejection != null)
+					if (rejection != null && rejection.unhandled) // Don't log the same rejection twice if it wasn't caught in more than one branch.
 					{
+						rejection.unhandled = false;
 						if (rejection is UnhandledExceptionException)
 						{
 							exceptions.Push(rejection);
@@ -604,7 +578,7 @@ namespace ProtoPromise
 									   " The new exception will replace the old exception propagating up the final promise chain.\nOld exception:\n" +
 									   rejectedOrCanceledValueInternal);
 					}
-					rejectedOrCanceledValueInternal = new UnhandledExceptionException().SetValue(e);
+					rejectedOrCanceledValueInternal = new UnhandledExceptionException(e);
 				}
 			}
 			handlingFinals = false;
@@ -646,8 +620,7 @@ namespace ProtoPromise
 			{
 				return null;
 			}
-			rejectedOrCanceledValueInternal = rejectVal;
-			return null;
+			return base.RejectProtectedInternal(rejectVal);
 		}
 
 		internal override Promise ResolveProtectedInternal(IValueContainer feed)
@@ -683,8 +656,7 @@ namespace ProtoPromise
 			{
 				return null;
 			}
-			rejectedOrCanceledValueInternal = rejectVal;
-			return null;
+			return base.RejectProtectedInternal(rejectVal);
 		}
 
 		internal override Promise ResolveProtectedInternal(IValueContainer feed)
@@ -726,15 +698,12 @@ namespace ProtoPromise
 			// Try to run rejectVal through the filter, then try to run it through the rejectHandler.
 			if ((tempFilter == null || tempFilter.RunThroughFilter(rejectVal)) && tempRej.TryInvoke(rejectVal, out promise))
 			{
-				if (promise == null)
-				{
-					_state = PromiseState.Rejected;
-					throw null;
-				}
+#if DEBUG
+				Validate(promise);
+#endif
 				return promise;
 			}
-			rejectedOrCanceledValueInternal = rejectVal;
-			return null;
+			return base.RejectProtectedInternal(rejectVal);
 		}
 
 		internal override Promise ResolveProtectedInternal(IValueContainer feed)
@@ -776,15 +745,12 @@ namespace ProtoPromise
 			// Try to run rejectVal through the filter, then try to run it through the rejectHandler.
 			if ((tempFilter == null || tempFilter.RunThroughFilter(rejectVal)) && tempRej.TryInvoke(rejectVal, out promise))
 			{
-				if (promise == null)
-				{
-					_state = PromiseState.Rejected;
-					throw null;
-				}
+#if DEBUG
+				Validate(promise);
+#endif
 				return promise;
 			}
-			rejectedOrCanceledValueInternal = rejectVal;
-			return null;
+			return base.RejectProtectedInternal(rejectVal);
 		}
 
 		internal override Promise ResolveProtectedInternal(IValueContainer feed)
@@ -826,16 +792,13 @@ namespace ProtoPromise
 			// Try to run rejectVal through the filter, then try to run it through the rejectHandler.
 			if ((tempFilter == null || tempFilter.RunThroughFilter(rejectVal)) && tempRej.TryInvoke(rejectVal, out deferred))
 			{
-				if (deferred == null)
-				{
-					_state = PromiseState.Rejected;
-					throw null;
-				}
+#if DEBUG
+				Validate(deferred);
+#endif
 				// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
 				return New(deferred);
 			}
-			rejectedOrCanceledValueInternal = rejectVal;
-			return null;
+			return base.RejectProtectedInternal(rejectVal);
 		}
 
 		internal override Promise ResolveProtectedInternal(IValueContainer feed)
@@ -877,16 +840,13 @@ namespace ProtoPromise
 			// Try to run rejectVal through the filter, then try to run it through the rejectHandler.
 			if ((tempFilter == null || tempFilter.RunThroughFilter(rejectVal)) && tempRej.TryInvoke(rejectVal, out deferred))
 			{
-				if (deferred == null)
-				{
-					_state = PromiseState.Rejected;
-					throw null;
-				}
+#if DEBUG
+				Validate(deferred);
+#endif
 				// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
 				return New(deferred);
 			}
-			rejectedOrCanceledValueInternal = rejectVal;
-			return null;
+			return base.RejectProtectedInternal(rejectVal);
 		}
 
 		internal override Promise ResolveProtectedInternal(IValueContainer feed)
@@ -1167,16 +1127,9 @@ namespace ProtoPromise
 			var tempResolve = resolveHandler;
 			resolveHandler = null;
 			var promise = tempResolve.Invoke();
-			if (promise == null)
-			{
-				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
-				_state = PromiseState.Resolved;
-				NullPromiseException nullPromiseException = new NullPromiseException();
 #if DEBUG
-				nullPromiseException.SetStackTrace(createdStackTrace);
+			Validate(promise);
 #endif
-				throw nullPromiseException;
-			}
 			return promise;
 		}
 	}
@@ -1215,13 +1168,9 @@ namespace ProtoPromise
 			var tempResolve = resolveHandler;
 			resolveHandler = null;
 			var promise = tempResolve.Invoke();
-			if (promise == null)
-			{
-				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
-				_state = PromiseState.Resolved;
-				throw null;
-				//rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
-			}
+#if DEBUG
+			Validate(promise);
+#endif
 			return promise;
 		}
 	}
@@ -1257,13 +1206,9 @@ namespace ProtoPromise
 			var tempResolve = resolveHandler;
 			resolveHandler = null;
 			var promise = tempResolve.Invoke(((IValueContainer<TArg>) feed).Value);
-			if (promise == null)
-			{
-				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
-				_state = PromiseState.Resolved;
-				throw null;
-				//rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
-			}
+#if DEBUG
+			Validate(promise);
+#endif
 			return promise;
 		}
 	}
@@ -1301,13 +1246,9 @@ namespace ProtoPromise
 			var tempResolve = resolveHandler;
 			resolveHandler = null;
 			var promise = tempResolve.Invoke(((IValueContainer<TArg>) feed).Value);
-			if (promise == null)
-			{
-				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
-				_state = PromiseState.Resolved;
-				throw null;
-				//rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
-			}
+#if DEBUG
+			Validate(promise);
+#endif
 			return promise;
 		}
 	}
@@ -1342,16 +1283,9 @@ namespace ProtoPromise
 			var tempResolve = resolveHandler;
 			resolveHandler = null;
 			var promise = tempResolve.Invoke();
-			if (promise == null)
-			{
-				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
-				_state = PromiseState.Resolved;
-				NullPromiseException nullPromiseException = new NullPromiseException();
 #if DEBUG
-				nullPromiseException.SetStackTrace(createdStackTrace);
+			Validate(promise);
 #endif
-				throw nullPromiseException;
-			}
 			return promise;
 		}
 	}
@@ -1389,13 +1323,9 @@ namespace ProtoPromise
 			var tempResolve = resolveHandler;
 			resolveHandler = null;
 			var promise = tempResolve.Invoke();
-			if (promise == null)
-			{
-				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
-				_state = PromiseState.Resolved;
-				throw null;
-				//rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
-			}
+#if DEBUG
+			Validate(promise);
+#endif
 			return promise;
 		}
 	}
@@ -1431,13 +1361,9 @@ namespace ProtoPromise
 			var tempResolve = resolveHandler;
 			resolveHandler = null;
 			var promise = tempResolve.Invoke(((IValueContainer<TArg>) feed).Value);
-			if (promise == null)
-			{
-				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
-				_state = PromiseState.Resolved;
-				throw null;
-				//rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
-			}
+#if DEBUG
+			Validate(promise);
+#endif
 			return promise;
 		}
 	}
@@ -1475,13 +1401,9 @@ namespace ProtoPromise
 			var tempResolve = resolveHandler;
 			resolveHandler = null;
 			var promise = tempResolve.Invoke(((IValueContainer<TArg>) feed).Value);
-			if (promise == null)
-			{
-				// Returning a null promise from the callback is not allowed, the next chained promise will be rejected.
-				_state = PromiseState.Resolved;
-				throw null;
-				//rejectedValueInternal = new UnhandledExceptionException().SetValue(null, createdStackTrace);
-			}
+#if DEBUG
+			Validate(promise);
+#endif
 			return promise;
 		}
 	}
@@ -1519,11 +1441,9 @@ namespace ProtoPromise
 			var temp = resolveHandler;
 			resolveHandler = null;
 			deferred = temp.Invoke();
-			if (deferred == null)
-			{
-				_state = PromiseState.Rejected;
-				throw null;
-			}
+#if DEBUG
+			Validate(deferred);
+#endif
 			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
 			var promise = New(deferred);
 			return promise;
@@ -1564,11 +1484,9 @@ namespace ProtoPromise
 			var temp = resolveHandler;
 			resolveHandler = null;
 			deferred = temp.Invoke();
-			if (deferred == null)
-			{
-				_state = PromiseState.Rejected;
-				throw null;
-			}
+#if DEBUG
+			Validate(deferred);
+#endif
 			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
 			var promise = New(deferred);
 			return promise;
@@ -1607,11 +1525,9 @@ namespace ProtoPromise
 			var temp = resolveHandler;
 			resolveHandler = null;
 			deferred = temp.Invoke();
-			if (deferred == null)
-			{
-				_state = PromiseState.Rejected;
-				throw null;
-			}
+#if DEBUG
+			Validate(deferred);
+#endif
 			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
 			var promise = New(deferred);
 			return promise;
@@ -1652,11 +1568,9 @@ namespace ProtoPromise
 			var temp = resolveHandler;
 			resolveHandler = null;
 			deferred = temp.Invoke();
-			if (deferred == null)
-			{
-				_state = PromiseState.Rejected;
-				throw null;
-			}
+#if DEBUG
+			Validate(deferred);
+#endif
 			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
 			var promise = New(deferred);
 			return promise;
@@ -1695,11 +1609,9 @@ namespace ProtoPromise
 			var temp = resolveHandler;
 			resolveHandler = null;
 			deferred = temp.Invoke(((IValueContainer<TArg>) feed).Value);
-			if (deferred == null)
-			{
-				_state = PromiseState.Rejected;
-				throw null;
-			}
+#if DEBUG
+			Validate(deferred);
+#endif
 			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
 			var promise = New(deferred);
 			return promise;
@@ -1740,11 +1652,9 @@ namespace ProtoPromise
 			var temp = resolveHandler;
 			resolveHandler = null;
 			deferred = temp.Invoke(((IValueContainer<TArg>) feed).Value);
-			if (deferred == null)
-			{
-				_state = PromiseState.Rejected;
-				throw null;
-			}
+#if DEBUG
+			Validate(deferred);
+#endif
 			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
 			var promise = New(deferred);
 			return promise;
@@ -1783,11 +1693,9 @@ namespace ProtoPromise
 			var temp = resolveHandler;
 			resolveHandler = null;
 			deferred = temp.Invoke(((IValueContainer<TArg>) feed).Value);
-			if (deferred == null)
-			{
-				_state = PromiseState.Rejected;
-				throw null;
-			}
+#if DEBUG
+			Validate(deferred);
+#endif
 			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
 			var promise = New(deferred);
 			return promise;
@@ -1828,11 +1736,9 @@ namespace ProtoPromise
 			var temp = resolveHandler;
 			resolveHandler = null;
 			deferred = temp.Invoke(((IValueContainer<TArg>) feed).Value);
-			if (deferred == null)
-			{
-				_state = PromiseState.Rejected;
-				throw null;
-			}
+#if DEBUG
+			Validate(deferred);
+#endif
 			// TODO: optimize this. Don't return a new promise, just hook up a new deferred to this promise.
 			var promise = New(deferred);
 			return promise;

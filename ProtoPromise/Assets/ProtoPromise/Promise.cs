@@ -24,7 +24,7 @@ namespace ProtoPromise
 
 	// If using Unity prior to 5.3, remove "UnityEngine.CustomYieldInstruction". Instead, you can wait for a promise to complete in a coroutine this way:
 	// do { yield return null; } while (promise.State == PromiseState.Pending);
-	public partial class Promise : UnityEngine.CustomYieldInstruction
+	public partial class Promise : UnityEngine.CustomYieldInstruction, ICancelable
 	{
 		public PromiseState State { get { return _state; } }
 
@@ -91,6 +91,12 @@ namespace ProtoPromise
 			cancels[this] = cancelQueue;
 			return newAdd;
 		}
+
+		// TODO
+		//public Promise ThenDuplicate()
+		//{
+
+		//}
 
 		/// <summary>
 		/// Cancels this promise and all .Then/.Catch promises that have been chained from this.
@@ -739,6 +745,13 @@ namespace ProtoPromise
 			base.Canceled(onCanceled);
 			return this;
 		}
+
+		public new Promise<T> Canceled<TCancel>(Action<TCancel> onCanceled)
+		{
+			base.Canceled(onCanceled);
+			return this;
+		}
+
 
 		public new Promise<T> Progress(Action<float> onProgress)
 		{

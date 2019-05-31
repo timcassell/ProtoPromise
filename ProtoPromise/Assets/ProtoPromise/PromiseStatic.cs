@@ -83,7 +83,6 @@ namespace ProtoPromise
 
 			private void AddAllToPool()
 			{
-				AddToPool();
 				allClosure.args = null;
 				allClosure.masterDeferred = null;
 				objectPoolInternal.AddInternal(allClosure);
@@ -92,10 +91,10 @@ namespace ProtoPromise
 			public void ResolveClosure(T arg)
 			{
 				var deferred = allClosure.masterDeferred;
+				var args = allClosure.args;
+				args[index] = arg;
 				if (--allClosure.waiting == 0)
 				{
-					var args = allClosure.args;
-					args[index] = arg;
 					AddAllToPool();
 					if (deferred != null)
 					{

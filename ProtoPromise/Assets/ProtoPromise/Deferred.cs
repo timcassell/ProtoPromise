@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace ProtoPromise
 {
-	public abstract class ADeferred : IPoolable
+	public abstract class ADeferred : IPoolable, ICancelable
 	{
 		void IPoolable.OptIn()
 		{
@@ -92,7 +92,10 @@ namespace ProtoPromise
 			// TODO: pool exceptions
 			UnhandledException rejectValue = new UnhandledException();
 #if DEBUG
-			rejectValue.SetStackTrace(Promise.GetStackTrace(3));
+			if (Promise.DebugStacktraceGenerator != Promise.GeneratedStacktrace.None)
+			{
+				rejectValue.SetStackTrace(Promise.GetStackTrace(3));
+			}
 #endif
 			RejectInternal(rejectValue);
 		}
@@ -100,14 +103,18 @@ namespace ProtoPromise
 		internal void RejectInternal(UnhandledException rejectValue)
 		{
 			_promise.RejectInternal(rejectValue);
-			Promise.ContinueHandlingInternal(_promise);
+			// Continue handling if the promise has any branches.
+			if (_promise.NextBranchesInternal.IsNotEmpty)
+			{
+				Promise.ContinueHandlingInternal(_promise);
+			}
 		}
 
 		internal void RejectInternal<TReject>(TReject reason)
 		{
 			if (State != PromiseState.Pending)
 			{
-				Logger.LogError("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
+				Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
 				return;
 			}
 
@@ -115,16 +122,24 @@ namespace ProtoPromise
 			// Is reason an exception (including if it's null)?
 			if (typeof(Exception).IsAssignableFrom(typeof(TReject)))
 			{
-				rejectValue = new UnhandledExceptionException().SetValue(reason as Exception);
+				// Behave the same way .Net behaves if you throw null.
+				var rejVal = new UnhandledExceptionException(reason as Exception ?? new NullReferenceException());
 #if DEBUG
-				rejectValue.SetStackTrace(Promise.GetStackTrace(3));
+				if (Promise.DebugStacktraceGenerator != Promise.GeneratedStacktrace.None)
+				{
+					rejVal.SetStackTrace(Promise.GetStackTrace(3));
+				}
 #endif
+				rejectValue = rejVal;
 			}
 			else
 			{
 				rejectValue = new UnhandledException<TReject>().SetValue(reason);
 #if DEBUG
-				rejectValue.SetStackTrace(Promise.GetStackTrace(3));
+				if (Promise.DebugStacktraceGenerator != Promise.GeneratedStacktrace.None)
+				{
+					rejectValue.SetStackTrace(Promise.GetStackTrace(3));
+				}
 #endif
 			}
 
@@ -147,7 +162,11 @@ namespace ProtoPromise
 			}
 
 			Promise.ResolveInternal(null);
-			Promise.ContinueHandlingInternal(Promise);
+			// Continue handling if the promise has any branches.
+			if (_promise.NextBranchesInternal.IsNotEmpty)
+			{
+				Promise.ContinueHandlingInternal(_promise);
+			}
 		}
 	}
 
@@ -166,7 +185,11 @@ namespace ProtoPromise
 			}
 
 			Promise.ResolveInternal(arg);
-			ProtoPromise.Promise.ContinueHandlingInternal(Promise);
+			// Continue handling if the promise has any branches.
+			if (_promise.NextBranchesInternal.IsNotEmpty)
+			{
+				ProtoPromise.Promise.ContinueHandlingInternal(_promise);
+			}
 		}
 	}
 }
