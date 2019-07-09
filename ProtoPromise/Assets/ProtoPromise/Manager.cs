@@ -378,7 +378,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public abstract class PromiseWaitPromise : Promise
+			public abstract class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitPromise<TPromise>
 			{
 				protected ValueLinkedQueue<ProgressDelegate> _progressListeners;
 
@@ -435,7 +435,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public abstract class PromiseWaitPromise<T> : Promise<T>
+			public abstract class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitPromise<T, TPromise>
 			{
 				protected ValueLinkedQueue<ProgressDelegate> _progressListeners;
 
@@ -492,7 +492,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public abstract class PromiseWaitDeferred : Promise
+			public abstract class PromiseWaitDeferred<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitDeferred<TPromise>
 			{
 				protected ValueLinkedQueue<ProgressDelegate> _progressListeners;
 
@@ -519,7 +519,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public abstract class PromiseWaitDeferred<T> : Promise<T>
+			public abstract class PromiseWaitDeferred<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitDeferred<T, TPromise>
 			{
 				protected ValueLinkedQueue<ProgressDelegate> _progressListeners;
 

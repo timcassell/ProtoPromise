@@ -9,17 +9,8 @@ namespace ProtoPromise
 	}
 
 	partial class Promise : ILinked<Promise>
-    {
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-        protected static ValueLinkedStack<Promise> pool;
-#pragma warning restore RECS0108 // Warns about static fields in generic types
-
-        static Promise()
-        {
-            Internal.OnClearPool += () => pool.Clear();
-        }
-
-        private Promise _next;
+	{
+		private Promise _next;
 		Promise ILinked<Promise>.Next { get { return _next; } set { _next = value; } }
 
 		// Dictionaries to use less memory for expected less used functions, so that every promise object doesn't have empty fields.
@@ -130,10 +121,9 @@ namespace ProtoPromise
 				_rejectedOrCanceledValue.Release();
 				_rejectedOrCanceledValue = null;
 			}
-            pool.Push(this);
-        }
+		}
 
-        protected void OnComplete()
+		protected void OnComplete()
 		{
 			if (_pendingCount == 0)
 			{
@@ -634,6 +624,42 @@ namespace ProtoPromise
 		{
 			public static Action OnClearPool;
 
+			public abstract class PoolablePromise<TPromise> : Promise where TPromise : PoolablePromise<TPromise>
+			{
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+				protected static ValueLinkedStack<Promise> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+				static PoolablePromise()
+				{
+					OnClearPool += () => pool.Clear();
+				}
+
+				protected override void Dispose()
+				{
+					base.Dispose();
+					pool.Push(this);
+				}
+			}
+
+			public abstract class PoolablePromise<T, TPromise> : Promise<T> where TPromise : PoolablePromise<T, TPromise>
+			{
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+				protected static ValueLinkedStack<Promise> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+				static PoolablePromise()
+				{
+					OnClearPool += () => pool.Clear();
+				}
+
+				protected override void Dispose()
+				{
+					base.Dispose();
+					pool.Push(this);
+				}
+			}
+
 			// TODO: assign previous when this is created, remove this from the finals dictionary when canceled.
 			// TODO: handle progress
 			public sealed class Finally : ILinked<Finally>, IRetainable
@@ -647,11 +673,9 @@ namespace ProtoPromise
 				private ulong _retainCounter; // How many non-waitpromises is this waiting for (used to know when to resolve).
 				private bool isReporting; // Is the progress in the process of being reported?
 
-#pragma warning disable RECS0146 // Member hides static member from outer class
-                private static ValueLinkedStack<Finally> pool;
-#pragma warning restore RECS0146 // Member hides static member from outer class
+				private static ValueLinkedStack<Finally> pool;
 
-                static Finally()
+				static Finally()
 				{
 					OnClearPool += () => pool.Clear();
 				}
@@ -725,7 +749,7 @@ namespace ProtoPromise
 			}
 
 
-			public sealed class LitePromise : Promise
+			public sealed class LitePromise : PoolablePromise<LitePromise>
 			{
 				private LitePromise() { }
 
@@ -737,7 +761,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class LitePromise<T> : Promise<T>
+			public sealed class LitePromise<T> : PoolablePromise<T, LitePromise<T>>
 			{
 				private LitePromise() { }
 
@@ -754,7 +778,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class DeferredPromise : PromiseWaitDeferred
+			public sealed class DeferredPromise : PromiseWaitDeferred<DeferredPromise>
 			{
 				private DeferredPromise() { }
 
@@ -767,7 +791,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class DeferredPromise<T> : PromiseWaitDeferred<T>
+			public sealed class DeferredPromise<T> : PromiseWaitDeferred<T, DeferredPromise<T>>
 			{
 				private DeferredPromise() { }
 
@@ -783,7 +807,7 @@ namespace ProtoPromise
 #region Resolve Promises
 			// Individual types for more common .Then(onResolved) calls to be more efficient.
 
-			public sealed class PromiseVoidResolve : Promise
+			public sealed class PromiseVoidResolve : PoolablePromise<PromiseVoidResolve>
 			{
 				private Action resolveHandler;
 
@@ -812,7 +836,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseArgResolve<TArg> : Promise
+			public sealed class PromiseArgResolve<TArg> : PoolablePromise<PromiseArgResolve<TArg>>
 			{
 				private Action<TArg> resolveHandler;
 
@@ -841,7 +865,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseVoidResolve<TResult> : Promise<TResult>
+			public sealed class PromiseVoidResolve<TResult> : PoolablePromise<TResult, PromiseVoidResolve<TResult>>
 			{
 				private Func<TResult> resolveHandler;
 
@@ -870,7 +894,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseArgResolve<TArg, TResult> : Promise<TResult>
+			public sealed class PromiseArgResolve<TArg, TResult> : PoolablePromise<TResult, PromiseArgResolve<TArg, TResult>>
 			{
 				private Func<TArg, TResult> resolveHandler;
 
@@ -899,7 +923,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseVoidResolvePromise : PromiseWaitPromise
+			public sealed class PromiseVoidResolvePromise : PromiseWaitPromise<PromiseVoidResolvePromise>
 			{
 				private Func<Promise> resolveHandler;
 
@@ -940,7 +964,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseArgResolvePromise<TArg> : PromiseWaitPromise<TArg>
+			public sealed class PromiseArgResolvePromise<TArg> : PromiseWaitPromise<PromiseArgResolvePromise<TArg>>
 			{
 				private Func<TArg, Promise> resolveHandler;
 
@@ -981,7 +1005,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseVoidResolvePromise<TPromise> : PromiseWaitPromise<TPromise>
+			public sealed class PromiseVoidResolvePromise<TPromise> : PromiseWaitPromise<TPromise, PromiseVoidResolvePromise<TPromise>>
 			{
 				private Func<Promise<TPromise>> resolveHandler;
 
@@ -1022,7 +1046,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseArgResolvePromise<TArg, TPromise> : PromiseWaitPromise<TPromise>
+			public sealed class PromiseArgResolvePromise<TArg, TPromise> : PromiseWaitPromise<TPromise, PromiseArgResolvePromise<TArg, TPromise>>
 			{
 				private Func<TArg, Promise<TPromise>> resolveHandler;
 
@@ -1147,7 +1171,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseVoidResolveDeferred<TDeferred> : PromiseWaitDeferred<TDeferred>
+			public sealed class PromiseVoidResolveDeferred<TDeferred> : PromiseWaitDeferred<TDeferred, PromiseVoidResolveDeferred<TDeferred>>
 			{
 				private Func<Action<Deferred>> resolveHandler;
 
@@ -1189,7 +1213,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseArgResolveDeferred<TArg, TDeferred> : PromiseWaitDeferred<TDeferred>
+			public sealed class PromiseArgResolveDeferred<TArg, TDeferred> : PromiseWaitDeferred<TDeferred, PromiseArgResolveDeferred<TArg, TDeferred>>
 			{
 				private Func<TArg, Action<Deferred>> resolveHandler;
 
@@ -1235,7 +1259,7 @@ namespace ProtoPromise
 #region Reject Promises
 			// Used IDelegate to reduce the amount of classes I would have to write to handle catches (Composition Over Inheritance).
 			// I'm less concerned about performance for catches since exceptions are expensive anyway, and they are expected to be used less often than .Then(onResolved).
-			public sealed class PromiseReject : Promise
+			public sealed class PromiseReject : PoolablePromise<PromiseReject>
 			{
 				private IDelegate rejectHandler;
 
@@ -1265,7 +1289,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseReject<T> : Promise<T>
+			public sealed class PromiseReject<T> : PoolablePromise<T, PromiseReject<T>>
 			{
 				private IDelegate<T> rejectHandler;
 
@@ -1296,7 +1320,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseRejectPromise : PromiseWaitPromise
+			public sealed class PromiseRejectPromise : PromiseWaitPromise<PromiseRejectPromise>
 			{
 				private IDelegate<Promise> rejectHandler;
 
@@ -1342,7 +1366,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseRejectPromise<TPromise> : PromiseWaitPromise<TPromise>
+			public sealed class PromiseRejectPromise<TPromise> : PromiseWaitPromise<TPromise, PromiseRejectPromise<TPromise>>
 			{
 				private IDelegate<Promise<TPromise>> rejectHandler;
 
@@ -1388,7 +1412,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseRejectDeferred : PromiseWaitDeferred
+			public sealed class PromiseRejectDeferred : PromiseWaitDeferred<PromiseRejectDeferred>
 			{
 				private IDelegate<Action<Deferred>> rejectHandler;
 
@@ -1434,7 +1458,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseRejectDeferred<TDeferred> : PromiseWaitDeferred<TDeferred>
+			public sealed class PromiseRejectDeferred<TDeferred> : PromiseWaitDeferred<TDeferred, PromiseRejectDeferred<TDeferred>>
 			{
 				private IDelegate<Action<Deferred>> rejectHandler;
 
@@ -1482,7 +1506,7 @@ namespace ProtoPromise
 #endregion
 
 #region Resolve or Reject Promises
-			public sealed class PromiseResolveReject : Promise
+			public sealed class PromiseResolveReject : PoolablePromise<PromiseResolveReject>
 			{
 				IDelegate onResolved, onRejected;
 
@@ -1517,7 +1541,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseResolveReject<T> : Promise<T>
+			public sealed class PromiseResolveReject<T> : PoolablePromise<T, PromiseResolveReject<T>>
 			{
 				IDelegate<T> onResolved, onRejected;
 
@@ -1552,7 +1576,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseResolveRejectPromise : PromiseWaitPromise
+			public sealed class PromiseResolveRejectPromise : PromiseWaitPromise<PromiseResolveRejectPromise>
 			{
 				IDelegate<Promise> onResolved, onRejected;
 
@@ -1619,7 +1643,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseResolveRejectPromise<TPromise> : PromiseWaitPromise<TPromise>
+			public sealed class PromiseResolveRejectPromise<TPromise> : PromiseWaitPromise<TPromise, PromiseResolveRejectPromise<TPromise>>
 			{
 				IDelegate<Promise<TPromise>> onResolved, onRejected;
 
@@ -1686,7 +1710,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseResolveRejectDeferred : PromiseWaitDeferred
+			public sealed class PromiseResolveRejectDeferred : PromiseWaitDeferred<PromiseResolveRejectDeferred>
 			{
 				IDelegate<Action<Deferred>> onResolved, onRejected;
 
@@ -1753,7 +1777,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseResolveRejectDeferred<TDeferred> : PromiseWaitDeferred<TDeferred>
+			public sealed class PromiseResolveRejectDeferred<TDeferred> : PromiseWaitDeferred<TDeferred, PromiseResolveRejectDeferred<TDeferred>>
 			{
 				IDelegate<Action<Deferred>> onResolved, onRejected;
 
@@ -1822,7 +1846,7 @@ namespace ProtoPromise
 #endregion
 
 #region Complete Promises
-			public sealed class PromiseComplete : Promise
+			public sealed class PromiseComplete : PoolablePromise<PromiseComplete>
 			{
 				private Action onComplete;
 
@@ -1850,7 +1874,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseComplete<T> : Promise<T>
+			public sealed class PromiseComplete<T> : PoolablePromise<T, PromiseComplete<T>>
 			{
 				private Func<T> onComplete;
 
@@ -1878,7 +1902,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseCompletePromise : PromiseWaitPromise
+			public sealed class PromiseCompletePromise : PromiseWaitPromise<PromiseCompletePromise>
 			{
 				private Func<Promise> onComplete;
 
@@ -1929,7 +1953,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseCompletePromise<T> : PromiseWaitPromise<T>
+			public sealed class PromiseCompletePromise<T> : PromiseWaitPromise<T, PromiseCompletePromise<T>>
 			{
 				private Func<Promise<T>> onComplete;
 
@@ -1980,7 +2004,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseCompleteDeferred : PromiseWaitDeferred
+			public sealed class PromiseCompleteDeferred : PromiseWaitDeferred<PromiseCompleteDeferred>
 			{
 				Func<Action<Deferred>> onComplete;
 
@@ -2032,7 +2056,7 @@ namespace ProtoPromise
 				}
 			}
 
-			public sealed class PromiseCompleteDeferred<T> : PromiseWaitDeferred<T>
+			public sealed class PromiseCompleteDeferred<T> : PromiseWaitDeferred<T, PromiseCompleteDeferred<T>>
 			{
 				Func<Action<Deferred>> onComplete;
 
@@ -2087,7 +2111,7 @@ namespace ProtoPromise
 
 #region Control Promises
 			// TODO
-			public sealed class AllPromise : PromiseWaitPromise
+			public sealed class AllPromise : PromiseWaitPromise<AllPromise>
 			{
 			}
 #endregion
