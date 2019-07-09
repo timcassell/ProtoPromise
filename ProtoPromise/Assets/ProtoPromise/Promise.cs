@@ -24,22 +24,106 @@ namespace ProtoPromise
 
 	// If using Unity prior to 5.3, remove "UnityEngine.CustomYieldInstruction". Instead, you can wait for a promise to complete in a coroutine this way:
 	// do { yield return null; } while (promise.State == PromiseState.Pending);
-	public partial class Promise : UnityEngine.CustomYieldInstruction, ICancelable
+	public abstract partial class Promise : UnityEngine.CustomYieldInstruction, ICancelableAny, IRetainable
 	{
 		public PromiseState State { get { return _state; } }
 
+		override public bool keepWaiting
+		{
+			get
+			{
+				return _state == PromiseState.Pending;
+			}
+		}
+
+		public void Retain()
+		{
+
+			uint retain;
+			retains.TryGetValue(this, out retain);
+#if DEBUG
+			checked
+#endif
+			{
+				++retain;
+			}
+			retains[this] = retain;
+		}
+
+		public void Release()
+		{
+			uint retain = retains[this];
+			--retain;
+			if (retain > 0u)
+			{
+				retains[this] = retain;
+			}
+			else
+			{
+				retains.Remove(this);
+				if (_state != PromiseState.Pending && _notHandling)
+				{
+					// TODO: Continue handling so that the loop can add this back to the pool.
+				}
+			}
+		}
+
+		// TODO: Check every method call in DEBUG mode to see if the promise is marked done. Throw InvalidOperationException if it is done.
+
+		/// <summary>
+		/// Prevent Finally promises from resolving and uncaught rejections getting reported. This allows to keep chaining from this promise until <see cref="Done"/> is called.
+		/// Calls to <see cref="ContinueUsing"/> should always be paired with calls to <see cref="Done"/>.
+		/// </summary>
+		public void ContinueUsing()
+		{
+#if DEBUG
+			checked
+#endif
+			{
+				++_pendingCount;
+			}
+		}
+
+		/// <summary>
+		/// Allow Finally promises to resolve and uncaught rejections to get reported. Further promise chaining from this is no longer allowed.
+		/// This should always be called some time after a call to <see cref="ContinueUsing"/>, never before.
+		/// </summary>
+		public void Done()
+		{
+#if DEBUG
+			checked
+#endif
+			{
+				--_pendingCount;
+			}
+			// TODO: mark done in the continuehandling execution.
+			//if (_done)
+			//{
+			//	return;
+			//}
+
+			//_done = true;
+			if (_pendingCount == 0 & _state != PromiseState.Pending)
+			{
+				// TODO: Continue handling so that the loop can add this back to the pool.
+				OnComplete();
+			}
+		}
+
 		public Promise Canceled(Action onCanceled)
 		{
+			ValidateCancel();
+
 			switch (_state)
 			{
 				case PromiseState.Pending:
 				{
-					HookUpCancelCallback(onCanceled);
+					HookUpCancelCallback(Internal.DelegateVoid.GetOrCreate(onCanceled));
 					break;
 				}
 				case PromiseState.Canceled:
 				{
-					if (HookUpCancelCallback(onCanceled))
+					if (HookUpCancelCallback(Internal.DelegateVoid.GetOrCreate(onCanceled)))
 					{
 						HandleCancel();
 					}
@@ -51,225 +135,95 @@ namespace ProtoPromise
 
 		public Promise Canceled<TCancel>(Action<TCancel> onCanceled)
 		{
+			ValidateCancel();
+
 			switch (_state)
 			{
 				case PromiseState.Pending:
-					{
-						HookUpCancelCallback(onCanceled);
-						break;
-					}
+				{
+					HookUpCancelCallback(Internal.DelegateArg<TCancel>.GetOrCreate(onCanceled));
+					break;
+				}
 				case PromiseState.Canceled:
+				{
+					if (HookUpCancelCallback(Internal.DelegateArg<TCancel>.GetOrCreate(onCanceled)))
 					{
-						if (HookUpCancelCallback(onCanceled))
-						{
-							HandleCancel();
-						}
-						break;
+						HandleCancel();
 					}
+					break;
+				}
 			}
 			return this;
 		}
 
-		// Returns true if this is the first item added to the queue.
-		bool HookUpCancelCallback(Action onCanceled)
-		{
-			ValueLinkedQueue<IDelegate> cancelQueue;
-			bool newAdd = !cancels.TryGetValue(this, out cancelQueue);
-			// TODO: pool delegate
-			cancelQueue.Enqueue(new DelegateVoidVoid() { callback = onCanceled });
-			cancels[this] = cancelQueue;
-			return newAdd;
-		}
-
-		// Returns true if this is the first item added to the queue.
-		bool HookUpCancelCallback<TCancel>(Action<TCancel> onCanceled)
-		{
-			ValueLinkedQueue<IDelegate> cancelQueue;
-			bool newAdd = !cancels.TryGetValue(this, out cancelQueue);
-			// TODO: pool delegate
-			cancelQueue.Enqueue(new DelegateArgVoid<TCancel>() { callback = onCanceled });
-			cancels[this] = cancelQueue;
-			return newAdd;
-		}
-
-		// TODO
-		//public Promise ThenDuplicate()
-		//{
-
-		//}
-
 		/// <summary>
-		/// Cancels this promise and all .Then/.Catch promises that have been chained from this.
+		/// Cancels this promise and all promises that have been chained from this.
 		/// Does nothing if this promise isn't pending.
 		/// </summary>
-		public virtual void Cancel()
+		public void Cancel()
 		{
+			ValidateCancel();
+
 			if (_state != PromiseState.Pending)
 			{
 				return;
 			}
-			// TODO: pool exception.
-			// Use reject value as cancel value.
-			rejectedOrCanceledValueInternal = new UnhandledException();
+
+			// TODO: Cancel finally promise
+
+			_rejectedOrCanceledValue = Internal.CancelVoid.GetOrCreate();
+			_rejectedOrCanceledValue.Retain();
 
 			HandleCancel();
-			ContinueHandlingInternal(this);
+			ContinueCanceling(this);
 		}
 
 		/// <summary>
-		/// Cancels this promise and all .Then/.Catch promises that have been chained from this with the provided cancel reason.
+		/// Cancels this promise and all promises that have been chained from this with the provided cancel reason.
 		/// Does nothing if this promise isn't pending.
 		/// </summary>
-		public virtual void Cancel<TCancel>(TCancel reason)
+		public void Cancel<TCancel>(TCancel reason)
 		{
+			ValidateCancel();
+
 			if (_state != PromiseState.Pending)
 			{
 				return;
 			}
-			// TODO: pool exception.
-			// Use reject value as cancel value.
-			rejectedOrCanceledValueInternal = new UnhandledException<TCancel>().SetValue(reason);
+
+			_rejectedOrCanceledValue = Internal.ValueContainer<TCancel>.GetOrCreate(reason);
+			_rejectedOrCanceledValue.Retain();
 
 			HandleCancel();
-			ContinueHandlingInternal(this);
-		}
-
-		public override bool keepWaiting
-		{
-			get
-			{
-				return _state == PromiseState.Pending;
-			}
+			ContinueCanceling(this);
 		}
 
 		public Promise Progress(Action<float> onProgress)
 		{
-			// TODO
-			return this;
-		}
-
-		public Promise Done(Action onComplete)
-		{
-			return Complete(onComplete).Done();
-		}
-
-		public Promise Done()
-		{
-			if (done)
-			{
-				return this;
-			}
-
-			done = true;
-			if (!handling)
-			{
-				switch(_state)
-				{
-					case PromiseState.Resolved:
-					case PromiseState.Rejected:
-					case PromiseState.Canceled:
-					{
-						OnFinally();
-						break;
-					}
-				}
-			}
+			ProgressPrivate(onProgress);
 			return this;
 		}
 
 		public Promise Finally()
 		{
-			FinallyPromise promise;
-			if (!finals.TryGetValue(this, out promise))
-			{
-				if (!objectPoolInternal.TryTakeInternal(out promise))
-				{
-					promise = new FinallyPromise();
-				}
-				promise.deferredInternal = deferredInternal;
-				promise.ResetInternal();
-
-				finals[this] = promise;
-			}
-			return promise;
+			// TODO: Validate
+			return GetOrCreateFinally().ThenDuplicate();
 		}
 
 		public Promise Finally(Action onFinally)
 		{
-			FinallyPromise promise = (FinallyPromise) Finally();
-			promise.finalHandler += onFinally;
-			switch (promise._state)
-			{
-				case PromiseState.Rejected:
-				case PromiseState.Resolved:
-				{
-					promise.HandleFinallies();
-					break;
-				}
-			}
-		
-			return promise;
+			// TODO: Validate
+			return GetOrCreateFinally().Then(onFinally);
 		}
 
-		// TODO: treat this the same as Then(onComplete, onComplete).
-		public Promise Complete(Action onComplete)
+		public Promise ThenDuplicate()
 		{
-			Action temp;
-			completeVoids.TryGetValue(this, out temp);
-			temp += onComplete;
-			completeVoids[this] = temp;
-			switch (_state)
-			{
-				case PromiseState.Rejected:
-				case PromiseState.Resolved:
-					{
-						HandleComplete();
-						break;
-					}
-			}
-			return this;
-		}
-
-		public Promise Then(Func<Action<Deferred>> onResolved)
-		{
-			// TODO: wrap in "#if DEBUG"
-			if (onResolved == null)
-			{
-				throw new ArgumentNullException("onResolved");
-			}
-
-			PromiseVoidResolveDeferred promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolveDeferred();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
+			var promise = GetDuplicate();
 			HookupNewPromise(promise);
 			return promise;
 		}
 
-		public Promise<T> Then<T>(Func<Action<Deferred<T>>> onResolved)
-		{
-			// TODO: wrap in "#if DEBUG"
-			if (onResolved == null)
-			{
-				throw new ArgumentNullException("onResolved");
-			}
-
-			PromiseVoidResolveRejectDeferred<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolveRejectDeferred<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			HookupNewPromise(promise);
-			return promise;
-		}
-
+#region Resolve Callbacks
 		public Promise Then(Action onResolved)
 		{
 			// TODO: wrap in "#if DEBUG"
@@ -278,14 +232,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onResolved");
 			}
 
-			PromiseVoidResolve promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolve();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
+			var promise = Internal.PromiseVoidResolve.GetOrCreate(onResolved);
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -298,14 +245,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onResolved");
 			}
 
-			PromiseVoidResolve<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolve<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
+			var promise = Internal.PromiseVoidResolve<T>.GetOrCreate(onResolved);
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -318,14 +258,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onResolved");
 			}
 
-			PromiseVoidResolvePromise promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolvePromise();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
+			var promise = Internal.PromiseVoidResolvePromise.GetOrCreate(onResolved);
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -338,18 +271,39 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onResolved");
 			}
 
-			PromiseVoidResolvePromise<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolvePromise<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
+			var promise = Internal.PromiseVoidResolvePromise<T>.GetOrCreate(onResolved);
 			HookupNewPromise(promise);
 			return promise;
 		}
 
+		public Promise Then(Func<Action<Deferred>> onResolved)
+		{
+			// TODO: wrap in "#if DEBUG"
+			if (onResolved == null)
+			{
+				throw new ArgumentNullException("onResolved");
+			}
+
+			var promise = Internal.PromiseVoidResolveDeferred.GetOrCreate(onResolved);
+			HookupNewPromise(promise);
+			return promise;
+		}
+
+		public Promise<T> Then<T>(Func<Action<Promise<T>.Deferred>> onResolved)
+		{
+			// TODO: wrap in "#if DEBUG"
+			if (onResolved == null)
+			{
+				throw new ArgumentNullException("onResolved");
+			}
+
+			var promise = Internal.PromiseVoidResolveDeferred<T>.GetOrCreate(onResolved);
+			HookupNewPromise(promise);
+			return promise;
+		}
+#endregion
+
+#region Reject Callbacks
 		// TODO: add filters
 		public Promise Catch(Action onRejected)
 		{
@@ -358,17 +312,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseReject promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseReject();
-			}
-			promise.ResetInternal();
-
-			// TODO: pool delegates.
-			DelegateVoidVoid del = new DelegateVoidVoid();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseReject.GetOrCreate(Internal.DelegateVoid.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -380,17 +324,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseReject promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseReject();
-			}
-			promise.ResetInternal();
-
-			// TODO: pool delegates.
-			DelegateArgVoid<TReject> del = new DelegateArgVoid<TReject>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseReject.GetOrCreate(Internal.DelegateArg<TReject>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -402,17 +336,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseRejectPromise promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseRejectPromise();
-			}
-			promise.ResetInternal();
-
-			// TODO: pool delegates.
-			DelegateVoidResult<Promise> del = new DelegateVoidResult<Promise>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseRejectPromise.GetOrCreate(Internal.DelegateVoid<Promise>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -424,17 +348,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseRejectPromise promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseRejectPromise();
-			}
-			promise.ResetInternal();
-
-			// TODO: pool delegates.
-			DelegateArgResult<TReject, Promise> del = new DelegateArgResult<TReject, Promise>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseRejectPromise.GetOrCreate(Internal.DelegateArg<TReject, Promise>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -446,17 +360,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseRejectDeferred promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseRejectDeferred();
-			}
-			promise.ResetInternal();
-
-			// TODO: pool delegates.
-			DelegateVoidResult<Action<Deferred>> del = new DelegateVoidResult<Action<Deferred>>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseRejectDeferred.GetOrCreate(Internal.DelegateVoid<Action<Deferred>>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -468,22 +372,13 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseRejectDeferred promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseRejectDeferred();
-			}
-			promise.ResetInternal();
-
-			// TODO: pool delegates.
-			DelegateArgResult<TReject, Action<Deferred>> del = new DelegateArgResult<TReject, Action<Deferred>>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseRejectDeferred.GetOrCreate(Internal.DelegateArg<TReject, Action<Deferred>>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
+#endregion
 
-
+#region Resolve or Reject Callbacks
 		public Promise Then(Action onResolved, Action onRejected)
 		{
 			// TODO: wrap in "#if DEBUG"
@@ -496,19 +391,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-
-			PromiseVoidResolveReject promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolveReject();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateVoidVoid del = new DelegateVoidVoid();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateVoid.GetOrCreate(onResolved), Internal.DelegateVoid.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -525,28 +408,10 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-
-			PromiseVoidResolveReject promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolveReject();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateArgVoid<TReject> del = new DelegateArgVoid<TReject>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateVoid.GetOrCreate(onResolved), Internal.DelegateArg<TReject>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
-
-		// TODO
-		//public Promise Then<TReject>(Action onResolved, Func<Promise> onRejected)
-		//{
-		//	
-		//}
 
 		public Promise<T> Then<T>(Func<T> onResolved, Func<T> onRejected)
 		{
@@ -560,19 +425,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-
-			PromiseVoidResolveReject<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolveReject<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateVoidResult<T> del = new DelegateVoidResult<T>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateVoid<T>.GetOrCreate(onResolved), Internal.DelegateVoid<T>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -589,19 +442,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-
-			PromiseVoidResolveReject<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolveReject<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateArgResult<TReject, T> del = new DelegateArgResult<TReject, T>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateVoid<T>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, T>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -618,19 +459,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-
-			PromiseVoidResolveRejectPromise promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolveRejectPromise();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateVoidResult<Promise> del = new DelegateVoidResult<Promise>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateVoid<Promise>.GetOrCreate(onResolved), Internal.DelegateVoid<Promise>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -647,33 +476,10 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-
-			PromiseVoidResolveRejectPromise promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolveRejectPromise();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateArgResult<TReject, Promise> del = new DelegateArgResult<TReject, Promise>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateVoid<Promise>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, Promise>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
-
-		// TODO
-		//public Promise Then(Func<Promise> onResolved, Action onRejected)
-		//{
-		//
-		//}
-
-		//public Promise Then<TReject>(Func<Promise> onResolved, Action<TReject> onRejected)
-		//{
-		//	
-		//}
 
 		public Promise<T> Then<T>(Func<Promise<T>> onResolved, Func<Promise<T>> onRejected)
 		{
@@ -687,19 +493,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-
-			PromiseVoidResolveRejectPromise<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolveRejectPromise<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateVoidResult<Promise<T>> del = new DelegateVoidResult<Promise<T>>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoid<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateVoid<Promise<T>>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -716,30 +510,131 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-
-			PromiseVoidResolveRejectPromise<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseVoidResolveRejectPromise<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateArgResult<TReject, Promise<T>> del = new DelegateArgResult<TReject, Promise<T>>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoid<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, Promise<T>>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
+#endregion
+
+#region Complete Callbacks
+		/// <summary>
+		/// Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
+		/// onResolvedOrRejected is invoked when this promise is resolved or rejected. It does not get invoked if this promise is canceled.
+		/// </summary>
+		public Promise Complete(Action onResolvedOrRejected)
+		{
+			// TODO: wrap in "#if DEBUG"
+			if (onResolvedOrRejected == null)
+			{
+				throw new ArgumentNullException("onResolvedOrRejected");
+			}
+
+			var promise = Internal.PromiseComplete.GetOrCreate(onResolvedOrRejected);
+			HookupNewPromise(promise);
+			return promise;
+		}
+
+		/// <summary>
+		/// Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
+		/// onResolvedOrRejected is invoked when this promise is resolved or rejected. It does not get invoked if this promise is canceled.
+		/// </summary>
+		public Promise<T> Complete<T>(Func<T> onResolvedOrRejected)
+		{
+			// TODO: wrap in "#if DEBUG"
+			if (onResolvedOrRejected == null)
+			{
+				throw new ArgumentNullException("onResolvedOrRejected");
+			}
+
+			var promise = Internal.PromiseComplete<T>.GetOrCreate(onResolvedOrRejected);
+			HookupNewPromise(promise);
+			return promise;
+		}
+
+		/// <summary>
+		/// Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
+		/// onResolvedOrRejected is invoked when this promise is resolved or rejected. It does not get invoked if this promise is canceled.
+		/// The returned promise will wait for the promise returned by onResolvedOrRejected to be resolved, rejected, or canceled.
+		/// </summary>
+		public Promise Complete(Func<Promise> onResolvedOrRejected)
+		{
+			// TODO: wrap in "#if DEBUG"
+			if (onResolvedOrRejected == null)
+			{
+				throw new ArgumentNullException("onResolvedOrRejected");
+			}
+
+			var promise = Internal.PromiseCompletePromise.GetOrCreate(onResolvedOrRejected);
+			HookupNewPromise(promise);
+			return promise;
+		}
+
+		/// <summary>
+		/// Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
+		/// onResolvedOrRejected is invoked when this promise is resolved or rejected. It does not get invoked if this promise is canceled.
+		/// The returned promise will wait for the promise returned by onResolvedOrRejected to be resolved, rejected, or canceled.
+		/// </summary>
+		public Promise<T> Complete<T>(Func<Promise<T>> onResolvedOrRejected)
+		{
+			// TODO: wrap in "#if DEBUG"
+			if (onResolvedOrRejected == null)
+			{
+				throw new ArgumentNullException("onResolvedOrRejected");
+			}
+
+			var promise = Internal.PromiseCompletePromise<T>.GetOrCreate(onResolvedOrRejected);
+			HookupNewPromise(promise);
+			return promise;
+		}
+
+		/// <summary>
+		/// Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
+		/// onResolvedOrRejected is invoked when this promise is resolved or rejected. It does not get invoked if this promise is canceled.
+		/// The Action returned by onResolvedOrRejected will be immediately invoked with a Deferred object.
+		/// The returned promise will wait for that Deferred object to be resolved, rejected, or canceled.
+		/// </summary>
+		public Promise Complete(Func<Action<Deferred>> onResolvedOrRejected)
+		{
+			// TODO: wrap in "#if DEBUG"
+			if (onResolvedOrRejected == null)
+			{
+				throw new ArgumentNullException("onResolvedOrRejected");
+			}
+
+			var promise = Internal.PromiseCompleteDeferred.GetOrCreate(onResolvedOrRejected);
+			HookupNewPromise(promise);
+			return promise;
+		}
+
+		/// <summary>
+		/// Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
+		/// onResolvedOrRejected is invoked when this promise is resolved or rejected. It does not get invoked if this promise is canceled.
+		/// The Action returned by onResolvedOrRejected will be immediately invoked with a Deferred object.
+		/// The returned promise will wait for that Deferred object to be resolved, rejected, or canceled.
+		/// </summary>
+		public Promise<T> Complete<T>(Func<Action<Promise<T>.Deferred>> onResolvedOrRejected)
+		{
+			// TODO: wrap in "#if DEBUG"
+			if (onResolvedOrRejected == null)
+			{
+				throw new ArgumentNullException("onResolvedOrRejected");
+			}
+
+			var promise = Internal.PromiseCompleteDeferred<T>.GetOrCreate(onResolvedOrRejected);
+			HookupNewPromise(promise);
+			return promise;
+		}
+#endregion
+
+		// TODO: Allow onResolved and onRejected to return void, Promise, or Action<Deferred> independently, or T, Promise<T>, or Action<Promise<T>.Deferred> independently.
+		//public Promise Then<TReject>(Action onResolved, Func<Promise> onRejected)
+		//{
+		//	
+		//}
 	}
 
-	public partial class Promise<T> : Promise, IValueContainer<T>
+	public abstract partial class Promise<T> : Promise
 	{
-		// TODO: Set this to default(T) when finally runs.
-		internal T _valueInternal;
-		T IValueContainer<T>.Value { get { return _valueInternal; } }
-
 		public new Promise<T> Canceled(Action onCanceled)
 		{
 			base.Canceled(onCanceled);
@@ -752,59 +647,20 @@ namespace ProtoPromise
 			return this;
 		}
 
-
 		public new Promise<T> Progress(Action<float> onProgress)
 		{
 			base.Progress(onProgress);
 			return this;
 		}
 
-		public new Promise<T> Complete(Action onComplete)
+		public new Promise<T> ThenDuplicate()
 		{
-			base.Complete(onComplete);
-			return this;
-		}
-
-		public Promise Then(Func<T, Action<Deferred>> onResolved)
-		{
-			// TODO: wrap in "#if DEBUG"
-			if (onResolved == null)
-			{
-				throw new ArgumentNullException("onResolved");
-			}
-
-			PromiseArgResolveDeferred<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolveDeferred<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
+			var promise = Internal.LitePromise<T>.GetOrCreate();
 			HookupNewPromise(promise);
 			return promise;
 		}
 
-		public Promise<TResult> Then<TResult>(Func<T, Action<Deferred<TResult>>> onResolved)
-		{
-			// TODO: wrap in "#if DEBUG"
-			if (onResolved == null)
-			{
-				throw new ArgumentNullException("onResolved");
-			}
-
-			PromiseArgResolveDeferred<T, TResult> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolveDeferred<T, TResult>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			HookupNewPromise(promise);
-			return promise;
-		}
-
+#region Resolve Callbacks
 		public Promise Then(Action<T> onResolved)
 		{
 			// TODO: wrap in "#if DEBUG"
@@ -813,14 +669,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onResolved");
 			}
 
-			PromiseArgResolve<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolve<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
+			var promise = Internal.PromiseArgResolve<T>.GetOrCreate(onResolved);
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -833,14 +682,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onResolved");
 			}
 
-			PromiseArgResolve<T, TResult> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolve<T, TResult>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
+			var promise = Internal.PromiseArgResolve<T, TResult>.GetOrCreate(onResolved);
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -853,14 +695,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onResolved");
 			}
 
-			PromiseArgResolvePromise<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolvePromise<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
+			var promise = Internal.PromiseArgResolvePromise<T>.GetOrCreate(onResolved);
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -873,18 +708,39 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onResolved");
 			}
 
-			PromiseArgResolvePromise<T, TResult> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolvePromise<T, TResult>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
+			var promise = Internal.PromiseArgResolvePromise<T, TResult>.GetOrCreate(onResolved);
 			HookupNewPromise(promise);
 			return promise;
 		}
 
+		public Promise Then(Func<T, Action<Promise.Deferred>> onResolved)
+		{
+			// TODO: wrap in "#if DEBUG"
+			if (onResolved == null)
+			{
+				throw new ArgumentNullException("onResolved");
+			}
+
+			var promise = Internal.PromiseArgResolveDeferred<T>.GetOrCreate(onResolved);
+			HookupNewPromise(promise);
+			return promise;
+		}
+
+		public Promise<TResult> Then<TResult>(Func<T, Action<Promise<TResult>.Deferred>> onResolved)
+		{
+			// TODO: wrap in "#if DEBUG"
+			if (onResolved == null)
+			{
+				throw new ArgumentNullException("onResolved");
+			}
+
+			var promise = Internal.PromiseArgResolveDeferred<T, TResult>.GetOrCreate(onResolved);
+			HookupNewPromise(promise);
+			return promise;
+		}
+#endregion
+
+#region Reject Callbacks
 		// TODO: Add filters.
 		public Promise<T> Catch(Func<T> onRejected)
 		{
@@ -893,17 +749,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseReject<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseReject<T>();
-			}
-			promise.ResetInternal();
-
-			// TODO: pool delegates.
-			DelegateVoidResult<T> del = new DelegateVoidResult<T>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseReject<T>.GetOrCreate(Internal.DelegateVoid<T>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -915,17 +761,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseReject<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseReject<T>();
-			}
-			promise.ResetInternal();
-
-			// TODO: pool delegates.
-			DelegateArgResult<TReject, T> del = new DelegateArgResult<TReject, T>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseReject<T>.GetOrCreate(Internal.DelegateArg<TReject, T>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -937,17 +773,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseRejectPromise<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseRejectPromise<T>();
-			}
-			promise.ResetInternal();
-
-			// TODO: pool delegates.
-			DelegateVoidResult<Promise<T>> del = new DelegateVoidResult<Promise<T>>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseRejectPromise<T>.GetOrCreate(Internal.DelegateVoid<Promise<T>>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -959,66 +785,37 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseRejectPromise<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseRejectPromise<T>();
-			}
-			promise.ResetInternal();
-
-			// TODO: pool delegates.
-			DelegateArgResult<TReject, Promise<T>> del = new DelegateArgResult<TReject, Promise<T>>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseRejectPromise<T>.GetOrCreate(Internal.DelegateArg<TReject, Promise<T>>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
 
-		public Promise<T> Catch(Func<Action<Deferred<T>>> onRejected)
+		public Promise<T> Catch(Func<Action<Deferred>> onRejected)
 		{
 			if (onRejected == null)
 			{
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseRejectDeferred<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseRejectDeferred<T>();
-			}
-			promise.ResetInternal();
-
-			// TODO: pool delegates.
-			DelegateVoidResult<Action<Deferred<T>>> del = new DelegateVoidResult<Action<Deferred<T>>>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseRejectDeferred<T>.GetOrCreate(Internal.DelegateVoid<Action<Deferred>>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
 
-		public Promise<T> Catch<TReject>(Func<TReject, Action<Deferred<T>>> onRejected)
+		public Promise<T> Catch<TReject>(Func<TReject, Action<Deferred>> onRejected)
 		{
 			if (onRejected == null)
 			{
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseRejectDeferred<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseRejectDeferred<T>();
-			}
-			promise.ResetInternal();
-
-			// TODO: pool delegates.
-			DelegateArgResult<TReject, Action<Deferred<T>>> del = new DelegateArgResult<TReject, Action<Deferred<T>>>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseRejectDeferred<T>.GetOrCreate(Internal.DelegateArg<TReject, Action<Deferred>>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
+#endregion
 
-
+#region Reject or Reject Callbacks
 		public Promise Then(Action<T> onResolved, Action onRejected)
 		{
 			// TODO: wrap in "#if DEBUG"
@@ -1031,18 +828,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseArgResolveReject<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolveReject<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateVoidVoid del = new DelegateVoidVoid();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateArg<T>.GetOrCreate(onResolved), Internal.DelegateVoid.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -1059,18 +845,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseArgResolveReject<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolveReject<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateArgVoid<TReject> del = new DelegateArgVoid<TReject>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateArg<T>.GetOrCreate(onResolved), Internal.DelegateArg<TReject>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -1087,18 +862,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseArgResolveReject<T, TResult> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolveReject<T, TResult>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateVoidResult<TResult> del = new DelegateVoidResult<TResult>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(Internal.DelegateArg<T, TResult>.GetOrCreate(onResolved), Internal.DelegateVoid<TResult>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -1115,18 +879,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseArgResolveReject<T, TResult> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolveReject<T, TResult>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateArgResult<TReject, TResult> del = new DelegateArgResult<TReject, TResult>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(Internal.DelegateArg<T, TResult>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, TResult>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -1143,18 +896,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseArgResolveRejectPromise<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolveRejectPromise<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateVoidResult<Promise> del = new DelegateVoidResult<Promise>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateArg<T, Promise>.GetOrCreate(onResolved), Internal.DelegateVoid<Promise>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -1171,18 +913,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseArgResolveRejectPromise<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolveRejectPromise<T>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateArgResult<TReject, Promise> del = new DelegateArgResult<TReject, Promise>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateArg<T, Promise>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, Promise>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -1199,18 +930,7 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseArgResolveRejectPromise<T, TResult> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolveRejectPromise<T, TResult>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateVoidResult<Promise<TResult>> del = new DelegateVoidResult<Promise<TResult>>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Internal.DelegateArg<T, Promise<TResult>>.GetOrCreate(onResolved), Internal.DelegateVoid<Promise<TResult>>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -1227,20 +947,10 @@ namespace ProtoPromise
 				throw new ArgumentNullException("onRejected");
 			}
 
-			PromiseArgResolveRejectPromise<T, TResult> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new PromiseArgResolveRejectPromise<T, TResult>();
-			}
-			promise.ResetInternal();
-
-			promise.resolveHandler = onResolved;
-			// TODO: pool delegates.
-			DelegateArgResult<TReject, Promise<TResult>> del = new DelegateArgResult<TReject, Promise<TResult>>();
-			del.callback = onRejected;
-			promise.rejectHandler = del;
+			var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Internal.DelegateArg<T, Promise<TResult>>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, Promise<TResult>>.GetOrCreate(onRejected));
 			HookupNewPromise(promise);
 			return promise;
 		}
+#endregion
 	}
 }

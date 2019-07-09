@@ -1,15 +1,34 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace ProtoPromise
 {
+	public interface ICancelable
+	{
+		void Cancel();
+	}
+
+	public interface ICancelable<T>
+	{
+		void Cancel(T reason);
+	}
+
+	public interface ICancelableAny : ICancelable
+	{
+		void Cancel<TCancel>(TCancel reason);
+	}
+
+	public interface IRetainable
+	{
+		void Retain();
+		void Release();
+	}
+
 	partial class Promise
 	{
 #if DEBUG
 		private static System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(128);
 
-		// TODO: Only do this in debug mode.
-		internal static string GetStackTrace(int skipFrames)
+		private static string GetStackTrace(int skipFrames)
 		{
 			string stackTrace = new System.Diagnostics.StackTrace(skipFrames, true).ToString();
 			if (string.IsNullOrEmpty(stackTrace))
@@ -30,450 +49,623 @@ namespace ProtoPromise
 				.ToString();
 		}
 #endif
-	}
 
-	public class InvalidReturnException : InvalidOperationException, ILinked<InvalidReturnException>
-	{
-		InvalidReturnException ILinked<InvalidReturnException>.Next { get; set; }
-
-		internal InvalidReturnException SetStackTrace(string stackTrace)
+		partial class Internal
 		{
-			_stackTrace = stackTrace;
-			return this;
-		}
-
-		private string _stackTrace;
-		public override string StackTrace { get { return _stackTrace; } }
-
-		internal InvalidReturnException SetMessage(string message)
-		{
-			_message = message;
-			return this;
-		}
-
-		private string _message;
-		public override string Message
-		{
-			get { return _message; }
-		}
-	}
-
-	public class UnhandledException : Exception, ILinked<UnhandledException>
-	{
-		internal UnhandledException nextInternal;
-		UnhandledException ILinked<UnhandledException>.Next { get { return nextInternal; } set { nextInternal = value; } }
-
-		public UnhandledException() { }
-
-		protected UnhandledException(Exception innerException) : base(null, innerException) { }
-
-		internal bool unhandled = true;
-
-		public UnhandledException SetStackTrace(string stackTrace)
-		{
-			_stackTrace = stackTrace;
-			return this;
-		}
-
-		private string _stackTrace;
-		public override sealed string StackTrace
-		{
-			get
+			public interface IValueContainer : IRetainable
 			{
-				return _stackTrace;
+				bool TryGetValueAs<U>(out U value);
 			}
-		}
 
-		public override string Message
-		{
-			get
+			public interface IDelegate : ILinked<IDelegate>, IDisposable
 			{
-				return "A non-value rejection was not handled.";
+				bool TryInvoke(IValueContainer valueContainer);
+				void Invoke(Promise feed);
 			}
-		}
-
-		public virtual bool TryGetValueAs<U>(out U value)
-		{
-			value = default(U);
-			return false;
-		}
-	}
-
-	public sealed class UnhandledException<T> : UnhandledException, IValueContainer<T>, ILinked<UnhandledException<T>>
-	{
-		UnhandledException<T> ILinked<UnhandledException<T>>.Next { get { return (UnhandledException<T>) nextInternal; } set { nextInternal = value; } }
-
-		public T Value { get; private set; }
-
-		public UnhandledException<T> SetValue(T value)
-		{
-			Value = value;
-			return this;
-		}
-
-		public new UnhandledException<T> SetStackTrace(string stackTrace)
-		{
-			base.SetStackTrace(stackTrace);
-			return this;
-		}
-
-		public override bool TryGetValueAs<U>(out U value)
-		{
-			// This avoids boxing value types.
-			var casted = this as UnhandledException<U>;
-			if (casted != null)
+			public interface IDelegate<TResult> : IDisposable
 			{
-				value = casted.Value;
-				return true;
+				bool TryInvoke(IValueContainer valueContainer, out TResult result);
+				TResult Invoke(Promise feed);
 			}
-			if (!typeof(T).IsValueType)
+			public interface IFilter : IDisposable
 			{
-				object val = Value;
-				if (typeof(U).IsAssignableFrom(typeof(T)) || (val != null && val is U))
+				bool RunThroughFilter(IValueContainer valueContainer);
+			}
+
+			public class DelegateVoid : IDelegate, ILinked<DelegateVoid>
+			{
+				public IDelegate Next { get; set; }
+				DelegateVoid ILinked<DelegateVoid>.Next { get { return (DelegateVoid) Next; } set { Next = value; } }
+
+				private Action _callback;
+
+				protected static ValueLinkedStack<IDelegate> pool;
+
+#pragma warning disable RECS0146 // Member hides static member from outer class
+				public static DelegateVoid GetOrCreate(Action callback)
+#pragma warning restore RECS0146 // Member hides static member from outer class
 				{
-					value = (U) val;
+					var del = pool.IsNotEmpty ? (DelegateVoid) pool.Pop() : new DelegateVoid();
+					del._callback = callback;
+					return del;
+				}
+
+				static DelegateVoid()
+				{
+					OnClearPool += () => pool.Clear();
+				}
+
+				private DelegateVoid() { }
+
+				public void Invoke()
+				{
+					var temp = _callback;
+					Dispose();
+					temp.Invoke();
+				}
+
+				public void Dispose()
+				{
+					_callback = null;
+					pool.Push(this);
+				}
+
+				public bool TryInvoke(IValueContainer valueContainer)
+				{
+					Invoke();
 					return true;
 				}
-			}
-			value = default(U);
-			return false;
-		}
 
-		public override string Message
-		{
-			get
-			{
-				return "A rejected value was not handled: " + (Value.ToString() ?? "null");
-			}
-		}
-	}
-
-	// Don't care about re-using this exception for 2 reasons:
-	// exceptions create garbage themselves, creating a little more with this one is negligible,
-	// and it's too difficult to try to replicate the formatting for Unity to pick it up by using a cached local variable like in UnhandledException<T>, and prefer not to use reflection to assign innerException
-	public sealed class UnhandledExceptionException : UnhandledException
-	{
-		public UnhandledExceptionException(Exception innerException) : base(innerException) { }
-
-		public new UnhandledExceptionException SetStackTrace(string stackTrace)
-		{
-			base.SetStackTrace(stackTrace);
-			return this;
-		}
-
-		public override string Message
-		{
-			get
-			{
-				return "An exception was encountered that was not handled.";
-			}
-		}
-
-		public override bool TryGetValueAs<U>(out U value)
-		{
-			if (InnerException is U)
-			{
-				value = (U) (object) InnerException;
-				return true;
-			}
-			value = default(U);
-			return false;
-		}
-	}
-
-	public interface ICancelable
-	{
-		void Cancel();
-		void Cancel<TCancel>(TCancel reason);
-	}
-
-	internal interface IValueContainer { }
-	internal interface IValueContainer<T> : IValueContainer
-	{
-		T Value { get; }
-	}
-
-	// Used IFilter and IDelegate(Result) to reduce the amount of classes I would have to generate to handle catches (Composition over inheritance).
-	// I'm less concerned about performance for catches since exceptions are expensive anyway.
-	internal interface IDelegate : ILinked<IDelegate>
-	{
-		bool TryInvoke(UnhandledException unhandledException);
-	}
-	internal interface IDelegateResult
-	{
-		bool TryInvoke<TResult>(UnhandledException unhandledException, out TResult result);
-	}
-	internal interface IDelegateArg
-	{
-		bool TryInvoke<TArg>(TArg arg);
-	}
-	internal interface IFilter
-	{
-		bool RunThroughFilter(UnhandledException valueToCatch);
-	}
-
-	// TODO: pool delegates.
-	internal sealed class DelegateVoidVoid : IDelegate, ILinked<DelegateVoidVoid>
-	{
-		public IDelegate Next { get; set; }
-
-		DelegateVoidVoid ILinked<DelegateVoidVoid>.Next { get { return (DelegateVoidVoid) Next; } set { Next = value; } }
-		
-		internal Action callback;
-
-		public void Invoke()
-		{
-			var temp = callback;
-			callback = null;
-			temp.Invoke();
-		}
-
-		public bool TryInvoke(UnhandledException unhandledException)
-		{
-			Invoke();
-			return true;
-		}
-	}
-
-	internal sealed class DelegateArgVoid<TArg> : IDelegate, IDelegateArg, ILinked<DelegateArgVoid<TArg>>
-	{
-		public IDelegate Next { get; set; }
-
-		DelegateArgVoid<TArg> ILinked<DelegateArgVoid<TArg>>.Next { get { return (DelegateArgVoid<TArg>) Next; } set { Next = value; } }
-
-		internal Action<TArg> callback;
-
-		public void Invoke(TArg arg)
-		{
-			var temp = callback;
-			callback = null;
-			temp.Invoke(arg);
-		}
-
-		public bool TryInvoke<TArg1>(TArg1 arg)
-		{
-			// This avoids boxing value types.
-			var casted = this as DelegateArgVoid<TArg1>;
-			if (casted != null)
-			{
-				casted.Invoke(arg);
-				return true;
-			}
-			if (!typeof(TArg).IsValueType)
-			{
-				object val = arg;
-				if (typeof(TArg).IsAssignableFrom(typeof(TArg1)) || (val != null && arg is TArg))
+				public void Invoke(Promise feed)
 				{
-					Invoke((TArg) val);
-					return true;
+					Invoke();
 				}
 			}
-			return false;
-		}
 
-		public bool TryInvoke(UnhandledException unhandledException)
-		{
-			TArg arg;
-			if (!unhandledException.TryGetValueAs(out arg))
+			public sealed class DelegateArg<TArg> : IDelegate
 			{
-				return false;
-			}
-			Invoke(arg);
-			return true;
-		}
-	}
+				public IDelegate Next { get; set; }
 
-	internal class DelegateVoidResult<TResult> : IDelegateResult, ILinked<DelegateVoidResult<TResult>>
-	{
-		DelegateVoidResult<TResult> ILinked<DelegateVoidResult<TResult>>.Next { get; set; }
+				private Action<TArg> _callback;
 
-		internal Func<TResult> callback;
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+				private static ValueLinkedStack<IDelegate> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
 
-		public TResult Invoke()
-		{
-			var temp = callback;
-			callback = null;
-			return temp.Invoke();
-		}
-
-		public bool TryInvoke<TResult1>(UnhandledException unhandledException, out TResult1 result)
-		{
-			// This avoids boxing value types.
-			var casted = this as DelegateVoidResult<TResult1>;
-			if (casted != null)
-			{
-				result = casted.Invoke();
-				return true;
-			}
-			if (typeof(TResult1).IsAssignableFrom(typeof(TResult)))
-			{
-				result = (TResult1) (object) Invoke();
-				return true;
-			}
-			result = default(TResult1);
-			return false;
-		}
-	}
-
-	internal class DelegateArgResult<TArg, TResult> : IDelegateResult, ILinked<DelegateArgResult<TArg, TResult>>
-	{
-		DelegateArgResult<TArg, TResult> ILinked<DelegateArgResult<TArg, TResult>>.Next { get; set; }
-
-		internal Func<TArg, TResult> callback;
-
-		public TResult Invoke(TArg arg)
-		{
-			var temp = callback;
-			callback = null;
-			return temp.Invoke(arg);
-		}
-
-		public bool TryInvoke<TResult1>(UnhandledException unhandledException, out TResult1 result)
-		{
-			TArg arg;
-			if (!unhandledException.TryGetValueAs(out arg))
-			{
-				result = default(TResult1);
-				return false;
-			}
-
-			// This avoids boxing value types.
-			var casted = this as DelegateArgResult<TArg, TResult1>;
-			if (casted != null)
-			{
-				result = casted.Invoke(arg);
-				return true;
-			}
-			if (typeof(TResult1).IsAssignableFrom(typeof(TResult)))
-			{
-				result = (TResult1) (object) Invoke(arg);
-				return true;
-			}
-			result = default(TResult1);
-			return false;
-		}
-	}
-
-	internal sealed class Filter : DelegateVoidResult<bool>, IFilter
-	{
-		public bool RunThroughFilter(UnhandledException valueToCatch)
-		{
-			try
-			{
-				return Invoke();
-			}
-			catch (Exception e)
-			{
-				Logger.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
-				Logger.LogException(e);
-				return false;
-			}
-		}
-	}
-
-	internal sealed class Filter<TArg> : DelegateArgResult<TArg, bool>, IFilter
-	{
-		public bool RunThroughFilter(UnhandledException valueToCatch)
-		{
-			TArg arg;
-			if (!valueToCatch.TryGetValueAs(out arg))
-			{
-				return false;
-			}
-
-			try
-			{
-				return Invoke(arg);
-			}
-			catch (Exception e)
-			{
-				Logger.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
-				Logger.LogException(e);
-				return false;
-			}
-		}
-	}
-
-
-	internal class ObjectPool
-	{
-		private Dictionary<Type, object> pool = new Dictionary<Type, object>();
-
-		public bool TryTakeInternal<T>(out T item) where T : class, ILinked<T>
-		{
-			object obj;
-			if (pool.TryGetValue(typeof(T), out obj))
-			{
-				LinkedStack<T> stack = (LinkedStack<T>) obj;
-				if (!stack.IsEmpty)
+#pragma warning disable RECS0146 // Member hides static member from outer class
+				public static DelegateArg<TArg> GetOrCreate(Action<TArg> callback)
+#pragma warning restore RECS0146 // Member hides static member from outer class
 				{
-					item = stack.Pop();
+					var del = pool.IsNotEmpty ? (DelegateArg<TArg>) pool.Pop() : new DelegateArg<TArg>();
+					del._callback = callback;
+					return del;
+				}
+
+				static DelegateArg()
+				{
+					OnClearPool += () => pool.Clear();
+				}
+
+				private DelegateArg() { }
+
+				public void Invoke(TArg arg)
+				{
+					var temp = _callback;
+					Dispose();
+					temp.Invoke(arg);
+				}
+
+				public void Dispose()
+				{
+					_callback = null;
+					pool.Push(this);
+				}
+
+				public bool TryInvoke(IValueContainer valueContainer)
+				{
+					TArg arg;
+					if (!valueContainer.TryGetValueAs(out arg))
+					{
+						return false;
+					}
+					Invoke(arg);
 					return true;
 				}
+
+				public void Invoke(Promise feed)
+				{
+					Invoke(((IValueContainer<TArg>) feed).Value);
+				}
 			}
-			item = default(T);
-			return false;
+
+			public sealed class DelegateVoid<TResult> : IDelegate<TResult>, ILinked<DelegateVoid<TResult>>
+			{
+				DelegateVoid<TResult> ILinked<DelegateVoid<TResult>>.Next { get; set; }
+				public IDelegate<TResult> Next { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+				private Func<TResult> _callback;
+
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+				private static ValueLinkedStack<DelegateVoid<TResult>> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+				public static DelegateVoid<TResult> GetOrCreate(Func<TResult> callback)
+				{
+					var del = pool.IsNotEmpty ? pool.Pop() : new DelegateVoid<TResult>();
+					del._callback = callback;
+					return del;
+				}
+
+				static DelegateVoid()
+				{
+					OnClearPool += () => pool.Clear();
+				}
+
+				private DelegateVoid() { }
+
+				public TResult Invoke()
+				{
+					var temp = _callback;
+					Dispose();
+					return temp.Invoke();
+				}
+
+				public void Dispose()
+				{
+					_callback = null;
+					pool.Push(this);
+				}
+
+				public bool TryInvoke(IValueContainer valueContainer, out TResult result)
+				{
+					result = Invoke();
+					return true;
+				}
+
+				public TResult Invoke(Promise feed)
+				{
+					return Invoke();
+				}
+			}
+
+			public sealed class DelegateArg<TArg, TResult> : IDelegate<TResult>, ILinked<DelegateArg<TArg, TResult>>
+			{
+				DelegateArg<TArg, TResult> ILinked<DelegateArg<TArg, TResult>>.Next { get; set; }
+
+				private Func<TArg, TResult> _callback;
+
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+				private static ValueLinkedStack<DelegateArg<TArg, TResult>> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+				public static DelegateArg<TArg, TResult> GetOrCreate(Func<TArg, TResult> callback)
+				{
+					var del = pool.IsNotEmpty ? pool.Pop() : new DelegateArg<TArg, TResult>();
+					del._callback = callback;
+					return del;
+				}
+
+				static DelegateArg()
+				{
+					OnClearPool += () => pool.Clear();
+				}
+
+				private DelegateArg() { }
+
+				public TResult Invoke(TArg arg)
+				{
+					var temp = _callback;
+					Dispose();
+					return temp.Invoke(arg);
+				}
+
+				public void Dispose()
+				{
+					_callback = null;
+					pool.Push(this);
+				}
+
+				public bool TryInvoke(IValueContainer valueContainer, out TResult result)
+				{
+					TArg arg;
+					if (!valueContainer.TryGetValueAs(out arg))
+					{
+						result = default(TResult);
+						return false;
+					}
+
+					result = Invoke(arg);
+					return true;
+				}
+
+				public TResult Invoke(Promise feed)
+				{
+					return Invoke(((IValueContainer<TArg>) feed).Value);
+				}
+			}
+
+			public sealed class Filter : IFilter, ILinked<Filter>
+			{
+				Filter ILinked<Filter>.Next { get; set; }
+
+				private Func<bool> _callback;
+
+				private static ValueLinkedStack<Filter> pool;
+
+				public static Filter GetOrCreate(Func<bool> callback)
+				{
+					var del = pool.IsNotEmpty ? pool.Pop() : new Filter();
+					del._callback = callback;
+					return del;
+				}
+
+				static Filter()
+				{
+					OnClearPool += () => pool.Clear();
+				}
+
+				private Filter() { }
+
+				public bool RunThroughFilter(IValueContainer valueContainer)
+				{
+					try
+					{
+						var temp = _callback;
+						_callback = null;
+						return temp.Invoke();
+					}
+					catch (Exception e)
+					{
+						Logger.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
+						Logger.LogException(e);
+						return false;
+					}
+				}
+
+				public void Dispose()
+				{
+					pool.Push(this);
+				}
+			}
+
+			public sealed class Filter<TArg> : IFilter, ILinked<Filter<TArg>>
+			{
+				Filter<TArg> ILinked<Filter<TArg>>.Next { get; set; }
+
+				private Func<TArg, bool> _callback;
+
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+				private static ValueLinkedStack<Filter<TArg>> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+				public static Filter<TArg> GetOrCreate(Func<TArg, bool> callback)
+				{
+					var del = pool.IsNotEmpty ? pool.Pop() : new Filter<TArg>();
+					del._callback = callback;
+					return del;
+				}
+
+				static Filter()
+				{
+					OnClearPool += () => pool.Clear();
+				}
+
+				private Filter() { }
+
+				public bool RunThroughFilter(IValueContainer valueContainer)
+				{
+					TArg arg;
+					if (!valueContainer.TryGetValueAs(out arg))
+					{
+						return false;
+					}
+
+					try
+					{
+						var temp = _callback;
+						_callback = null;
+						return temp.Invoke(arg);
+					}
+					catch (Exception e)
+					{
+						Logger.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
+						Logger.LogException(e);
+						return false;
+					}
+				}
+
+				public void Dispose()
+				{
+					pool.Push(this);
+				}
+			}
+
+
+			public sealed class UnhandledExceptionVoid : UnhandledException, IValueContainer
+			{
+				// We can reuse the same object.
+				private static readonly UnhandledExceptionVoid obj = new UnhandledExceptionVoid();
+
+				private UnhandledExceptionVoid() { }
+
+				public static UnhandledExceptionVoid GetOrCreate()
+				{
+					return obj;
+				}
+
+				public new UnhandledExceptionVoid SetStackTrace(string stackTrace)
+				{
+					base.SetStackTrace(stackTrace);
+					return this;
+				}
+
+				public override string Message
+				{
+					get
+					{
+						return "A non-value rejection was not handled.";
+					}
+				}
+
+				public bool TryGetValueAs<U>(out U value)
+				{
+					value = default(U);
+					return false;
+				}
+
+				public void Retain() { }
+
+				public void Release() { }
+			}
+
+			public sealed class UnhandledException<T> : UnhandledException, IValueContainer
+			{
+				public T Value { get; private set; }
+
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+				private static ValueLinkedStack<UnhandledException> pool = new ValueLinkedStack<UnhandledException>();
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+				private uint retainCounter;
+
+				static UnhandledException()
+				{
+					OnClearPool += () => pool.Clear();
+				}
+
+				private UnhandledException() { }
+
+				public static UnhandledException<T> GetOrCreate(T value)
+				{
+					UnhandledException<T> ex = pool.IsNotEmpty ? (UnhandledException<T>) pool.Pop() : new UnhandledException<T>();
+					ex.Value = value;
+					return ex;
+				}
+
+				public new UnhandledException<T> SetStackTrace(string stackTrace)
+				{
+					base.SetStackTrace(stackTrace);
+					return this;
+				}
+
+				public bool TryGetValueAs<U>(out U value)
+				{
+					// This avoids boxing value types.
+					var casted = this as UnhandledException<U>;
+					if (casted != null)
+					{
+						value = casted.Value;
+						return true;
+					}
+					if (!typeof(T).IsValueType)
+					{
+						if (typeof(U).IsAssignableFrom(typeof(T)) || Value is U)
+						{
+							value = (U) (object) Value;
+							return true;
+						}
+					}
+					value = default(U);
+					return false;
+				}
+
+				public override string Message
+				{
+					get
+					{
+						return "A rejected value was not handled: " + (Value.ToString() ?? "null");
+					}
+				}
+
+				public void Retain()
+				{
+					++retainCounter;
+				}
+
+				public void Release()
+				{
+					if (--retainCounter == 0)
+					{
+						Value = default(T);
+						pool.Push(this);
+					}
+				}
+			}
+
+			public sealed class UnhandledExceptionException : UnhandledException, IValueContainer
+			{
+				private UnhandledExceptionException(Exception innerException) : base(innerException) { }
+
+
+				// Don't care about re-using this exception for 2 reasons:
+				// exceptions create garbage themselves, creating a little more with this one is negligible,
+				// and it's too difficult to try to replicate the formatting for Unity to pick it up by using a cached local variable like in UnhandledException<T>, and prefer not to use reflection to assign innerException
+				public static UnhandledExceptionException GetOrCreate(Exception innerException)
+				{
+					return new UnhandledExceptionException(innerException);
+				}
+
+				public new UnhandledExceptionException SetStackTrace(string stackTrace)
+				{
+					base.SetStackTrace(stackTrace);
+					return this;
+				}
+
+				public override string Message
+				{
+					get
+					{
+						return "An exception was encountered that was not handled.";
+					}
+				}
+
+				public bool TryGetValueAs<U>(out U value)
+				{
+					if (InnerException is U)
+					{
+						value = (U) (object) InnerException;
+						return true;
+					}
+					value = default(U);
+					return false;
+				}
+
+				public void Retain() { }
+
+				public void Release() { }
+			}
+
+			public sealed class CancelVoid : IValueContainer
+			{
+				// We can reuse the same object.
+				private static readonly CancelVoid obj = new CancelVoid();
+
+				private CancelVoid() { }
+
+				public static CancelVoid GetOrCreate()
+				{
+					return obj;
+				}
+
+				public bool TryGetValueAs<U>(out U value)
+				{
+					value = default(U);
+					return false;
+				}
+
+				public void Retain() { }
+
+				public void Release() { }
+			}
+
+			public sealed class ValueContainer<T> : IValueContainer, ILinked<ValueContainer<T>>
+			{
+				public ValueContainer<T> Next { get; set; }
+
+				public T Value { get; private set; }
+
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+                private static ValueLinkedStack<ValueContainer<T>> pool = new ValueLinkedStack<ValueContainer<T>>();
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+				private uint retainCounter;
+
+				static ValueContainer()
+				{
+					OnClearPool += () => pool.Clear();
+				}
+
+				private ValueContainer() { }
+
+				public static ValueContainer<T> GetOrCreate(T value)
+				{
+					ValueContainer<T> ex = pool.IsNotEmpty ? pool.Pop() : new ValueContainer<T>();
+					ex.Value = value;
+					return ex;
+				}
+
+				public bool TryGetValueAs<U>(out U value)
+				{
+					// This avoids boxing value types.
+					var casted = this as ValueContainer<U>;
+					if (casted != null)
+					{
+						value = casted.Value;
+						return true;
+					}
+					if (!typeof(T).IsValueType)
+					{
+						if (typeof(U).IsAssignableFrom(typeof(T)) || Value is U)
+						{
+							value = (U) (object) Value;
+							return true;
+						}
+					}
+					value = default(U);
+					return false;
+				}
+
+				public void Retain()
+				{
+					++retainCounter;
+				}
+
+				public void Release()
+				{
+					if (--retainCounter == 0)
+					{
+						Value = default(T);
+						pool.Push(this);
+					}
+				}
+			}
 		}
 
-		public void AddInternal<T>(T item) where T : class, ILinked<T>
+		public class InvalidReturnException : InvalidOperationException
 		{
-			object obj;
-			LinkedStack<T> stack;
-			if (pool.TryGetValue(typeof(T), out obj))
+			public InvalidReturnException(string message, string stackTrace = null) : base(message)
 			{
-				stack = (LinkedStack<T>) obj;
+				_stackTrace = stackTrace;
 			}
-			else
+
+			private readonly string _stackTrace;
+			public override string StackTrace { get { return _stackTrace; } }
+		}
+
+		public abstract class UnhandledException : Exception, ILinked<UnhandledException>
+		{
+			UnhandledException ILinked<UnhandledException>.Next { get; set; }
+
+			protected UnhandledException() { }
+			protected UnhandledException(Exception innerException) : base(null, innerException) { }
+
+			public bool unhandled = true;
+
+			protected void SetStackTrace(string stackTrace)
 			{
-				pool.Add(typeof(T), stack = new LinkedStack<T>());
+				_stackTrace = stackTrace;
 			}
-			stack.Push(item);
+
+			private string _stackTrace;
+			public override sealed string StackTrace
+			{
+				get
+				{
+					return _stackTrace;
+				}
+			}
 		}
 	}
 
-
-	internal interface ILinked<T> where T : class, ILinked<T>
+	public interface ILinked<T> where T : class, ILinked<T>
 	{
 		T Next { get; set; }
 	}
 
 	/// <summary>
-	///  This structure is unsuitable for general purpose.
+	/// This structure is unsuitable for general purpose.
 	/// </summary>
-	internal sealed class LinkedStack<T> where T : class, ILinked<T>
-	{
-		T first;
-
-		public bool IsEmpty { get { return first == null; } }
-
-		public void Clear()
-		{
-			first = null;
-		}
-
-		public void Push(T item)
-		{
-			item.Next = first;
-			first = item;
-		}
-
-		public T Pop()
-		{
-			T temp = first;
-			first = first.Next;
-			return temp;
-		}
-
-		public T Peek()
-		{
-			return first;
-		}
-	}
-
-	/// <summary>
-	///  This structure is unsuitable for general purpose.
-	/// </summary>
-	internal struct ValueLinkedStack<T> where T : class, ILinked<T>
+	public struct ValueLinkedStack<T> where T : class, ILinked<T>
 	{
 		T first;
 
@@ -505,53 +697,9 @@ namespace ProtoPromise
 	}
 
 	/// <summary>
-	///  This structure is unsuitable for general purpose.
+	/// This structure is unsuitable for general purpose.
 	/// </summary>
-	internal sealed class LinkedQueue<T> where T : class, ILinked<T>
-	{
-		T first;
-		T last;
-
-		public bool IsEmpty { get { return first == null; } }
-		public bool IsNotEmpty { get { return first != null; } }
-
-		public LinkedQueue() { }
-
-		public LinkedQueue(T item)
-		{
-			item.Next = null;
-			first = last = item;
-		}
-
-		public void Clear()
-		{
-			first = last = null;
-		}
-
-		public void Enqueue(T item)
-		{
-			item.Next = null;
-			if (first == null)
-			{
-				first = last = item;
-			}
-			else
-			{
-				last.Next = item;
-				last = item;
-			}
-		}
-
-		public T Peek()
-		{
-			return first;
-		}
-	}
-
-	/// <summary>
-	///  This structure is unsuitable for general purpose.
-	/// </summary>
-	internal struct ValueLinkedQueue<T>  where T : class, ILinked<T>
+	public struct ValueLinkedQueue<T> where T : class, ILinked<T>
 	{
 		T first;
 		T last;
@@ -565,12 +713,18 @@ namespace ProtoPromise
 			first = last = item;
 		}
 
+		public ValueLinkedQueue(ValueLinkedQueue<T> other)
+		{
+			first = other.first;
+			last = other.last;
+		}
+
 		public void Clear()
 		{
 			first = last = null;
 		}
 
-		public void Enqueue(T item)
+		public void AddLast(T item)
 		{
 			item.Next = null;
 			if (first == null)
@@ -585,116 +739,133 @@ namespace ProtoPromise
 		}
 
 		/// <summary>
-		/// Only use this to enqueue if you know this isn't empty.
+		/// Only use this to add if you know this isn't empty.
 		/// </summary>
 		/// <param name="item">Item.</param>
-		public void EnqueueRisky(T item)
+		public void AddLastRisky(T item)
 		{
 			item.Next = null;
 			last.Next = item;
 			last = item;
 		}
 
-		public T Peek()
+		public void AddFirst(T item)
+		{
+			item.Next = first;
+			first = item;
+		}
+
+		/// <summary>
+		/// <paramref name="index"/> must be greater than 0. If index is 0, use AddFirst instead.
+		/// </summary>
+		public void Insert(T item, int index)
+		{
+			T current = first;
+			while (index > 0)
+			{
+				current = current.Next;
+				--index;
+			}
+		}
+
+		public T TakeFirst()
+		{
+			T temp = first;
+			first = first.Next;
+			return temp;
+		}
+
+		public T PeekFirst()
 		{
 			return first;
 		}
+
+		public T PeekLast()
+		{
+			return last;
+		}
+
+		public void Append(ValueLinkedQueue<T> other)
+		{
+			last.Next = other.first;
+			last = other.last;
+		}
 	}
 
-	//public static class PromiseExtensions
-	//{
-	//	/// <summary>
-	//	/// Helper method for promise.Notification{<see cref="float"/>}(onProgress).
-	//	/// </summary>
-	//	public static Promise Progress(this Promise promise, Action<float> onProgress)
-	//	{
-	//		return promise.Notification(onProgress);
-	//	}
+	public struct ValueLinkedStackZeroGC<T>
+	{
+		private class Node : ILinked<Node>
+		{
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+			private static ValueLinkedStack<Node> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
 
-	//	/// <summary>
-	//	/// Helper method for promise.Notification{<see cref="float"/>}(onProgress).
-	//	/// </summary>
-	//	public static Promise<T> Progress<T>(this Promise<T> promise, Action<float> onProgress)
-	//	{
-	//		return promise.Notification(onProgress);
-	//	}
+			public static void ClearPool()
+			{
+				pool.Clear();
+			}
 
-	//	public static Promise Catch(this Promise promise, Action<object> onRejected)
-	//	{
-	//		return promise.Catch(onRejected);
-	//	}
+			public Node Next { get; set; }
 
-	//	public static Promise<T> Catch<T>(this Promise<T> promise, Func<object, T> onRejected)
-	//	{
-	//		return promise.Catch(onRejected);
-	//	}
+			public T item;
 
-	//	public static Promise<T> Catch<T>(this Promise<T> promise, Func<object, Promise<T>> onRejected)
-	//	{
-	//		return promise.Catch(onRejected);
-	//	}
+			public static Node GetOrCreate(T item)
+			{
+				Node node = pool.IsNotEmpty ? pool.Pop() : new Node();
+				node.item = item;
+				return node;
+			}
 
-	//	// TODO: Implement deferred catches.
-	//	//public static Promise Catch(this Promise promise, Func<object, Action<Deferred>> onRejected)
-	//	//{
-	//	//	return promise.Catch(onRejected);
-	//	//}
+			public T TakeItemAndDispose()
+			{
+				T temp = item;
+				Dispose();
+				return temp;
+			}
 
-	//	public static Promise Then(this Promise promise, Action onResolved, Action<object> onRejected)
-	//	{
-	//		return promise.Then(onResolved, onRejected);
-	//	}
+			public void Dispose()
+			{
+				item = default(T);
+				pool.Push(this);
+			}
+		}
 
-	//	// TODO
-	//	public static Promise Then(this Promise promise, Action onResolved, Func<object, Promise> onRejected)
-	//	{
-	//		return promise.Then(onResolved, onRejected);
-	//	}
+		public static void ClearPooledNodes()
+		{
+			Node.ClearPool();
+		}
 
-	//	public static Promise<T> Then<T>(this Promise promise, Func<T> onResolved, Func<object, T> onRejected)
-	//	{
-	//		return promise.Then(onResolved, onRejected);
-	//	}
+		private ValueLinkedStack<Node> stack;
 
-	//	// TODO
-	//	public static Promise Then<T>(this Promise<T> promise, Action<T> onResolved, Func<object, Promise> onRejected)
-	//	{
-	//		return promise.Then(onResolved, onRejected);
-	//	}
+		public bool IsEmpty { get { return stack.IsEmpty; } }
+		public bool IsNotEmpty { get { return stack.IsNotEmpty; } }
 
-	//	public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, T> onResolved, Func<object, T> onRejected)
-	//	{
-	//		return promise.Then(onResolved, onRejected);
-	//	}
+		public void Clear()
+		{
+			while (stack.IsNotEmpty)
+			{
+				stack.Pop().Dispose();
+			}
+		}
 
-	//	public static Promise<T> Then<T>(this Promise promise, Func<T> onResolved, Func<object, Promise<T>> onRejected)
-	//	{
-	//		return promise.Then(onResolved, onRejected);
-	//	}
+		public void ClearAndDontRepool()
+		{
+			stack.Clear();
+		}
 
-	//	public static Promise<T> Then<T>(this Promise promise, Func<Promise<T>> onResolved, Func<object, T> onRejected)
-	//	{
-	//		return promise.Then(onResolved, onRejected);
-	//	}
+		public void Push(T item)
+		{
+			stack.Push(Node.GetOrCreate(item));
+		}
 
-	//	public static Promise<T> Then<T>(this Promise promise, Func<Promise<T>> onResolved, Func<object, Promise<T>> onRejected)
-	//	{
-	//		return promise.Then(onResolved, onRejected);
-	//	}
+		public T Pop()
+		{
+			return stack.Pop().TakeItemAndDispose();
+		}
 
-	//	//public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, T> onResolved, Func<object, Promise<T>> onRejected)
-	//	//{
-	//	//	return promise.Then(onResolved, onRejected);
-	//	//}
-
-	//	public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, Promise<T>> onResolved, Func<object, T> onRejected)
-	//	{
-	//		return promise.Then(onResolved, onRejected);
-	//	}
-
-	//	public static Promise<T> Then<T, U>(this Promise<U> promise, Func<U, Promise<T>> onResolved, Func<object, Promise<T>> onRejected)
-	//	{
-	//		return promise.Then(onResolved, onRejected);
-	//	}
-	//}
+		public T Peek()
+		{
+			return stack.Peek().item;
+		}
+	}
 }

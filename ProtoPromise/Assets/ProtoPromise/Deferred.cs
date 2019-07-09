@@ -1,194 +1,227 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace ProtoPromise
 {
-	public abstract class ADeferred : IPoolable, ICancelable
+	partial class Promise
 	{
-		void IPoolable.OptIn()
+		public abstract class DeferredBase : ICancelableAny, IRetainable
 		{
-			((IPoolable) _promise).OptIn();
-		}
+			public void Retain()
+			{
+				_promise.Retain();
+			}
 
-		void IPoolable.OptOut()
-		{
-			((IPoolable) _promise).OptOut();
-		}
+			public void Release()
+			{
+				_promise.Release();
+			}
 
-		//internal Dictionary<Type, IDelegateArg> notificationsInternal;
+			public PromiseState State { get { return _promise.State; } }
 
-		public PromiseState State { get { return _promise._state; } }
+			protected Promise _promise;
 
-		protected Promise _promise;
+			protected DeferredBase() { }
 
-		internal ADeferred(Promise promise)
-		{
-			promise.deferredInternal = this;
-			_promise = promise;
-		}
-
-		/// <summary>
-		/// Report progress between 0 and 1.
-		/// </summary>
-		public void ReportProgress(float progress)
-		{
+			/// <summary>
+			/// Report progress between 0 and 1.
+			/// </summary>
+			public void ReportProgress(float progress)
+			{
 #if DEBUG
-			if (progress < 0f || progress > 1f)
-			{
-				throw new ArgumentOutOfRangeException("progress", "Must be between 0 and 1 inclusive.");
-			}
-#endif
-			if (State != PromiseState.Pending)
-			{
-				Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
-				return;
-			}
-
-			// TODO: Hook this up.
-			// promise1.Then(() => promise2).Then(() => promise3).Progress(value => {})
-			// should be reported as (promise1Progress + promise2Progress + promise3Progress)/3
-		}
-
-		public void Cancel()
-		{
-			if (State != PromiseState.Pending)
-			{
-				Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
-				return;
-			}
-
-			_promise.Cancel();
-		}
-
-		public void Cancel<TCancel>(TCancel reason)
-		{
-			if (State != PromiseState.Pending)
-			{
-				Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
-				return;
-			}
-
-			_promise.Cancel(reason);
-		}
-
-		public void Reject<TReject>(TReject reason)
-		{
-			RejectInternal(reason);
-		}
-
-		public void Reject()
-		{
-			if (State != PromiseState.Pending)
-			{
-				Logger.LogError("Deferred.Reject - Deferred is not in the pending state.");
-				return;
-			}
-
-			RejectInternal();
-		}
-
-		internal void RejectInternal()
-		{
-			// TODO: pool exceptions
-			UnhandledException rejectValue = new UnhandledException();
-#if DEBUG
-			if (Promise.DebugStacktraceGenerator != Promise.GeneratedStacktrace.None)
-			{
-				rejectValue.SetStackTrace(Promise.GetStackTrace(3));
-			}
-#endif
-			RejectInternal(rejectValue);
-		}
-
-		internal void RejectInternal(UnhandledException rejectValue)
-		{
-			_promise.RejectInternal(rejectValue);
-			// Continue handling if the promise has any branches.
-			if (_promise.NextBranchesInternal.IsNotEmpty)
-			{
-				Promise.ContinueHandlingInternal(_promise);
-			}
-		}
-
-		internal void RejectInternal<TReject>(TReject reason)
-		{
-			if (State != PromiseState.Pending)
-			{
-				Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
-				return;
-			}
-
-			UnhandledException rejectValue;
-			// Is reason an exception (including if it's null)?
-			if (typeof(Exception).IsAssignableFrom(typeof(TReject)))
-			{
-				// Behave the same way .Net behaves if you throw null.
-				var rejVal = new UnhandledExceptionException(reason as Exception ?? new NullReferenceException());
-#if DEBUG
-				if (Promise.DebugStacktraceGenerator != Promise.GeneratedStacktrace.None)
+				if (_promise == null)
 				{
-					rejVal.SetStackTrace(Promise.GetStackTrace(3));
+					throw new ObjectDisposedException("Deferred");
+				}
+				if (progress < 0f || progress > 1f)
+				{
+#pragma warning disable RECS0163 // Suggest the usage of the nameof operator
+					throw new ArgumentOutOfRangeException("progress", "Must be between 0 and 1.");
+#pragma warning restore RECS0163 // Suggest the usage of the nameof operator
 				}
 #endif
-				rejectValue = rejVal;
-			}
-			else
-			{
-				rejectValue = new UnhandledException<TReject>().SetValue(reason);
-#if DEBUG
-				if (Promise.DebugStacktraceGenerator != Promise.GeneratedStacktrace.None)
+				if (State != PromiseState.Pending)
 				{
-					rejectValue.SetStackTrace(Promise.GetStackTrace(3));
+					Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
+					return;
 				}
-#endif
+
+				if (progress >= 1f)
+				{
+					// Don't report progress 1.0, that will be reported automatically when the promise is resolved.
+					return;
+				}
+
+				_promise.ReportProgress(progress);
 			}
 
-			RejectInternal(rejectValue);
+			public void Cancel()
+			{
+#if DEBUG
+				if (_promise == null)
+				{
+					throw new ObjectDisposedException("Deferred");
+				}
+#endif
+				if (State != PromiseState.Pending)
+				{
+					Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+					return;
+				}
+
+				_promise.Cancel();
+			}
+
+			public void Cancel<TCancel>(TCancel reason)
+			{
+#if DEBUG
+				if (_promise == null)
+				{
+					throw new ObjectDisposedException("Deferred");
+				}
+#endif
+				if (State != PromiseState.Pending)
+				{
+					Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+					return;
+				}
+
+				_promise.Cancel(reason);
+			}
+
+			public void Reject<TReject>(TReject reason)
+			{
+#if DEBUG
+				if (_promise == null)
+				{
+					throw new ObjectDisposedException("Deferred");
+				}
+#endif
+				if (State != PromiseState.Pending)
+				{
+					Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
+					return;
+				}
+
+				_promise.Reject(reason);
+			}
+
+			public void Reject()
+			{
+#if DEBUG
+				if (_promise == null)
+				{
+					throw new ObjectDisposedException("Deferred");
+				}
+#endif
+				if (State != PromiseState.Pending)
+				{
+					Logger.LogError("Deferred.Reject - Deferred is not in the pending state.");
+					return;
+				}
+
+				_promise.Reject();
+			}
+
+			protected void TryDispose()
+			{
+				if (retains.ContainsKey(_promise))
+				{
+					return;
+				}
+
+				Dispose();
+			}
+
+			protected virtual void Dispose()
+			{
+				_promise = null;
+			}
+		}
+
+
+		// TODO: Make these abstract and put the concrete implementation in Internal.
+		public sealed class Deferred : DeferredBase, ILinked<Deferred>
+		{
+			public Promise Promise { get { return _promise; } }
+
+			Deferred ILinked<Deferred>.Next { get; set; }
+
+			private Deferred() : base() { }
+
+			private static ValueLinkedStack<Deferred> pool;
+
+			internal static Deferred GetOrCreate(Promise promise)
+			{
+				var deferred = pool.IsNotEmpty ? pool.Pop() : new Deferred();
+				deferred._promise = promise;
+				return deferred;
+			}
+
+			public void Resolve()
+			{
+#if DEBUG
+				if (_promise == null)
+				{
+					throw new ObjectDisposedException("Deferred");
+				}
+#endif
+				if (State != PromiseState.Pending)
+				{
+					Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+					return;
+				}
+
+				_promise.Resolve();
+			}
+
+			protected override void Dispose()
+			{
+				pool.Push(this);
+			}
 		}
 	}
 
-	public sealed class Deferred : ADeferred
+	public partial class Promise<T>
 	{
-		public Promise Promise { get { return _promise; } }
-
-		internal Deferred(Promise promise) : base(promise) { }
-
-		public void Resolve()
+		public sealed new class Deferred : DeferredBase, ILinked<Deferred>
 		{
-			if (State != PromiseState.Pending)
+			public Promise<T> Promise { get { return (Promise<T>) _promise; } }
+
+			Deferred ILinked<Deferred>.Next { get; set; }
+
+			internal Deferred() : base() { }
+
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+			private static ValueLinkedStack<Deferred> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+			internal static Deferred GetOrCreate(Promise<T> promise)
 			{
-				Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
-				return;
+				var deferred = pool.IsNotEmpty ? pool.Pop() : new Deferred();
+				deferred._promise = promise;
+				return deferred;
 			}
 
-			Promise.ResolveInternal(null);
-			// Continue handling if the promise has any branches.
-			if (_promise.NextBranchesInternal.IsNotEmpty)
+			public void Resolve(T arg)
 			{
-				Promise.ContinueHandlingInternal(_promise);
-			}
-		}
-	}
+#if DEBUG
+				if (_promise == null)
+				{
+					throw new ObjectDisposedException("Deferred");
+				}
+#endif
+				if (State != PromiseState.Pending)
+				{
+					Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+					return;
+				}
 
-	public sealed class Deferred<T> : ADeferred
-	{
-		public Promise<T> Promise { get { return (Promise<T>) _promise; } }
-
-		internal Deferred(Promise<T> promise) : base(promise) { }
-
-		public void Resolve(T arg)
-		{
-			if (State != PromiseState.Pending)
-			{
-				Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
-				return;
+				Promise.Resolve(arg);
 			}
 
-			Promise.ResolveInternal(arg);
-			// Continue handling if the promise has any branches.
-			if (_promise.NextBranchesInternal.IsNotEmpty)
+			protected override void Dispose()
 			{
-				ProtoPromise.Promise.ContinueHandlingInternal(_promise);
+				pool.Push(this);
 			}
 		}
 	}

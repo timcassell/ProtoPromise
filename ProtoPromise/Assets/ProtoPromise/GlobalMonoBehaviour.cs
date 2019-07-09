@@ -27,13 +27,35 @@ namespace ProtoPromise
 		/// </summary>
 		public static IYieldIntercept yieldInterceptor;
 
-		private static ObjectPool objectPool = new ObjectPool();
+		private static event Action _onClear;
+
+		public static void ClearPooledRoutines()
+		{
+			_onClear.Invoke();
+		}
 
 		private class Routine : IEnumerator, ILinked<Routine>
 		{
-			public Routine Next { get; set; }
+			Routine ILinked<Routine>.Next { get; set; }
+
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+			private static ValueLinkedStack<Routine> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+			public static Routine New()
+			{
+				return pool.IsNotEmpty ? pool.Pop() : new Routine();
+			}
+
+			static Routine()
+			{
+				_onClear += () => pool.Clear();
+			}
+
+			private Routine() { }
+
 			public Action onComplete;
-			public bool _continue = false;
+			public bool _continue;
 
 			public object Current { get; set; }
 
@@ -53,7 +75,7 @@ namespace ProtoPromise
 				onComplete = null;
 				Current = null;
 				// Place this back in the pool before invoking in case the invocation will re-use this.
-				objectPool.AddInternal(this);
+				pool.Push(this);
 
 				try
 				{
@@ -85,7 +107,7 @@ namespace ProtoPromise
 				{
 					onComplete = null;
 					Current = null;
-					objectPool.AddInternal(this);
+					pool.Push(this);
 				}
 			}
 
@@ -94,9 +116,26 @@ namespace ProtoPromise
 
 		private class Routine<T> : IEnumerator, ILinked<Routine<T>>
  		{
-			public Routine<T> Next { get; set; }
+			Routine<T> ILinked<Routine<T>>.Next { get; set; }
+
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+			private static ValueLinkedStack<Routine<T>> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+			public static Routine<T> New()
+			{
+				return pool.IsNotEmpty ? pool.Pop() : new Routine<T>();
+			}
+
+			static Routine()
+			{
+				_onClear += () => pool.Clear();
+			}
+
+			private Routine() { }
+
 			public Action<T> onComplete;
-			public bool _continue = false;
+			public bool _continue;
 
 			public T Current { get; set; }
 			object IEnumerator.Current { get { return Current; } }
@@ -118,7 +157,7 @@ namespace ProtoPromise
 				T tempObj = Current;
 				Current = default(T);
 				// Place this back in the pool before invoking in case the invocation will re-use this.
-				objectPool.AddInternal(this);
+				pool.Push(this);
 
 				try
 				{
@@ -153,7 +192,7 @@ namespace ProtoPromise
 				{
 					onComplete = null;
 					Current = default(T);
-					objectPool.AddInternal(this);
+					pool.Push(this);
 				}
 			}
 
@@ -175,8 +214,6 @@ namespace ProtoPromise
 			}
 		}
 
-		//private static LinkedStackStruct<Routine> pool; // Pool of routines as linked stack.
-
 		/// <summary>
 		/// Waits for <paramref name="yieldInstruction"/> to complete, then calls <paramref name="onComplete"/>.
 		/// If <paramref name="yieldInstruction"/> is not a Unity supported <see cref="YieldInstruction"/> or <see cref="CustomYieldInstruction"/>, and it is not intercepted, then this will wait for 1 frame.
@@ -190,17 +227,16 @@ namespace ProtoPromise
 		/// <returns>Cancelation delegate to stop waiting. If the value passed in is <see langword="true"/>, <param name="onComplete"/> will be invoked immediately, otherwise it will not be invoked.</returns>
 		public static Action<bool> Yield<TYieldInstruction>(TYieldInstruction yieldInstruction, Action<TYieldInstruction> onComplete)
 		{
+#if DEBUG
 			if (onComplete == null)
 			{
+#pragma warning disable RECS0163 // Suggest the usage of the nameof operator
 				throw new ArgumentNullException("onComplete");
+#pragma warning restore RECS0163 // Suggest the usage of the nameof operator
 			}
+#endif
 
-			// Grab from pool or create new if pool is empty.
-			Routine<TYieldInstruction> routine;
-			if (!objectPool.TryTakeInternal(out routine))
-			{
-				routine = new Routine<TYieldInstruction>();
-			}
+			Routine<TYieldInstruction> routine = Routine<TYieldInstruction>.New();
 			routine.Current = yieldInstruction;
 			routine.onComplete = onComplete;
 
@@ -238,10 +274,14 @@ namespace ProtoPromise
 		/// <returns>Cancelation delegate to stop waiting. If the value passed in is <see langword="true"/>, <param name="onComplete"/> will be invoked immediately, otherwise it will not be invoked.</returns>
 		public static Action<bool> Yield<TYieldInstruction>(TYieldInstruction yieldInstruction, Action onComplete)
 		{
+#if DEBUG
 			if (onComplete == null)
 			{
+#pragma warning disable RECS0163 // Suggest the usage of the nameof operator
 				throw new ArgumentNullException("onComplete");
+#pragma warning restore RECS0163 // Suggest the usage of the nameof operator
 			}
+#endif
 
 			// Try to intercept.
 			Action<bool> cancel;
@@ -251,21 +291,14 @@ namespace ProtoPromise
 			}
 
 			// Grab from pool or create new if pool is empty.
-			Routine routine;
-			if (objectPool.TryTakeInternal(out routine))
+			Routine routine = Routine.New();
+			if (routine._continue)
 			{
-				if (routine._continue)
-				{
-					// The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
-					routine._continue = false;
-					routine.Current = yieldInstruction;
-					routine.onComplete = onComplete;
-					return routine.Cancel;
-				}
-			}
-			else
-			{
-				routine = new Routine();
+				// The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
+				routine._continue = false;
+				routine.Current = yieldInstruction;
+				routine.onComplete = onComplete;
+				return routine.Cancel;
 			}
 
 			routine.Current = yieldInstruction;
@@ -281,10 +314,14 @@ namespace ProtoPromise
 		/// <param name="onComplete">Callback</param>
 		public static void Yield(Action onComplete)
 		{
+#if DEBUG
 			if (onComplete == null)
 			{
+#pragma warning disable RECS0163 // Suggest the usage of the nameof operator
 				throw new ArgumentNullException("onComplete");
+#pragma warning restore RECS0163 // Suggest the usage of the nameof operator
 			}
+#endif
 
 			// Try to intercept.
 			if (yieldInterceptor != null && yieldInterceptor.InterceptSingleFrameWait(onComplete))
@@ -292,21 +329,13 @@ namespace ProtoPromise
 				return;
 			}
 
-			// Grab from pool or create new if pool is empty.
-			Routine routine;
-			if (objectPool.TryTakeInternal(out routine))
+			Routine routine = Routine.New();
+			if (routine._continue)
 			{
-				if (routine._continue)
-				{
-					// The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
-					routine._continue = false;
-					routine.onComplete = onComplete;
-					return;
-				}
-			}
-			else
-			{
-				routine = new Routine();
+				// The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
+				routine._continue = false;
+				routine.onComplete = onComplete;
+				return;
 			}
 
 			routine.onComplete = onComplete;

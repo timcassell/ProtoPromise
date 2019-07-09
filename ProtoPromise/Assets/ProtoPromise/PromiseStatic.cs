@@ -5,13 +5,26 @@ namespace ProtoPromise
 {
 	public partial class Promise
 	{
-		public static bool AutoDone = true;
-
-
 		// Acts like a compiler-generated closure class, except this can be re-used.
 		private class PromiseClosure : ILinked<PromiseClosure>
 		{
 			PromiseClosure ILinked<PromiseClosure>.Next { get; set; }
+
+			private static ValueLinkedStack<PromiseClosure> pool;
+
+#pragma warning disable RECS0146 // Member hides static member from outer class
+			internal static PromiseClosure New()
+#pragma warning restore RECS0146 // Member hides static member from outer class
+			{
+				return pool.IsNotEmpty ? pool.Pop() : new PromiseClosure();
+			}
+
+			static PromiseClosure()
+			{
+				Internal.OnClearPool += () => pool.Clear();
+			}
+
+			protected PromiseClosure() { }
 
 			public Promise promise;
 			public AllClosure allClosure;
@@ -19,13 +32,7 @@ namespace ProtoPromise
 			private void AddToPool()
 			{
 				promise = null;
-				objectPoolInternal.AddInternal(this);
-			}
-
-			private void AddAllToPool()
-			{
-				allClosure.masterDeferred = null;
-				objectPoolInternal.AddInternal(allClosure);
+				pool.Push(this);
 			}
 
 			public void ResolveClosure()
@@ -33,7 +40,7 @@ namespace ProtoPromise
 				var deferred = allClosure.masterDeferred;
 				if (--allClosure.waiting == 0)
 				{
-					AddAllToPool();
+					allClosure.AddToPool();
 					if (deferred != null)
 					{
 						deferred.Resolve();
@@ -47,11 +54,12 @@ namespace ProtoPromise
 				var deferred = allClosure.masterDeferred;
 				if (--allClosure.waiting == 0)
 				{
-					AddAllToPool();
+					allClosure.AddToPool();
 				}
 				if (deferred != null)
 				{
-					deferred.RejectInternal(promise.rejectedOrCanceledValueInternal);
+					deferred.Promise.RejectDirect(promise._rejectedOrCanceledValue);
+					deferred.Dispose();
 				}
 				AddToPool();
 			}
@@ -62,8 +70,32 @@ namespace ProtoPromise
 		{
 			AllClosure ILinked<AllClosure>.Next { get; set; }
 
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+			private static ValueLinkedStack<AllClosure> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+#pragma warning disable RECS0146 // Member hides static member from outer class
+			internal static AllClosure New()
+#pragma warning restore RECS0146 // Member hides static member from outer class
+			{
+				return pool.IsNotEmpty ? pool.Pop() : new AllClosure();
+			}
+
+			static AllClosure()
+			{
+				Internal.OnClearPool += () => pool.Clear();
+			}
+
+			protected AllClosure() { }
+
 			public Deferred masterDeferred;
 			public int waiting;
+
+			public void AddToPool()
+			{
+				masterDeferred = null;
+				pool.Push(this);
+			}
 		}
 
 		// Acts like a compiler-generated closure class, except this can be re-used.
@@ -75,17 +107,28 @@ namespace ProtoPromise
 			public int index;
 			public AllClosure<T> allClosure;
 
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+			private static ValueLinkedStack<PromiseClosure<T>> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+#pragma warning disable RECS0146 // Member hides static member from outer class
+			internal static PromiseClosure<T> New()
+#pragma warning restore RECS0146 // Member hides static member from outer class
+			{
+				return pool.IsNotEmpty ? pool.Pop() : new PromiseClosure<T>();
+			}
+
+			static PromiseClosure()
+			{
+				Internal.OnClearPool += () => pool.Clear();
+			}
+
+			protected PromiseClosure() { }
+
 			private void AddToPool()
 			{
 				promise = null;
-				objectPoolInternal.AddInternal(this);
-			}
-
-			private void AddAllToPool()
-			{
-				allClosure.args = null;
-				allClosure.masterDeferred = null;
-				objectPoolInternal.AddInternal(allClosure);
+				pool.Push(this);
 			}
 
 			public void ResolveClosure(T arg)
@@ -95,7 +138,7 @@ namespace ProtoPromise
 				args[index] = arg;
 				if (--allClosure.waiting == 0)
 				{
-					AddAllToPool();
+					allClosure.AddToPool();
 					if (deferred != null)
 					{
 						deferred.Resolve(args);
@@ -109,11 +152,12 @@ namespace ProtoPromise
 				var deferred = allClosure.masterDeferred;
 				if (--allClosure.waiting == 0)
 				{
-					AddAllToPool();
+					allClosure.AddToPool();
 				}
 				if (deferred != null)
 				{
-					deferred.RejectInternal(promise.rejectedOrCanceledValueInternal);
+					deferred.Promise.RejectDirect(promise._rejectedOrCanceledValue);
+					deferred.Dispose();
 				}
 				AddToPool();
 			}
@@ -124,9 +168,34 @@ namespace ProtoPromise
 		{
 			AllClosure<T> ILinked<AllClosure<T>>.Next { get; set; }
 
-			public Deferred<T[]> masterDeferred;
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+			private static ValueLinkedStack<AllClosure<T>> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+#pragma warning disable RECS0146 // Member hides static member from outer class
+			internal static AllClosure<T> New()
+#pragma warning restore RECS0146 // Member hides static member from outer class
+			{
+				return pool.IsNotEmpty ? pool.Pop() : new AllClosure<T>();
+			}
+
+			static AllClosure()
+			{
+				Internal.OnClearPool += () => pool.Clear();
+			}
+
+			protected AllClosure() { }
+
+			public Promise<T[]>.Deferred masterDeferred;
 			public int waiting;
 			public T[] args;
+
+			public void AddToPool()
+			{
+				args = null;
+				masterDeferred = null;
+				pool.Push(this);
+			}
 		}
 
 		// TODO: handle canceled promises.
@@ -134,14 +203,10 @@ namespace ProtoPromise
 		{
 			if (promises.Length == 0)
 			{
-				return Resolve(new T[0]);
+				return Resolved(new T[0]);
 			}
 
-			AllClosure<T> allClosure;
-			if (!objectPoolInternal.TryTakeInternal(out allClosure))
-			{
-				allClosure = new AllClosure<T>();
-			}
+			AllClosure<T> allClosure = AllClosure<T>.New();
 
 			int waiting = promises.Length;
 
@@ -152,11 +217,7 @@ namespace ProtoPromise
 
 			for (int i = 0; i < waiting; ++i)
 			{
-				PromiseClosure<T> promiseClosure;
-				if (!objectPoolInternal.TryTakeInternal(out promiseClosure))
-				{
-					promiseClosure = new PromiseClosure<T>();
-				}
+				PromiseClosure<T> promiseClosure = PromiseClosure<T>.New();
 
 				promiseClosure.allClosure = allClosure;
 				promiseClosure.index = i;
@@ -179,14 +240,10 @@ namespace ProtoPromise
 		{
 			if (promises.Length == 0)
 			{
-				return Resolve();
+				return Resolved();
 			}
 
-			AllClosure allClosure;
-			if (!objectPoolInternal.TryTakeInternal(out allClosure))
-			{
-				allClosure = new AllClosure();
-			}
+			AllClosure allClosure = AllClosure.New();
 
 			allClosure.masterDeferred = GetDeferred();
 			var promise = allClosure.masterDeferred.Promise; // Cache the promise in case they all resolve synchronously.
@@ -194,11 +251,7 @@ namespace ProtoPromise
 
 			for (int i = 0, max = promises.Length; i < max; ++i)
 			{
-				PromiseClosure promiseClosure;
-				if (!objectPoolInternal.TryTakeInternal(out promiseClosure))
-				{
-					promiseClosure = new PromiseClosure();
-				}
+				PromiseClosure promiseClosure = PromiseClosure.New();
 
 				promiseClosure.allClosure = allClosure;
 				promiseClosure.promise = promises[i];
@@ -222,10 +275,28 @@ namespace ProtoPromise
 		{
 			PromiseClosureWithNonvalue<T1> ILinked<PromiseClosureWithNonvalue<T1>>.Next { get; set; }
 
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+			private static ValueLinkedStack<PromiseClosureWithNonvalue<T1>> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+#pragma warning disable RECS0146 // Member hides static member from outer class
+			internal static PromiseClosureWithNonvalue<T1> New()
+#pragma warning restore RECS0146 // Member hides static member from outer class
+			{
+				return pool.IsNotEmpty ? pool.Pop() : new PromiseClosureWithNonvalue<T1>();
+			}
+
+			static PromiseClosureWithNonvalue()
+			{
+				Internal.OnClearPool += () => pool.Clear();
+			}
+
+			protected PromiseClosureWithNonvalue() { }
+
 			// non-value promise is the last element.
 			public readonly Promise[] promises = new Promise[2];
 			int waiting = 2;
-			public Deferred<T1> deferred;
+			public Promise<T1>.Deferred deferred;
 			T1 value;
 
 			private void AddToPool()
@@ -236,7 +307,7 @@ namespace ProtoPromise
 				{
 					promises[i] = null;
 				}
-				objectPoolInternal.AddInternal(this);
+				pool.Push(this);
 			}
 
 			private void ResolveComplete()
@@ -255,14 +326,15 @@ namespace ProtoPromise
 			void RejectComplete(int index)
 			{
 				var temp = deferred;
-				var rejectValue = promises[index].rejectedOrCanceledValueInternal;
+				var rejectValue = promises[index]._rejectedOrCanceledValue;
 				if (--waiting == 0)
 				{
 					AddToPool();
 				}
 				if (temp != null)
 				{
-					temp.RejectInternal(rejectValue);
+					temp.Promise.RejectDirect(rejectValue);
+					temp.Dispose();
 				}
 			}
 
@@ -290,11 +362,7 @@ namespace ProtoPromise
 
 		public static Promise<T1> All<T1>(Promise<T1> promise1, Promise promise2)
 		{
-			PromiseClosureWithNonvalue<T1> allClosure;
-			if (!objectPoolInternal.TryTakeInternal(out allClosure))
-			{
-				allClosure = new PromiseClosureWithNonvalue<T1>();
-			}
+			PromiseClosureWithNonvalue<T1> allClosure = PromiseClosureWithNonvalue<T1>.New();
 
 			allClosure.deferred = GetDeferred<T1>();
 			var promise = allClosure.deferred.Promise; // Cache the promise in case they all resolve synchronously.
@@ -314,6 +382,24 @@ namespace ProtoPromise
 		{
 			RaceClosure ILinked<RaceClosure>.Next { get; set; }
 
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+			private static ValueLinkedStack<RaceClosure> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+#pragma warning disable RECS0146 // Member hides static member from outer class
+			internal static RaceClosure New()
+#pragma warning restore RECS0146 // Member hides static member from outer class
+			{
+				return pool.IsNotEmpty ? pool.Pop() : new RaceClosure();
+			}
+
+			static RaceClosure()
+			{
+				Internal.OnClearPool += () => pool.Clear();
+			}
+
+			protected RaceClosure() { }
+
 			public Deferred deferred;
 			public Promise promise;
 
@@ -322,7 +408,7 @@ namespace ProtoPromise
 				var def = deferred;
 				deferred = null;
 				promise = null;
-				objectPoolInternal.AddInternal(this);
+				pool.Push(this);
 				if (def.State == PromiseState.Pending)
 				{
 					def.Resolve();
@@ -335,10 +421,11 @@ namespace ProtoPromise
 				deferred = null;
 				var p = promise;
 				promise = null;
-				objectPoolInternal.AddInternal(this);
+				pool.Push(this);
 				if (def.State == PromiseState.Pending)
 				{
-					def.RejectInternal(p.rejectedOrCanceledValueInternal);
+					def.Promise.RejectDirect(p._rejectedOrCanceledValue);
+					def.Dispose();
 				}
 			}
 		}
@@ -348,7 +435,25 @@ namespace ProtoPromise
 		{
 			RaceClosure<T> ILinked<RaceClosure<T>>.Next { get; set; }
 
-			public Deferred<T> deferred;
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+			private static ValueLinkedStack<RaceClosure<T>> pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+#pragma warning disable RECS0146 // Member hides static member from outer class
+			internal static RaceClosure<T> New()
+#pragma warning restore RECS0146 // Member hides static member from outer class
+			{
+				return pool.IsNotEmpty ? pool.Pop() : new RaceClosure<T>();
+			}
+
+			static RaceClosure()
+			{
+				Internal.OnClearPool += () => pool.Clear();
+			}
+
+			protected RaceClosure() { }
+
+			public Promise<T>.Deferred deferred;
 			public Promise<T> promise;
 
 			public void ResolveClosure(T arg)
@@ -356,7 +461,7 @@ namespace ProtoPromise
 				var def = deferred;
 				deferred = null;
 				promise = null;
-				objectPoolInternal.AddInternal(this);
+				pool.Push(this);
 				if (def.State == PromiseState.Pending)
 				{
 					def.Resolve(arg);
@@ -369,10 +474,11 @@ namespace ProtoPromise
 				deferred = null;
 				var p = promise;
 				promise = null;
-				objectPoolInternal.AddInternal(this);
+				pool.Push(this);
 				if (def.State == PromiseState.Pending)
 				{
-					def.RejectInternal(p.rejectedOrCanceledValueInternal);
+					def.Promise.RejectDirect(p._rejectedOrCanceledValue);
+					def.Dispose();
 				}
 			}
 		}
@@ -388,11 +494,7 @@ namespace ProtoPromise
 
 			for (int i = 0, max = promises.Length; i < max; ++i)
 			{
-				RaceClosure<T> raceClosure;
-				if (!objectPoolInternal.TryTakeInternal(out raceClosure))
-				{
-					raceClosure = new RaceClosure<T>();
-				}
+				RaceClosure<T> raceClosure = RaceClosure<T>.New();
 
 				raceClosure.deferred = masterDeferred;
 				raceClosure.promise = promises[i];
@@ -421,11 +523,7 @@ namespace ProtoPromise
 
 			for (int i = 0, max = promises.Length; i < max; ++i)
 			{
-				RaceClosure raceClosure;
-				if (!objectPoolInternal.TryTakeInternal(out raceClosure))
-				{
-					raceClosure = new RaceClosure();
-				}
+				RaceClosure raceClosure = RaceClosure.New();
 
 				raceClosure.deferred = masterDeferred;
 				raceClosure.promise = promises[i];
@@ -447,7 +545,7 @@ namespace ProtoPromise
 		{
 			if (funcs.Length == 0)
 			{
-				return Resolve();
+				return Resolved();
 			}
 			Promise promise = funcs[0].Invoke();
 			for (int i = 1, max = funcs.Length; i < max; ++i)
@@ -496,14 +594,14 @@ namespace ProtoPromise
 		/// <typeparam name="TYieldInstruction">The type of yieldInstruction.</typeparam>
 		public static Promise<TYieldInstruction> Yield<TYieldInstruction>(TYieldInstruction yieldInstruction)
 		{
-			Deferred<TYieldInstruction> deferred = GetDeferred<TYieldInstruction>();
+			var promise = Internal.LitePromise<TYieldInstruction>.GetOrCreate();
 
 			CancelClosure cancelClosure = cancelClosures.IsEmpty ? new CancelClosure() : cancelClosures.Pop();
-			cancelClosure.cancel = GlobalMonoBehaviour.Yield(yieldInstruction, deferred.Resolve);
-			deferred.Promise.Canceled(cancelClosure.Invoke);
-			deferred.Promise.Complete(cancelClosure.AddToPool);
+			cancelClosure.cancel = GlobalMonoBehaviour.Yield(yieldInstruction, (Action<TYieldInstruction>) promise.Resolve);
+			promise.Canceled(cancelClosure.Invoke);
+			promise.Complete(cancelClosure.AddToPool);
 
-			return deferred.Promise;
+			return promise;
 		}
 
 		/// <summary>
@@ -511,99 +609,115 @@ namespace ProtoPromise
 		/// </summary>
 		public static Promise Yield()
 		{
-			Deferred deferred = GetDeferred();
-			GlobalMonoBehaviour.Yield(deferred.Resolve);
-			return deferred.Promise;
+			var promise = Internal.LitePromise.GetOrCreate();
+			GlobalMonoBehaviour.Yield(promise.Resolve);
+			return promise;
 		}
 
 		public static Promise New(Action<Deferred> resolver)
 		{
-			Deferred deferred = GetDeferred();
+			var deferred = GetDeferred();
+			var promise = deferred.Promise;
 			resolver.Invoke(deferred);
-			return deferred.Promise;
+			return promise;
 		}
 
-		public static Promise<T> New<T>(Action<Deferred<T>> resolver)
+		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver)
 		{
-			Deferred<T> deferred = GetDeferred<T>();
+			var deferred = GetDeferred<T>();
+			var promise = deferred.Promise;
 			resolver.Invoke(deferred);
-			return deferred.Promise;
+			return promise;
 		}
 
-		public static Promise Resolve()
+		public static Promise Resolved()
 		{
-			Deferred deferred = GetDeferred();
-			deferred.Resolve();
-			return deferred.Promise;
+			var promise = Internal.LitePromise.GetOrCreate();
+			promise.Resolve();
+			return promise;
 		}
 
-		public static Promise<T> Resolve<T>(T value)
+		public static Promise<T> Resolved<T>(T value)
 		{
-			Deferred<T> deferred = GetDeferred<T>();
-			deferred.Resolve(value);
-			return deferred.Promise;
+			var promise = Internal.LitePromise<T>.GetOrCreate();
+			promise.Resolve(value);
+			return promise;
 		}
 
-		public static Promise<T> Reject<T, TReject>(TReject exception)
+		public static Promise<T> Rejected<T, TReject>(TReject reason)
 		{
-			Deferred<T> deferred = GetDeferred<T>();
-			deferred.RejectInternal(exception);
-			return deferred.Promise;
+			var promise = Internal.LitePromise<T>.GetOrCreate();
+			promise.Reject(reason);
+			return promise;
 		}
 
-		public static Promise Reject<TReject>(TReject exception)
+		public static Promise Rejected<TReject>(TReject reason)
 		{
-			Deferred deferred = GetDeferred();
-			deferred.RejectInternal(exception);
-			return deferred.Promise;
+			var promise = Internal.LitePromise.GetOrCreate();
+			promise.Reject(reason);
+			return promise;
 		}
 
-		public static Promise<T> Reject<T>()
+		public static Promise<T> Rejected<T>()
 		{
-			Deferred<T> deferred = GetDeferred<T>();
-			deferred.RejectInternal();
-			return deferred.Promise;
+			var promise = Internal.LitePromise<T>.GetOrCreate();
+			promise.Reject();
+			return promise;
 		}
 
-		public static Promise Reject()
+		public static Promise Rejected()
 		{
-			Deferred deferred = GetDeferred();
-			deferred.RejectInternal();
-			return deferred.Promise;
+			var promise = Internal.LitePromise.GetOrCreate();
+			promise.Reject();
+			return promise;
 		}
 
-		public static Deferred Deferred()
+		public static Promise<T> Canceled<T, TCancel>(TCancel reason)
+		{
+			var promise = Internal.LitePromise<T>.GetOrCreate();
+			promise.Cancel(reason);
+			return promise;
+		}
+
+		public static Promise Canceled<TCancel>(TCancel reason)
+		{
+			var promise = Internal.LitePromise.GetOrCreate();
+			promise.Cancel(reason);
+			return promise;
+		}
+
+		public static Promise<T> Canceled<T>()
+		{
+			var promise = Internal.LitePromise<T>.GetOrCreate();
+			promise.Cancel();
+			return promise;
+		}
+
+		public static Promise Canceled()
+		{
+			var promise = Internal.LitePromise.GetOrCreate();
+			promise.Cancel();
+			return promise;
+		}
+
+		public static Deferred NewDeferred()
 		{
 			return GetDeferred();
 		}
 
-		public static Deferred<T> Deferred<T>()
+		public static Promise<T>.Deferred NewDeferred<T>()
 		{
 			return GetDeferred<T>();
 		}
 
 		private static Deferred GetDeferred()
 		{
-			Promise promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new Promise();
-				new Deferred(promise);
-			}
-			promise.ResetInternal(4);
-			return (Deferred) promise.deferredInternal;
+			return Deferred.GetOrCreate(Internal.DeferredPromise.GetOrCreate());
 		}
 
-		public static Deferred<T> GetDeferred<T>()
+		private static Promise<T>.Deferred GetDeferred<T>()
 		{
-			Promise<T> promise;
-			if (!objectPoolInternal.TryTakeInternal(out promise))
-			{
-				promise = new Promise<T>();
-				new Deferred<T>(promise);
-			}
-			promise.ResetInternal(4);
-			return (Deferred<T>) promise.deferredInternal;
+			return Promise<T>.Deferred.GetOrCreate(Internal.DeferredPromise<T>.GetOrCreate());
 		}
 	}
 }
