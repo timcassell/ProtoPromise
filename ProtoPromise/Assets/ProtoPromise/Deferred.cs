@@ -165,6 +165,16 @@ namespace ProtoPromise
         {
             protected Deferred() : base() { }
 
+#pragma warning disable RECS0146 // Member hides static member from outer class
+            public static Deferred New()
+#pragma warning restore RECS0146 // Member hides static member from outer class
+            {
+                var promise = Internal.DeferredPromise.GetOrCreate();
+                promise.Retain();
+                // TODO: release promise when deferred is finished.
+                return Internal.DeferredInternal.GetOrCreate(promise);
+            }
+
             public void Resolve()
             {
 #if DEBUG
@@ -194,6 +204,14 @@ namespace ProtoPromise
             public new Promise<T> Promise { get { return (Promise<T>) base.Promise; } protected set { base.Promise = value; } }
 
             protected Deferred() : base() { }
+
+            public static Deferred New()
+            {
+                var promise = ProtoPromise.Promise.Internal.DeferredPromise<T>.GetOrCreate();
+                promise.Retain();
+                // TODO: release promise when deferred is finished.
+                return Internal.DeferredInternal.GetOrCreate(promise);
+            }
 
             public void Resolve(T arg)
             {
@@ -268,12 +286,12 @@ namespace ProtoPromise
 
                 protected override void HandleReject()
                 {
-                    Promise.Reject();
+                    Promise.Reject(2);
                 }
 
                 protected override void HandleReject<TReject>(TReject reason)
                 {
-                    Promise.Reject(reason);
+                    Promise.Reject(reason, 2);
                 }
             }
         }
@@ -332,12 +350,12 @@ namespace ProtoPromise
 
                 protected override void HandleReject()
                 {
-                    Promise.Reject();
+                    Promise.Reject(2);
                 }
 
                 protected override void HandleReject<TReject>(TReject reason)
                 {
-                    Promise.Reject(reason);
+                    Promise.Reject(reason, 2);
                 }
             }
         }

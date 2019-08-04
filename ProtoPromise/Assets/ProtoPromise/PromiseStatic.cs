@@ -615,17 +615,19 @@ namespace ProtoPromise
 		}
 
 		public static Promise New(Action<Deferred> resolver)
-		{
-			var deferred = GetDeferred();
-			var promise = deferred.Promise;
+        {
+            var deferred = Deferred.New();
+            // TODO: delete first line of promise's stacktrace
+            var promise = deferred.Promise;
 			resolver.Invoke(deferred);
 			return promise;
 		}
 
 		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver)
 		{
-			var deferred = GetDeferred<T>();
-			var promise = deferred.Promise;
+			var deferred = Promise<T>.Deferred.New();
+            // TODO: delete first line of promise's stacktrace
+            var promise = deferred.Promise;
 			resolver.Invoke(deferred);
 			return promise;
 		}
@@ -647,28 +649,28 @@ namespace ProtoPromise
 		public static Promise<T> Rejected<T, TReject>(TReject reason)
 		{
 			var promise = Internal.LitePromise<T>.GetOrCreate();
-			promise.Reject(reason);
+			promise.Reject(reason, 1);
 			return promise;
 		}
 
 		public static Promise Rejected<TReject>(TReject reason)
 		{
 			var promise = Internal.LitePromise.GetOrCreate();
-			promise.Reject(reason);
+			promise.Reject(reason, 1);
 			return promise;
 		}
 
 		public static Promise<T> Rejected<T>()
 		{
 			var promise = Internal.LitePromise<T>.GetOrCreate();
-			promise.Reject();
+			promise.Reject(1);
 			return promise;
 		}
 
 		public static Promise Rejected()
 		{
 			var promise = Internal.LitePromise.GetOrCreate();
-			promise.Reject();
+			promise.Reject(1);
 			return promise;
 		}
 
@@ -702,22 +704,14 @@ namespace ProtoPromise
 
 		public static Deferred NewDeferred()
 		{
-			return GetDeferred();
+            return Deferred.New();
+            // TODO: delete first line of promise's stacktrace
 		}
 
 		public static Promise<T>.Deferred NewDeferred<T>()
 		{
-			return GetDeferred<T>();
-		}
-
-		private static Deferred GetDeferred()
-		{
-			return Deferred.GetOrCreate(Internal.DeferredPromise.GetOrCreate());
-		}
-
-		private static Promise<T>.Deferred GetDeferred<T>()
-		{
-			return Promise<T>.Deferred.GetOrCreate(Internal.DeferredPromise<T>.GetOrCreate());
+            return Promise<T>.Deferred.New();
+            // TODO: delete first line of promise's stacktrace
 		}
 	}
 }

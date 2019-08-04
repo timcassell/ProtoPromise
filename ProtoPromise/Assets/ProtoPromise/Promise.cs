@@ -37,7 +37,7 @@ namespace ProtoPromise
             }
         }
 
-        public bool IsRetained { get { return _retainCounter > 0; } }
+        public virtual bool IsRetained { get { return _retainCounter > 0; } }
 
         // TODO: Check every method call in DEBUG mode to see if the promise is marked done. Throw InvalidOperationException if it is done.
 
@@ -74,8 +74,10 @@ namespace ProtoPromise
 			_rejectedOrCanceledValue = Internal.CancelVoid.GetOrCreate();
 			_rejectedOrCanceledValue.Retain();
 
-			HandleCancel();
-			ContinueCanceling(this);
+            OnCancel();
+            AppendToCancelQueue(_nextBranches);
+            _nextBranches.Clear();
+            ContinueCanceling();
 		}
 
 		/// <summary>
@@ -94,9 +96,11 @@ namespace ProtoPromise
 			_rejectedOrCanceledValue = Internal.CancelValue<TCancel>.GetOrCreate(reason);
 			_rejectedOrCanceledValue.Retain();
 
-			HandleCancel();
-			ContinueCanceling(this);
-		}
+            OnCancel();
+            AppendToCancelQueue(_nextBranches);
+            _nextBranches.Clear();
+            ContinueCanceling();
+        }
 
 		public Promise Progress(Action<float> onProgress)
 		{

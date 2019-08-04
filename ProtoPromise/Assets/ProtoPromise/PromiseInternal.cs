@@ -213,7 +213,7 @@ namespace ProtoPromise
 
         void Internal.ITreeHandleAble.Repool()
         {
-            if (!IsRetained)
+            if (_retainCounter == 0)
             {
                 if (!_wasWaitedOn)
                 {
