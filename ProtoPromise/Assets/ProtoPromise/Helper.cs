@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace ProtoPromise
 {
@@ -21,17 +23,44 @@ namespace ProtoPromise
 	{
 		void Retain();
 		void Release();
-	}
+        bool IsRetained { get; }
+    }
 
-	partial class Promise
+
+    partial class Promise
 	{
+        partial void SetCreatedStackTrace(int skipFrames);
+        partial void SetStackTraceFromCreated(UnhandledException unhandledException);
+        static partial void SetFormattedStackTrace(UnhandledException unhandledException, int skipFrames);
 #if DEBUG
-		private static System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(128);
+        partial void SetCreatedStackTrace(int skipFrames)
+        {
+            _createdStackTrace = GetStackTrace(skipFrames + 1);
+        }
 
-		private static string GetStackTrace(int skipFrames)
-		{
-			string stackTrace = new System.Diagnostics.StackTrace(skipFrames, true).ToString();
-			if (string.IsNullOrEmpty(stackTrace))
+        partial void SetStackTraceFromCreated(UnhandledException unhandledException)
+        {
+            unhandledException.SetStackTrace(FormatStackTrace(_createdStackTrace));
+        }
+
+        static partial void SetFormattedStackTrace(UnhandledException unhandledException, int skipFrames)
+        {
+            if (Manager.DebugStacktraceGenerator != GeneratedStacktrace.None)
+            {
+                unhandledException.SetStackTrace(FormatStackTrace(GetStackTrace(skipFrames + 1)));
+            }
+        }
+
+        private static System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(128);
+
+        private static string GetStackTrace(int skipFrames)
+        {
+            return new System.Diagnostics.StackTrace(skipFrames + 1, true).ToString();
+        }
+
+        private static string FormatStackTrace(string stackTrace)
+        { 
+            if (string.IsNullOrEmpty(stackTrace))
 			{
 				return stackTrace;
 			}
@@ -52,20 +81,26 @@ namespace ProtoPromise
 
 		partial class Internal
 		{
-			public interface IValueContainer : IRetainable
+            public partial interface ITreeHandleAble : ILinked<ITreeHandleAble>
+            {
+                void Handle(Promise feed);
+                void Cancel();
+                void Repool();
+            }
+            public interface IValueContainer : IRetainable
 			{
 				bool TryGetValueAs<U>(out U value);
 			}
 
-			public interface IDelegate : ILinked<IDelegate>, IDisposable
+			public interface IDelegate : IDisposable
 			{
-				bool TryInvoke(IValueContainer valueContainer);
-				void Invoke(Promise feed);
+				bool DisposeAndTryInvoke(IValueContainer valueContainer);
+				void DisposeAndInvoke(Promise feed);
 			}
 			public interface IDelegate<TResult> : IDisposable
 			{
-				bool TryInvoke(IValueContainer valueContainer, out TResult result);
-				TResult Invoke(Promise feed);
+				bool DisposeAndTryInvoke(IValueContainer valueContainer, out TResult result);
+				TResult DisposeAndInvoke(Promise feed);
 			}
 			public interface IFilter : IDisposable
 			{
@@ -74,25 +109,22 @@ namespace ProtoPromise
 
 			public class DelegateVoid : IDelegate, ILinked<DelegateVoid>
 			{
-				public IDelegate Next { get; set; }
-				DelegateVoid ILinked<DelegateVoid>.Next { get { return (DelegateVoid) Next; } set { Next = value; } }
+				DelegateVoid ILinked<DelegateVoid>.Next { get; set; }
 
 				private Action _callback;
 
-				protected static ValueLinkedStack<IDelegate> pool;
+				protected static ValueLinkedStack<DelegateVoid> _pool;
 
-#pragma warning disable RECS0146 // Member hides static member from outer class
 				public static DelegateVoid GetOrCreate(Action callback)
-#pragma warning restore RECS0146 // Member hides static member from outer class
 				{
-					var del = pool.IsNotEmpty ? (DelegateVoid) pool.Pop() : new DelegateVoid();
+					var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoid();
 					del._callback = callback;
 					return del;
 				}
 
 				static DelegateVoid()
 				{
-					OnClearPool += () => pool.Clear();
+					OnClearPool += () => _pool.Clear();
 				}
 
 				private DelegateVoid() { }
@@ -107,48 +139,46 @@ namespace ProtoPromise
 				public void Dispose()
 				{
 					_callback = null;
-					pool.Push(this);
+					_pool.Push(this);
 				}
 
-				public bool TryInvoke(IValueContainer valueContainer)
+				public bool DisposeAndTryInvoke(IValueContainer valueContainer)
 				{
 					Invoke();
 					return true;
 				}
 
-				public void Invoke(Promise feed)
+				public void DisposeAndInvoke(Promise feed)
 				{
 					Invoke();
 				}
 			}
 
-			public sealed class DelegateArg<TArg> : IDelegate
+			public sealed class DelegateArg<TArg> : IDelegate, ILinked<DelegateArg<TArg>>
 			{
-				public IDelegate Next { get; set; }
+                DelegateArg<TArg> ILinked<DelegateArg<TArg>>.Next { get; set; }
 
-				private Action<TArg> _callback;
+                private Action<TArg> _callback;
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-				private static ValueLinkedStack<IDelegate> pool;
+				private static ValueLinkedStack<DelegateArg<TArg>> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
-#pragma warning disable RECS0146 // Member hides static member from outer class
 				public static DelegateArg<TArg> GetOrCreate(Action<TArg> callback)
-#pragma warning restore RECS0146 // Member hides static member from outer class
 				{
-					var del = pool.IsNotEmpty ? (DelegateArg<TArg>) pool.Pop() : new DelegateArg<TArg>();
+					var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArg<TArg>();
 					del._callback = callback;
 					return del;
 				}
 
 				static DelegateArg()
 				{
-					OnClearPool += () => pool.Clear();
+					OnClearPool += () => _pool.Clear();
 				}
 
 				private DelegateArg() { }
 
-				public void Invoke(TArg arg)
+				public void DisposeAndInvoke(TArg arg)
 				{
 					var temp = _callback;
 					Dispose();
@@ -158,52 +188,52 @@ namespace ProtoPromise
 				public void Dispose()
 				{
 					_callback = null;
-					pool.Push(this);
+					_pool.Push(this);
 				}
 
-				public bool TryInvoke(IValueContainer valueContainer)
+				public bool DisposeAndTryInvoke(IValueContainer valueContainer)
 				{
 					TArg arg;
-					if (!valueContainer.TryGetValueAs(out arg))
+					if (valueContainer.TryGetValueAs(out arg))
 					{
-						return false;
-					}
-					Invoke(arg);
-					return true;
+                        DisposeAndInvoke(arg);
+                        return true;
+                    }
+                    Dispose();
+                    return false;
 				}
 
-				public void Invoke(Promise feed)
+				public void DisposeAndInvoke(Promise feed)
 				{
-					Invoke(((IValueContainer<TArg>) feed).Value);
+					DisposeAndInvoke(feed.GetValue<TArg>());
 				}
 			}
 
 			public sealed class DelegateVoid<TResult> : IDelegate<TResult>, ILinked<DelegateVoid<TResult>>
 			{
 				DelegateVoid<TResult> ILinked<DelegateVoid<TResult>>.Next { get; set; }
-				public IDelegate<TResult> Next { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
 				private Func<TResult> _callback;
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-				private static ValueLinkedStack<DelegateVoid<TResult>> pool;
+				private static ValueLinkedStack<DelegateVoid<TResult>> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
 				public static DelegateVoid<TResult> GetOrCreate(Func<TResult> callback)
 				{
-					var del = pool.IsNotEmpty ? pool.Pop() : new DelegateVoid<TResult>();
+					var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoid<TResult>();
 					del._callback = callback;
 					return del;
 				}
 
 				static DelegateVoid()
 				{
-					OnClearPool += () => pool.Clear();
+					OnClearPool += () => _pool.Clear();
 				}
 
 				private DelegateVoid() { }
 
-				public TResult Invoke()
+				public TResult DisposeAndInvoke()
 				{
 					var temp = _callback;
 					Dispose();
@@ -213,18 +243,18 @@ namespace ProtoPromise
 				public void Dispose()
 				{
 					_callback = null;
-					pool.Push(this);
+					_pool.Push(this);
 				}
 
-				public bool TryInvoke(IValueContainer valueContainer, out TResult result)
+				public bool DisposeAndTryInvoke(IValueContainer valueContainer, out TResult result)
 				{
-					result = Invoke();
+					result = DisposeAndInvoke();
 					return true;
 				}
 
-				public TResult Invoke(Promise feed)
+				public TResult DisposeAndInvoke(Promise feed)
 				{
-					return Invoke();
+					return DisposeAndInvoke();
 				}
 			}
 
@@ -235,24 +265,24 @@ namespace ProtoPromise
 				private Func<TArg, TResult> _callback;
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-				private static ValueLinkedStack<DelegateArg<TArg, TResult>> pool;
+				private static ValueLinkedStack<DelegateArg<TArg, TResult>> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
 				public static DelegateArg<TArg, TResult> GetOrCreate(Func<TArg, TResult> callback)
 				{
-					var del = pool.IsNotEmpty ? pool.Pop() : new DelegateArg<TArg, TResult>();
+					var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArg<TArg, TResult>();
 					del._callback = callback;
 					return del;
 				}
 
 				static DelegateArg()
 				{
-					OnClearPool += () => pool.Clear();
+					OnClearPool += () => _pool.Clear();
 				}
 
 				private DelegateArg() { }
 
-				public TResult Invoke(TArg arg)
+				public TResult DisposeAndInvoke(TArg arg)
 				{
 					var temp = _callback;
 					Dispose();
@@ -262,123 +292,123 @@ namespace ProtoPromise
 				public void Dispose()
 				{
 					_callback = null;
-					pool.Push(this);
+					_pool.Push(this);
 				}
 
-				public bool TryInvoke(IValueContainer valueContainer, out TResult result)
+				public bool DisposeAndTryInvoke(IValueContainer valueContainer, out TResult result)
 				{
 					TArg arg;
-					if (!valueContainer.TryGetValueAs(out arg))
-					{
-						result = default(TResult);
-						return false;
-					}
-
-					result = Invoke(arg);
-					return true;
+					if (valueContainer.TryGetValueAs(out arg))
+                    {
+                        result = DisposeAndInvoke(arg);
+                        return true;
+                    }
+                    Dispose();
+                    result = default(TResult);
+                    return false;
 				}
 
-				public TResult Invoke(Promise feed)
+				public TResult DisposeAndInvoke(Promise feed)
 				{
-					return Invoke(((IValueContainer<TArg>) feed).Value);
+					return DisposeAndInvoke(feed.GetValue<TArg>());
 				}
 			}
 
-			public sealed class Filter : IFilter, ILinked<Filter>
-			{
-				Filter ILinked<Filter>.Next { get; set; }
+//			public sealed class Filter : IFilter, ILinked<Filter>
+//			{
+//				Filter ILinked<Filter>.Next { get; set; }
 
-				private Func<bool> _callback;
+//				private Func<bool> _callback;
 
-				private static ValueLinkedStack<Filter> pool;
+//				private static ValueLinkedStack<Filter> pool;
 
-				public static Filter GetOrCreate(Func<bool> callback)
-				{
-					var del = pool.IsNotEmpty ? pool.Pop() : new Filter();
-					del._callback = callback;
-					return del;
-				}
+//				public static Filter GetOrCreate(Func<bool> callback)
+//				{
+//					var del = pool.IsNotEmpty ? pool.Pop() : new Filter();
+//					del._callback = callback;
+//					return del;
+//				}
 
-				static Filter()
-				{
-					OnClearPool += () => pool.Clear();
-				}
+//				static Filter()
+//				{
+//					OnClearPool += () => pool.Clear();
+//				}
 
-				private Filter() { }
+//				private Filter() { }
 
-				public bool RunThroughFilter(IValueContainer valueContainer)
-				{
-					try
-					{
-						var temp = _callback;
-						_callback = null;
-						return temp.Invoke();
-					}
-					catch (Exception e)
-					{
-						Logger.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
-						Logger.LogException(e);
-						return false;
-					}
-				}
+//				public bool RunThroughFilter(IValueContainer valueContainer)
+//				{
+//					try
+//					{
+//						var temp = _callback;
+//						_callback = null;
+//						return temp.Invoke();
+//					}
+//					catch (Exception e)
+//					{
+//						Logger.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
+//						Logger.LogException(e);
+//						return false;
+//					}
+//				}
 
-				public void Dispose()
-				{
-					pool.Push(this);
-				}
-			}
+//				public void Dispose()
+//				{
+//					pool.Push(this);
+//				}
+//			}
 
-			public sealed class Filter<TArg> : IFilter, ILinked<Filter<TArg>>
-			{
-				Filter<TArg> ILinked<Filter<TArg>>.Next { get; set; }
+//			public sealed class Filter<TArg> : IFilter, ILinked<Filter<TArg>>
+//			{
+//				Filter<TArg> ILinked<Filter<TArg>>.Next { get; set; }
 
-				private Func<TArg, bool> _callback;
+//				private Func<TArg, bool> _callback;
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-				private static ValueLinkedStack<Filter<TArg>> pool;
-#pragma warning restore RECS0108 // Warns about static fields in generic types
+//#pragma warning disable RECS0108 // Warns about static fields in generic types
+//				private static ValueLinkedStack<Filter<TArg>> pool;
+//#pragma warning restore RECS0108 // Warns about static fields in generic types
 
-				public static Filter<TArg> GetOrCreate(Func<TArg, bool> callback)
-				{
-					var del = pool.IsNotEmpty ? pool.Pop() : new Filter<TArg>();
-					del._callback = callback;
-					return del;
-				}
+			//	public static Filter<TArg> GetOrCreate(Func<TArg, bool> callback)
+			//	{
+			//		var del = pool.IsNotEmpty ? pool.Pop() : new Filter<TArg>();
+			//		del._callback = callback;
+			//		return del;
+			//	}
 
-				static Filter()
-				{
-					OnClearPool += () => pool.Clear();
-				}
+			//	static Filter()
+			//	{
+			//		OnClearPool += () => pool.Clear();
+			//	}
 
-				private Filter() { }
+			//	private Filter() { }
 
-				public bool RunThroughFilter(IValueContainer valueContainer)
-				{
-					TArg arg;
-					if (!valueContainer.TryGetValueAs(out arg))
-					{
-						return false;
-					}
+			//	public bool RunThroughFilter(IValueContainer valueContainer)
+			//	{
+			//		TArg arg;
+			//		if (!valueContainer.TryGetValueAs(out arg))
+			//		{
+			//			return false;
+			//		}
 
-					try
-					{
-						var temp = _callback;
-						_callback = null;
-						return temp.Invoke(arg);
-					}
-					catch (Exception e)
-					{
-						Logger.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
-						Logger.LogException(e);
-						return false;
-					}
-				}
+			//		try
+			//		{
+			//			var temp = _callback;
+			//			_callback = null;
+			//			return temp.Invoke(arg);
+			//		}
+			//		catch (Exception e)
+			//		{
+			//			Logger.LogWarning("Caught an exception in a promise onRejectedFilter. Assuming filter returned false. Logging exception next...");
+			//			Logger.LogException(e);
+			//			return false;
+			//		}
+			//	}
 
-				public void Dispose()
-				{
-					pool.Push(this);
-				}
-			}
+			//	public void Dispose()
+			//	{
+			//		pool.Push(this);
+			//	}
+			//}
 
 
 			public sealed class UnhandledExceptionVoid : UnhandledException, IValueContainer
@@ -407,15 +437,17 @@ namespace ProtoPromise
 					}
 				}
 
-				public bool TryGetValueAs<U>(out U value)
-				{
-					value = default(U);
-					return false;
-				}
+                public bool TryGetValueAs<U>(out U value)
+                {
+                    value = default(U);
+                    return false;
+                }
+                
+                public void Retain() { }
+                
+                public void Release() { }
 
-				public void Retain() { }
-
-				public void Release() { }
+                public bool IsRetained { get { return false; } }
 			}
 
 			public sealed class UnhandledException<T> : UnhandledException, IValueContainer
@@ -440,12 +472,6 @@ namespace ProtoPromise
 					UnhandledException<T> ex = pool.IsNotEmpty ? (UnhandledException<T>) pool.Pop() : new UnhandledException<T>();
 					ex.Value = value;
 					return ex;
-				}
-
-				public new UnhandledException<T> SetStackTrace(string stackTrace)
-				{
-					base.SetStackTrace(stackTrace);
-					return this;
 				}
 
 				public bool TryGetValueAs<U>(out U value)
@@ -489,13 +515,14 @@ namespace ProtoPromise
 						Value = default(T);
 						pool.Push(this);
 					}
-				}
-			}
+                }
+
+                public bool IsRetained { get { return retainCounter > 0; } }
+            }
 
 			public sealed class UnhandledExceptionException : UnhandledException, IValueContainer
 			{
 				private UnhandledExceptionException(Exception innerException) : base(innerException) { }
-
 
 				// Don't care about re-using this exception for 2 reasons:
 				// exceptions create garbage themselves, creating a little more with this one is negligible,
@@ -503,12 +530,6 @@ namespace ProtoPromise
 				public static UnhandledExceptionException GetOrCreate(Exception innerException)
 				{
 					return new UnhandledExceptionException(innerException);
-				}
-
-				public new UnhandledExceptionException SetStackTrace(string stackTrace)
-				{
-					base.SetStackTrace(stackTrace);
-					return this;
 				}
 
 				public override string Message
@@ -533,7 +554,9 @@ namespace ProtoPromise
 				public void Retain() { }
 
 				public void Release() { }
-			}
+
+                public bool IsRetained { get { return false; } }
+            }
 
 			public sealed class CancelVoid : IValueContainer
 			{
@@ -556,70 +579,74 @@ namespace ProtoPromise
 				public void Retain() { }
 
 				public void Release() { }
-			}
 
-			public sealed class ValueContainer<T> : IValueContainer, ILinked<ValueContainer<T>>
-			{
-				public ValueContainer<T> Next { get; set; }
+                public bool IsRetained { get { return false; } }
+            }
 
-				public T Value { get; private set; }
+            public sealed class CancelValue<T> : IValueContainer, ILinked<CancelValue<T>>
+            {
+                CancelValue<T> ILinked<CancelValue<T>>.Next { get; set; }
+
+                public T Value { get; private set; }
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-                private static ValueLinkedStack<ValueContainer<T>> pool = new ValueLinkedStack<ValueContainer<T>>();
+                private static ValueLinkedStack<CancelValue<T>> pool = new ValueLinkedStack<CancelValue<T>>();
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
-				private uint retainCounter;
+                private uint retainCounter;
 
-				static ValueContainer()
-				{
-					OnClearPool += () => pool.Clear();
-				}
+                static CancelValue()
+                {
+                    OnClearPool += () => pool.Clear();
+                }
 
-				private ValueContainer() { }
+                private CancelValue() { }
 
-				public static ValueContainer<T> GetOrCreate(T value)
-				{
-					ValueContainer<T> ex = pool.IsNotEmpty ? pool.Pop() : new ValueContainer<T>();
-					ex.Value = value;
-					return ex;
-				}
+                public static CancelValue<T> GetOrCreate(T value)
+                {
+                    CancelValue<T> ex = pool.IsNotEmpty ? pool.Pop() : new CancelValue<T>();
+                    ex.Value = value;
+                    return ex;
+                }
 
-				public bool TryGetValueAs<U>(out U value)
-				{
-					// This avoids boxing value types.
-					var casted = this as ValueContainer<U>;
-					if (casted != null)
-					{
-						value = casted.Value;
-						return true;
-					}
-					if (!typeof(T).IsValueType)
-					{
-						if (typeof(U).IsAssignableFrom(typeof(T)) || Value is U)
-						{
-							value = (U) (object) Value;
-							return true;
-						}
-					}
-					value = default(U);
-					return false;
-				}
+                public bool TryGetValueAs<U>(out U value)
+                {
+                    // This avoids boxing value types.
+                    var casted = this as CancelValue<U>;
+                    if (casted != null)
+                    {
+                        value = casted.Value;
+                        return true;
+                    }
+                    if (!typeof(T).IsValueType)
+                    {
+                        if (typeof(U).IsAssignableFrom(typeof(T)) || Value is U)
+                        {
+                            value = (U) (object) Value;
+                            return true;
+                        }
+                    }
+                    value = default(U);
+                    return false;
+                }
 
-				public void Retain()
-				{
-					++retainCounter;
-				}
+                public void Retain()
+                {
+                    ++retainCounter;
+                }
 
-				public void Release()
-				{
-					if (--retainCounter == 0)
-					{
-						Value = default(T);
-						pool.Push(this);
-					}
-				}
-			}
-		}
+                public void Release()
+                {
+                    if (--retainCounter == 0)
+                    {
+                        Value = default(T);
+                        pool.Push(this);
+                    }
+                }
+
+                public bool IsRetained { get { return retainCounter > 0; } }
+            }
+        }
 
 		public class InvalidReturnException : InvalidOperationException
 		{
@@ -641,7 +668,7 @@ namespace ProtoPromise
 
 			public bool unhandled = true;
 
-			protected void SetStackTrace(string stackTrace)
+			internal void SetStackTrace(string stackTrace)
 			{
 				_stackTrace = stackTrace;
 			}
@@ -660,141 +687,227 @@ namespace ProtoPromise
 	public interface ILinked<T> where T : class, ILinked<T>
 	{
 		T Next { get; set; }
-	}
+    }
 
-	/// <summary>
-	/// This structure is unsuitable for general purpose.
-	/// </summary>
-	public struct ValueLinkedStack<T> where T : class, ILinked<T>
+    public struct Enumerator<T> : IEnumerator<T> where T : class, ILinked<T>
+    {
+        private T _current;
+
+        public Enumerator(T first)
+        {
+            _current = first;
+        }
+
+        public bool MoveNext()
+        {
+            return _current != null;
+        }
+
+        public T Current
+        {
+            get
+            {
+                T temp = _current;
+                _current = _current.Next;
+                return temp;
+            }
+        }
+
+        object IEnumerator.Current
+        {
+            get
+            {
+                return Current;
+            }
+        }
+
+        void IEnumerator.Reset() { }
+
+        void IDisposable.Dispose() { }
+    }
+
+    /// <summary>
+    /// This structure is unsuitable for general purpose.
+    /// </summary>
+    public struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
 	{
-		T first;
+		T _first;
 
-		public bool IsEmpty { get { return first == null; } }
-		public bool IsNotEmpty { get { return first != null; } }
+		public bool IsEmpty { get { return _first == null; } }
+		public bool IsNotEmpty { get { return _first != null; } }
 
 		public void Clear()
 		{
-			first = null;
+			_first = null;
 		}
 
 		public void Push(T item)
 		{
-			item.Next = first;
-			first = item;
+			item.Next = _first;
+			_first = item;
 		}
 
 		public T Pop()
 		{
-			T temp = first;
-			first = first.Next;
+			T temp = _first;
+			_first = _first.Next;
 			return temp;
 		}
 
 		public T Peek()
 		{
-			return first;
-		}
-	}
+			return _first;
+        }
 
-	/// <summary>
-	/// This structure is unsuitable for general purpose.
-	/// </summary>
-	public struct ValueLinkedQueue<T> where T : class, ILinked<T>
+        public Enumerator<T> GetEnumerator()
+        {
+            return new Enumerator<T>(_first);
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
+
+    /// <summary>
+    /// This structure is unsuitable for general purpose.
+    /// </summary>
+    public struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
 	{
-		T first;
-		T last;
+		T _first;
+		T _last;
 
-		public bool IsEmpty { get { return first == null; } }
-		public bool IsNotEmpty { get { return first != null; } }
+		public bool IsEmpty { get { return _first == null; } }
+		public bool IsNotEmpty { get { return _first != null; } }
 
 		public ValueLinkedQueue(T item)
 		{
 			item.Next = null;
-			first = last = item;
-		}
-
-		public ValueLinkedQueue(ValueLinkedQueue<T> other)
-		{
-			first = other.first;
-			last = other.last;
+			_first = _last = item;
 		}
 
 		public void Clear()
 		{
-			first = last = null;
+            _first = null; 
+            _last = null;
 		}
 
 		public void AddLast(T item)
 		{
 			item.Next = null;
-			if (first == null)
+			if (_first == null)
 			{
-				first = last = item;
+				_first = _last = item;
 			}
 			else
 			{
-				last.Next = item;
-				last = item;
+				_last.Next = item;
+				_last = item;
 			}
-		}
-
-		/// <summary>
-		/// Only use this to add if you know this isn't empty.
-		/// </summary>
-		/// <param name="item">Item.</param>
-		public void AddLastRisky(T item)
-		{
-			item.Next = null;
-			last.Next = item;
-			last = item;
 		}
 
 		public void AddFirst(T item)
 		{
-			item.Next = first;
-			first = item;
-		}
-
-		/// <summary>
-		/// <paramref name="index"/> must be greater than 0. If index is 0, use AddFirst instead.
-		/// </summary>
-		public void Insert(T item, int index)
-		{
-			T current = first;
-			while (index > 0)
-			{
-				current = current.Next;
-				--index;
-			}
+			item.Next = _first;
+			_first = item;
 		}
 
 		public T TakeFirst()
 		{
-			T temp = first;
-			first = first.Next;
+            // Note: this doesn't clear _last when the last item is taken.
+			T temp = _first;
+			_first = _first.Next;
 			return temp;
 		}
 
 		public T PeekFirst()
 		{
-			return first;
+			return _first;
 		}
 
 		public T PeekLast()
 		{
-			return last;
+			return _last;
 		}
 
 		public void Append(ValueLinkedQueue<T> other)
 		{
-			last.Next = other.first;
-			last = other.last;
+            if (other.IsEmpty)
+            {
+                return;
+            }
+            if (IsEmpty)
+            {
+                _first = other._first;
+                _last = other._last;
+            }
+            else
+            {
+                _last.Next = other._first;
+                _last = other._last;
+            }
 		}
-	}
 
-	public struct ValueLinkedStackZeroGC<T>
-	{
-		private class Node : ILinked<Node>
+        public Enumerator<T> GetEnumerator()
+        {
+            return new Enumerator<T>(_first);
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
+
+	public struct ValueLinkedStackZeroGC<T> : IEnumerable<T>
+    {
+        public struct Enumerator : IEnumerator<T>
+        {
+            Enumerator<Node> enumerator;
+
+            public Enumerator (ValueLinkedStackZeroGC<T> stack)
+            {
+                enumerator = new Enumerator<Node>(stack._stack.Peek());
+            }
+
+            public bool MoveNext()
+            {
+                return enumerator.MoveNext();
+            }
+
+            public T Current
+            {
+                get
+                {
+                    return enumerator.Current.item;
+                }
+            }
+
+            object IEnumerator.Current
+            {
+                get
+                {
+                    return Current;
+                }
+            }
+
+            void IEnumerator.Reset() { }
+
+            void IDisposable.Dispose() { }
+        }
+
+        private class Node : ILinked<Node>
 		{
 #pragma warning disable RECS0108 // Warns about static fields in generic types
 			private static ValueLinkedStack<Node> pool;
@@ -835,37 +948,52 @@ namespace ProtoPromise
 			Node.ClearPool();
 		}
 
-		private ValueLinkedStack<Node> stack;
+		private ValueLinkedStack<Node> _stack;
 
-		public bool IsEmpty { get { return stack.IsEmpty; } }
-		public bool IsNotEmpty { get { return stack.IsNotEmpty; } }
+		public bool IsEmpty { get { return _stack.IsEmpty; } }
+		public bool IsNotEmpty { get { return _stack.IsNotEmpty; } }
 
 		public void Clear()
 		{
-			while (stack.IsNotEmpty)
+			while (_stack.IsNotEmpty)
 			{
-				stack.Pop().Dispose();
+				_stack.Pop().Dispose();
 			}
 		}
 
 		public void ClearAndDontRepool()
 		{
-			stack.Clear();
+			_stack.Clear();
 		}
 
 		public void Push(T item)
 		{
-			stack.Push(Node.GetOrCreate(item));
+			_stack.Push(Node.GetOrCreate(item));
 		}
 
 		public T Pop()
 		{
-			return stack.Pop().TakeItemAndDispose();
+			return _stack.Pop().TakeItemAndDispose();
 		}
 
 		public T Peek()
 		{
-			return stack.Peek().item;
-		}
-	}
+			return _stack.Peek().item;
+        }
+
+        public Enumerator GetEnumerator()
+        {
+            return new Enumerator(this);
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
 }

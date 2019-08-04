@@ -3,35 +3,51 @@
 namespace ProtoPromise
 {
 	partial class Promise
-	{
-		public abstract class DeferredBase : ICancelableAny, IRetainable
-		{
-			public void Retain()
-			{
-				_promise.Retain();
-			}
+    {
+        public enum DeferredState : byte
+        {
+            Pending,
+            Resolved,
+            Rejected,
+            Canceled // This violates Promises/A+ API, but I felt its usefulness outweighs API adherence.
+        }
 
-			public void Release()
-			{
-				_promise.Release();
-			}
+        // TODO: Handle resolve/reject called after Promise is canceled.
+        public abstract class DeferredBase : ICancelableAny, IRetainable
+        {
+            public DeferredState State { get; protected set; }
 
-			public PromiseState State { get { return _promise.State; } }
+            public virtual Promise Promise { get; protected set; }
 
-			protected Promise _promise;
+            protected DeferredBase() { }
 
-			protected DeferredBase() { }
+            public void Retain()
+            {
+                Promise.Retain();
+            }
+            
+            public void Release()
+            {
+                Promise.Release();
+                if (!Promise.IsRetained && State != DeferredState.Pending)
+                {
+                    Dispose();
+                }
+            }
 
-			/// <summary>
-			/// Report progress between 0 and 1.
-			/// </summary>
-			public void ReportProgress(float progress)
+            public bool IsRetained { get { return Promise.IsRetained; } }
+
+            /// <summary>
+            /// Report progress between 0 and 1.
+            /// </summary>
+            public void ReportProgress(float progress)
 			{
 #if DEBUG
-				if (_promise == null)
-				{
-					throw new ObjectDisposedException("Deferred");
-				}
+                // TODO
+				//if (_promise == null)
+				//{
+				//	throw new ObjectDisposedException("Deferred");
+				//}
 				if (progress < 0f || progress > 1f)
 				{
 #pragma warning disable RECS0163 // Suggest the usage of the nameof operator
@@ -39,190 +55,291 @@ namespace ProtoPromise
 #pragma warning restore RECS0163 // Suggest the usage of the nameof operator
 				}
 #endif
-				if (State != PromiseState.Pending)
+				if (State != DeferredState.Pending)
 				{
 					Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
 					return;
 				}
 
-				if (progress >= 1f)
-				{
-					// Don't report progress 1.0, that will be reported automatically when the promise is resolved.
-					return;
-				}
-
-				_promise.ReportProgress(progress);
+                HandleProgress(progress);
 			}
 
 			public void Cancel()
 			{
+                ValidateCancel();
 #if DEBUG
-				if (_promise == null)
-				{
-					throw new ObjectDisposedException("Deferred");
-				}
+                // TODO
+                //if (_promise == null)
+                //{
+                //  throw new ObjectDisposedException("Deferred");
+                //}
 #endif
-				if (State != PromiseState.Pending)
+                if (State != DeferredState.Pending)
 				{
 					Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
 					return;
 				}
 
-				_promise.Cancel();
+                State = DeferredState.Canceled;
+
+                HandleCancel();
 			}
 
 			public void Cancel<TCancel>(TCancel reason)
 			{
+                ValidateCancel();
 #if DEBUG
-				if (_promise == null)
-				{
-					throw new ObjectDisposedException("Deferred");
-				}
+                // TODO
+                //if (_promise == null)
+                //{
+                //  throw new ObjectDisposedException("Deferred");
+                //}
 #endif
-				if (State != PromiseState.Pending)
+                if (State != DeferredState.Pending)
 				{
 					Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
 					return;
-				}
+                }
 
-				_promise.Cancel(reason);
+                State = DeferredState.Canceled;
+
+                HandleCancel(reason);
 			}
 
 			public void Reject<TReject>(TReject reason)
 			{
 #if DEBUG
-				if (_promise == null)
-				{
-					throw new ObjectDisposedException("Deferred");
-				}
+                // TODO
+                //if (_promise == null)
+                //{
+                //  throw new ObjectDisposedException("Deferred");
+                //}
 #endif
-				if (State != PromiseState.Pending)
+                if (State != DeferredState.Pending)
 				{
 					Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
 					return;
-				}
+                }
 
-				_promise.Reject(reason);
+                State = DeferredState.Rejected;
+
+                HandleReject(reason);
 			}
 
 			public void Reject()
 			{
 #if DEBUG
-				if (_promise == null)
-				{
-					throw new ObjectDisposedException("Deferred");
-				}
+                // TODO
+                //if (_promise == null)
+				//{
+				//	throw new ObjectDisposedException("Deferred");
+				//}
 #endif
-				if (State != PromiseState.Pending)
+				if (State != DeferredState.Pending)
 				{
 					Logger.LogError("Deferred.Reject - Deferred is not in the pending state.");
 					return;
-				}
+                }
 
-				_promise.Reject();
+                State = DeferredState.Rejected;
+
+                HandleReject();
 			}
 
-			protected void TryDispose()
-			{
-				if (retains.ContainsKey(_promise))
-				{
-					return;
-				}
+            protected virtual void Dispose()
+            {
+                Promise = null;
+            }
 
-				Dispose();
-			}
+            // These functions protect the inner workings of the promises in case someone decides to inherit from DeferredBase.
+            protected abstract void HandleProgress(float progress);
+            protected abstract void HandleCancel();
+            protected abstract void HandleCancel<TCancel>(TCancel reason);
+            protected abstract void HandleReject();
+            protected abstract void HandleReject<TReject>(TReject reason);
+        }
 
-			protected virtual void Dispose()
-			{
-				_promise = null;
-			}
-		}
+        static partial void ValidateDisposed();
 
+        public abstract class Deferred : DeferredBase
+        {
+            protected Deferred() : base() { }
 
-		// TODO: Make these abstract and put the concrete implementation in Internal.
-		public sealed class Deferred : DeferredBase, ILinked<Deferred>
-		{
-			public Promise Promise { get { return _promise; } }
-
-			Deferred ILinked<Deferred>.Next { get; set; }
-
-			private Deferred() : base() { }
-
-			private static ValueLinkedStack<Deferred> pool;
-
-			internal static Deferred GetOrCreate(Promise promise)
-			{
-				var deferred = pool.IsNotEmpty ? pool.Pop() : new Deferred();
-				deferred._promise = promise;
-				return deferred;
-			}
-
-			public void Resolve()
-			{
+            public void Resolve()
+            {
 #if DEBUG
-				if (_promise == null)
-				{
-					throw new ObjectDisposedException("Deferred");
-				}
+                // TODO
+                //if (_promise == null)
+                //{
+                //  throw new ObjectDisposedException("Deferred");
+                //}
 #endif
-				if (State != PromiseState.Pending)
-				{
-					Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
-					return;
-				}
+                if (State != DeferredState.Pending)
+                {
+                    Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+                    return;
+                }
 
-				_promise.Resolve();
-			}
+                HandleResolve();
+            }
 
-			protected override void Dispose()
-			{
-				pool.Push(this);
-			}
-		}
-	}
+            protected abstract void HandleResolve();
+        }
+    }
 
 	public partial class Promise<T>
 	{
-		public sealed new class Deferred : DeferredBase, ILinked<Deferred>
-		{
-			public Promise<T> Promise { get { return (Promise<T>) _promise; } }
+		public abstract new class Deferred : DeferredBase
+        {
+            public new Promise<T> Promise { get { return (Promise<T>) base.Promise; } protected set { base.Promise = value; } }
 
-			Deferred ILinked<Deferred>.Next { get; set; }
+            protected Deferred() : base() { }
 
-			internal Deferred() : base() { }
+            public void Resolve(T arg)
+            {
+#if DEBUG
+                // TODO
+                //if (_promise == null)
+                //{
+                //  throw new ObjectDisposedException("Deferred");
+                //}
+#endif
+                if (State != DeferredState.Pending)
+                {
+                    Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+                    return;
+                }
+
+                HandleResolve(arg);
+            }
+
+            protected abstract void HandleResolve(T arg);
+        }
+    }
+
+    partial class Promise
+    {
+        partial class Internal
+        {
+            public sealed class DeferredInternal : Deferred, ILinked<DeferredInternal>
+            {
+                DeferredInternal ILinked<DeferredInternal>.Next { get; set; }
+
+                private static ValueLinkedStack<DeferredInternal> _pool;
+
+                public static DeferredInternal GetOrCreate(Promise target)
+                {
+                    var deferred = _pool.IsNotEmpty ? _pool.Pop() : new DeferredInternal();
+                    deferred.Promise = target;
+                    return deferred;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    _pool.Push(this);
+                }
+
+                protected override void HandleProgress(float progress)
+                {
+                    if (progress >= 1f)
+                    {
+                        // Don't report progress 1.0, that will be reported automatically when the promise is resolved.
+                        return;
+                    }
+
+                    Promise.ReportProgress(progress);
+                }
+
+                protected override void HandleResolve()
+                {
+                    Promise.Resolve();
+                }
+
+                protected override void HandleCancel()
+                {
+                    Promise.Cancel();
+                }
+
+                protected override void HandleCancel<TCancel>(TCancel reason)
+                {
+                    Promise.Cancel(reason);
+                }
+
+                protected override void HandleReject()
+                {
+                    Promise.Reject();
+                }
+
+                protected override void HandleReject<TReject>(TReject reason)
+                {
+                    Promise.Reject(reason);
+                }
+            }
+        }
+    }
+
+    partial class Promise<T>
+    {
+        protected static new class Internal
+        {
+            public sealed class DeferredInternal : Deferred, ILinked<DeferredInternal>
+            {
+                DeferredInternal ILinked<DeferredInternal>.Next { get; set; }
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<Deferred> pool;
+                private static ValueLinkedStack<DeferredInternal> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
-			internal static Deferred GetOrCreate(Promise<T> promise)
-			{
-				var deferred = pool.IsNotEmpty ? pool.Pop() : new Deferred();
-				deferred._promise = promise;
-				return deferred;
-			}
+                public static DeferredInternal GetOrCreate(Promise<T> target)
+                {
+                    var deferred = _pool.IsNotEmpty ? _pool.Pop() : new DeferredInternal();
+                    deferred.Promise = target;
+                    return deferred;
+                }
 
-			public void Resolve(T arg)
-			{
-#if DEBUG
-				if (_promise == null)
-				{
-					throw new ObjectDisposedException("Deferred");
-				}
-#endif
-				if (State != PromiseState.Pending)
-				{
-					Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
-					return;
-				}
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    _pool.Push(this);
+                }
 
-				Promise.Resolve(arg);
-			}
+                protected override void HandleProgress(float progress)
+                {
+                    if (progress >= 1f)
+                    {
+                        // Don't report progress 1.0, that will be reported automatically when the promise is resolved.
+                        return;
+                    }
 
-			protected override void Dispose()
-			{
-				pool.Push(this);
-			}
-		}
-	}
+                    Promise.ReportProgress(progress);
+                }
+
+                protected override void HandleResolve(T arg)
+                {
+                    Promise.Resolve(arg);
+                }
+
+                protected override void HandleCancel()
+                {
+                    Promise.Cancel();
+                }
+
+                protected override void HandleCancel<TCancel>(TCancel reason)
+                {
+                    Promise.Cancel(reason);
+                }
+
+                protected override void HandleReject()
+                {
+                    Promise.Reject();
+                }
+
+                protected override void HandleReject<TReject>(TReject reason)
+                {
+                    Promise.Reject(reason);
+                }
+            }
+        }
+    }
 }

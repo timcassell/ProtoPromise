@@ -38,9 +38,7 @@ namespace ProtoPromise
 		{
 			Routine ILinked<Routine>.Next { get; set; }
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
 			private static ValueLinkedStack<Routine> pool;
-#pragma warning restore RECS0108 // Warns about static fields in generic types
 
 			public static Routine New()
 			{
