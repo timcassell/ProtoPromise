@@ -164,6 +164,7 @@ namespace ProtoPromise
             }
             else if (_state == DeferredState.Canceled)
             {
+                waiter.AssignCancelValue(_rejectedOrCanceledValue);
                 AddToCancelQueue(waiter);
                 ContinueCanceling();
             }
@@ -203,13 +204,41 @@ namespace ProtoPromise
             }
         }
 
-        protected virtual void OnCancel() { }
+        protected virtual void OnCancel()
+        {
+            if (_nextBranches.IsEmpty)
+            {
+                return;
+            }
+
+            // Add safe for first item.
+            var next = _nextBranches.TakeFirst();
+            next.AssignCancelValue(_rejectedOrCanceledValue);
+            AddToCancelQueue(next);
+
+            // Add quick for remaining items since we know the queue will not be empty.
+            while (_nextBranches.IsNotEmpty)
+            {
+                next = _nextBranches.TakeFirst();
+                next.AssignCancelValue(_rejectedOrCanceledValue);
+                AddToCancelQueueRisky(next);
+            }
+            _nextBranches.ClearLast();
+        }
 
         void Internal.ITreeHandleAble.Cancel()
         {
             OnCancel();
-            AppendToCancelQueue(_nextBranches);
-            _nextBranches.Clear();
+        }
+
+        void Internal.ITreeHandleAble.AssignCancelValue(Internal.IValueContainer cancelValue)
+        {
+            // If _rejectedOrCanceledValue is not null, it means this was already canceled with another value.
+            if (_rejectedOrCanceledValue != null)
+            {
+                _rejectedOrCanceledValue = cancelValue;
+                _rejectedOrCanceledValue.Retain();
+            }
         }
 
         void Internal.ITreeHandleAble.Repool()
@@ -274,14 +303,14 @@ namespace ProtoPromise
 		private static ValueLinkedQueue<Internal.ITreeHandleAble> _cancelQueue;
         private static bool _runningCancels;
 
-        protected static void AppendToCancelQueue(ValueLinkedQueue<Internal.ITreeHandleAble> cancelations)
-        {
-            _cancelQueue.Append(cancelations);
-        }
-
         protected static void AddToCancelQueue(Internal.ITreeHandleAble cancelation)
         {
             _cancelQueue.AddLast(cancelation);
+        }
+
+        protected static void AddToCancelQueueRisky(Internal.ITreeHandleAble cancelation)
+        {
+            _cancelQueue.AddLastRisky(cancelation);
         }
 
         private static void ContinueCanceling()
@@ -481,6 +510,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     resolveHandler = null;
                 }
             }
@@ -516,6 +546,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     resolveHandler = null;
                 }
             }
@@ -551,6 +582,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     resolveHandler = null;
                 }
             }
@@ -586,6 +618,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     resolveHandler = null;
                 }
             }
@@ -633,6 +666,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     resolveHandler = null;
                 }
             }
@@ -680,6 +714,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     resolveHandler = null;
                 }
             }
@@ -727,6 +762,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     resolveHandler = null;
                 }
             }
@@ -774,6 +810,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     resolveHandler = null;
                 }
             }
@@ -812,6 +849,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     resolveHandler = null;
                 }
             }
@@ -850,6 +888,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     resolveHandler = null;
                 }
             }
@@ -888,6 +927,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     resolveHandler = null;
                 }
             }
@@ -926,6 +966,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     resolveHandler = null;
                 }
             }
@@ -976,6 +1017,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     rejectHandler.Dispose();
                     rejectHandler = null;
                 }
@@ -1023,6 +1065,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     rejectHandler.Dispose();
                     rejectHandler = null;
                 }
@@ -1080,6 +1123,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     rejectHandler.Dispose();
                     rejectHandler = null;
                 }
@@ -1137,6 +1181,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     rejectHandler.Dispose();
                     rejectHandler = null;
                 }
@@ -1184,6 +1229,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     rejectHandler.Dispose();
                     rejectHandler = null;
                 }
@@ -1230,6 +1276,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     rejectHandler.Dispose();
                     rejectHandler = null;
                 }
@@ -1281,6 +1328,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     onResolved.Dispose();
                     onResolved = null;
                     onRejected.Dispose();
@@ -1332,6 +1380,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     onResolved.Dispose();
                     onResolved = null;
                     onRejected.Dispose();
@@ -1393,6 +1442,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     onResolved.Dispose();
                     onResolved = null;
                     onRejected.Dispose();
@@ -1454,6 +1504,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     onResolved.Dispose();
                     onResolved = null;
                     onRejected.Dispose();
@@ -1505,6 +1556,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     onResolved.Dispose();
                     onResolved = null;
                     onRejected.Dispose();
@@ -1556,6 +1608,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     onResolved.Dispose();
                     onResolved = null;
                     onRejected.Dispose();
@@ -1590,6 +1643,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     onComplete = null;
                 }
             }
@@ -1619,6 +1673,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     onComplete = null;
                 }
             }
@@ -1658,6 +1713,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     onComplete = null;
                 }
             }
@@ -1697,6 +1753,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     onComplete = null;
                 }
             }
@@ -1727,6 +1784,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     onComplete = null;
                 }
             }
@@ -1757,6 +1815,7 @@ namespace ProtoPromise
 
                 protected override void OnCancel()
                 {
+                    base.OnCancel();
                     onComplete = null;
                 }
             }
@@ -1800,6 +1859,8 @@ namespace ProtoPromise
                     Dispose();
                     callback.Invoke();
                 }
+
+                void ITreeHandleAble.AssignCancelValue(IValueContainer cancelValue) { }
 
                 void ITreeHandleAble.Handle(Promise feed)
                 {
@@ -1850,6 +1911,8 @@ namespace ProtoPromise
                     callback.Invoke();
                 }
 
+                void ITreeHandleAble.AssignCancelValue(IValueContainer cancelValue) { }
+
                 void ITreeHandleAble.Handle(Promise feed)
                 {
                     Dispose();
@@ -1869,7 +1932,7 @@ namespace ProtoPromise
                 private static ValueLinkedStack<ITreeHandleAble> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
-                private Promise _owner;
+                private IValueContainer _cancelValue;
                 private Action<T> _onCanceled;
 
                 private CancelDelegate() { }
@@ -1879,31 +1942,35 @@ namespace ProtoPromise
                     OnClearPool += () => _pool.Clear();
                 }
 
-                public static CancelDelegate<T> GetOrCreate(Action<T> onCanceled, Promise owner)
+                public static CancelDelegate<T> GetOrCreate(Action<T> onCanceled)
                 {
                     var del = _pool.IsNotEmpty ? (CancelDelegate<T>) _pool.Pop() : new CancelDelegate<T>();
                     del._onCanceled = onCanceled;
-                    del._owner = owner;
                     return del;
                 }
 
                 void Dispose()
                 {
                     _onCanceled = null;
-                    _owner = null;
+                    _cancelValue = null;
                     _pool.Push(this);
                 }
 
                 void ITreeHandleAble.Cancel()
                 {
                     var callback = _onCanceled;
-                    var owner = _owner;
+                    var cancelValue = _cancelValue;
                     Dispose();
                     T arg;
-                    if (owner._rejectedOrCanceledValue.TryGetValueAs(out arg))
+                    if (cancelValue.TryGetValueAs(out arg))
                     {
                         callback.Invoke(arg);
                     }
+                }
+
+                void ITreeHandleAble.AssignCancelValue(IValueContainer cancelValue)
+                {
+                    _cancelValue = cancelValue;
                 }
 
                 void ITreeHandleAble.Handle(Promise feed)

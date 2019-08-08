@@ -86,6 +86,7 @@ namespace ProtoPromise
                 void Handle(Promise feed);
                 void Cancel();
                 void Repool();
+                void AssignCancelValue(IValueContainer cancelValue);
             }
             public interface IValueContainer : IRetainable
 			{
@@ -792,9 +793,14 @@ namespace ProtoPromise
 		{
             _first = null; 
             _last = null;
-		}
+        }
 
-		public void AddLast(T item)
+        public void ClearLast()
+        {
+            _last = null;
+        }
+
+        public void AddLast(T item)
 		{
 			item.Next = null;
 			if (_first == null)
@@ -806,9 +812,19 @@ namespace ProtoPromise
 				_last.Next = item;
 				_last = item;
 			}
-		}
+        }
 
-		public void AddFirst(T item)
+        /// <summary>
+        /// Only use this if you know the queue is not empty.
+        /// </summary>
+        public void AddLastRisky(T item)
+        {
+            item.Next = null;
+            _last.Next = item;
+            _last = item;
+        }
+
+        public void AddFirst(T item)
 		{
 			item.Next = _first;
 			_first = item;
@@ -830,24 +846,6 @@ namespace ProtoPromise
 		public T PeekLast()
 		{
 			return _last;
-		}
-
-		public void Append(ValueLinkedQueue<T> other)
-		{
-            if (other.IsEmpty)
-            {
-                return;
-            }
-            if (IsEmpty)
-            {
-                _first = other._first;
-                _last = other._last;
-            }
-            else
-            {
-                _last.Next = other._first;
-                _last = other._last;
-            }
 		}
 
         public Enumerator<T> GetEnumerator()

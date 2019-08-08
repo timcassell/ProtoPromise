@@ -53,7 +53,7 @@ namespace ProtoPromise
 		{
 			ValidateCancel();
 
-            AddWaiter(Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled, this));
+            AddWaiter(Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled));
             return this;
         }
 
@@ -75,8 +75,6 @@ namespace ProtoPromise
 			_rejectedOrCanceledValue.Retain();
 
             OnCancel();
-            AppendToCancelQueue(_nextBranches);
-            _nextBranches.Clear();
             ContinueCanceling();
 		}
 
@@ -97,8 +95,6 @@ namespace ProtoPromise
 			_rejectedOrCanceledValue.Retain();
 
             OnCancel();
-            AppendToCancelQueue(_nextBranches);
-            _nextBranches.Clear();
             ContinueCanceling();
         }
 
