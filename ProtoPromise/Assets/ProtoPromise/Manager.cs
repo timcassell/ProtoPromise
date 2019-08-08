@@ -60,13 +60,47 @@ namespace ProtoPromise
         }
 
 
+        // Calls to these get compiled away in RELEASE mode
+        static partial void ValidateOperation(Promise promise);
+        static partial void ValidateProgress(float progress);
+#if DEBUG
+        protected void ValidateNotDisposed()
+        {
+            // TODO
+        }
+
+        static protected void ValidateProgressValue(float value)
+        {
+            const string argName = "progress";
+            if (value < 0f || value > 1f)
+            {
+                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1.");
+            }
+        }
+
+        static partial void ValidateOperation(Promise promise)
+        {
+            promise.ValidateNotDisposed();
+        }
+
+        static partial void ValidateProgress(float progress)
+        {
+            ValidateProgressValue(progress);
+        }
+#endif
+
 
         // Calls to this get compiled away when CANCEL is defined.
         static partial void ValidateCancel();
 #if !CANCEL
+        static protected void ThrowCancelException()
+        {
+            throw new InvalidOperationException("Define CANCEL in ProtoPromise/Manager.cs to enable cancelations.");
+        }
+
 		static partial void ValidateCancel()
 		{
-			throw new InvalidOperationException("Define CANCEL in ProtoPromise/Manager.cs to enable cancelations.");
+            ThrowCancelException();
 		}
 
         private void WaitFor(Promise other)
@@ -97,12 +131,28 @@ namespace ProtoPromise
         {
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
             public abstract partial class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitPromise<TPromise> { }
-            
+
             public abstract partial class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitPromise<T, TPromise> { }
-            
-            public abstract partial class PromiseWaitDeferred<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitDeferred<TPromise> { }
-            
-            public abstract partial class PromiseWaitDeferred<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitDeferred<T, TPromise> { }
+
+            public abstract partial class PromiseWaitDeferred<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitDeferred<TPromise>
+            {
+                public readonly Deferred deferred;
+
+                protected PromiseWaitDeferred()
+                {
+                    deferred = new DeferredInternal(this);
+                }
+            }
+
+            public abstract partial class PromiseWaitDeferred<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitDeferred<T, TPromise>
+            {
+                public readonly Deferred deferred;
+
+                protected PromiseWaitDeferred()
+                {
+                    deferred = new Internal.DeferredInternal(this);
+                }
+            }
 #pragma warning restore RECS0001 // Class is declared partial but has only one part
         }
 
@@ -110,25 +160,28 @@ namespace ProtoPromise
         private Promise _previous;
 #endif
 
+        protected virtual void ReportProgress(float progress) { }
+
         // Calls to these get compiled away when PROGRESS is undefined.
         partial void SetDepthAndPrevious(Promise next);
         partial void ClearPrevious();
         partial void ResetDepth();
         partial void SubscribeProgress(Promise other);
-#if !PROGRESS
-		private void ProgressPrivate(Action<float> onProgress)
-		{
-            ReportProgress(float.NaN);
-		}
+        partial void ProgressInternal(Action<float> onProgress);
 
-        protected void ReportProgress(float progress)
+        static partial void ValidateProgress();
+#if !PROGRESS
+        static protected void ThrowProgressException()
         {
             throw new InvalidOperationException("Define PROGRESS in ProtoPromise/Managers.cs to enable progress reports.");
         }
+
+        static partial void ValidateProgress()
+        {
+            ThrowProgressException();
+        }
 #else
         private Internal.UnsignedFixed32 _waitDepthAndProgress;
-
-        protected virtual void ReportProgress(float progress) { }
 
         partial void SubscribeProgress(Promise other)
         {
@@ -160,7 +213,7 @@ namespace ProtoPromise
 
         protected virtual void SubscribeProgress(Internal.ProgressDelegate progressDelegate) { }
 
-        private void ProgressPrivate(Action<float> onProgress)
+        partial void ProgressInternal(Action<float> onProgress)
         {
             if (_state == DeferredState.Rejected || _state == DeferredState.Canceled)
             {
@@ -180,19 +233,19 @@ namespace ProtoPromise
             switch (promise._state)
             {
                 case DeferredState.Resolved:
-                {
-                    // Report if resolved.
-                    progressDelegate.Report(_waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32());
-                    break;
-                }
+                    {
+                        // Report if resolved.
+                        progressDelegate.Report(_waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32());
+                        break;
+                    }
                 case DeferredState.Pending:
-                {
-                    // Subscribe and report if pending.
-                    promise.SubscribeProgress(progressDelegate);
-                    progressDelegate.Report(_waitDepthAndProgress.ToUInt32());
-                    break;
-                }
-                // Else do nothing. At this point, the progress delegate is guaranteed to be subscribed to at least 1 promise, and/or already reported.
+                    {
+                        // Subscribe and report if pending.
+                        promise.SubscribeProgress(progressDelegate);
+                        progressDelegate.Report(_waitDepthAndProgress.ToUInt32());
+                        break;
+                    }
+                    // Else do nothing. At this point, the progress delegate is guaranteed to be subscribed to at least 1 promise, and/or already reported.
             }
         }
 
@@ -211,7 +264,7 @@ namespace ProtoPromise
                 private uint _value;
 
                 public uint WholePart { get { return _value >> Manager.ProgressDecimalBits; } }
-                public float DecimalPart { get { return (float) DecimalPartAsUInt32 / (float) DecimalMax; } }
+                public float DecimalPart { get { return (float)DecimalPartAsUInt32 / (float)DecimalMax; } }
                 private uint DecimalPartAsUInt32 { get { return _value & DecimalMask; } }
 
                 public uint ToUInt32()
@@ -223,7 +276,7 @@ namespace ProtoPromise
                 {
                     uint oldDecimalPart = DecimalPartAsUInt32;
                     // Don't bother rounding, it's more expensive and we don't want to accidentally round to 1.0.
-                    uint newDecimalPart = (uint) (decimalPart * DecimalMax);
+                    uint newDecimalPart = (uint)(decimalPart * DecimalMax);
                     _value = (_value & WholeMask) | newDecimalPart;
                     return newDecimalPart - oldDecimalPart;
                 }
@@ -283,7 +336,7 @@ namespace ProtoPromise
                     {
                         // Calculate the normalized progress for the depth that the listener was added.
                         // Divide twice is slower, but gives better precision than single divide.
-                        _onProgress.Invoke(((float) _current.WholePart / _expected) + (_current.DecimalPart / _expected));
+                        _onProgress.Invoke(((float)_current.WholePart / _expected) + (_current.DecimalPart / _expected));
                     }
                 }
 
@@ -332,8 +385,14 @@ namespace ProtoPromise
                     _waitDepthAndProgress = previousDepth.GetIncrementedWholeTruncated();
                 }
 
-                protected override void ReportProgress(float progress)
+                protected override sealed void ReportProgress(float progress)
                 {
+                    if (progress >= 1f)
+                    {
+                        // Don't report progress 1.0, that will be reported automatically when the promise is resolved.
+                        return;
+                    }
+
                     uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
                     foreach (var pl in _progressListeners)
                     {
@@ -393,8 +452,14 @@ namespace ProtoPromise
                     _waitDepthAndProgress = previousDepth.GetIncrementedWholeTruncated();
                 }
 
-                protected override void ReportProgress(float progress)
+                protected override sealed void ReportProgress(float progress)
                 {
+                    if (progress >= 1f)
+                    {
+                        // Don't report progress 1.0, that will be reported automatically when the promise is resolved.
+                        return;
+                    }
+
                     uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
                     foreach (var pl in _progressListeners)
                     {
@@ -443,8 +508,14 @@ namespace ProtoPromise
                     _waitDepthAndProgress = previousDepth.GetIncrementedWholeTruncated();
                 }
 
-                protected override void ReportProgress(float progress)
+                protected override sealed void ReportProgress(float progress)
                 {
+                    if (progress >= 1f)
+                    {
+                        // Don't report progress 1.0, that will be reported automatically when the promise is resolved.
+                        return;
+                    }
+
                     uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
                     foreach (var pl in _progressListeners)
                     {
@@ -479,8 +550,14 @@ namespace ProtoPromise
                     _waitDepthAndProgress = previousDepth.GetIncrementedWholeTruncated();
                 }
 
-                protected override void ReportProgress(float progress)
+                protected override sealed void ReportProgress(float progress)
                 {
+                    if (progress >= 1f)
+                    {
+                        // Don't report progress 1.0, that will be reported automatically when the promise is resolved.
+                        return;
+                    }
+
                     uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
                     foreach (var pl in _progressListeners)
                     {
@@ -502,5 +579,47 @@ namespace ProtoPromise
             }
         }
 #endif
+    }
+
+    partial class Promise<T>
+    {
+        partial class Internal
+        {
+            partial class DeferredInternal
+            {
+                // Calls to these get compiled away in RELEASE mode
+                static partial void ValidateOperation(Promise<T> promise);
+                static partial void ValidateProgress(float progress);
+#if DEBUG
+                static partial void ValidateProgress(float progress)
+                {
+                    ValidateProgressValue(progress);
+                }
+
+                static partial void ValidateOperation(Promise<T> promise)
+                {
+                    promise.ValidateNotDisposed();
+                }
+#endif
+
+                // Calls to this get compiled away when CANCEL is defined.
+                static partial void ValidateCancel();
+#if !CANCEL
+                static partial void ValidateCancel()
+                {
+                    ThrowCancelException();
+                }
+#endif
+
+                // Calls to this get compiled away when PROGRESS is defined.
+                static partial void ValidateProgress();
+#if !PROGRESS
+                static partial void ValidateProgress()
+                {
+                    ThrowProgressException();
+                }
+#endif
+            }
+        }
     }
 }

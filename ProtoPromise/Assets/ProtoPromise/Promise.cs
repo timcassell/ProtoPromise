@@ -104,7 +104,8 @@ namespace ProtoPromise
 
 		public Promise Progress(Action<float> onProgress)
 		{
-			ProgressPrivate(onProgress);
+            ValidateProgress();
+			ProgressInternal(onProgress);
 			return this;
 		}
 

@@ -92,15 +92,17 @@ namespace ProtoPromise
 				bool TryGetValueAs<U>(out U value);
 			}
 
-			public interface IDelegate : IDisposable
+			public interface IDelegate
 			{
 				bool DisposeAndTryInvoke(IValueContainer valueContainer);
 				void DisposeAndInvoke(Promise feed);
+                void Dispose();
 			}
-			public interface IDelegate<TResult> : IDisposable
+			public interface IDelegate<TResult>
 			{
 				bool DisposeAndTryInvoke(IValueContainer valueContainer, out TResult result);
 				TResult DisposeAndInvoke(Promise feed);
+                void Dispose();
 			}
 			public interface IFilter : IDisposable
 			{

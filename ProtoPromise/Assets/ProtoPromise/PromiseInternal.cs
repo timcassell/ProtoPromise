@@ -61,7 +61,8 @@ namespace ProtoPromise
 				throw new InvalidReturnException("A null promise was returned.");
 			}
 
-            // TODO: Validate returned promises as not disposed.
+            // Validate returned promise as not disposed.
+            ValidateOperation(other);
 
             // A promise cannot wait on itself.
             for (var prev = other; prev != null; prev = prev._previous)
@@ -427,6 +428,7 @@ namespace ProtoPromise
 					var promise = _pool.IsNotEmpty ? (DeferredPromise) _pool.Pop() : new DeferredPromise();
 					promise.Reset();
 					promise.ResetDepth();
+                    promise.Retain();
 					return promise;
 				}
 			}
@@ -440,7 +442,8 @@ namespace ProtoPromise
 					var promise = _pool.IsNotEmpty ? (DeferredPromise<T>) _pool.Pop() : new DeferredPromise<T>();
 					promise.Reset();
 					promise.ResetDepth();
-					return promise;
+                    promise.Retain();
+                    return promise;
 				}
 			}
 
@@ -786,6 +789,7 @@ namespace ProtoPromise
 					var promise = _pool.IsNotEmpty ? (PromiseVoidResolveDeferred) _pool.Pop() : new PromiseVoidResolveDeferred();
 					promise.resolveHandler = resolveHandler;
 					promise.Reset();
+                    promise.Retain();
 					return promise;
                 }
 
@@ -797,7 +801,7 @@ namespace ProtoPromise
                     {
                         var deferredAction = callback.Invoke();
                         Validate(deferredAction);
-                        deferredAction.Invoke(DeferredInternal.GetOrCreate(this));
+                        deferredAction.Invoke(deferred);
                     }
                     else
                     {
@@ -823,7 +827,8 @@ namespace ProtoPromise
 					var promise = _pool.IsNotEmpty ? (PromiseArgResolveDeferred<TArg>) _pool.Pop() : new PromiseArgResolveDeferred<TArg>();
 					promise.resolveHandler = resolveHandler;
 					promise.Reset();
-					return promise;
+                    promise.Retain();
+                    return promise;
                 }
 
                 protected override void Handle(Promise feed)
@@ -834,7 +839,7 @@ namespace ProtoPromise
                     {
                         var deferredAction = callback.Invoke(feed.GetValue<TArg>());
                         Validate(deferredAction);
-                        deferredAction.Invoke(DeferredInternal.GetOrCreate(this));
+                        deferredAction.Invoke(deferred);
                     }
                     else
                     {
@@ -860,7 +865,8 @@ namespace ProtoPromise
 					var promise = _pool.IsNotEmpty ? (PromiseVoidResolveDeferred<TDeferred>) _pool.Pop() : new PromiseVoidResolveDeferred<TDeferred>();
 					promise.resolveHandler = resolveHandler;
 					promise.Reset();
-					return promise;
+                    promise.Retain();
+                    return promise;
                 }
 
                 protected override void Handle(Promise feed)
@@ -871,7 +877,7 @@ namespace ProtoPromise
                     {
                         var deferredAction = callback.Invoke();
                         Validate(deferredAction);
-                        deferredAction.Invoke(Internal.DeferredInternal.GetOrCreate(this));
+                        deferredAction.Invoke(deferred);
                     }
                     else
                     {
@@ -897,7 +903,8 @@ namespace ProtoPromise
 					var promise = _pool.IsNotEmpty ? (PromiseArgResolveDeferred<TArg, TDeferred>) _pool.Pop() : new PromiseArgResolveDeferred<TArg, TDeferred>();
 					promise.resolveHandler = resolveHandler;
 					promise.Reset();
-					return promise;
+                    promise.Retain();
+                    return promise;
                 }
 
                 protected override void Handle(Promise feed)
@@ -908,7 +915,7 @@ namespace ProtoPromise
                     {
                         var deferredAction = callback.Invoke(feed.GetValue<TArg>());
                         Validate(deferredAction);
-                        deferredAction.Invoke(Internal.DeferredInternal.GetOrCreate(this));
+                        deferredAction.Invoke(deferred);
                     }
                     else
                     {
@@ -1146,7 +1153,8 @@ namespace ProtoPromise
 					var promise = _pool.IsNotEmpty ? (PromiseRejectDeferred) _pool.Pop() : new PromiseRejectDeferred();
 					promise.rejectHandler = rejectHandler;
 					promise.Reset();
-					return promise;
+                    promise.Retain();
+                    return promise;
                 }
 
                 protected override void Handle(Promise feed)
@@ -1159,7 +1167,7 @@ namespace ProtoPromise
                         if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out deferredDelegate))
                         {
                             Validate(deferredDelegate);
-                            deferredDelegate.Invoke(DeferredInternal.GetOrCreate(this));
+                            deferredDelegate.Invoke(deferred);
                         }
                         else
                         {
@@ -1205,7 +1213,7 @@ namespace ProtoPromise
                         if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out deferredDelegate))
                         {
                             Validate(deferredDelegate);
-                            deferredDelegate.Invoke(Internal.DeferredInternal.GetOrCreate(this));
+                            deferredDelegate.Invoke(deferred);
                         }
                         else
                         {
@@ -1340,7 +1348,7 @@ namespace ProtoPromise
 				public static PromiseResolveRejectPromise GetOrCreate(IDelegate<Promise> onResolved, IDelegate<Promise> onRejected)
 				{
 					var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise) _pool.Pop() : new PromiseResolveRejectPromise();
-					promise.onRejected = onRejected;
+					promise.onResolved = onResolved;
 					promise.onRejected = onRejected;
 					promise.Reset();
 					return promise;
@@ -1401,7 +1409,7 @@ namespace ProtoPromise
 				public static PromiseResolveRejectPromise<TPromise> GetOrCreate(IDelegate<Promise<TPromise>> onResolved, IDelegate<Promise<TPromise>> onRejected)
 				{
 					var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise<TPromise>) _pool.Pop() : new PromiseResolveRejectPromise<TPromise>();
-					promise.onRejected = onRejected;
+					promise.onResolved = onResolved;
 					promise.onRejected = onRejected;
 					promise.Reset();
 					return promise;
@@ -1462,10 +1470,11 @@ namespace ProtoPromise
 				public static PromiseResolveRejectDeferred GetOrCreate(IDelegate<Action<Deferred>> onResolved, IDelegate<Action<Deferred>> onRejected)
 				{
 					var promise = _pool.IsNotEmpty ? (PromiseResolveRejectDeferred) _pool.Pop() : new PromiseResolveRejectDeferred();
-					promise.onRejected = onRejected;
-					promise.onRejected = onRejected;
+					promise.onResolved = onResolved;
+                    promise.onRejected = onRejected;
 					promise.Reset();
-					return promise;
+                    promise.Retain();
+                    return promise;
                 }
 
                 protected override void Handle(Promise feed)
@@ -1491,7 +1500,7 @@ namespace ProtoPromise
                         }
                     }
                     Validate(deferredDelegate);
-                    deferredDelegate.Invoke(DeferredInternal.GetOrCreate(this));
+                    deferredDelegate.Invoke(deferred);
                 }
 
                 protected override void OnCancel()
@@ -1512,10 +1521,11 @@ namespace ProtoPromise
 				public static PromiseResolveRejectDeferred<TDeferred> GetOrCreate(IDelegate<Action<Deferred>> onResolved, IDelegate<Action<Deferred>> onRejected)
 				{
 					var promise = _pool.IsNotEmpty ? (PromiseResolveRejectDeferred<TDeferred>) _pool.Pop() : new PromiseResolveRejectDeferred<TDeferred>();
-					promise.onRejected = onRejected;
-					promise.onRejected = onRejected;
+					promise.onResolved = onResolved;
+                    promise.onRejected = onRejected;
 					promise.Reset();
-					return promise;
+                    promise.Retain();
+                    return promise;
                 }
 
                 protected override void Handle(Promise feed)
@@ -1541,7 +1551,7 @@ namespace ProtoPromise
                         }
                     }
                     Validate(deferredDelegate);
-                    deferredDelegate.Invoke(Internal.DeferredInternal.GetOrCreate(this));
+                    deferredDelegate.Invoke(deferred);
                 }
 
                 protected override void OnCancel()
@@ -1702,7 +1712,8 @@ namespace ProtoPromise
 					var promise = _pool.IsNotEmpty ? (PromiseCompleteDeferred) _pool.Pop() : new PromiseCompleteDeferred();
 					promise.onComplete = onComplete;
 					promise.Reset();
-					return promise;
+                    promise.Retain();
+                    return promise;
                 }
 
                 protected override void Handle(Promise feed)
@@ -1711,7 +1722,7 @@ namespace ProtoPromise
                     onComplete = null;
                     var deferredDelegate = callback.Invoke();
                     Validate(deferredDelegate);
-                    deferredDelegate.Invoke(DeferredInternal.GetOrCreate(this));
+                    deferredDelegate.Invoke(deferred);
                 }
 
                 protected override void OnCancel()
@@ -1731,7 +1742,8 @@ namespace ProtoPromise
 					var promise = _pool.IsNotEmpty ? (PromiseCompleteDeferred<T>) _pool.Pop() : new PromiseCompleteDeferred<T>();
 					promise.onComplete = onComplete;
 					promise.Reset();
-					return promise;
+                    promise.Retain();
+                    return promise;
                 }
 
                 protected override void Handle(Promise feed)
@@ -1740,7 +1752,7 @@ namespace ProtoPromise
                     onComplete = null;
                     var deferredDelegate = callback.Invoke();
                     Validate(deferredDelegate);
-                    deferredDelegate.Invoke(Internal.DeferredInternal.GetOrCreate(this));
+                    deferredDelegate.Invoke(deferred);
                 }
 
                 protected override void OnCancel()
@@ -1913,4 +1925,198 @@ namespace ProtoPromise
 #endregion
 		}
 	}
+
+#region Deferreds
+    partial class Promise
+    {
+        partial class Internal
+        {
+            public sealed class DeferredInternal : Deferred
+            {
+                public DeferredInternal(Promise target)
+                {
+                    Promise = target;
+                }
+
+                public override void ReportProgress(float progress)
+                {
+                    ValidateProgress();
+                    ValidateOperation(Promise);
+                    ValidateProgress(progress);
+
+                    if (State != DeferredState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    Promise.ReportProgress(progress);
+                }
+
+                public override void Resolve()
+                {
+                    ValidateOperation(Promise);
+
+                    if (State != DeferredState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    Promise.Resolve();
+                }
+
+                public override void Cancel()
+                {
+                    ValidateCancel();
+                    ValidateOperation(Promise);
+
+                    if (State != DeferredState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    Promise.Cancel();
+                }
+
+                public override void Cancel<TCancel>(TCancel reason)
+                {
+                    ValidateCancel();
+                    ValidateOperation(Promise);
+
+                    if (State != DeferredState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    Promise.Cancel(reason);
+                }
+
+                public override void Reject()
+                {
+                    ValidateOperation(Promise);
+
+                    if (State != DeferredState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    Promise.Reject(1);
+                }
+
+                public override void Reject<TReject>(TReject reason)
+                {
+                    ValidateOperation(Promise);
+
+                    if (State != DeferredState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
+                        return;
+                    }
+
+                    Promise.Reject(reason, 1);
+                }
+            }
+        }
+    }
+
+    partial class Promise<T>
+    {
+        protected static new partial class Internal
+        {
+            public sealed partial class DeferredInternal : Deferred
+            {
+                public DeferredInternal(Promise<T> target)
+                {
+                    Promise = target;
+                }
+
+                public override void ReportProgress(float progress)
+                {
+                    ValidateProgress();
+                    ValidateOperation(Promise);
+                    ValidateProgress(progress);
+
+                    if (State != DeferredState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    Promise.ReportProgress(progress);
+                }
+
+                public override void Resolve(T arg)
+                {
+                    ValidateOperation(Promise);
+
+                    if (State != DeferredState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    Promise.Resolve(arg);
+                }
+
+                public override void Cancel()
+                {
+                    ValidateCancel();
+                    ValidateOperation(Promise);
+
+                    if (State != DeferredState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    Promise.Cancel();
+                }
+
+                public override void Cancel<TCancel>(TCancel reason)
+                {
+                    ValidateCancel();
+                    ValidateOperation(Promise);
+
+                    if (State != DeferredState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    Promise.Cancel(reason);
+                }
+
+                public override void Reject()
+                {
+                    ValidateOperation(Promise);
+
+                    if (State != DeferredState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    Promise.Reject(1);
+                }
+
+                public override void Reject<TReject>(TReject reason)
+                {
+                    ValidateOperation(Promise);
+
+                    if (State != DeferredState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
+                        return;
+                    }
+
+                    Promise.Reject(reason, 1);
+                }
+            }
+        }
+    }
+#endregion
 }

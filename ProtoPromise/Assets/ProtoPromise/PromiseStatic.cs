@@ -616,21 +616,17 @@ namespace ProtoPromise
 
 		public static Promise New(Action<Deferred> resolver)
         {
-            var deferred = Deferred.New();
-            // TODO: delete first line of promise's stacktrace
-            var promise = deferred.Promise;
-			resolver.Invoke(deferred);
+            var promise = Internal.DeferredPromise.GetOrCreate();
+			resolver.Invoke(promise.deferred);
 			return promise;
 		}
 
 		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver)
-		{
-			var deferred = Promise<T>.Deferred.New();
-            // TODO: delete first line of promise's stacktrace
-            var promise = deferred.Promise;
-			resolver.Invoke(deferred);
-			return promise;
-		}
+        {
+            var promise = Internal.DeferredPromise<T>.GetOrCreate();
+            resolver.Invoke(promise.deferred);
+            return promise;
+        }
 
 		public static Promise Resolved()
 		{
@@ -704,14 +700,12 @@ namespace ProtoPromise
 
 		public static Deferred NewDeferred()
 		{
-            return Deferred.New();
-            // TODO: delete first line of promise's stacktrace
+            return Internal.DeferredPromise.GetOrCreate().deferred;
 		}
 
 		public static Promise<T>.Deferred NewDeferred<T>()
 		{
-            return Promise<T>.Deferred.New();
-            // TODO: delete first line of promise's stacktrace
+            return Internal.DeferredPromise<T>.GetOrCreate().deferred;
 		}
 	}
 }
