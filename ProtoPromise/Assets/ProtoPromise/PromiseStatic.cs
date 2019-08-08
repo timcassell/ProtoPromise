@@ -10,7 +10,7 @@ namespace ProtoPromise
 		{
 			PromiseClosure ILinked<PromiseClosure>.Next { get; set; }
 
-			private static ValueLinkedStack<PromiseClosure> pool;
+			private static ValueLinkedStack<PromiseClosure> _pool;
 
 #pragma warning disable RECS0146 // Member hides static member from outer class
 			internal static PromiseClosure New()
@@ -71,7 +71,7 @@ namespace ProtoPromise
 			AllClosure ILinked<AllClosure>.Next { get; set; }
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<AllClosure> pool;
+			private static ValueLinkedStack<AllClosure> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
 #pragma warning disable RECS0146 // Member hides static member from outer class
@@ -108,7 +108,7 @@ namespace ProtoPromise
 			public AllClosure<T> allClosure;
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<PromiseClosure<T>> pool;
+			private static ValueLinkedStack<PromiseClosure<T>> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
 #pragma warning disable RECS0146 // Member hides static member from outer class
@@ -169,7 +169,7 @@ namespace ProtoPromise
 			AllClosure<T> ILinked<AllClosure<T>>.Next { get; set; }
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<AllClosure<T>> pool;
+			private static ValueLinkedStack<AllClosure<T>> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
 #pragma warning disable RECS0146 // Member hides static member from outer class
@@ -276,7 +276,7 @@ namespace ProtoPromise
 			PromiseClosureWithNonvalue<T1> ILinked<PromiseClosureWithNonvalue<T1>>.Next { get; set; }
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<PromiseClosureWithNonvalue<T1>> pool;
+			private static ValueLinkedStack<PromiseClosureWithNonvalue<T1>> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
 #pragma warning disable RECS0146 // Member hides static member from outer class
@@ -383,7 +383,7 @@ namespace ProtoPromise
 			RaceClosure ILinked<RaceClosure>.Next { get; set; }
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<RaceClosure> pool;
+			private static ValueLinkedStack<RaceClosure> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
 #pragma warning disable RECS0146 // Member hides static member from outer class
@@ -436,7 +436,7 @@ namespace ProtoPromise
 			RaceClosure<T> ILinked<RaceClosure<T>>.Next { get; set; }
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<RaceClosure<T>> pool;
+			private static ValueLinkedStack<RaceClosure<T>> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
 #pragma warning disable RECS0146 // Member hides static member from outer class

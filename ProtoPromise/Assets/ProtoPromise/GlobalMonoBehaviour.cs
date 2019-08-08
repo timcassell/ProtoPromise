@@ -38,16 +38,16 @@ namespace ProtoPromise
 		{
 			Routine ILinked<Routine>.Next { get; set; }
 
-			private static ValueLinkedStack<Routine> pool;
+			private static ValueLinkedStack<Routine> _pool;
 
 			public static Routine New()
 			{
-				return pool.IsNotEmpty ? pool.Pop() : new Routine();
+				return _pool.IsNotEmpty ? _pool.Pop() : new Routine();
 			}
 
 			static Routine()
 			{
-				_onClear += () => pool.Clear();
+				_onClear += () => _pool.Clear();
 			}
 
 			private Routine() { }
@@ -73,7 +73,7 @@ namespace ProtoPromise
 				onComplete = null;
 				Current = null;
 				// Place this back in the pool before invoking in case the invocation will re-use this.
-				pool.Push(this);
+				_pool.Push(this);
 
 				try
 				{
@@ -105,7 +105,7 @@ namespace ProtoPromise
 				{
 					onComplete = null;
 					Current = null;
-					pool.Push(this);
+					_pool.Push(this);
 				}
 			}
 
@@ -117,17 +117,17 @@ namespace ProtoPromise
 			Routine<T> ILinked<Routine<T>>.Next { get; set; }
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<Routine<T>> pool;
+			private static ValueLinkedStack<Routine<T>> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
 			public static Routine<T> New()
 			{
-				return pool.IsNotEmpty ? pool.Pop() : new Routine<T>();
+				return _pool.IsNotEmpty ? _pool.Pop() : new Routine<T>();
 			}
 
 			static Routine()
 			{
-				_onClear += () => pool.Clear();
+				_onClear += () => _pool.Clear();
 			}
 
 			private Routine() { }
@@ -155,7 +155,7 @@ namespace ProtoPromise
 				T tempObj = Current;
 				Current = default(T);
 				// Place this back in the pool before invoking in case the invocation will re-use this.
-				pool.Push(this);
+				_pool.Push(this);
 
 				try
 				{
@@ -190,7 +190,7 @@ namespace ProtoPromise
 				{
 					onComplete = null;
 					Current = default(T);
-					pool.Push(this);
+					_pool.Push(this);
 				}
 			}
 

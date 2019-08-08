@@ -306,18 +306,18 @@ namespace ProtoPromise
                 private UnsignedFixed32 _current;
                 private uint _expected;
 
-                private static ValueLinkedStackZeroGC<ProgressDelegate> pool;
+                private static ValueLinkedStackZeroGC<ProgressDelegate> _pool;
 
                 static ProgressDelegate()
                 {
-                    OnClearPool += () => pool.ClearAndDontRepool();
+                    OnClearPool += () => _pool.ClearAndDontRepool();
                 }
 
                 private ProgressDelegate() { }
 
                 public static ProgressDelegate GetOrCreate(Action<float> onProgress, uint expected)
                 {
-                    var progress = pool.IsNotEmpty ? pool.Pop() : new ProgressDelegate();
+                    var progress = _pool.IsNotEmpty ? _pool.Pop() : new ProgressDelegate();
                     progress._onProgress = onProgress;
                     progress._expected = expected;
                     progress._current = default(UnsignedFixed32);
@@ -356,7 +356,7 @@ namespace ProtoPromise
                 public void Dispose()
                 {
                     _onProgress = null;
-                    pool.Push(this);
+                    _pool.Push(this);
                 }
             }
 

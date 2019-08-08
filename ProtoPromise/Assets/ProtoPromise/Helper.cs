@@ -485,13 +485,10 @@ namespace ProtoPromise
 						value = casted.Value;
 						return true;
 					}
-					if (!typeof(T).IsValueType)
+					if (typeof(U).IsAssignableFrom(typeof(T)) || Value is U)
 					{
-						if (typeof(U).IsAssignableFrom(typeof(T)) || Value is U)
-						{
-							value = (U) (object) Value;
-							return true;
-						}
+						value = (U) (object) Value;
+						return true;
 					}
 					value = default(U);
 					return false;
@@ -620,13 +617,10 @@ namespace ProtoPromise
                         value = casted.Value;
                         return true;
                     }
-                    if (!typeof(T).IsValueType)
+                    if (typeof(U).IsAssignableFrom(typeof(T)) || Value is U)
                     {
-                        if (typeof(U).IsAssignableFrom(typeof(T)) || Value is U)
-                        {
-                            value = (U) (object) Value;
-                            return true;
-                        }
+                        value = (U) (object) Value;
+                        return true;
                     }
                     value = default(U);
                     return false;
@@ -820,9 +814,9 @@ namespace ProtoPromise
 			_first = item;
 		}
 
-		public T TakeFirst()
-		{
-            // Note: this doesn't clear _last when the last item is taken.
+        // Note: this doesn't clear _last when the last item is taken.
+        public T TakeFirst()
+        {
 			T temp = _first;
 			_first = _first.Next;
 			return temp;
@@ -912,12 +906,12 @@ namespace ProtoPromise
         private class Node : ILinked<Node>
 		{
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<Node> pool;
+			private static ValueLinkedStack<Node> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
 			public static void ClearPool()
 			{
-				pool.Clear();
+				_pool.Clear();
 			}
 
 			public Node Next { get; set; }
@@ -926,7 +920,7 @@ namespace ProtoPromise
 
 			public static Node GetOrCreate(T item)
 			{
-				Node node = pool.IsNotEmpty ? pool.Pop() : new Node();
+				Node node = _pool.IsNotEmpty ? _pool.Pop() : new Node();
 				node.item = item;
 				return node;
 			}
@@ -941,7 +935,7 @@ namespace ProtoPromise
 			public void Dispose()
 			{
 				item = default(T);
-				pool.Push(this);
+				_pool.Push(this);
 			}
 		}
 
