@@ -12,12 +12,10 @@ namespace ProtoPromise
             Canceled // This violates Promises/A+ API, but I felt its usefulness outweighs API adherence.
         }
 
-        // TODO: Handle resolve/reject called after Promise is canceled.
         public abstract class DeferredBase : ICancelableAny, IRetainable
         {
             public DeferredState State { get { return Promise._state; } }
 
-            // TODO: release promise when deferred is finished.
             public virtual Promise Promise { get; protected set; }
 
             protected DeferredBase() { }

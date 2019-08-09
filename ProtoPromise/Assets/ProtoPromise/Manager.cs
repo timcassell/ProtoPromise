@@ -63,12 +63,8 @@ namespace ProtoPromise
         // Calls to these get compiled away in RELEASE mode
         static partial void ValidateOperation(Promise promise);
         static partial void ValidateProgress(float progress);
+        static partial void ValidateArgument(Delegate del, string argName);
 #if DEBUG
-        protected void ValidateNotDisposed()
-        {
-            // TODO
-        }
-
         static protected void ValidateProgressValue(float value)
         {
             const string argName = "progress";
@@ -76,6 +72,11 @@ namespace ProtoPromise
             {
                 throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1.");
             }
+        }
+
+        protected void ValidateNotDisposed()
+        {
+            // TODO
         }
 
         static partial void ValidateOperation(Promise promise)
@@ -86,6 +87,19 @@ namespace ProtoPromise
         static partial void ValidateProgress(float progress)
         {
             ValidateProgressValue(progress);
+        }
+
+        static protected void ValidateArg(Delegate del, string argName)
+        {
+            if (del == null)
+            {
+                throw new ArgumentNullException(argName);
+            }
+        }
+
+        static partial void ValidateArgument(Delegate del, string argName)
+        {
+            ValidateArg(del, argName);
         }
 #endif
 
@@ -370,7 +384,7 @@ namespace ProtoPromise
                 // So that a new delegate doesn't need to be created every time.
                 private readonly Action<float> _reportProgress;
 
-                protected PromiseWaitPromise() : base()
+                protected PromiseWaitPromise()
                 {
                     _reportProgress = ReportProgress;
                 }
@@ -437,7 +451,7 @@ namespace ProtoPromise
                 // So that a new delegate doesn't need to be created every time.
                 private readonly Action<float> _reportProgress;
 
-                protected PromiseWaitPromise() : base()
+                protected PromiseWaitPromise()
                 {
                     _reportProgress = ReportProgress;
                 }
@@ -583,43 +597,42 @@ namespace ProtoPromise
 
     partial class Promise<T>
     {
-        partial class Internal
-        {
-            partial class DeferredInternal
-            {
-                // Calls to these get compiled away in RELEASE mode
-                static partial void ValidateOperation(Promise<T> promise);
-                static partial void ValidateProgress(float progress);
+        // Calls to these get compiled away in RELEASE mode
+        static partial void ValidateOperation(Promise<T> promise);
+        static partial void ValidateArgument(Delegate del, string argName);
+        static partial void ValidateProgress(float progress);
 #if DEBUG
-                static partial void ValidateProgress(float progress)
-                {
-                    ValidateProgressValue(progress);
-                }
-
-                static partial void ValidateOperation(Promise<T> promise)
-                {
-                    promise.ValidateNotDisposed();
-                }
-#endif
-
-                // Calls to this get compiled away when CANCEL is defined.
-                static partial void ValidateCancel();
-#if !CANCEL
-                static partial void ValidateCancel()
-                {
-                    ThrowCancelException();
-                }
-#endif
-
-                // Calls to this get compiled away when PROGRESS is defined.
-                static partial void ValidateProgress();
-#if !PROGRESS
-                static partial void ValidateProgress()
-                {
-                    ThrowProgressException();
-                }
-#endif
-            }
+        static partial void ValidateProgress(float progress)
+        {
+            ValidateProgressValue(progress);
         }
+
+        static partial void ValidateOperation(Promise<T> promise)
+        {
+            promise.ValidateNotDisposed();
+        }
+
+        static partial void ValidateArgument(Delegate del, string argName)
+        {
+            ValidateArg(del, argName);
+        }
+#endif
+        // Calls to this get compiled away when CANCEL is defined.
+        static partial void ValidateCancel();
+#if !CANCEL
+        static partial void ValidateCancel()
+        {
+            ThrowCancelException();
+        }
+#endif
+
+        // Calls to this get compiled away when PROGRESS is defined.
+        static partial void ValidateProgress();
+#if !PROGRESS
+        static partial void ValidateProgress()
+        {
+            ThrowProgressException();
+        }
+#endif
     }
 }

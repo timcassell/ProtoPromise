@@ -160,7 +160,6 @@ namespace ProtoPromise
                 // Continue handling if this is resolved or rejected and it's not already being handled.
                 _nextBranches.AddLast(waiter);
                 AddToHandleQueue(this);
-                ContinueHandling();
             }
             else if (_state == DeferredState.Canceled)
             {
@@ -216,7 +215,7 @@ namespace ProtoPromise
             next.AssignCancelValue(_rejectedOrCanceledValue);
             AddToCancelQueue(next);
 
-            // Add quick for remaining items since we know the queue will not be empty.
+            // Add risky for remaining items since the queue is not empty.
             while (_nextBranches.IsNotEmpty)
             {
                 next = _nextBranches.TakeFirst();
@@ -271,6 +270,7 @@ namespace ProtoPromise
             _handleQueue.AddLast(promise);
         }
 
+        // TODO: Call this.
         // This allows infinite .Then/.Catch callbacks, since it avoids recursion.
         protected static void ContinueHandling()
 		{
@@ -2092,9 +2092,9 @@ namespace ProtoPromise
 
     partial class Promise<T>
     {
-        protected static new partial class Internal
+        protected static new class Internal
         {
-            public sealed partial class DeferredInternal : Deferred
+            public sealed class DeferredInternal : Deferred
             {
                 public DeferredInternal(Promise<T> target)
                 {
