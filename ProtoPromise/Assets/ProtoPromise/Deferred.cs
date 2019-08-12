@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace ProtoPromise
+﻿namespace ProtoPromise
 {
 	partial class Promise
     {
@@ -18,6 +16,9 @@ namespace ProtoPromise
 
             public virtual Promise Promise { get; protected set; }
 
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
+            private
+#endif
             protected DeferredBase() { }
 
             public void Retain()
@@ -48,6 +49,9 @@ namespace ProtoPromise
 
         public abstract class Deferred : DeferredBase
         {
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
+            private
+#endif
             protected Deferred() { }
 
             public abstract void Resolve();
@@ -60,6 +64,9 @@ namespace ProtoPromise
         {
             public new Promise<T> Promise { get { return (Promise<T>) base.Promise; } protected set { base.Promise = value; } }
 
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
+            private
+#endif
             protected Deferred() { }
 
             public abstract void Resolve(T arg);

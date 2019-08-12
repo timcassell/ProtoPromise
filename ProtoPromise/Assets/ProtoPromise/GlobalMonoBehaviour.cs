@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0034 // Simplify 'default' expression
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -40,7 +42,7 @@ namespace ProtoPromise
 
 			private static ValueLinkedStack<Routine> _pool;
 
-			public static Routine New()
+			public static Routine GetOrCreate()
 			{
 				return _pool.IsNotEmpty ? _pool.Pop() : new Routine();
 			}
@@ -120,7 +122,7 @@ namespace ProtoPromise
 			private static ValueLinkedStack<Routine<T>> _pool;
 #pragma warning restore RECS0108 // Warns about static fields in generic types
 
-			public static Routine<T> New()
+			public static Routine<T> GetOrCreate()
 			{
 				return _pool.IsNotEmpty ? _pool.Pop() : new Routine<T>();
 			}
@@ -234,7 +236,7 @@ namespace ProtoPromise
 			}
 #endif
 
-			Routine<TYieldInstruction> routine = Routine<TYieldInstruction>.New();
+			Routine<TYieldInstruction> routine = Routine<TYieldInstruction>.GetOrCreate();
 			routine.Current = yieldInstruction;
 			routine.onComplete = onComplete;
 
@@ -289,7 +291,7 @@ namespace ProtoPromise
 			}
 
 			// Grab from pool or create new if pool is empty.
-			Routine routine = Routine.New();
+			Routine routine = Routine.GetOrCreate();
 			if (routine._continue)
 			{
 				// The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
@@ -327,7 +329,7 @@ namespace ProtoPromise
 				return;
 			}
 
-			Routine routine = Routine.New();
+			Routine routine = Routine.GetOrCreate();
 			if (routine._continue)
 			{
 				// The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
@@ -371,3 +373,5 @@ namespace ProtoPromise
 		}
 	}
 }
+#pragma warning restore IDE0034 // Simplify 'default' expression
+#pragma warning restore IDE0018 // Inline variable declaration

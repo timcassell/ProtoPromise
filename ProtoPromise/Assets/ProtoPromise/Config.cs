@@ -5,6 +5,7 @@
 // If PROGRESS is defined, promises use more memory. If PROGRESS is undefined, there is no limit to the depth of a promise chain.
 #define PROGRESS
 
+#pragma warning disable IDE0034 // Simplify 'default' expression
 using System;
 
 namespace ProtoPromise
@@ -30,7 +31,7 @@ namespace ProtoPromise
             All
         }
 
-        public static class Manager
+        public static class Config
         {
             /// <summary>
             /// If you need to support more whole numbers (longer promise chains), decrease decimalBits. If you need higher precision, increase decimalBits.
@@ -60,11 +61,127 @@ namespace ProtoPromise
         }
 
 
+
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
+        private
+#endif
+        protected Promise()
+        {
+#if DEBUG
+            _id = idCounter++;
+#endif
+        }
+
+#if DEBUG || PROGRESS
+        private Promise _previous;
+#endif
+
         // Calls to these get compiled away in RELEASE mode
         static partial void ValidateOperation(Promise promise);
         static partial void ValidateProgress(float progress);
         static partial void ValidateArgument(Delegate del, string argName);
+        partial void ValidateReturn(Promise other);
+        static partial void ValidateReturn(Delegate other);
+        partial void SetCreatedStackTrace(int skipFrames);
+        partial void SetStackTraceFromCreated(UnhandledException unhandledException);
+        static partial void SetRejectStackTrace(UnhandledException unhandledException, int skipFrames);
+        partial void SetDisposed(bool disposed);
 #if DEBUG
+        private bool _disposed;
+        private string _createdStackTrace;
+        private static int idCounter;
+        protected readonly int _id;
+
+        partial void SetDisposed(bool disposed)
+        {
+            _disposed = disposed;
+        }
+
+        partial void SetCreatedStackTrace(int skipFrames)
+        {
+            if (Config.DebugStacktraceGenerator == GeneratedStacktrace.All)
+            {
+                _createdStackTrace = GetStackTrace(skipFrames + 1);
+            }
+        }
+
+        partial void SetStackTraceFromCreated(UnhandledException unhandledException)
+        {
+            unhandledException.SetStackTrace(FormatStackTrace(_createdStackTrace));
+        }
+
+        static partial void SetRejectStackTrace(UnhandledException unhandledException, int skipFrames)
+        {
+            if (Config.DebugStacktraceGenerator != GeneratedStacktrace.None)
+            {
+                unhandledException.SetStackTrace(FormatStackTrace(GetStackTrace(skipFrames + 1)));
+            }
+        }
+
+        private static System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(128);
+
+        private static string GetStackTrace(int skipFrames)
+        {
+            return new System.Diagnostics.StackTrace(skipFrames + 1, true).ToString();
+        }
+
+        private static string FormatStackTrace(string stackTrace)
+        {
+            if (string.IsNullOrEmpty(stackTrace))
+            {
+                return stackTrace;
+            }
+
+            stringBuilder.Length = 0;
+            stringBuilder.Append(stackTrace);
+
+            // Format stacktrace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
+            return stringBuilder.Remove(0, 1)
+                .Replace(":line ", ":")
+                .Replace("\n ", " \n")
+                .Replace("(", " (")
+                .Replace(") in", ") [0x00000] in") // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
+                .Append(" ")
+                .ToString();
+        }
+
+        partial void ValidateReturn(Promise other)
+        {
+            if (other == null)
+            {
+                // Returning a null from the callback is not allowed.
+                throw new InvalidReturnException("A null promise was returned.");
+            }
+
+            // Validate returned promise as not disposed.
+            try
+            {
+                ValidateOperation(other);
+            }
+            catch (ObjectDisposedException e)
+            {
+                throw new InvalidReturnException("A disposed promise was returned.", innerException: e);
+            }
+
+            // A promise cannot wait on itself.
+            for (var prev = other; prev != null; prev = prev._previous)
+            {
+                if (prev == this)
+                {
+                    throw new InvalidReturnException("Circular Promise chain detected.", other._createdStackTrace);
+                }
+            }
+        }
+
+        static partial void ValidateReturn(Delegate other)
+        {
+            if (other == null)
+            {
+                // Returning a null from the callback is not allowed.
+                throw new InvalidReturnException("A null delegate was returned.");
+            }
+        }
+
         static protected void ValidateProgressValue(float value)
         {
             const string argName = "progress";
@@ -76,7 +193,10 @@ namespace ProtoPromise
 
         protected void ValidateNotDisposed()
         {
-            // TODO
+            if (_disposed)
+            {
+                throw new ObjectDisposedException("Call Retain() if you want to perform operations after the promise has finished. Remember to call Release() when you are finished with it!");
+            }
         }
 
         static partial void ValidateOperation(Promise promise)
@@ -100,6 +220,16 @@ namespace ProtoPromise
         static partial void ValidateArgument(Delegate del, string argName)
         {
             ValidateArg(del, argName);
+        }
+
+        public override string ToString()
+        {
+            return string.Format("Type: Promise, Id: {0}, State: {1}", _id, _state);
+        }
+#else
+        public override string ToString()
+        {
+            return string.Format("Type: Promise, State: {0}", _state);
         }
 #endif
 
@@ -126,11 +256,11 @@ namespace ProtoPromise
 #else
         private void WaitFor(Promise other)
         {
-            Validate(other);
+            ValidateReturn(other);
             if (_state == DeferredState.Canceled)
             {
-                // Do nothing if this promise was canceled during the callback.
-                AddToDisposePool(this);
+                // Do nothing if this promise was canceled during the callback, just place in the handle queue so it can be repooled.
+                AddToHandleQueue(this);
             }
             else
             {
@@ -169,10 +299,6 @@ namespace ProtoPromise
             }
 #pragma warning restore RECS0001 // Class is declared partial but has only one part
         }
-
-#if DEBUG || PROGRESS
-        private Promise _previous;
-#endif
 
         protected virtual void ReportProgress(float progress) { }
 
@@ -249,14 +375,14 @@ namespace ProtoPromise
                 case DeferredState.Resolved:
                     {
                         // Report if resolved.
-                        progressDelegate.Report(_waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32());
+                        progressDelegate.Increment(_waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32());
                         break;
                     }
                 case DeferredState.Pending:
                     {
                         // Subscribe and report if pending.
                         promise.SubscribeProgress(progressDelegate);
-                        progressDelegate.Report(_waitDepthAndProgress.ToUInt32());
+                        progressDelegate.Increment(_waitDepthAndProgress.ToUInt32());
                         break;
                     }
                     // Else do nothing. At this point, the progress delegate is guaranteed to be subscribed to at least 1 promise, and/or already reported.
@@ -266,18 +392,18 @@ namespace ProtoPromise
         partial class Internal
         {
             /// <summary>
-            /// Max Whole Number: 2^(32-<see cref="Manager.ProgressDecimalBits"/>)
-            /// Precision: 1/(2^<see cref="Manager.ProgressDecimalBits"/>)
+            /// Max Whole Number: 2^(32-<see cref="Config.ProgressDecimalBits"/>)
+            /// Precision: 1/(2^<see cref="Config.ProgressDecimalBits"/>)
             /// </summary>
             public struct UnsignedFixed32
             {
-                private const uint DecimalMax = 1u << Manager.ProgressDecimalBits;
+                private const uint DecimalMax = 1u << Config.ProgressDecimalBits;
                 private const uint DecimalMask = DecimalMax - 1u;
                 private const uint WholeMask = ~DecimalMask;
 
                 private uint _value;
 
-                public uint WholePart { get { return _value >> Manager.ProgressDecimalBits; } }
+                public uint WholePart { get { return _value >> Config.ProgressDecimalBits; } }
                 public float DecimalPart { get { return (float)DecimalPartAsUInt32 / (float)DecimalMax; } }
                 private uint DecimalPartAsUInt32 { get { return _value & DecimalMask; } }
 
@@ -303,7 +429,7 @@ namespace ProtoPromise
                     {
                         return new UnsignedFixed32()
                         {
-                            _value = (_value & WholeMask) + (1u << Manager.ProgressDecimalBits)
+                            _value = (_value & WholeMask) + (1u << Config.ProgressDecimalBits)
                         };
                     }
                 }
@@ -338,6 +464,7 @@ namespace ProtoPromise
                     return progress;
                 }
 
+                // TODO: Invoke this async
                 public void Invoke()
                 {
                     if (_current.WholePart == _expected)
@@ -354,17 +481,10 @@ namespace ProtoPromise
                     }
                 }
 
-                public void Report(uint increment)
+                public void Increment(uint amount)
                 {
-                    _current.Increment(increment);
-                }
-
-                public static void ReportProgress(ValueLinkedStackZeroGC<ProgressDelegate> pool, uint increment)
-                {
-                    foreach (var pd in pool)
-                    {
-                        pd.Report(increment);
-                    }
+                    _current.Increment(amount);
+                    // TODO: add to async invoke list
                 }
 
                 public void Dispose()
@@ -410,7 +530,7 @@ namespace ProtoPromise
                     uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
                     foreach (var pl in _progressListeners)
                     {
-                        pl.Report(increment);
+                        pl.Increment(increment);
                     }
                 }
 
@@ -477,7 +597,7 @@ namespace ProtoPromise
                     uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
                     foreach (var pl in _progressListeners)
                     {
-                        pl.Report(increment);
+                        pl.Increment(increment);
                     }
                 }
 
@@ -533,7 +653,7 @@ namespace ProtoPromise
                     uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
                     foreach (var pl in _progressListeners)
                     {
-                        pl.Report(increment);
+                        pl.Increment(increment);
                     }
                 }
 
@@ -575,7 +695,7 @@ namespace ProtoPromise
                     uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
                     foreach (var pl in _progressListeners)
                     {
-                        pl.Report(increment);
+                        pl.Increment(increment);
                     }
                 }
 
@@ -616,7 +736,18 @@ namespace ProtoPromise
         {
             ValidateArg(del, argName);
         }
+
+        public override string ToString()
+        {
+            return string.Format("Type: Promise<{0}>, Id: {1}, State: {2}", typeof(T), _id, _state);
+        }
+#else
+        public override string ToString()
+        {
+            return string.Format("Type: Promise<{0}>, State: {1}", typeof(T), _state);
+        }
 #endif
+
         // Calls to this get compiled away when CANCEL is defined.
         static partial void ValidateCancel();
 #if !CANCEL
@@ -636,3 +767,4 @@ namespace ProtoPromise
 #endif
     }
 }
+#pragma warning restore IDE0034 // Simplify 'default' expression

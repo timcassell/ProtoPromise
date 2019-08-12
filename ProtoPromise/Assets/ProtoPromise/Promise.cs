@@ -32,9 +32,10 @@ namespace ProtoPromise
             checked
 #endif
             {
-                if (--_retainCounter == 0 && _state != DeferredState.Pending && _notHandling)
+                if (--_retainCounter == 0 & _state != DeferredState.Pending & _notHandling)
                 {
-                    // TODO: Continue handling so that the loop can add this back to the pool.
+                    // Place in the handle queue so it can be repooled.
+                    AddToHandleQueue(this);
                 }
             }
         }
