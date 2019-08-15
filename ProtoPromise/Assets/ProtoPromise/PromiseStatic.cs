@@ -409,7 +409,7 @@ namespace ProtoPromise
 				deferred = null;
 				promise = null;
 				pool.Push(this);
-				if (def.State == DeferredState.Pending)
+				if (def.State == PromiseState.Pending)
 				{
 					def.Resolve();
 				}
@@ -422,7 +422,7 @@ namespace ProtoPromise
 				var p = promise;
 				promise = null;
 				pool.Push(this);
-				if (def.State == DeferredState.Pending)
+				if (def.State == PromiseState.Pending)
 				{
 					def.Promise.RejectDirect(p._rejectedOrCanceledValue);
 					def.Dispose();
@@ -462,7 +462,7 @@ namespace ProtoPromise
 				deferred = null;
 				promise = null;
 				pool.Push(this);
-				if (def.State == DeferredState.Pending)
+				if (def.State == PromiseState.Pending)
 				{
 					def.Resolve(arg);
 				}
@@ -475,7 +475,7 @@ namespace ProtoPromise
 				var p = promise;
 				promise = null;
 				pool.Push(this);
-				if (def.State == DeferredState.Pending)
+				if (def.State == PromiseState.Pending)
 				{
 					def.Promise.RejectDirect(p._rejectedOrCanceledValue);
 					def.Dispose();

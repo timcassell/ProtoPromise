@@ -12,9 +12,10 @@ namespace ProtoPromise
 		private ValueLinkedQueue<Internal.ITreeHandleAble> _nextBranches;
 		protected Internal.IValueContainer _rejectedOrCanceledValue;
         private uint _retainCounter;
-        protected DeferredState _state;
+        protected PromiseState _state;
         private bool _wasWaitedOn; // Tells the handler that another promise waited on this promise (either by .Then/.Catch from this promise, or by returning this promise in another promise's .Then/.Catch)
         private bool _notHandling = true; // Is not already being handled in ContinueHandling or ContinueCanceling.
+        protected bool _dontPool;
 
         protected virtual U GetValue<U>()
         {
@@ -23,7 +24,9 @@ namespace ProtoPromise
 
         private void Reset(int skipFrames)
         {
-            _state = DeferredState.Pending;
+            _state = PromiseState.Pending;
+            _dontPool = Config.ObjectPooling != PoolType.All;
+            SetNotDisposed();
             SetCreatedStackTrace(skipFrames + 1);
         }
 
@@ -32,8 +35,8 @@ namespace ProtoPromise
 			if (_rejectedOrCanceledValue != null)
 			{
 				_rejectedOrCanceledValue.Release();
-				_rejectedOrCanceledValue = null;
-			}
+            }
+            SetDisposed();
 		}
 
 		protected virtual Promise GetDuplicate()
@@ -43,7 +46,7 @@ namespace ProtoPromise
 
 		protected void Resolve()
 		{
-			_state = DeferredState.Resolved;
+			_state = PromiseState.Resolved;
             AddToHandleQueue(this);
 		}
 
@@ -74,7 +77,7 @@ namespace ProtoPromise
 
         protected void Reject(Internal.IValueContainer rejectValue)
         {
-            _state = DeferredState.Rejected;
+            _state = PromiseState.Rejected;
             rejectValue.Retain();
             _rejectedOrCanceledValue = rejectValue;
             AddToHandleQueue(this);
@@ -88,13 +91,13 @@ namespace ProtoPromise
 
 		private void AddWaiter(Internal.ITreeHandleAble waiter)
 		{
-            if ((_state == DeferredState.Resolved | _state == DeferredState.Rejected) & _notHandling)
+            if ((_state == PromiseState.Resolved | _state == PromiseState.Rejected) & _notHandling)
             {
                 // Continue handling if this is resolved or rejected and it's not already being handled.
                 _nextBranches.AddLast(waiter);
                 AddToHandleQueue(this);
             }
-            else if (_state == DeferredState.Canceled)
+            else if (_state == PromiseState.Canceled)
             {
                 waiter.AssignCancelValue(_rejectedOrCanceledValue);
                 AddToCancelQueue(waiter);
@@ -116,7 +119,7 @@ namespace ProtoPromise
 
         void Internal.ITreeHandleAble.Handle(Promise feed)
         {
-            if (_state == DeferredState.Canceled)
+            if (_state == PromiseState.Canceled)
             {
                 // Place in the handle queue so it can be repooled.
                 AddToHandleQueue(this);
@@ -178,18 +181,18 @@ namespace ProtoPromise
         {
             if (_retainCounter == 0)
             {
-                if (!_wasWaitedOn & _state == DeferredState.Rejected)
+                if (!_wasWaitedOn & _state == PromiseState.Rejected)
                 {
                     // Rejection wasn't caught.
-                    AddRejectionToUnhandledStack((UnhandledException) _rejectedOrCanceledValue);
+                    AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValue);
                 }
                 Dispose();
             }
         }
 
-        private static ValueLinkedStack<UnhandledException> _unhandledExceptions;
+        private static ValueLinkedStack<Internal.UnhandledExceptionInternal> _unhandledExceptions;
 
-        private static void AddRejectionToUnhandledStack(UnhandledException unhandledValue)
+        private static void AddRejectionToUnhandledStack(Internal.UnhandledExceptionInternal unhandledValue)
         {
             // Prevent the same object from being added twice.
             if (unhandledValue.handled)
@@ -197,6 +200,8 @@ namespace ProtoPromise
                 return;
             }
             unhandledValue.handled = true;
+            // Make sure it's not re-used before it's thrown.
+            unhandledValue.Retain();
             _unhandledExceptions.Push(unhandledValue);
         }
 
@@ -207,12 +212,14 @@ namespace ProtoPromise
                 return;
             }
 
-            ValueLinkedStack<UnhandledException> unhandledExceptions = _unhandledExceptions;
+            ValueLinkedStack<Internal.UnhandledExceptionInternal> unhandledExceptions = _unhandledExceptions;
             _unhandledExceptions.Clear();
             // Reset handled flag.
-            foreach (UnhandledException unhandled in unhandledExceptions)
+            foreach (Internal.UnhandledExceptionInternal unhandled in unhandledExceptions)
             {
                 unhandled.handled = false;
+                // Allow to re-use.
+                unhandled.Release();
             }
             throw new AggregateException(unhandledExceptions);
         }
@@ -346,7 +353,10 @@ namespace ProtoPromise
                 protected override void Dispose()
                 {
                     base.Dispose();
-                    _pool.Push(this);
+                    if (!_dontPool & Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
                 }
             }
 
@@ -362,7 +372,10 @@ namespace ProtoPromise
                 protected override void Dispose()
                 {
                     base.Dispose();
-                    _pool.Push(this);
+                    if (!_dontPool & Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
                 }
             }
 
@@ -373,7 +386,7 @@ namespace ProtoPromise
                 public static LitePromise GetOrCreate()
                 {
                     var promise = _pool.IsNotEmpty ? (LitePromise)_pool.Pop() : new LitePromise();
-                    promise.Reset();
+                    promise.Reset(2);
                     promise.ResetDepth();
                     return promise;
                 }
@@ -386,7 +399,7 @@ namespace ProtoPromise
                 public static LitePromise<T> GetOrCreate()
                 {
                     var promise = _pool.IsNotEmpty ? (LitePromise<T>)_pool.Pop() : new LitePromise<T>();
-                    promise.Reset();
+                    promise.Reset(2);
                     promise.ResetDepth();
                     return promise;
                 }
@@ -447,7 +460,7 @@ namespace ProtoPromise
                     base.Handle(feed);
                     var callback = resolveHandler;
                     resolveHandler = null;
-                    if (_state == DeferredState.Resolved)
+                    if (_state == PromiseState.Resolved)
                     {
                         callback.Invoke();
                     }
@@ -483,7 +496,7 @@ namespace ProtoPromise
                     base.Handle(feed);
                     var callback = resolveHandler;
                     resolveHandler = null;
-                    if (_state == DeferredState.Resolved)
+                    if (_state == PromiseState.Resolved)
                     {
                         callback.Invoke(feed.GetValue<TArg>());
                     }
@@ -519,7 +532,7 @@ namespace ProtoPromise
                     base.Handle(feed);
                     var callback = resolveHandler;
                     resolveHandler = null;
-                    if (_state == DeferredState.Resolved)
+                    if (_state == PromiseState.Resolved)
                     {
                         _value = callback.Invoke();
                     }
@@ -555,7 +568,7 @@ namespace ProtoPromise
                     base.Handle(feed);
                     var callback = resolveHandler;
                     resolveHandler = null;
-                    if (_state == DeferredState.Resolved)
+                    if (_state == PromiseState.Resolved)
                     {
                         _value = callback.Invoke(feed.GetValue<TArg>());
                     }
@@ -601,7 +614,7 @@ namespace ProtoPromise
                     {
                         var callback = resolveHandler;
                         resolveHandler = null;
-                        if (feed._state == DeferredState.Resolved)
+                        if (feed._state == PromiseState.Resolved)
                         {
                             WaitFor(callback.Invoke());
                         }
@@ -649,7 +662,7 @@ namespace ProtoPromise
                     {
                         var callback = resolveHandler;
                         resolveHandler = null;
-                        if (feed._state == DeferredState.Resolved)
+                        if (feed._state == PromiseState.Resolved)
                         {
                             WaitFor(callback.Invoke(feed.GetValue<TArg>()));
                         }
@@ -697,7 +710,7 @@ namespace ProtoPromise
                     {
                         var callback = resolveHandler;
                         resolveHandler = null;
-                        if (feed._state == DeferredState.Resolved)
+                        if (feed._state == PromiseState.Resolved)
                         {
                             WaitFor(callback.Invoke());
                         }
@@ -745,7 +758,7 @@ namespace ProtoPromise
                     {
                         var callback = resolveHandler;
                         resolveHandler = null;
-                        if (feed._state == DeferredState.Resolved)
+                        if (feed._state == PromiseState.Resolved)
                         {
                             WaitFor(callback.Invoke(feed.GetValue<TArg>()));
                         }
@@ -783,7 +796,7 @@ namespace ProtoPromise
                 {
                     var callback = resolveHandler;
                     resolveHandler = null;
-                    if (feed._state == DeferredState.Resolved)
+                    if (feed._state == PromiseState.Resolved)
                     {
                         var deferredAction = callback.Invoke();
                         ValidateReturn(deferredAction);
@@ -822,7 +835,7 @@ namespace ProtoPromise
                 {
                     var callback = resolveHandler;
                     resolveHandler = null;
-                    if (feed._state == DeferredState.Resolved)
+                    if (feed._state == PromiseState.Resolved)
                     {
                         var deferredAction = callback.Invoke(feed.GetValue<TArg>());
                         ValidateReturn(deferredAction);
@@ -861,7 +874,7 @@ namespace ProtoPromise
                 {
                     var callback = resolveHandler;
                     resolveHandler = null;
-                    if (feed._state == DeferredState.Resolved)
+                    if (feed._state == PromiseState.Resolved)
                     {
                         var deferredAction = callback.Invoke();
                         ValidateReturn(deferredAction);
@@ -900,7 +913,7 @@ namespace ProtoPromise
                 {
                     var callback = resolveHandler;
                     resolveHandler = null;
-                    if (feed._state == DeferredState.Resolved)
+                    if (feed._state == PromiseState.Resolved)
                     {
                         var deferredAction = callback.Invoke(feed.GetValue<TArg>());
                         ValidateReturn(deferredAction);
@@ -942,13 +955,13 @@ namespace ProtoPromise
                 {
                     var callback = rejectHandler;
                     rejectHandler = null;
-                    if (feed._state == DeferredState.Rejected)
+                    if (feed._state == PromiseState.Rejected)
                     {
                         _state = feed._state; // Set the state so a Cancel call won't do anything during invoke.
                         _notHandling = false; // Set handling flag so a .Then/.Catch during invoke won't add to handle queue.
                         if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue))
                         {
-                            _state = DeferredState.Resolved;
+                            _state = PromiseState.Resolved;
                             AddToHandleQueue(this);
                         }
                         else
@@ -990,13 +1003,13 @@ namespace ProtoPromise
                 {
                     var callback = rejectHandler;
                     rejectHandler = null;
-                    if (feed._state == DeferredState.Rejected)
+                    if (feed._state == PromiseState.Rejected)
                     {
                         _state = feed._state; // Set the state so a Cancel call won't do anything during invoke.
                         _notHandling = false; // Set handling flag so a .Then/.Catch during invoke won't add to handle queue.
                         if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out _value))
                         {
-                            _state = DeferredState.Resolved;
+                            _state = PromiseState.Resolved;
                             AddToHandleQueue(this);
                         }
                         else
@@ -1049,7 +1062,7 @@ namespace ProtoPromise
                     {
                         var callback = rejectHandler;
                         rejectHandler = null;
-                        if (feed._state == DeferredState.Rejected)
+                        if (feed._state == PromiseState.Rejected)
                         {
                             Promise promise;
                             if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out promise))
@@ -1107,7 +1120,7 @@ namespace ProtoPromise
                     {
                         var callback = rejectHandler;
                         rejectHandler = null;
-                        if (feed._state == DeferredState.Rejected)
+                        if (feed._state == PromiseState.Rejected)
                         {
                             Promise<TPromise> promise;
                             if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out promise))
@@ -1155,7 +1168,7 @@ namespace ProtoPromise
                 {
                     var callback = rejectHandler;
                     rejectHandler = null;
-                    if (feed._state == DeferredState.Rejected)
+                    if (feed._state == PromiseState.Rejected)
                     {
                         Action<Deferred> deferredDelegate;
                         if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out deferredDelegate))
@@ -1202,7 +1215,7 @@ namespace ProtoPromise
                 {
                     var callback = rejectHandler;
                     rejectHandler = null;
-                    if (feed._state == DeferredState.Rejected)
+                    if (feed._state == PromiseState.Rejected)
                     {
                         Action<Deferred> deferredDelegate;
                         if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out deferredDelegate))
@@ -1256,7 +1269,7 @@ namespace ProtoPromise
                     onRejected = null;
                     _state = feed._state; // Set the state so a Cancel call won't do anything during invoke.
                     _notHandling = false; // Set handling flag so a .Then/.Catch during invoke won't add to handle queue.
-                    if (feed._state == DeferredState.Resolved)
+                    if (feed._state == PromiseState.Resolved)
                     {
                         rejectCallback.Dispose();
                         resolveCallback.DisposeAndInvoke(feed);
@@ -1271,7 +1284,7 @@ namespace ProtoPromise
                             return;
                         }
                     }
-                    _state = DeferredState.Resolved;
+                    _state = PromiseState.Resolved;
                     AddToHandleQueue(this);
                 }
 
@@ -1308,7 +1321,7 @@ namespace ProtoPromise
                     onRejected = null;
                     _state = feed._state; // Set the state so a Cancel call won't do anything during invoke.
                     _notHandling = false; // Set handling flag so a .Then/.Catch during invoke won't add to handle queue.
-                    if (feed._state == DeferredState.Resolved)
+                    if (feed._state == PromiseState.Resolved)
                     {
                         rejectCallback.Dispose();
                         _value = resolveCallback.DisposeAndInvoke(feed);
@@ -1323,7 +1336,7 @@ namespace ProtoPromise
                             return;
                         }
                     }
-                    _state = DeferredState.Resolved;
+                    _state = PromiseState.Resolved;
                     AddToHandleQueue(this);
                 }
 
@@ -1370,7 +1383,7 @@ namespace ProtoPromise
                         var rejectCallback = onRejected;
                         onRejected = null;
                         Promise promise;
-                        if (feed._state == DeferredState.Resolved)
+                        if (feed._state == PromiseState.Resolved)
                         {
                             rejectCallback.Dispose();
                             promise = resolveCallback.DisposeAndInvoke(feed);
@@ -1432,7 +1445,7 @@ namespace ProtoPromise
                         var rejectCallback = onRejected;
                         onRejected = null;
                         Promise<TPromise> promise;
-                        if (feed._state == DeferredState.Resolved)
+                        if (feed._state == PromiseState.Resolved)
                         {
                             rejectCallback.Dispose();
                             promise = resolveCallback.DisposeAndInvoke(feed);
@@ -1484,7 +1497,7 @@ namespace ProtoPromise
                     var rejectCallback = onRejected;
                     onRejected = null;
                     Action<Deferred> deferredDelegate;
-                    if (feed._state == DeferredState.Resolved)
+                    if (feed._state == PromiseState.Resolved)
                     {
                         rejectCallback.Dispose();
                         deferredDelegate = resolveCallback.DisposeAndInvoke(feed);
@@ -1536,7 +1549,7 @@ namespace ProtoPromise
                     var rejectCallback = onRejected;
                     onRejected = null;
                     Action<Deferred> deferredDelegate;
-                    if (feed._state == DeferredState.Resolved)
+                    if (feed._state == PromiseState.Resolved)
                     {
                         rejectCallback.Dispose();
                         deferredDelegate = resolveCallback.DisposeAndInvoke(feed);
@@ -1583,7 +1596,7 @@ namespace ProtoPromise
 
                 protected override void Handle(Promise feed)
                 {
-                    _state = DeferredState.Resolved;
+                    _state = PromiseState.Resolved;
                     AddToHandleQueue(this);
                     var callback = onComplete;
                     onComplete = null;
@@ -1613,7 +1626,7 @@ namespace ProtoPromise
 
                 protected override void Handle(Promise feed)
                 {
-                    _state = DeferredState.Resolved;
+                    _state = PromiseState.Resolved;
                     AddToHandleQueue(this);
                     var callback = onComplete;
                     onComplete = null;
@@ -2235,9 +2248,11 @@ namespace ProtoPromise
                 void AssignCancelValue(IValueContainer cancelValue);
             }
 
-            public interface IValueContainer : IRetainable
+            public interface IValueContainer
             {
                 bool TryGetValueAs<U>(out U value);
+                void Retain();
+                void Release();
             }
 
             public interface IDelegate
@@ -2254,8 +2269,28 @@ namespace ProtoPromise
                 void Dispose();
             }
 
-#region ValueWrappers
-            public sealed class UnhandledExceptionVoid : UnhandledException, IValueContainer
+            #region ValueWrappers
+            public abstract class UnhandledExceptionInternal : UnhandledException, IValueContainer, ILinked<UnhandledExceptionInternal>
+            {
+                UnhandledExceptionInternal ILinked<UnhandledExceptionInternal>.Next { get; set; }
+
+                public bool handled;
+
+                protected UnhandledExceptionInternal() { }
+                protected UnhandledExceptionInternal(Exception innerException) : base(innerException) { }
+
+                public virtual void Release() { }
+
+                public virtual void Retain() { }
+
+                public virtual bool TryGetValueAs<U>(out U value)
+                {
+                    value = default(U);
+                    return false;
+                }
+            }
+
+            public sealed class UnhandledExceptionVoid : UnhandledExceptionInternal
             {
                 // We can reuse the same object.
                 private static readonly UnhandledExceptionVoid obj = new UnhandledExceptionVoid();
@@ -2285,25 +2320,13 @@ namespace ProtoPromise
                         return "A non-value rejection was not handled.";
                     }
                 }
-
-                public bool TryGetValueAs<U>(out U value)
-                {
-                    value = default(U);
-                    return false;
-                }
-
-                public void Retain() { }
-
-                public void Release() { }
-
-                public bool IsRetained { get { return false; } }
             }
 
-            public sealed class UnhandledException<T> : UnhandledException, IValueContainer
+            public sealed class UnhandledException<T> : UnhandledExceptionInternal
             {
                 public T Value { get; private set; }
 
-                private static ValueLinkedStack<UnhandledException> _pool;
+                private static ValueLinkedStack<UnhandledExceptionInternal> _pool;
 
                 private uint retainCounter;
 
@@ -2326,7 +2349,7 @@ namespace ProtoPromise
                     return Value;
                 }
 
-                public bool TryGetValueAs<U>(out U value)
+                public override bool TryGetValueAs<U>(out U value)
                 {
                     // This avoids boxing value types.
 #if CSHARP_7_OR_LATER
@@ -2357,12 +2380,12 @@ namespace ProtoPromise
                     }
                 }
 
-                public void Retain()
+                public override void Retain()
                 {
                     ++retainCounter;
                 }
 
-                public void Release()
+                public override void Release()
                 {
                     if (--retainCounter == 0)
                     {
@@ -2370,11 +2393,9 @@ namespace ProtoPromise
                         _pool.Push(this);
                     }
                 }
-
-                public bool IsRetained { get { return retainCounter > 0; } }
             }
 
-            public sealed class UnhandledExceptionException : UnhandledException, IValueContainer
+            public sealed class UnhandledExceptionException : UnhandledExceptionInternal
             {
                 private UnhandledExceptionException(Exception innerException) : base(innerException) { }
 
@@ -2399,7 +2420,7 @@ namespace ProtoPromise
                     return InnerException;
                 }
 
-                public bool TryGetValueAs<U>(out U value)
+                public override bool TryGetValueAs<U>(out U value)
                 {
 #if CSHARP_7_OR_LATER
                     if (InnerException is U val)
@@ -2415,12 +2436,6 @@ namespace ProtoPromise
                     value = default(U);
                     return false;
                 }
-
-                public void Retain() { }
-
-                public void Release() { }
-
-                public bool IsRetained { get { return false; } }
             }
 
             public sealed class CancelVoid : IValueContainer
@@ -2540,7 +2555,7 @@ namespace ProtoPromise
                     ValidateOperation(Promise);
                     ValidateProgress(progress);
 
-                    if (State != DeferredState.Pending)
+                    if (State != PromiseState.Pending)
                     {
                         Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
                         return;
@@ -2553,7 +2568,7 @@ namespace ProtoPromise
                 {
                     ValidateOperation(Promise);
 
-                    if (State != DeferredState.Pending)
+                    if (State != PromiseState.Pending)
                     {
                         Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
                         return;
@@ -2567,7 +2582,7 @@ namespace ProtoPromise
                     ValidateCancel();
                     ValidateOperation(Promise);
 
-                    if (State != DeferredState.Pending)
+                    if (State != PromiseState.Pending)
                     {
                         Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
                         return;
@@ -2581,7 +2596,7 @@ namespace ProtoPromise
                     ValidateCancel();
                     ValidateOperation(Promise);
 
-                    if (State != DeferredState.Pending)
+                    if (State != PromiseState.Pending)
                     {
                         Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
                         return;
@@ -2594,7 +2609,7 @@ namespace ProtoPromise
                 {
                     ValidateOperation(Promise);
 
-                    if (State != DeferredState.Pending)
+                    if (State != PromiseState.Pending)
                     {
                         Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
                         return;
@@ -2607,7 +2622,7 @@ namespace ProtoPromise
                 {
                     ValidateOperation(Promise);
 
-                    if (State != DeferredState.Pending)
+                    if (State != PromiseState.Pending)
                     {
                         Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
                         return;
@@ -2636,7 +2651,7 @@ namespace ProtoPromise
                     ValidateOperation(Promise);
                     ValidateProgress(progress);
 
-                    if (State != DeferredState.Pending)
+                    if (State != PromiseState.Pending)
                     {
                         Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
                         return;
@@ -2649,7 +2664,7 @@ namespace ProtoPromise
                 {
                     ValidateOperation(Promise);
 
-                    if (State != DeferredState.Pending)
+                    if (State != PromiseState.Pending)
                     {
                         Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
                         return;
@@ -2663,7 +2678,7 @@ namespace ProtoPromise
                     ValidateCancel();
                     ValidateOperation(Promise);
 
-                    if (State != DeferredState.Pending)
+                    if (State != PromiseState.Pending)
                     {
                         Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
                         return;
@@ -2677,7 +2692,7 @@ namespace ProtoPromise
                     ValidateCancel();
                     ValidateOperation(Promise);
 
-                    if (State != DeferredState.Pending)
+                    if (State != PromiseState.Pending)
                     {
                         Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
                         return;
@@ -2690,7 +2705,7 @@ namespace ProtoPromise
                 {
                     ValidateOperation(Promise);
 
-                    if (State != DeferredState.Pending)
+                    if (State != PromiseState.Pending)
                     {
                         Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
                         return;
@@ -2703,7 +2718,7 @@ namespace ProtoPromise
                 {
                     ValidateOperation(Promise);
 
-                    if (State != DeferredState.Pending)
+                    if (State != PromiseState.Pending)
                     {
                         Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state. Attempted reject reason:\n" + reason);
                         return;

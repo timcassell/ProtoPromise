@@ -2,7 +2,7 @@
 {
 	partial class Promise
     {
-        public enum DeferredState : byte
+        public enum PromiseState : byte
         {
             Pending,
             Resolved,
@@ -12,7 +12,7 @@
 
         public abstract class DeferredBase : ICancelableAny, IRetainable
         {
-            public DeferredState State { get { return Promise._state; } }
+            public PromiseState State { get { return Promise._state; } }
 
             public virtual Promise Promise { get; protected set; }
 

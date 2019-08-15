@@ -42,14 +42,10 @@ namespace ProtoPromise
 			public override string StackTrace { get { return _stackTrace; } }
 		}
 
-		public abstract class UnhandledException : Exception, ILinked<UnhandledException>
-		{
-			UnhandledException ILinked<UnhandledException>.Next { get; set; }
-
+		public abstract class UnhandledException : Exception
+        {
 			protected UnhandledException() { }
 			protected UnhandledException(Exception innerException) : base(null, innerException) { }
-
-			internal bool handled;
 
             public abstract object GetValue();
 
@@ -252,15 +248,58 @@ namespace ProtoPromise
         }
     }
 
-	public struct ValueLinkedStackZeroGC<T> : IEnumerable<T>
+    public sealed class ReusableValueContainer<T> : IDisposable, ILinked<ReusableValueContainer<T>>
+    {
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+        private static ValueLinkedStack<ReusableValueContainer<T>> _pool;
+#pragma warning restore RECS0108 // Warns about static fields in generic types
+
+        public static void ClearPool()
+        {
+            _pool.Clear();
+        }
+
+        ReusableValueContainer<T> ILinked<ReusableValueContainer<T>>.Next { get; set; }
+
+        public T value;
+
+        /// <summary>
+        /// Returns a new reusable value container containing <paramref name="value"/>.
+        /// It will try to get from the pool, otherwise it will create a new object.
+        /// </summary>
+        public static ReusableValueContainer<T> New(T value)
+        {
+            ReusableValueContainer<T> node = _pool.IsNotEmpty ? _pool.Pop() : new ReusableValueContainer<T>();
+            node.value = value;
+            return node;
+        }
+
+        /// <summary>
+        /// Adds this object back to the pool.
+        /// Don't try to access it after disposing! Results are undefined.
+        /// </summary>
+        /// <remarks>Call <see cref="Dispose"/> when you are finished using the
+        /// <see cref="T:ProtoPromise.ReusableValueContainer`1"/>. The <see cref="Dispose"/> method leaves the
+        /// <see cref="T:ProtoPromise.ReusableValueContainer`1"/> in an unusable state. After calling
+        /// <see cref="Dispose"/>, you must release all references to the
+        /// <see cref="T:ProtoPromise.ReusableValueContainer`1"/> so the garbage collector can reclaim the memory that
+        /// the <see cref="T:ProtoPromise.ReusableValueContainer`1"/> was occupying.</remarks>
+        public void Dispose()
+        {
+            value = default(T);
+            _pool.Push(this);
+        }
+    }
+
+    public struct ValueLinkedStackZeroGC<T> : IEnumerable<T>
     {
         public struct Enumerator : IEnumerator<T>
         {
-            Enumerator<Node> enumerator;
+            Enumerator<ReusableValueContainer<T>> enumerator;
 
-            public Enumerator (ValueLinkedStackZeroGC<T> stack)
+            public Enumerator(ValueLinkedStackZeroGC<T> stack)
             {
-                enumerator = new Enumerator<Node>(stack._stack.Peek());
+                enumerator = new Enumerator<ReusableValueContainer<T>>(stack._stack.Peek());
             }
 
             public bool MoveNext()
@@ -272,7 +311,7 @@ namespace ProtoPromise
             {
                 get
                 {
-                    return enumerator.Current.item;
+                    return enumerator.Current.value;
                 }
             }
 
@@ -289,78 +328,139 @@ namespace ProtoPromise
             void IDisposable.Dispose() { }
         }
 
-        private class Node : ILinked<Node>
-		{
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<Node> _pool;
-#pragma warning restore RECS0108 // Warns about static fields in generic types
+        public static void ClearPooledNodes()
+        {
+            ReusableValueContainer<T>.ClearPool();
+        }
 
-			public static void ClearPool()
-			{
-				_pool.Clear();
-			}
+        private ValueLinkedStack<ReusableValueContainer<T>> _stack;
 
-			Node ILinked<Node>.Next { get; set; }
+        public bool IsEmpty { get { return _stack.IsEmpty; } }
+        public bool IsNotEmpty { get { return _stack.IsNotEmpty; } }
 
-			public T item;
+        public void Clear()
+        {
+            while (_stack.IsNotEmpty)
+            {
+                _stack.Pop().Dispose();
+            }
+        }
 
-			public static Node GetOrCreate(T item)
-			{
-				Node node = _pool.IsNotEmpty ? _pool.Pop() : new Node();
-				node.item = item;
-				return node;
-			}
+        public void ClearAndDontRepool()
+        {
+            _stack.Clear();
+        }
 
-			public T TakeItemAndDispose()
-			{
-				T temp = item;
-				Dispose();
-				return temp;
-			}
+        public void Push(T item)
+        {
+            _stack.Push(ReusableValueContainer<T>.New(item));
+        }
 
-			public void Dispose()
-			{
-				item = default(T);
-				_pool.Push(this);
-			}
-		}
+        public T Pop()
+        {
+            var node = _stack.Pop();
+            T item = node.value;
+            node.Dispose();
+            return item;
+        }
 
-		public static void ClearPooledNodes()
-		{
-			Node.ClearPool();
-		}
+        public T Peek()
+        {
+            return _stack.Peek().value;
+        }
 
-		private ValueLinkedStack<Node> _stack;
+        public Enumerator GetEnumerator()
+        {
+            return new Enumerator(this);
+        }
 
-		public bool IsEmpty { get { return _stack.IsEmpty; } }
-		public bool IsNotEmpty { get { return _stack.IsNotEmpty; } }
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
 
-		public void Clear()
-		{
-			while (_stack.IsNotEmpty)
-			{
-				_stack.Pop().Dispose();
-			}
-		}
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
 
-		public void ClearAndDontRepool()
-		{
-			_stack.Clear();
-		}
+    public struct ValueLinkedQueueZeroGC<T> : IEnumerable<T>
+    {
+        public struct Enumerator : IEnumerator<T>
+        {
+            Enumerator<ReusableValueContainer<T>> enumerator;
 
-		public void Push(T item)
-		{
-			_stack.Push(Node.GetOrCreate(item));
-		}
+            public Enumerator(ValueLinkedQueueZeroGC<T> stack)
+            {
+                enumerator = new Enumerator<ReusableValueContainer<T>>(stack._queue.PeekFirst());
+            }
 
-		public T Pop()
-		{
-			return _stack.Pop().TakeItemAndDispose();
-		}
+            public bool MoveNext()
+            {
+                return enumerator.MoveNext();
+            }
 
-		public T Peek()
-		{
-			return _stack.Peek().item;
+            public T Current
+            {
+                get
+                {
+                    return enumerator.Current.value;
+                }
+            }
+
+            object IEnumerator.Current
+            {
+                get
+                {
+                    return Current;
+                }
+            }
+
+            void IEnumerator.Reset() { }
+
+            void IDisposable.Dispose() { }
+        }
+
+        public static void ClearPooledNodes()
+        {
+            ReusableValueContainer<T>.ClearPool();
+        }
+
+        private ValueLinkedQueue<ReusableValueContainer<T>> _queue;
+
+        public bool IsEmpty { get { return _queue.IsEmpty; } }
+        public bool IsNotEmpty { get { return _queue.IsNotEmpty; } }
+
+        public void Clear()
+        {
+            while (_queue.IsNotEmpty)
+            {
+                _queue.TakeFirst().Dispose();
+            }
+        }
+
+        public void ClearAndDontRepool()
+        {
+            _queue.Clear();
+        }
+
+        public void Enqueue(T item)
+        {
+            _queue.AddLast(ReusableValueContainer<T>.New(item));
+        }
+
+        public T Dequeue()
+        {
+            var node = _queue.TakeFirst();
+            T item = node.value;
+            node.Dispose();
+            return item;
+        }
+
+        public T Peek()
+        {
+            return _queue.PeekFirst().value;
         }
 
         public Enumerator GetEnumerator()

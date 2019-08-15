@@ -4,6 +4,7 @@
 // undef PROGRESS to disable, or define PROGRESS to enable progress reports on promises.
 // If PROGRESS is defined, promises use more memory. If PROGRESS is undefined, there is no limit to the depth of a promise chain.
 #define PROGRESS
+// TODO: Obsolete attributes.
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 using System;
@@ -12,7 +13,7 @@ namespace ProtoPromise
 {
     partial class Promise
     {
-        public enum GeneratedStacktrace
+        public enum GeneratedStacktrace : byte
         {
             /// <summary>
             /// Don't generate any extra stack traces.
@@ -26,7 +27,25 @@ namespace ProtoPromise
             /// <summary>
             /// Generate stack traces when Deferred.Reject is called.
             /// Also generate stack traces every time a promise is created (i.e. with .Then). This can help debug where an invalid object was returned from a .Then delegate.
+            /// If a .Then/.Catch callback throws an exception, the generated stack trace is appended to the exception's stacktrace.
+            /// <para/>
             /// NOTE: This can be extremely expensive, so you should only enable this if you ran into an error and you are not sure where it came from.
+            /// </summary>
+            All
+        }
+
+        public enum PoolType : byte
+        {
+            /// <summary>
+            /// Don't pool any objects.
+            /// </summary>
+            None,
+            /// <summary>
+            /// Only pool internal objects.
+            /// </summary>
+            Internal,
+            /// <summary>
+            /// Pool all objects, internal and public.
             /// </summary>
             All
         }
@@ -35,17 +54,23 @@ namespace ProtoPromise
         {
             /// <summary>
             /// If you need to support more whole numbers (longer promise chains), decrease decimalBits. If you need higher precision, increase decimalBits.
+            /// <para/>
             /// Max Whole Number: 2^(32-<see cref="ProgressDecimalBits"/>)
             /// Precision: 1/(2^<see cref="ProgressDecimalBits"/>)
-            /// NOTE: promises that don't wait (.Then with an onResolved that simply returns a value or void) don't count towards the promise chain depth limit.
+            /// <para/>
+            /// NOTE: promises that don't wait (.Then with an onResolved that simply returns a value or void) don't count towards the promise chain limit.
             /// </summary>
             public const int ProgressDecimalBits = 13;
 
             /// <summary>
-            /// Highly recommend to leave this false in DEBUG mode, so that exceptions will fire if/when promises are used incorrectly after they have already completed.
+            /// Highly recommend to leave this None or Internal in DEBUG mode, so that exceptions will propagate if/when promises are used incorrectly after they have already completed.
             /// </summary>
-            public static bool PoolObjects { get; set; }
+            public static PoolType ObjectPooling { get; set; }
+            // TODO: Check this before pooling internal objects.
 
+            /// <summary>
+            /// Clears all currently pooled objects. Does not affect pending or retained promises.
+            /// </summary>
             public static void ClearObjectPool()
             {
                 Internal.OnClearPool.Invoke();
@@ -82,19 +107,41 @@ namespace ProtoPromise
         static partial void ValidateArgument(Delegate del, string argName);
         partial void ValidateReturn(Promise other);
         static partial void ValidateReturn(Delegate other);
+
         partial void SetCreatedStackTrace(int skipFrames);
         partial void SetStackTraceFromCreated(UnhandledException unhandledException);
         static partial void SetRejectStackTrace(UnhandledException unhandledException, int skipFrames);
-        partial void SetDisposed(bool disposed);
+        partial void SetNotDisposed();
 #if DEBUG
-        private bool _disposed;
         private string _createdStackTrace;
         private static int idCounter;
         protected readonly int _id;
 
-        partial void SetDisposed(bool disposed)
+        private void SetDisposed()
         {
-            _disposed = disposed;
+            _rejectedOrCanceledValue = Internal.DisposedChecker.instance;
+        }
+
+        partial void SetNotDisposed()
+        {
+            _rejectedOrCanceledValue = null;
+        }
+
+        partial class Internal
+        {
+            // This allows me to re-use the reference field without having to add another bool field.
+            public sealed class DisposedChecker : IValueContainer
+            {
+                public static readonly DisposedChecker instance = new DisposedChecker();
+
+                private DisposedChecker() { }
+
+                void IValueContainer.Release() { throw new InvalidOperationException(); }
+
+                void IValueContainer.Retain() { throw new InvalidOperationException(); }
+
+                bool IValueContainer.TryGetValueAs<U>(out U value) { throw new InvalidOperationException(); }
+            }
         }
 
         partial void SetCreatedStackTrace(int skipFrames)
@@ -193,7 +240,7 @@ namespace ProtoPromise
 
         protected void ValidateNotDisposed()
         {
-            if (_disposed)
+            if (ReferenceEquals(_rejectedOrCanceledValue, Internal.DisposedChecker.instance))
             {
                 throw new ObjectDisposedException("Call Retain() if you want to perform operations after the promise has finished. Remember to call Release() when you are finished with it!");
             }
@@ -227,6 +274,12 @@ namespace ProtoPromise
             return string.Format("Type: Promise, Id: {0}, State: {1}", _id, _state);
         }
 #else
+        private void SetDisposed()
+        {
+            // Allow GC to clean up the object if necessary.
+            _rejectedOrCanceledValue = null;
+        }
+
         public override string ToString()
         {
             return string.Format("Type: Promise, State: {0}", _state);
@@ -257,7 +310,7 @@ namespace ProtoPromise
         private void WaitFor(Promise other)
         {
             ValidateReturn(other);
-            if (_state == DeferredState.Canceled)
+            if (_state == PromiseState.Canceled)
             {
                 // Do nothing if this promise was canceled during the callback, just place in the handle queue so it can be repooled.
                 AddToHandleQueue(this);
@@ -355,7 +408,7 @@ namespace ProtoPromise
 
         partial void ProgressInternal(Action<float> onProgress)
         {
-            if (_state == DeferredState.Rejected || _state == DeferredState.Canceled)
+            if (_state == PromiseState.Rejected || _state == PromiseState.Canceled)
             {
                 // Don't report progress if the promise is canceled or rejected.
                 return;
@@ -372,13 +425,13 @@ namespace ProtoPromise
 
             switch (promise._state)
             {
-                case DeferredState.Resolved:
+                case PromiseState.Resolved:
                     {
                         // Report if resolved.
                         progressDelegate.Increment(_waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32());
                         break;
                     }
-                case DeferredState.Pending:
+                case PromiseState.Pending:
                     {
                         // Subscribe and report if pending.
                         promise.SubscribeProgress(progressDelegate);
@@ -440,11 +493,53 @@ namespace ProtoPromise
                 }
             }
 
+            // Handle progress in a FIFO manner.
+            private static ValueLinkedQueueZeroGC<ProgressDelegate> _progressQueue;
+            private static bool _runningProgress;
+
+            //protected static void AddToHandleQueue(Promise promise)
+            //{
+            //    promise._notHandling = false;
+            //    _handleQueue.AddLast(promise);
+            //}
+
+            //// TODO: Call this.
+            //// This allows infinite .Then/.Catch callbacks, since it avoids recursion.
+            //protected static void ContinueHandling()
+            //{
+            //    if (_runningHandles)
+            //    {
+            //        // ContinueHandling is running higher in the program stack, so just return.
+            //        return;
+            //    }
+
+            //    _runningHandles = true;
+
+            //    while (_handleQueue.IsNotEmpty)
+            //    {
+            //        Internal.ITreeHandleAble _current = _handleQueue.TakeFirst();
+            //        Promise current = (Promise)_current;
+
+            //        while (current._nextBranches.IsNotEmpty)
+            //        {
+            //            current._nextBranches.TakeFirst().Handle(current);
+            //        }
+
+            //        current._notHandling = true;
+            //        _current.Repool();
+            //    }
+
+            //    _handleQueue.ClearLast();
+            //    _runningHandles = false;
+            //}
+
             public class ProgressDelegate : IDisposable
             {
                 private Action<float> _onProgress;
                 private UnsignedFixed32 _current;
                 private uint _expected;
+                private bool _handling;
+                private bool _done;
 
                 private static ValueLinkedStackZeroGC<ProgressDelegate> _pool;
 
@@ -461,12 +556,21 @@ namespace ProtoPromise
                     progress._onProgress = onProgress;
                     progress._expected = expected;
                     progress._current = default(UnsignedFixed32);
+                    progress._done = false;
                     return progress;
                 }
 
                 // TODO: Invoke this async
                 public void Invoke()
                 {
+                    _handling = false;
+
+                    if (_done)
+                    {
+                        Dispose();
+                        return;
+                    }
+
                     if (_current.WholePart == _expected)
                     {
                         var temp = _onProgress;
@@ -483,8 +587,19 @@ namespace ProtoPromise
 
                 public void Increment(uint amount)
                 {
+                    _handling = true;
+
                     _current.Increment(amount);
-                    // TODO: add to async invoke list
+                    if (_current.WholePart == _expected)
+                    {
+                        _done = true;
+                        _onProgress.Invoke(1);
+                    }
+                    if (!_handling)
+                    {
+                        // TODO: add to async invoke list
+
+                    }
                 }
 
                 public void Dispose()
