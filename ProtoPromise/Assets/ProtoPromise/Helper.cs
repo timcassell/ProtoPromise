@@ -184,7 +184,7 @@ namespace ProtoPromise
             _last = null;
         }
 
-        public void AddLast(T item)
+        public void Enqueue(T item)
 		{
 			item.Next = null;
 			if (_first == null)
@@ -201,35 +201,43 @@ namespace ProtoPromise
         /// <summary>
         /// Only use this if you know the queue is not empty.
         /// </summary>
-        public void AddLastRisky(T item)
+        public void EnqueueRisky(T item)
         {
             item.Next = null;
             _last.Next = item;
             _last = item;
         }
 
-        public void AddFirst(T item)
-		{
-			item.Next = _first;
-			_first = item;
-		}
+        public void Push(T item)
+        {
+            item.Next = _first;
+            _first = item;
+            if (_last == null)
+            {
+                _last = item;
+            }
+        }
+
+        /// <summary>
+        /// Only use this if you know the queue is not empty.
+        /// </summary>
+        public void PushRisky(T item)
+        {
+            item.Next = _first;
+            _first = item;
+        }
 
         // Note: this doesn't clear _last when the last item is taken.
-        public T TakeFirst()
+        public T Dequeue()
         {
 			T temp = _first;
 			_first = _first.Next;
 			return temp;
 		}
 
-		public T PeekFirst()
+		public T Peek()
 		{
 			return _first;
-		}
-
-		public T PeekLast()
-		{
-			return _last;
 		}
 
         public Enumerator<T> GetEnumerator()
@@ -265,7 +273,8 @@ namespace ProtoPromise
 
         /// <summary>
         /// Returns a new reusable value container containing <paramref name="value"/>.
-        /// It will try to get from the pool, otherwise it will create a new object.
+        /// It will try to take from the pool, otherwise it will create a new object.
+        /// Call <see cref="Dispose"/> when you are finished with this to add it back to the pool.
         /// </summary>
         public static ReusableValueContainer<T> New(T value)
         {
@@ -299,7 +308,7 @@ namespace ProtoPromise
 
             public Enumerator(ValueLinkedStackZeroGC<T> stack)
             {
-                enumerator = new Enumerator<ReusableValueContainer<T>>(stack._stack.Peek());
+                enumerator = stack._stack.GetEnumerator();
             }
 
             public bool MoveNext()
@@ -391,9 +400,9 @@ namespace ProtoPromise
         {
             Enumerator<ReusableValueContainer<T>> enumerator;
 
-            public Enumerator(ValueLinkedQueueZeroGC<T> stack)
+            public Enumerator(ValueLinkedQueueZeroGC<T> queue)
             {
-                enumerator = new Enumerator<ReusableValueContainer<T>>(stack._queue.PeekFirst());
+                enumerator = queue._queue.GetEnumerator();
             }
 
             public bool MoveNext()
@@ -436,8 +445,14 @@ namespace ProtoPromise
         {
             while (_queue.IsNotEmpty)
             {
-                _queue.TakeFirst().Dispose();
+                _queue.Dequeue().Dispose();
             }
+            _queue.ClearLast();
+        }
+
+        public void ClearLast()
+        {
+            _queue.ClearLast();
         }
 
         public void ClearAndDontRepool()
@@ -447,12 +462,25 @@ namespace ProtoPromise
 
         public void Enqueue(T item)
         {
-            _queue.AddLast(ReusableValueContainer<T>.New(item));
+            _queue.Enqueue(ReusableValueContainer<T>.New(item));
+        }
+
+        public void Push(T item)
+        {
+            _queue.Push(ReusableValueContainer<T>.New(item));
+        }
+
+        /// <summary>
+        /// Only use this if you know the queue is not empty.
+        /// </summary>
+        public void PushRisky(T item)
+        {
+            _queue.PushRisky(ReusableValueContainer<T>.New(item));
         }
 
         public T Dequeue()
         {
-            var node = _queue.TakeFirst();
+            var node = _queue.Dequeue();
             T item = node.value;
             node.Dispose();
             return item;
@@ -460,7 +488,7 @@ namespace ProtoPromise
 
         public T Peek()
         {
-            return _queue.PeekFirst().value;
+            return _queue.Peek().value;
         }
 
         public Enumerator GetEnumerator()

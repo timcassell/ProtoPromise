@@ -231,12 +231,14 @@ namespace ProtoPromise
 			if (onComplete == null)
 			{
 #pragma warning disable RECS0163 // Suggest the usage of the nameof operator
-				throw new ArgumentNullException("onComplete");
+#pragma warning disable IDE0016 // Use 'throw' expression
+                throw new ArgumentNullException("onComplete");
+#pragma warning restore IDE0016 // Use 'throw' expression
 #pragma warning restore RECS0163 // Suggest the usage of the nameof operator
-			}
+            }
 #endif
 
-			Routine<TYieldInstruction> routine = Routine<TYieldInstruction>.GetOrCreate();
+            Routine<TYieldInstruction> routine = Routine<TYieldInstruction>.GetOrCreate();
 			routine.Current = yieldInstruction;
 			routine.onComplete = onComplete;
 

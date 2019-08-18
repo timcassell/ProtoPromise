@@ -94,18 +94,19 @@ namespace ProtoPromise
             if ((_state == PromiseState.Resolved | _state == PromiseState.Rejected) & _notHandling)
             {
                 // Continue handling if this is resolved or rejected and it's not already being handled.
-                _nextBranches.AddLast(waiter);
+                _nextBranches.Enqueue(waiter);
                 AddToHandleQueue(this);
             }
             else if (_state == PromiseState.Canceled)
             {
                 waiter.AssignCancelValue(_rejectedOrCanceledValue);
                 AddToCancelQueue(waiter);
+                // TODO: Make this async.
                 ContinueCanceling();
             }
             else
             {
-                _nextBranches.AddLast(waiter);
+                _nextBranches.Enqueue(waiter);
             }
         }
 
@@ -141,20 +142,22 @@ namespace ProtoPromise
 
         protected virtual void OnCancel()
         {
+            ClearProgressListeners();
+
             if (_nextBranches.IsEmpty)
             {
                 return;
             }
 
             // Add safe for first item.
-            var next = _nextBranches.TakeFirst();
+            var next = _nextBranches.Dequeue();
             next.AssignCancelValue(_rejectedOrCanceledValue);
             AddToCancelQueue(next);
 
             // Add risky for remaining items since the queue is not empty.
             while (_nextBranches.IsNotEmpty)
             {
-                next = _nextBranches.TakeFirst();
+                next = _nextBranches.Dequeue();
                 next.AssignCancelValue(_rejectedOrCanceledValue);
                 AddToCancelQueueRisky(next);
             }
@@ -231,7 +234,7 @@ namespace ProtoPromise
         protected static void AddToHandleQueue(Promise promise)
         {
             promise._notHandling = false;
-            _handleQueue.AddLast(promise);
+            _handleQueue.Enqueue(promise);
         }
 
         // TODO: Call this.
@@ -248,12 +251,12 @@ namespace ProtoPromise
 
             while (_handleQueue.IsNotEmpty)
 			{
-                Internal.ITreeHandleAble _current = _handleQueue.TakeFirst();
+                Internal.ITreeHandleAble _current = _handleQueue.Dequeue();
                 Promise current = (Promise) _current;
 
 				while (current._nextBranches.IsNotEmpty)
 				{
-                    current._nextBranches.TakeFirst().Handle(current);
+                    current._nextBranches.Dequeue().Handle(current);
 				}
 
                 current._notHandling = true;
@@ -270,12 +273,12 @@ namespace ProtoPromise
 
         protected static void AddToCancelQueue(Internal.ITreeHandleAble cancelation)
         {
-            _cancelQueue.AddLast(cancelation);
+            _cancelQueue.Enqueue(cancelation);
         }
 
         protected static void AddToCancelQueueRisky(Internal.ITreeHandleAble cancelation)
         {
-            _cancelQueue.AddLastRisky(cancelation);
+            _cancelQueue.EnqueueRisky(cancelation);
         }
 
         private static void ContinueCanceling()
@@ -290,12 +293,13 @@ namespace ProtoPromise
 
             while (_handleQueue.IsNotEmpty)
             {
-                _handleQueue.TakeFirst().Cancel();
+                // TODO: Handle exceptions
+                _handleQueue.Dequeue().Cancel();
             }
 
             _cancelQueue.ClearLast();
             _runningCancels = false;
-		}
+        }
     }
 
     partial class Promise<T>
@@ -337,6 +341,10 @@ namespace ProtoPromise
 
     partial class Promise
     {
+        // TODO: Call these in Handle functions.
+        //ResolveProgressListeners();
+        //RejectProgressListeners();
+
         protected static partial class Internal
         {
             internal static Action OnClearPool;
@@ -390,6 +398,15 @@ namespace ProtoPromise
                     promise.ResetDepth();
                     return promise;
                 }
+
+                protected override void Handle(Promise feed)
+                {
+                    base.Handle(feed);
+                    if (_rejectedOrCanceledValue != null)
+                    {
+                        _rejectedOrCanceledValue.Retain();
+                    }
+                }
             }
 
             public sealed class LitePromise<T> : PoolablePromise<T, LitePromise<T>>
@@ -408,7 +425,20 @@ namespace ProtoPromise
                 {
                     base.Resolve(value);
                 }
+
+                protected override void Handle(Promise feed)
+                {
+                    base.Handle(feed);
+                    if (_rejectedOrCanceledValue != null)
+                    {
+                        _rejectedOrCanceledValue.Retain();
+                    }
+                }
             }
+
+            // TODO: Can a root promise wait on itself? That way it can still be marked pending until ContinueHandling runs.
+
+            // TODO: Retain DeferredPromise until the deferred releases it.
 
             public sealed class DeferredPromise : PromiseWaitDeferred<DeferredPromise>
             {
@@ -438,7 +468,7 @@ namespace ProtoPromise
                 }
             }
 
-            #region Resolve Promises
+#region Resolve Promises
             // Individual types for more common .Then(onResolved) calls to be more efficient.
 
             public sealed class PromiseVoidResolve : PoolablePromise<PromiseVoidResolve>
@@ -932,9 +962,9 @@ namespace ProtoPromise
                     resolveHandler = null;
                 }
             }
-            #endregion
+#endregion
 
-            #region Reject Promises
+#region Reject Promises
             // Used IDelegate to reduce the amount of classes I would have to write to handle catches (Composition Over Inheritance).
             // I'm less concerned about performance for catches since exceptions are expensive anyway, and they are expected to be used less often than .Then(onResolved).
             public sealed class PromiseReject : PoolablePromise<PromiseReject>
@@ -1243,9 +1273,9 @@ namespace ProtoPromise
                     rejectHandler = null;
                 }
             }
-            #endregion
+#endregion
 
-            #region Resolve or Reject Promises
+#region Resolve or Reject Promises
             public sealed class PromiseResolveReject : PoolablePromise<PromiseResolveReject>
             {
                 IDelegate onResolved, onRejected;
@@ -1457,6 +1487,8 @@ namespace ProtoPromise
                             {
                                 base.Handle(feed);
                                 _rejectedOrCanceledValue.Retain();
+                                // TODO: 
+                                //Reject(feed._rejectedOrCanceledValue);
                                 return;
                             }
                         }
@@ -1577,9 +1609,9 @@ namespace ProtoPromise
                     onRejected = null;
                 }
             }
-            #endregion
+#endregion
 
-            #region Complete Promises
+#region Complete Promises
             public sealed class PromiseComplete : PoolablePromise<PromiseComplete>
             {
                 private Action onComplete;
@@ -1781,9 +1813,9 @@ namespace ProtoPromise
                     onComplete = null;
                 }
             }
-            #endregion
+#endregion
 
-            #region Delegate Wrappers
+#region Delegate Wrappers
             public sealed class FinallyDelegate : ITreeHandleAble
             {
                 ITreeHandleAble ILinked<ITreeHandleAble>.Next { get; set; }
@@ -1832,10 +1864,7 @@ namespace ProtoPromise
                     callback.Invoke();
                 }
 
-                void ITreeHandleAble.Repool()
-                {
-                    throw new InvalidOperationException();
-                }
+                void ITreeHandleAble.Repool() { throw new InvalidOperationException(); }
             }
 
             public sealed class CancelDelegate : ITreeHandleAble
@@ -1880,10 +1909,7 @@ namespace ProtoPromise
                     Dispose();
                 }
 
-                void ITreeHandleAble.Repool()
-                {
-                    throw new InvalidOperationException();
-                }
+                void ITreeHandleAble.Repool() { throw new InvalidOperationException(); }
             }
 
             public sealed class CancelDelegate<T> : ITreeHandleAble
@@ -1938,10 +1964,7 @@ namespace ProtoPromise
                     Dispose();
                 }
 
-                void ITreeHandleAble.Repool()
-                {
-                    throw new InvalidOperationException();
-                }
+                void ITreeHandleAble.Repool() { throw new InvalidOperationException(); }
             }
 
             public class DelegateVoid : IDelegate, ILinked<DelegateVoid>
@@ -2269,7 +2292,7 @@ namespace ProtoPromise
                 void Dispose();
             }
 
-            #region ValueWrappers
+#region ValueWrappers
             public abstract class UnhandledExceptionInternal : UnhandledException, IValueContainer, ILinked<UnhandledExceptionInternal>
             {
                 UnhandledExceptionInternal ILinked<UnhandledExceptionInternal>.Next { get; set; }
@@ -2292,14 +2315,21 @@ namespace ProtoPromise
 
             public sealed class UnhandledExceptionVoid : UnhandledExceptionInternal
             {
-                // We can reuse the same object.
-                private static readonly UnhandledExceptionVoid obj = new UnhandledExceptionVoid();
+                private static ValueLinkedStack<UnhandledExceptionInternal> _pool;
+
+                private uint retainCounter;
+
+                static UnhandledExceptionVoid()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
 
                 private UnhandledExceptionVoid() { }
 
                 public static UnhandledExceptionVoid GetOrCreate()
                 {
-                    return obj;
+                    // Have to create new because stack trace can be different.
+                    return _pool.IsNotEmpty ? (UnhandledExceptionVoid) _pool.Pop() : new UnhandledExceptionVoid();
                 }
 
                 public new UnhandledExceptionVoid SetStackTrace(string stackTrace)
@@ -2318,6 +2348,19 @@ namespace ProtoPromise
                     get
                     {
                         return "A non-value rejection was not handled.";
+                    }
+                }
+
+                public override void Retain()
+                {
+                    ++retainCounter;
+                }
+
+                public override void Release()
+                {
+                    if (--retainCounter == 0)
+                    {
+                        _pool.Push(this);
                     }
                 }
             }
@@ -2339,7 +2382,7 @@ namespace ProtoPromise
 
                 public static UnhandledException<T> GetOrCreate(T value)
                 {
-                    UnhandledException<T> ex = _pool.IsNotEmpty ? (UnhandledException<T>)_pool.Pop() : new UnhandledException<T>();
+                    UnhandledException<T> ex = _pool.IsNotEmpty ? (UnhandledException<T>) _pool.Pop() : new UnhandledException<T>();
                     ex.Value = value;
                     return ex;
                 }

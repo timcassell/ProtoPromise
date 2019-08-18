@@ -7,7 +7,7 @@
             Pending,
             Resolved,
             Rejected,
-            Canceled // This violates Promises/A+ API, but I felt its usefulness outweighs API adherence.
+            Canceled // This violates Promises/A+ API when CANCEL is enabled.
         }
 
         public abstract class DeferredBase : ICancelableAny, IRetainable

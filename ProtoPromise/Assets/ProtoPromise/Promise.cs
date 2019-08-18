@@ -83,10 +83,13 @@ namespace ProtoPromise
 				return;
 			}
 
-			_rejectedOrCanceledValue = Internal.CancelVoid.GetOrCreate();
+            CancelProgressListeners();
+
+            _rejectedOrCanceledValue = Internal.CancelVoid.GetOrCreate();
 			_rejectedOrCanceledValue.Retain();
 
             OnCancel();
+            // TODO: Make this async
             ContinueCanceling();
 		}
 
@@ -104,7 +107,9 @@ namespace ProtoPromise
 				return;
 			}
 
-			_rejectedOrCanceledValue = Internal.CancelValue<TCancel>.GetOrCreate(reason);
+            CancelProgressListeners();
+
+            _rejectedOrCanceledValue = Internal.CancelValue<TCancel>.GetOrCreate(reason);
 			_rejectedOrCanceledValue.Retain();
 
             OnCancel();
