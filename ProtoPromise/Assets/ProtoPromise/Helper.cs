@@ -49,12 +49,7 @@ namespace ProtoPromise
 
             public abstract object GetValue();
 
-			internal void SetStackTrace(string stackTrace)
-			{
-				_stackTrace = stackTrace;
-			}
-
-			private string _stackTrace;
+			protected string _stackTrace;
 			public override sealed string StackTrace
 			{
 				get
@@ -79,11 +74,18 @@ namespace ProtoPromise
             _current = first;
         }
 
+        /// <summary>
+        /// Doesn't actually move next, just returns if Current is valid.
+        /// This allows the function to be branch-less. Useful for foreach loops.
+        /// </summary>
         public bool MoveNext()
         {
             return _current != null;
         }
 
+        /// <summary>
+        /// Actually moves next and returns current.
+        /// </summary>
         public T Current
         {
             get
@@ -132,7 +134,8 @@ namespace ProtoPromise
 		{
 			T temp = _first;
 			_first = _first.Next;
-			return temp;
+            temp.Next = null;
+            return temp;
 		}
 
 		public T Peek()
@@ -169,7 +172,6 @@ namespace ProtoPromise
 
 		public ValueLinkedQueue(T item)
 		{
-			item.Next = null;
 			_first = _last = item;
 		}
 
@@ -186,7 +188,6 @@ namespace ProtoPromise
 
         public void Enqueue(T item)
 		{
-			item.Next = null;
 			if (_first == null)
 			{
 				_first = _last = item;
@@ -203,18 +204,20 @@ namespace ProtoPromise
         /// </summary>
         public void EnqueueRisky(T item)
         {
-            item.Next = null;
             _last.Next = item;
             _last = item;
         }
 
         public void Push(T item)
         {
-            item.Next = _first;
-            _first = item;
-            if (_last == null)
+            if (_first == null)
             {
-                _last = item;
+                _first = _last = item;
+            }
+            else
+            {
+                item.Next = _first;
+                _first = item;
             }
         }
 
@@ -227,15 +230,31 @@ namespace ProtoPromise
             _first = item;
         }
 
-        // Note: this doesn't clear _last when the last item is taken.
         public T Dequeue()
         {
 			T temp = _first;
 			_first = _first.Next;
-			return temp;
-		}
+            temp.Next = null;
+            if (_first == null)
+            {
+                _last = null;
+            }
+            return temp;
+        }
 
-		public T Peek()
+        /// <summary>
+        /// This doesn't clear _last when the last item is taken.
+        /// Only use this if you know this has 2 or more items, or if you will call ClearLast when you know this is empty.
+        /// </summary>
+        public T DequeueRisky()
+        {
+            T temp = _first;
+            _first = _first.Next;
+            temp.Next = null;
+            return temp;
+        }
+
+        public T Peek()
 		{
 			return _first;
 		}
@@ -445,7 +464,7 @@ namespace ProtoPromise
         {
             while (_queue.IsNotEmpty)
             {
-                _queue.Dequeue().Dispose();
+                _queue.DequeueRisky().Dispose();
             }
             _queue.ClearLast();
         }
@@ -465,6 +484,14 @@ namespace ProtoPromise
             _queue.Enqueue(ReusableValueContainer<T>.New(item));
         }
 
+        /// <summary>
+        /// Only use this if you know the queue is not empty.
+        /// </summary>
+        public void EnqueueRisky(T item)
+        {
+            _queue.EnqueueRisky(ReusableValueContainer<T>.New(item));
+        }
+
         public void Push(T item)
         {
             _queue.Push(ReusableValueContainer<T>.New(item));
@@ -481,6 +508,18 @@ namespace ProtoPromise
         public T Dequeue()
         {
             var node = _queue.Dequeue();
+            T item = node.value;
+            node.Dispose();
+            return item;
+        }
+
+        /// <summary>
+        /// This doesn't clear _last when the last item is taken.
+        /// Only use this if you know this has 2 or more items, or if you will call ClearLast after a loop that takes all the items.
+        /// </summary>
+        public T DequeueRisky()
+        {
+            var node = _queue.DequeueRisky();
             T item = node.value;
             node.Dispose();
             return item;

@@ -2,18 +2,8 @@ using System;
 
 namespace ProtoPromise
 {
-	// If using Unity prior to 5.3, remove "UnityEngine.CustomYieldInstruction". Instead, you can wait for a promise to complete in a coroutine this way:
-	// yield return StartCoroutine(promise);
-	public abstract partial class Promise : UnityEngine.CustomYieldInstruction, ICancelableAny, IRetainable
+	public abstract partial class Promise : ICancelableAny, IRetainable
 	{
-		override public bool keepWaiting
-		{
-			get
-			{
-				return _state == PromiseState.Pending;
-			}
-		}
-
 		public void Retain()
 		{
             ValidateOperation(this);

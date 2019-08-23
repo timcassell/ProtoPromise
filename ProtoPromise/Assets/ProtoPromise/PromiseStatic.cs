@@ -594,7 +594,7 @@ namespace ProtoPromise
 		/// <typeparam name="TYieldInstruction">The type of yieldInstruction.</typeparam>
 		public static Promise<TYieldInstruction> Yield<TYieldInstruction>(TYieldInstruction yieldInstruction)
 		{
-			var promise = Internal.LitePromise<TYieldInstruction>.GetOrCreate();
+			var promise = Internal.LitePromise<TYieldInstruction>.GetOrCreate(1);
 
 			CancelClosure cancelClosure = cancelClosures.IsEmpty ? new CancelClosure() : cancelClosures.Pop();
 			cancelClosure.cancel = GlobalMonoBehaviour.Yield(yieldInstruction, (Action<TYieldInstruction>) promise.Resolve);
@@ -609,103 +609,117 @@ namespace ProtoPromise
 		/// </summary>
 		public static Promise Yield()
 		{
-			var promise = Internal.LitePromise.GetOrCreate();
-			GlobalMonoBehaviour.Yield(promise.Resolve);
+			var promise = Internal.LitePromise.GetOrCreate(1);
+			GlobalMonoBehaviour.Yield(promise.ResolveInternal);
 			return promise;
 		}
 
 		public static Promise New(Action<Deferred> resolver)
         {
-            var promise = Internal.DeferredPromise.GetOrCreate();
-			resolver.Invoke(promise.deferred);
-			return promise;
+            var promise = Internal.DeferredPromise.GetOrCreate(1);
+            try
+            {
+                resolver.Invoke(promise.Deferred);
+            }
+            catch (Exception e)
+            {
+                promise.Deferred.Reject(e);
+            }
+            return promise;
 		}
 
 		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver)
         {
-            var promise = Internal.DeferredPromise<T>.GetOrCreate();
-            resolver.Invoke(promise.deferred);
+            var promise = Internal.DeferredPromise<T>.GetOrCreate(1);
+            try
+            {
+                resolver.Invoke(promise.Deferred);
+            }
+            catch (Exception e)
+            {
+                promise.Deferred.Reject(e);
+            }
             return promise;
         }
 
 		public static Promise Resolved()
 		{
-			var promise = Internal.LitePromise.GetOrCreate();
+			var promise = Internal.LitePromise.GetOrCreate(1);
 			promise.Resolve();
 			return promise;
 		}
 
 		public static Promise<T> Resolved<T>(T value)
 		{
-			var promise = Internal.LitePromise<T>.GetOrCreate();
+			var promise = Internal.LitePromise<T>.GetOrCreate(1);
 			promise.Resolve(value);
 			return promise;
 		}
 
 		public static Promise<T> Rejected<T, TReject>(TReject reason)
 		{
-			var promise = Internal.LitePromise<T>.GetOrCreate();
+			var promise = Internal.LitePromise<T>.GetOrCreate(1);
 			promise.Reject(reason, 1);
 			return promise;
 		}
 
 		public static Promise Rejected<TReject>(TReject reason)
 		{
-			var promise = Internal.LitePromise.GetOrCreate();
+			var promise = Internal.LitePromise.GetOrCreate(1);
 			promise.Reject(reason, 1);
 			return promise;
 		}
 
 		public static Promise<T> Rejected<T>()
 		{
-			var promise = Internal.LitePromise<T>.GetOrCreate();
+			var promise = Internal.LitePromise<T>.GetOrCreate(1);
 			promise.Reject(1);
 			return promise;
 		}
 
 		public static Promise Rejected()
 		{
-			var promise = Internal.LitePromise.GetOrCreate();
+			var promise = Internal.LitePromise.GetOrCreate(1);
 			promise.Reject(1);
 			return promise;
 		}
 
 		public static Promise<T> Canceled<T, TCancel>(TCancel reason)
 		{
-			var promise = Internal.LitePromise<T>.GetOrCreate();
+			var promise = Internal.LitePromise<T>.GetOrCreate(1);
 			promise.Cancel(reason);
 			return promise;
 		}
 
 		public static Promise Canceled<TCancel>(TCancel reason)
 		{
-			var promise = Internal.LitePromise.GetOrCreate();
+			var promise = Internal.LitePromise.GetOrCreate(1);
 			promise.Cancel(reason);
 			return promise;
 		}
 
 		public static Promise<T> Canceled<T>()
 		{
-			var promise = Internal.LitePromise<T>.GetOrCreate();
+			var promise = Internal.LitePromise<T>.GetOrCreate(1);
 			promise.Cancel();
 			return promise;
 		}
 
 		public static Promise Canceled()
 		{
-			var promise = Internal.LitePromise.GetOrCreate();
+			var promise = Internal.LitePromise.GetOrCreate(1);
 			promise.Cancel();
 			return promise;
 		}
 
 		public static Deferred NewDeferred()
 		{
-            return Internal.DeferredPromise.GetOrCreate().deferred;
+            return Internal.DeferredPromise.GetOrCreate(1).Deferred;
 		}
 
 		public static Promise<T>.Deferred NewDeferred<T>()
 		{
-            return Internal.DeferredPromise<T>.GetOrCreate().deferred;
+            return Internal.DeferredPromise<T>.GetOrCreate(1).Deferred;
 		}
 	}
 }

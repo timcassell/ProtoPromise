@@ -12,7 +12,7 @@
 
         public abstract class DeferredBase : ICancelableAny, IRetainable
         {
-            public PromiseState State { get { return Promise._state; } }
+            public PromiseState State { get; protected set; }
 
             public virtual Promise Promise { get; protected set; }
 

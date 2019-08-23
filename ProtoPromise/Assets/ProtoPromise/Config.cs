@@ -58,34 +58,35 @@ namespace ProtoPromise
             /// <para/>
             /// Max Whole Number: 2^(32-<see cref="ProgressDecimalBits"/>)
             /// Precision: 1/(2^<see cref="ProgressDecimalBits"/>)
-            /// Don't make this smaller than 8 since the max integer representable in a float is 2^24
+            /// Don't make this smaller than 8 since the maximum contiguous integer representable in a float is 2^24
             /// <para/>
             /// NOTE: promises that don't wait (.Then with an onResolved that simply returns a value or void) don't count towards the promise chain limit.
             /// </summary>
             public const int ProgressDecimalBits = 13;
 
+            // TODO: Check this before pooling internal objects.
             private static PoolType _objectPooling = PoolType.Internal;
             /// <summary>
             /// Highly recommend to leave this None or Internal in DEBUG mode, so that exceptions will propagate if/when promises are used incorrectly after they have already completed.
             /// </summary>
             public static PoolType ObjectPooling { get { return _objectPooling; } set { _objectPooling = value; } }
-            // TODO: Check this before pooling internal objects.
+
+#if DEBUG
+            public static GeneratedStacktrace DebugStacktraceGenerator { get; set; }
+#else
+#pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
+            public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
+#pragma warning restore RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
+#endif
 
             /// <summary>
             /// Clears all currently pooled objects. Does not affect pending or retained promises.
             /// </summary>
             public static void ClearObjectPool()
             {
+                ValueLinkedStackZeroGC<Internal.IProgressListener>.ClearPooledNodes();
                 Internal.OnClearPool.Invoke();
             }
-
-#if DEBUG
-            public static GeneratedStacktrace DebugStacktraceGenerator { get; set; }
-#else
-#pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
-			public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
-#pragma warning restore RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
-#endif
         }
 
 
@@ -104,6 +105,11 @@ namespace ProtoPromise
         private Promise _previous;
 #endif
 
+        protected static void _SetStackTraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException)
+        {
+            SetStackTraceFromCreated(stacktraceable, unhandledException);
+        }
+
         // Calls to these get compiled away in RELEASE mode
         static partial void ValidateOperation(Promise promise);
         static partial void ValidateProgress(float progress);
@@ -111,12 +117,14 @@ namespace ProtoPromise
         partial void ValidateReturn(Promise other);
         static partial void ValidateReturn(Delegate other);
 
-        partial void SetCreatedStackTrace(int skipFrames);
-        partial void SetStackTraceFromCreated(UnhandledException unhandledException);
-        static partial void SetRejectStackTrace(UnhandledException unhandledException, int skipFrames);
+        static partial void SetCreatedStackTrace(Internal.IStacktraceable stacktraceable, int skipFrames);
+        static partial void SetStackTraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException);
+        static partial void SetRejectStackTrace(Internal.UnhandledExceptionInternal unhandledException, int skipFrames);
         partial void SetNotDisposed();
 #if DEBUG
         private string _createdStackTrace;
+        string Internal.IStacktraceable.Stacktrace { get { return _createdStackTrace; } set { _createdStackTrace = value; } }
+
         private static int idCounter;
         protected readonly int _id;
 
@@ -132,7 +140,7 @@ namespace ProtoPromise
 
         partial class Internal
         {
-            // This allows me to re-use the reference field without having to add another bool field.
+            // This allows us to re-use the reference field without having to add another bool field.
             public sealed class DisposedChecker : IValueContainer
             {
                 public static readonly DisposedChecker instance = new DisposedChecker();
@@ -147,20 +155,20 @@ namespace ProtoPromise
             }
         }
 
-        partial void SetCreatedStackTrace(int skipFrames)
+        static partial void SetCreatedStackTrace(Internal.IStacktraceable stacktraceable, int skipFrames)
         {
             if (Config.DebugStacktraceGenerator == GeneratedStacktrace.All)
             {
-                _createdStackTrace = GetStackTrace(skipFrames + 1);
+                stacktraceable.Stacktrace = GetStackTrace(skipFrames + 1);
             }
         }
 
-        partial void SetStackTraceFromCreated(UnhandledException unhandledException)
+        static partial void SetStackTraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException)
         {
-            unhandledException.SetStackTrace(FormatStackTrace(_createdStackTrace));
+            unhandledException.SetStackTrace(FormatStackTrace(stacktraceable.Stacktrace));
         }
 
-        static partial void SetRejectStackTrace(UnhandledException unhandledException, int skipFrames)
+        static partial void SetRejectStackTrace(Internal.UnhandledExceptionInternal unhandledException, int skipFrames)
         {
             if (Config.DebugStacktraceGenerator != GeneratedStacktrace.None)
             {
@@ -168,12 +176,12 @@ namespace ProtoPromise
             }
         }
 
-        private static System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(128);
-
         private static string GetStackTrace(int skipFrames)
         {
             return new System.Diagnostics.StackTrace(skipFrames + 1, true).ToString();
         }
+
+        private static System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(128);
 
         private static string FormatStackTrace(string stackTrace)
         {
@@ -246,7 +254,7 @@ namespace ProtoPromise
             if (ReferenceEquals(_rejectedOrCanceledValue, Internal.DisposedChecker.instance))
             {
                 throw new ObjectDisposedException("Always nullify your references when you are finished with them!" +
-                	" Call Retain() if you want to perform operations after the promise has finished. Remember to call Release() when you are finished with it!");
+                    " Call Retain() if you want to perform operations after the promise has finished. Remember to call Release() when you are finished with it!");
             }
         }
 
@@ -299,20 +307,22 @@ namespace ProtoPromise
             throw new InvalidOperationException("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.");
         }
 
-		static partial void ValidateCancel()
-		{
+        static partial void ValidateCancel()
+        {
             ThrowCancelException();
-		}
+        }
 #endif
 
         private void WaitFor(Promise other)
         {
             ValidateReturn(other);
+            // TODO: Can probably skip this check altogether since AddWaiter handles canceled.
 #if CANCEL
-            if (_state == PromiseState.Canceled)
+            if (other._state == PromiseState.Canceled)
             {
                 // Don't wait for anything if this promise was canceled during the callback, just dispose any progress listeners and place in the handle queue so it can be repooled.
                 CancelProgressListeners();
+                // TODO: Cancel this promise and call ContinueCanceling
                 AddToHandleQueue(this);
             }
             else
@@ -326,24 +336,53 @@ namespace ProtoPromise
 
         partial class Internal
         {
+            public interface IStacktraceable
+            {
+#if DEBUG
+                string Stacktrace { get; set; }
+#endif
+            }
+
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
             public abstract partial class PromiseWaitDeferred<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitDeferred<TPromise>
             {
-                public readonly Deferred deferred;
+                protected readonly DeferredInternal _deferredInternal;
+                public new Deferred Deferred { get { return _deferredInternal; } }
 
                 protected PromiseWaitDeferred()
                 {
-                    deferred = new DeferredInternal(this);
+                    _deferredInternal = new DeferredInternal(this);
+                }
+
+                protected override void Reset(int skipFrames)
+                {
+                    _deferredInternal.Reset();
+                    // Retain now, release when deferred resolves/rejects/cancels.
+                    Retain();
+                    // Wait on itself.
+                    _nextBranches = new ValueLinkedQueue<ITreeHandleAble>(this);
+                    base.Reset(skipFrames + 1);
                 }
             }
 
             public abstract partial class PromiseWaitDeferred<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitDeferred<T, TPromise>
             {
-                public readonly Deferred deferred;
+                protected readonly Internal.DeferredInternal _deferredInternal;
+                public new Deferred Deferred { get { return _deferredInternal; } }
 
                 protected PromiseWaitDeferred()
                 {
-                    deferred = new Internal.DeferredInternal(this);
+                    _deferredInternal = new Internal.DeferredInternal(this);
+                }
+
+                protected override void Reset(int skipFrames)
+                {
+                    _deferredInternal.Reset();
+                    // Retain now, release when deferred resolves/rejects/cancels.
+                    Retain();
+                    // Wait on itself.
+                    _nextBranches = new ValueLinkedQueue<ITreeHandleAble>(this);
+                    base.Reset(skipFrames + 1);
                 }
             }
 #pragma warning restore RECS0001 // Class is declared partial but has only one part
@@ -396,21 +435,25 @@ namespace ProtoPromise
             _progressListeners.Clear();
         }
 
-        // TODO: Add functions that allow PushRisky and EnqueueRisky
         partial void ResolveProgressListeners()
         {
-            // Reverse the order while removing the progress listeners. Back to FIFO.
-            var forwardListeners = new ValueLinkedStackZeroGC<Internal.IProgressListener>();
-            while (_progressListeners.IsNotEmpty)
+            if (_progressListeners.IsEmpty)
             {
-                forwardListeners.Push(_progressListeners.Pop());
+                return;
             }
 
+            // Reverse the order while removing the progress listeners. Back to FIFO.
+            var forwardListeners = new ValueLinkedStackZeroGC<Internal.IProgressListener>();
+            do
+            {
+                forwardListeners.Push(_progressListeners.Pop());
+            } while (_progressListeners.IsNotEmpty);
+
             uint increment = _waitDepthAndProgress.GetDifferenceToNextWholeAsUInt32();
-            while (forwardListeners.IsNotEmpty)
+            do
             {
                 forwardListeners.Pop().Resolve(this, increment);
-            }
+            } while (forwardListeners.IsNotEmpty);
         }
 
         partial void RejectProgressListeners()
@@ -431,7 +474,7 @@ namespace ProtoPromise
 
         protected void ReportProgress(float progress)
         {
-            if (progress >= 1f)
+            if (progress >= 1f | _state == PromiseState.Canceled)
             {
                 // Don't report progress 1.0, that will be reported automatically when the promise is resolved.
                 return;
@@ -586,7 +629,7 @@ namespace ProtoPromise
 
             while (_progressQueue.IsNotEmpty)
             {
-                _progressQueue.Dequeue().Invoke();
+                _progressQueue.DequeueRisky().Invoke();
             }
 
             _progressQueue.ClearLast();
@@ -678,7 +721,16 @@ namespace ProtoPromise
                     var temp = _onProgress;
                     _onProgress = null;
                     _pool.Push(this);
-                    temp.Invoke(1f);
+                    try
+                    {
+                        temp.Invoke(1f);
+                    }
+                    catch (Exception e)
+                    {
+                        UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
+                        // TODO: include created stacktrace
+                        AddRejectionToUnhandledStack(unhandledException);
+                    }
                 }
 
                 // These will not be called.
@@ -731,7 +783,9 @@ namespace ProtoPromise
                     }
                     catch (Exception e)
                     {
-                        // TODO: Handle exceptions
+                        UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
+                        // TODO: include created stacktrace
+                        AddRejectionToUnhandledStack(unhandledException);
                     }
                 }
 
@@ -1038,18 +1092,6 @@ namespace ProtoPromise
                 {
                     _waitDepthAndProgress = previousDepth.GetIncrementedWholeTruncated();
                 }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    _progressListeners.Clear();
-                }
-
-                protected override void OnCancel()
-                {
-                    base.OnCancel();
-                    _progressListeners.Clear();
-                }
             }
 
             partial class PromiseWaitDeferred<T, TPromise>
@@ -1072,18 +1114,6 @@ namespace ProtoPromise
                 protected override sealed void SetDepth(UnsignedFixed32 previousDepth)
                 {
                     _waitDepthAndProgress = previousDepth.GetIncrementedWholeTruncated();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    _progressListeners.Clear();
-                }
-
-                protected override void OnCancel()
-                {
-                    base.OnCancel();
-                    _progressListeners.Clear();
                 }
             }
         }
