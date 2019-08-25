@@ -103,6 +103,7 @@ namespace ProtoPromise
 			_rejectedOrCanceledValue.Retain();
 
             OnCancel();
+            // TODO: Make this async
             ContinueCanceling();
         }
 
@@ -112,7 +113,7 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onProgress, "onProgress");
 
-            ProgressInternal(onProgress);
+            ProgressInternal(onProgress, 1);
 			return this;
 		}
 
@@ -140,7 +141,7 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-			var promise = Internal.PromiseVoidResolve.GetOrCreate(onResolved);
+			var promise = Internal.PromiseVoidResolve.GetOrCreate(onResolved,1 );
 			HookupNewPromise(promise);
 			return promise;
 		}
@@ -150,8 +151,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-			var promise = Internal.PromiseVoidResolve<T>.GetOrCreate(onResolved);
-			HookupNewPromise(promise);
+			var promise = Internal.PromiseVoidResolve<T>.GetOrCreate(onResolved, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -160,8 +161,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-            var promise = Internal.PromiseVoidResolvePromise.GetOrCreate(onResolved);
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseVoidResolvePromise.GetOrCreate(onResolved, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -170,8 +171,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-            var promise = Internal.PromiseVoidResolvePromise<T>.GetOrCreate(onResolved);
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseVoidResolvePromise<T>.GetOrCreate(onResolved, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -180,8 +181,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-            var promise = Internal.PromiseVoidResolveDeferred.GetOrCreate(onResolved);
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseVoidResolveDeferred.GetOrCreate(onResolved, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -190,8 +191,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-            var promise = Internal.PromiseVoidResolveDeferred<T>.GetOrCreate(onResolved);
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseVoidResolveDeferred<T>.GetOrCreate(onResolved, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 #endregion
@@ -202,8 +203,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseReject.GetOrCreate(Internal.DelegateVoid.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseReject.GetOrCreate(Internal.DelegateVoid.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -212,8 +213,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseReject.GetOrCreate(Internal.DelegateArg<TReject>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseReject.GetOrCreate(Internal.DelegateArg<TReject>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -222,8 +223,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseRejectPromise.GetOrCreate(Internal.DelegateVoid<Promise>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseRejectPromise.GetOrCreate(Internal.DelegateVoid<Promise>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -232,8 +233,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseRejectPromise.GetOrCreate(Internal.DelegateArg<TReject, Promise>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseRejectPromise.GetOrCreate(Internal.DelegateArg<TReject, Promise>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -242,8 +243,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseRejectDeferred.GetOrCreate(Internal.DelegateVoid<Action<Deferred>>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseRejectDeferred.GetOrCreate(Internal.DelegateVoid<Action<Deferred>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -252,8 +253,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseRejectDeferred.GetOrCreate(Internal.DelegateArg<TReject, Action<Deferred>>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseRejectDeferred.GetOrCreate(Internal.DelegateArg<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 #endregion
@@ -265,8 +266,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-			var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateVoid.GetOrCreate(onResolved), Internal.DelegateVoid.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+			var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateVoid.GetOrCreate(onResolved), Internal.DelegateVoid.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -276,8 +277,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateVoid.GetOrCreate(onResolved), Internal.DelegateArg<TReject>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateVoid.GetOrCreate(onResolved), Internal.DelegateArg<TReject>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -287,8 +288,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateVoid<T>.GetOrCreate(onResolved), Internal.DelegateVoid<T>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateVoid<T>.GetOrCreate(onResolved), Internal.DelegateVoid<T>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -298,8 +299,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateVoid<T>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, T>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateVoid<T>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, T>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -309,8 +310,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateVoid<Promise>.GetOrCreate(onResolved), Internal.DelegateVoid<Promise>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateVoid<Promise>.GetOrCreate(onResolved), Internal.DelegateVoid<Promise>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -320,8 +321,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateVoid<Promise>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, Promise>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateVoid<Promise>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, Promise>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -331,8 +332,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoid<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateVoid<Promise<T>>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoid<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateVoid<Promise<T>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -342,8 +343,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoid<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, Promise<T>>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoid<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, Promise<T>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 #endregion
@@ -358,8 +359,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected");
 
-            var promise = Internal.PromiseComplete.GetOrCreate(onResolvedOrRejected);
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseComplete.GetOrCreate(onResolvedOrRejected, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -372,8 +373,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected");
 
-            var promise = Internal.PromiseComplete<T>.GetOrCreate(onResolvedOrRejected);
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseComplete<T>.GetOrCreate(onResolvedOrRejected, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -387,8 +388,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected");
 
-            var promise = Internal.PromiseCompletePromise.GetOrCreate(onResolvedOrRejected);
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseCompletePromise.GetOrCreate(onResolvedOrRejected, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -402,8 +403,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected");
 
-            var promise = Internal.PromiseCompletePromise<T>.GetOrCreate(onResolvedOrRejected);
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseCompletePromise<T>.GetOrCreate(onResolvedOrRejected, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -418,8 +419,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected");
 
-            var promise = Internal.PromiseCompleteDeferred.GetOrCreate(onResolvedOrRejected);
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseCompleteDeferred.GetOrCreate(onResolvedOrRejected, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -434,8 +435,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected");
 
-            var promise = Internal.PromiseCompleteDeferred<T>.GetOrCreate(onResolvedOrRejected);
-			HookupNewPromise(promise);
+            var promise = Internal.PromiseCompleteDeferred<T>.GetOrCreate(onResolvedOrRejected, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 #endregion
@@ -463,8 +464,8 @@ namespace ProtoPromise
 
 		public new Promise<T> ThenDuplicate()
 		{
-			var promise = Promise.Internal.LitePromise<T>.GetOrCreate();
-			HookupNewPromise(promise);
+			var promise = Promise.Internal.LitePromise<T>.GetOrCreate(1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -474,8 +475,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-            var promise = Promise.Internal.PromiseArgResolve<T>.GetOrCreate(onResolved);
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseArgResolve<T>.GetOrCreate(onResolved, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -484,8 +485,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-            var promise = Promise.Internal.PromiseArgResolve<T, TResult>.GetOrCreate(onResolved);
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseArgResolve<T, TResult>.GetOrCreate(onResolved, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -494,8 +495,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-            var promise = Promise.Internal.PromiseArgResolvePromise<T>.GetOrCreate(onResolved);
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseArgResolvePromise<T>.GetOrCreate(onResolved, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -504,8 +505,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-			var promise = Promise.Internal.PromiseArgResolvePromise<T, TResult>.GetOrCreate(onResolved);
-			HookupNewPromise(promise);
+			var promise = Promise.Internal.PromiseArgResolvePromise<T, TResult>.GetOrCreate(onResolved, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -514,8 +515,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-            var promise = Promise.Internal.PromiseArgResolveDeferred<T>.GetOrCreate(onResolved);
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseArgResolveDeferred<T>.GetOrCreate(onResolved, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -524,8 +525,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-            var promise = Promise.Internal.PromiseArgResolveDeferred<T, TResult>.GetOrCreate(onResolved);
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseArgResolveDeferred<T, TResult>.GetOrCreate(onResolved, 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 #endregion
@@ -536,8 +537,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseReject<T>.GetOrCreate(Promise.Internal.DelegateVoid<T>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseReject<T>.GetOrCreate(Promise.Internal.DelegateVoid<T>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -546,8 +547,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseReject<T>.GetOrCreate(Promise.Internal.DelegateArg<TReject, T>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseReject<T>.GetOrCreate(Promise.Internal.DelegateArg<TReject, T>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -556,8 +557,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseRejectPromise<T>.GetOrCreate(Promise.Internal.DelegateVoid<Promise<T>>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseRejectPromise<T>.GetOrCreate(Promise.Internal.DelegateVoid<Promise<T>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -566,8 +567,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseRejectPromise<T>.GetOrCreate(Promise.Internal.DelegateArg<TReject, Promise<T>>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseRejectPromise<T>.GetOrCreate(Promise.Internal.DelegateArg<TReject, Promise<T>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -576,8 +577,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseRejectDeferred<T>.GetOrCreate(Promise.Internal.DelegateVoid<Action<Deferred>>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseRejectDeferred<T>.GetOrCreate(Promise.Internal.DelegateVoid<Action<Deferred>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -586,8 +587,8 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseRejectDeferred<T>.GetOrCreate(Promise.Internal.DelegateArg<TReject, Action<Deferred>>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseRejectDeferred<T>.GetOrCreate(Promise.Internal.DelegateArg<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 #endregion
@@ -599,8 +600,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveReject.GetOrCreate(Promise.Internal.DelegateArg<T>.GetOrCreate(onResolved), Promise.Internal.DelegateVoid.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseResolveReject.GetOrCreate(Promise.Internal.DelegateArg<T>.GetOrCreate(onResolved), Promise.Internal.DelegateVoid.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -610,8 +611,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveReject.GetOrCreate(Promise.Internal.DelegateArg<T>.GetOrCreate(onResolved), Promise.Internal.DelegateArg<TReject>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseResolveReject.GetOrCreate(Promise.Internal.DelegateArg<T>.GetOrCreate(onResolved), Promise.Internal.DelegateArg<TReject>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -621,8 +622,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveReject<TResult>.GetOrCreate(Promise.Internal.DelegateArg<T, TResult>.GetOrCreate(onResolved), Promise.Internal.DelegateVoid<TResult>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseResolveReject<TResult>.GetOrCreate(Promise.Internal.DelegateArg<T, TResult>.GetOrCreate(onResolved), Promise.Internal.DelegateVoid<TResult>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -632,8 +633,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveReject<TResult>.GetOrCreate(Promise.Internal.DelegateArg<T, TResult>.GetOrCreate(onResolved), Promise.Internal.DelegateArg<TReject, TResult>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseResolveReject<TResult>.GetOrCreate(Promise.Internal.DelegateArg<T, TResult>.GetOrCreate(onResolved), Promise.Internal.DelegateArg<TReject, TResult>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -643,8 +644,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise.GetOrCreate(Promise.Internal.DelegateArg<T, Promise>.GetOrCreate(onResolved), Promise.Internal.DelegateVoid<Promise>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseResolveRejectPromise.GetOrCreate(Promise.Internal.DelegateArg<T, Promise>.GetOrCreate(onResolved), Promise.Internal.DelegateVoid<Promise>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -654,8 +655,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise.GetOrCreate(Promise.Internal.DelegateArg<T, Promise>.GetOrCreate(onResolved), Promise.Internal.DelegateArg<TReject, Promise>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseResolveRejectPromise.GetOrCreate(Promise.Internal.DelegateArg<T, Promise>.GetOrCreate(onResolved), Promise.Internal.DelegateArg<TReject, Promise>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -665,8 +666,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Promise.Internal.DelegateArg<T, Promise<TResult>>.GetOrCreate(onResolved), Promise.Internal.DelegateVoid<Promise<TResult>>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Promise.Internal.DelegateArg<T, Promise<TResult>>.GetOrCreate(onResolved), Promise.Internal.DelegateVoid<Promise<TResult>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 
@@ -676,8 +677,8 @@ namespace ProtoPromise
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Promise.Internal.DelegateArg<T, Promise<TResult>>.GetOrCreate(onResolved), Promise.Internal.DelegateArg<TReject, Promise<TResult>>.GetOrCreate(onRejected));
-			HookupNewPromise(promise);
+            var promise = Promise.Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Promise.Internal.DelegateArg<T, Promise<TResult>>.GetOrCreate(onResolved), Promise.Internal.DelegateArg<TReject, Promise<TResult>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
 			return promise;
 		}
 #endregion

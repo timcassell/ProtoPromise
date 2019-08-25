@@ -318,6 +318,10 @@ namespace ProtoPromise
             ValidateReturn(other);
             // TODO: Can probably skip this check altogether since AddWaiter handles canceled.
 #if CANCEL
+            if (_state == PromiseState.Canceled)
+            {
+                // TODO
+            }
             if (other._state == PromiseState.Canceled)
             {
                 // Don't wait for anything if this promise was canceled during the callback, just dispose any progress listeners and place in the handle queue so it can be repooled.
@@ -359,8 +363,6 @@ namespace ProtoPromise
                     _deferredInternal.Reset();
                     // Retain now, release when deferred resolves/rejects/cancels.
                     Retain();
-                    // Wait on itself.
-                    _nextBranches = new ValueLinkedQueue<ITreeHandleAble>(this);
                     base.Reset(skipFrames + 1);
                 }
             }
@@ -380,8 +382,6 @@ namespace ProtoPromise
                     _deferredInternal.Reset();
                     // Retain now, release when deferred resolves/rejects/cancels.
                     Retain();
-                    // Wait on itself.
-                    _nextBranches = new ValueLinkedQueue<ITreeHandleAble>(this);
                     base.Reset(skipFrames + 1);
                 }
             }
@@ -393,7 +393,7 @@ namespace ProtoPromise
         partial void ClearPrevious();
         partial void ResetDepth();
         partial void SubscribeProgress(Promise other);
-        partial void ProgressInternal(Action<float> onProgress);
+        partial void ProgressInternal(Action<float> onProgress, int skipFrames);
 
         partial void ClearProgressListeners();
         partial void ResolveProgressListeners();
@@ -460,7 +460,7 @@ namespace ProtoPromise
         {
             while (_progressListeners.IsNotEmpty)
             {
-                _progressListeners.Pop().DisposeIfOwner(this);
+                _progressListeners.Pop().CancelIfOwner(this);
             }
         }
 
@@ -468,7 +468,7 @@ namespace ProtoPromise
         {
             while (_progressListeners.IsNotEmpty)
             {
-                _progressListeners.Pop().Dispose();
+                _progressListeners.Pop().Cancel();
             }
         }
 
@@ -528,7 +528,7 @@ namespace ProtoPromise
 
         protected virtual void SubscribeProgressIfWaiter(Internal.IProgressListener progressListener) { }
 
-        partial void ProgressInternal(Action<float> onProgress)
+        partial void ProgressInternal(Action<float> onProgress, int skipFrames)
         {
             if (_state == PromiseState.Rejected || _state == PromiseState.Canceled)
             {
@@ -539,7 +539,9 @@ namespace ProtoPromise
             if (_state == PromiseState.Resolved)
             {
                 // Equivalent to calling AddWaiter, but this skips some branches that we already checked here.
-                _nextBranches.Enqueue(Internal.ResolvedProgressHandler.GetOrCreate(onProgress));
+                var progressHandler = Internal.ResolvedProgressHandler.GetOrCreate(onProgress);
+                SetCreatedStackTrace(progressHandler, skipFrames + 1);
+                _nextBranches.Enqueue(progressHandler);
                 if (_notHandling)
                 {
                     AddToHandleQueue(this);
@@ -547,7 +549,9 @@ namespace ProtoPromise
                 return;
             }
 
-            Internal.IProgressListener progressListener = Internal.ProgressDelegate.GetOrCreate(onProgress, this);
+            var progressDelegate = Internal.ProgressDelegate.GetOrCreate(onProgress, this);
+            SetCreatedStackTrace(progressDelegate, skipFrames + 1);
+            Internal.IProgressListener progressListener = progressDelegate;
 
             // Directly add to listeners for this promise.
             // Sets promise to the one this is waiting on. Returns false if not waiting on another promise.
@@ -591,12 +595,12 @@ namespace ProtoPromise
                 }
                 case PromiseState.Rejected:
                 {
-                    progressListener.DisposeIfOwner(promise);
+                    progressListener.CancelIfOwner(promise);
                     break;
                 }
                 case PromiseState.Canceled:
                 {
-                    progressListener.Dispose();
+                    progressListener.Cancel();
                     break;
                 }
             }
@@ -693,9 +697,12 @@ namespace ProtoPromise
             }
 
             // For the special case of adding a progress listener to an already resolved promise.
-            public sealed class ResolvedProgressHandler : ITreeHandleAble
+            public sealed class ResolvedProgressHandler : ITreeHandleAble, IStacktraceable
             {
                 ITreeHandleAble ILinked<ITreeHandleAble>.Next { get; set; }
+#if DEBUG
+                string IStacktraceable.Stacktrace { get; set; }
+#endif
 
                 private Action<float> _onProgress;
 
@@ -728,7 +735,7 @@ namespace ProtoPromise
                     catch (Exception e)
                     {
                         UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                        // TODO: include created stacktrace
+                        SetStackTraceFromCreated(this, unhandledException);
                         AddRejectionToUnhandledStack(unhandledException);
                     }
                 }
@@ -745,12 +752,16 @@ namespace ProtoPromise
                 void Invoke();
                 void Increment(Promise sender, uint amount);
                 void Resolve(Promise sender, uint increment);
-                void Dispose();
-                void DisposeIfOwner(Promise sender);
+                void CancelIfOwner(Promise sender);
+                void Cancel();
             }
 
-            public sealed class ProgressDelegate : IProgressListener
+            public sealed class ProgressDelegate : IProgressListener, IStacktraceable
             {
+#if DEBUG
+                string IStacktraceable.Stacktrace { get; set; }
+#endif
+
                 private Action<float> _onProgress;
                 private Promise _owner;
                 private UnsignedFixed32 _current;
@@ -784,7 +795,7 @@ namespace ProtoPromise
                     catch (Exception e)
                     {
                         UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                        // TODO: include created stacktrace
+                        SetStackTraceFromCreated(this, unhandledException);
                         AddRejectionToUnhandledStack(unhandledException);
                     }
                 }
@@ -811,15 +822,7 @@ namespace ProtoPromise
                     if (sender == _owner)
                     {
                         var temp = _onProgress;
-                        if (!_handling)
-                        {
-                            // Dispose only if it's not in the progress queue.
-                            Dispose();
-                        }
-                        else
-                        {
-                            _done = true;
-                        }
+                        Cancel();
                         InvokeAndCatch(temp, 1f);
                     }
                     else
@@ -852,18 +855,32 @@ namespace ProtoPromise
                     AddToBackOfProgressQueue(this);
                 }
 
-                public void Dispose()
-                {
-                    _onProgress = null;
-                    _pool.Push(this);
-                }
-
-                void IProgressListener.DisposeIfOwner(Promise sender)
+                void IProgressListener.CancelIfOwner(Promise sender)
                 {
                     if (sender == _owner)
                     {
+                        Cancel();
+                    }
+                }
+
+                public void Cancel()
+                {
+                    if (_handling)
+                    {
+                        // Mark done so InvokeProgressListeners will dispose.
+                        _done = true;
+                    }
+                    else
+                    {
+                        // Dispose only if it's not in the progress queue.
                         Dispose();
                     }
+                }
+
+                private void Dispose()
+                {
+                    _onProgress = null;
+                    _pool.Push(this);
                 }
             }
 
@@ -963,10 +980,10 @@ namespace ProtoPromise
                     AddToFrontOfProgressQueue(this);
                 }
 
-                // Not used. The promise handles complete and dispose.
+                // Not used. The promise handles resolve and cancel.
                 void IProgressListener.Resolve(Promise sender, uint increment) { }
-                void IProgressListener.Dispose() { }
-                void IProgressListener.DisposeIfOwner(Promise sender) { }
+                void IProgressListener.CancelIfOwner(Promise sender) { }
+                void IProgressListener.Cancel() { }
             }
 
             public abstract class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise>, IProgressListener where TPromise : PromiseWaitPromise<T, TPromise>
@@ -1065,10 +1082,10 @@ namespace ProtoPromise
                     AddToFrontOfProgressQueue(this);
                 }
 
-                // Not used. The promise handles complete and dispose.
+                // Not used. The promise handles resolve and cancel.
                 void IProgressListener.Resolve(Promise sender, uint increment) { }
-                void IProgressListener.Dispose() { }
-                void IProgressListener.DisposeIfOwner(Promise sender) { }
+                void IProgressListener.CancelIfOwner(Promise sender) { }
+                void IProgressListener.Cancel() { }
             }
 
             partial class PromiseWaitDeferred<TPromise>
@@ -1170,6 +1187,35 @@ namespace ProtoPromise
             ThrowProgressException();
         }
 #endif
+    }
+
+    partial class Promise
+    {
+        partial class Internal
+        {
+            partial class FinallyDelegate : IStacktraceable
+            {
+#if DEBUG
+                string IStacktraceable.Stacktrace { get; set; }
+#endif
+            }
+
+            partial class CancelDelegate : IStacktraceable
+            {
+#if DEBUG
+                string IStacktraceable.Stacktrace { get; set; }
+#endif
+            }
+
+#pragma warning disable RECS0096 // Type parameter is never used
+            partial class CancelDelegate<T> : IStacktraceable
+#pragma warning restore RECS0096 // Type parameter is never used
+            {
+#if DEBUG
+                string IStacktraceable.Stacktrace { get; set; }
+#endif
+            }
+        }
     }
 }
 #pragma warning restore IDE0034 // Simplify 'default' expression

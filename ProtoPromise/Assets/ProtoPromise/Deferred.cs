@@ -1,4 +1,6 @@
-﻿namespace ProtoPromise
+﻿using System;
+
+namespace ProtoPromise
 {
 	partial class Promise
     {
@@ -70,6 +72,300 @@
             protected Deferred() { }
 
             public abstract void Resolve(T arg);
+        }
+    }
+
+    partial class Promise
+    {
+        partial class Internal
+        {
+            public sealed class DeferredInternal : Deferred
+            {
+                public DeferredInternal(Promise target)
+                {
+                    Promise = target;
+                }
+
+                public void Reset()
+                {
+                    State = PromiseState.Pending;
+                }
+
+                public override void ReportProgress(float progress)
+                {
+                    var promise = Promise;
+                    ValidateProgress();
+                    ValidateOperation(promise);
+                    ValidateProgress(progress);
+
+                    if (State != PromiseState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    promise.ReportProgress(progress);
+                }
+
+                public override void Resolve()
+                {
+                    var promise = Promise;
+                    ValidateOperation(promise);
+
+                    if (State == PromiseState.Pending)
+                    {
+                        promise.Release();
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    State = PromiseState.Resolved;
+                    promise.Resolve();
+                }
+
+                public override void Cancel()
+                {
+                    var promise = Promise;
+                    ValidateCancel();
+                    ValidateOperation(promise);
+
+                    if (State == PromiseState.Pending)
+                    {
+                        promise.Release();
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    State = PromiseState.Canceled;
+                    promise.Cancel();
+                }
+
+                public override void Cancel<TCancel>(TCancel reason)
+                {
+                    var promise = Promise;
+                    ValidateCancel();
+                    ValidateOperation(promise);
+
+                    if (State == PromiseState.Pending)
+                    {
+                        promise.Release();
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    State = PromiseState.Canceled;
+                    promise.Cancel(reason);
+                }
+
+                public override void Reject()
+                {
+                    var promise = Promise;
+                    ValidateOperation(promise);
+
+                    if (State == PromiseState.Pending)
+                    {
+                        promise.Release();
+                        State = PromiseState.Rejected;
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
+                    }
+
+                    promise.Reject(1);
+                }
+
+                public override void Reject<TReject>(TReject reason)
+                {
+                    var promise = Promise;
+                    ValidateOperation(promise);
+
+                    if (State == PromiseState.Pending)
+                    {
+                        promise.Release();
+                        State = PromiseState.Rejected;
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
+                    }
+
+                    promise.Reject(reason, 1);
+                }
+
+                public void RejectWithPromiseStacktrace(Exception exception)
+                {
+                    var promise = Promise;
+                    var rejectValue = UnhandledExceptionException.GetOrCreate(exception);
+                    _SetStackTraceFromCreated(promise, rejectValue);
+
+                    if (State != PromiseState.Pending)
+                    {
+                        AddRejectionToUnhandledStack(rejectValue);
+                        return;
+                    }
+
+                    State = PromiseState.Rejected;
+                    promise.Release();
+                    promise.RejectWithStateCheck(rejectValue);
+                }
+            }
+        }
+    }
+
+    partial class Promise<T>
+    {
+        protected static new class Internal
+        {
+            public sealed class DeferredInternal : Deferred
+            {
+                public DeferredInternal(Promise<T> target)
+                {
+                    Promise = target;
+                }
+
+                public void Reset()
+                {
+                    State = PromiseState.Pending;
+                }
+
+                public override void ReportProgress(float progress)
+                {
+                    var promise = Promise;
+                    ValidateProgress();
+                    ValidateOperation(promise);
+                    ValidateProgress(progress);
+
+                    if (State != PromiseState.Pending)
+                    {
+                        Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    promise.ReportProgress(progress);
+                }
+
+                public override void Resolve(T arg)
+                {
+                    var promise = Promise;
+                    ValidateOperation(promise);
+
+                    if (State == PromiseState.Pending)
+                    {
+                        promise.Release();
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    State = PromiseState.Resolved;
+                    promise.Resolve(arg);
+                }
+
+                public override void Cancel()
+                {
+                    var promise = Promise;
+                    ValidateCancel();
+                    ValidateOperation(promise);
+
+                    if (State == PromiseState.Pending)
+                    {
+                        promise.Release();
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    State = PromiseState.Canceled;
+                    promise.Cancel();
+                }
+
+                public override void Cancel<TCancel>(TCancel reason)
+                {
+                    var promise = Promise;
+                    ValidateCancel();
+                    ValidateOperation(promise);
+
+                    if (State == PromiseState.Pending)
+                    {
+                        promise.Release();
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+                        return;
+                    }
+
+                    State = PromiseState.Canceled;
+                    promise.Cancel(reason);
+                }
+
+                public override void Reject()
+                {
+                    var promise = Promise;
+                    ValidateOperation(promise);
+
+                    if (State == PromiseState.Pending)
+                    {
+                        promise.Release();
+                        State = PromiseState.Rejected;
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
+                    }
+
+                    promise.Reject(1);
+                }
+
+                public override void Reject<TReject>(TReject reason)
+                {
+                    var promise = Promise;
+                    ValidateOperation(promise);
+
+                    if (State == PromiseState.Pending)
+                    {
+                        promise.Release();
+                        State = PromiseState.Rejected;
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
+                    }
+
+                    promise.Reject(reason, 1);
+                }
+
+                public void RejectWithPromiseStacktrace(Exception exception)
+                {
+                    var promise = Promise;
+                    var rejectValue = ProtoPromise.Promise.Internal.UnhandledExceptionException.GetOrCreate(exception);
+                    _SetStackTraceFromCreated(promise, rejectValue);
+
+                    if (State != PromiseState.Pending)
+                    {
+                        AddRejectionToUnhandledStack(rejectValue);
+                        return;
+                    }
+
+                    State = PromiseState.Rejected;
+                    promise.Release();
+                    promise.RejectWithStateCheck(rejectValue);
+                }
+            }
         }
     }
 }
