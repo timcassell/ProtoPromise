@@ -4,6 +4,8 @@
 // undef PROGRESS to disable, or define PROGRESS to enable progress reports on promises.
 // If PROGRESS is defined, promises use more memory. If PROGRESS is undefined, there is no limit to the depth of a promise chain.
 #define PROGRESS
+// define DEBUG to enable debugging options in RELEASE mode. undef DEBUG to disable debugging options in DEBUG mode.
+//#define DEBUG
 // TODO: Obsolete attributes.
 
 #pragma warning disable IDE0018 // Inline variable declaration
@@ -78,15 +80,6 @@ namespace ProtoPromise
             public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
 #pragma warning restore RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 #endif
-
-            /// <summary>
-            /// Clears all currently pooled objects. Does not affect pending or retained promises.
-            /// </summary>
-            public static void ClearObjectPool()
-            {
-                ValueLinkedStackZeroGC<Internal.IProgressListener>.ClearPooledNodes();
-                Internal.OnClearPool.Invoke();
-            }
         }
 
 
@@ -301,7 +294,30 @@ namespace ProtoPromise
 
         // Calls to this get compiled away when CANCEL is defined.
         static partial void ValidateCancel();
-#if !CANCEL
+        static partial void HandleCanceled();
+#if CANCEL
+        // Cancel promises in a breadth-first manner.
+        private static ValueLinkedQueue<Internal.ITreeHandleAble> _cancelQueue;
+
+        protected static void AddToCancelQueue(Internal.ITreeHandleAble cancelation)
+        {
+            _cancelQueue.Enqueue(cancelation);
+        }
+
+        protected static void AddToCancelQueueRisky(Internal.ITreeHandleAble cancelation)
+        {
+            _cancelQueue.EnqueueRisky(cancelation);
+        }
+
+        static partial void HandleCanceled()
+        {
+            while (_handleQueue.IsNotEmpty)
+            {
+                _handleQueue.DequeueRisky().Cancel();
+            }
+            _cancelQueue.ClearLast();
+        }
+#else
         static protected void ThrowCancelException()
         {
             throw new InvalidOperationException("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.");
@@ -316,17 +332,10 @@ namespace ProtoPromise
         private void WaitFor(Promise other)
         {
             ValidateReturn(other);
-            // TODO: Can probably skip this check altogether since AddWaiter handles canceled.
 #if CANCEL
             if (_state == PromiseState.Canceled)
             {
-                // TODO
-            }
-            if (other._state == PromiseState.Canceled)
-            {
-                // Don't wait for anything if this promise was canceled during the callback, just dispose any progress listeners and place in the handle queue so it can be repooled.
-                CancelProgressListeners();
-                // TODO: Cancel this promise and call ContinueCanceling
+                // Don't wait for anything if this promise was canceled during the callback, just place in the handle queue so it can be repooled.
                 AddToHandleQueue(this);
             }
             else
@@ -335,6 +344,7 @@ namespace ProtoPromise
                 SubscribeProgress(other);
                 other.AddWaiter(this);
             }
+            HandleCanceled();
         }
 
 
@@ -620,12 +630,11 @@ namespace ProtoPromise
             _progressQueue.Enqueue(progressListener);
         }
 
-        // TODO: Call this.
-        public static void InvokeProgressListeners()
+        private static void HandleProgress()
         {
             if (_runningProgress)
             {
-                // InvokeProgresses is running higher in the program stack, so just return.
+                // HandleProgress is running higher in the program stack, so just return.
                 return;
             }
 
@@ -703,7 +712,6 @@ namespace ProtoPromise
 #if DEBUG
                 string IStacktraceable.Stacktrace { get; set; }
 #endif
-
                 private Action<float> _onProgress;
 
                 private static ValueLinkedStack<ITreeHandleAble> _pool;
@@ -742,6 +750,7 @@ namespace ProtoPromise
 
                 // These will not be called.
                 void ITreeHandleAble.AssignCancelValue(IValueContainer cancelValue) { throw new InvalidOperationException(); }
+                void ITreeHandleAble.OnSubscribeToCanceled(IValueContainer cancelValue) { throw new InvalidOperationException(); }
                 void ITreeHandleAble.Cancel() { throw new InvalidOperationException(); }
                 void ITreeHandleAble.Repool() { throw new InvalidOperationException(); }
             }

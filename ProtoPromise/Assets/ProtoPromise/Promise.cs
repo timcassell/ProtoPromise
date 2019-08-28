@@ -45,7 +45,7 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onCanceled, "onCanceled");
 
-            AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled));
+            AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled, 1));
 			return this;
 		}
 
@@ -55,7 +55,7 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onCanceled, "onCanceled");
 
-            AddWaiter(Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled));
+            AddWaiter(Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled, 1));
             return this;
         }
 
@@ -73,14 +73,11 @@ namespace ProtoPromise
 				return;
 			}
 
-            CancelProgressListeners();
-
             _rejectedOrCanceledValue = Internal.CancelVoid.GetOrCreate();
 			_rejectedOrCanceledValue.Retain();
 
+            CancelProgressListeners();
             OnCancel();
-            // TODO: Make this async
-            ContinueCanceling();
 		}
 
 		/// <summary>
@@ -97,14 +94,11 @@ namespace ProtoPromise
 				return;
 			}
 
-            CancelProgressListeners();
-
             _rejectedOrCanceledValue = Internal.CancelValue<TCancel>.GetOrCreate(reason);
 			_rejectedOrCanceledValue.Retain();
 
+            CancelProgressListeners();
             OnCancel();
-            // TODO: Make this async
-            ContinueCanceling();
         }
 
 		public Promise Progress(Action<float> onProgress)
@@ -122,7 +116,7 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onFinally, "onFinally");
 
-            AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, this));
+            AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, this, 1));
             return this;
 		}
 
@@ -141,7 +135,7 @@ namespace ProtoPromise
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
 
-			var promise = Internal.PromiseVoidResolve.GetOrCreate(onResolved,1 );
+            var promise = Internal.PromiseVoidResolve.GetOrCreate(onResolved, 1);
 			HookupNewPromise(promise);
 			return promise;
 		}

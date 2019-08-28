@@ -124,10 +124,8 @@ namespace ProtoPromise
             }
             else if (_state == PromiseState.Canceled)
             {
-                waiter.AssignCancelValue(_rejectedOrCanceledValue);
+                waiter.OnSubscribeToCanceled(_rejectedOrCanceledValue);
                 AddToCancelQueue(waiter);
-                // TODO: Make this async.
-                ContinueCanceling();
             }
             else
             {
@@ -174,22 +172,20 @@ namespace ProtoPromise
 
             if (_nextBranches.IsNotEmpty)
             {
-                return;
-            }
-
-            // Add safe for first item.
-            var next = _nextBranches.DequeueRisky();
-            next.AssignCancelValue(_rejectedOrCanceledValue);
-            AddToCancelQueue(next);
-
-            // Add risky for remaining items.
-            while (_nextBranches.IsNotEmpty)
-            {
-                next = _nextBranches.DequeueRisky();
+                // Add safe for first item.
+                var next = _nextBranches.DequeueRisky();
                 next.AssignCancelValue(_rejectedOrCanceledValue);
-                AddToCancelQueueRisky(next);
+                AddToCancelQueue(next);
+
+                // Add risky for remaining items.
+                while (_nextBranches.IsNotEmpty)
+                {
+                    next = _nextBranches.DequeueRisky();
+                    next.AssignCancelValue(_rejectedOrCanceledValue);
+                    AddToCancelQueueRisky(next);
+                }
+                _nextBranches.ClearLast();
             }
-            _nextBranches.ClearLast();
         }
 
         void Internal.ITreeHandleAble.Cancel()
@@ -206,6 +202,13 @@ namespace ProtoPromise
                 _rejectedOrCanceledValue = cancelValue;
                 _rejectedOrCanceledValue.Retain();
             }
+        }
+
+        void Internal.ITreeHandleAble.OnSubscribeToCanceled(Internal.IValueContainer cancelValue)
+        {
+            _rejectedOrCanceledValue = cancelValue;
+            _rejectedOrCanceledValue.Retain();
+            CancelProgressListeners();
         }
 
         void Internal.ITreeHandleAble.Repool()
@@ -243,7 +246,7 @@ namespace ProtoPromise
                 return;
             }
 
-            ValueLinkedStack<Internal.UnhandledExceptionInternal> unhandledExceptions = _unhandledExceptions;
+            var unhandledExceptions = _unhandledExceptions;
             _unhandledExceptions.Clear();
             // Reset handled flag.
             foreach (Internal.UnhandledExceptionInternal unhandled in unhandledExceptions)
@@ -265,70 +268,47 @@ namespace ProtoPromise
             _handleQueue.Enqueue(promise);
         }
 
-        // TODO: Call this.
         // This allows infinite .Then/.Catch callbacks, since it avoids recursion.
-        protected static void ContinueHandling()
+        protected static void HandleComplete()
         {
             if (_runningHandles)
             {
-                // ContinueHandling is running higher in the program stack, so just return.
+                // HandleComplete is running higher in the program stack, so just return.
                 return;
             }
 
             _runningHandles = true;
 
-            while (_handleQueue.IsNotEmpty)
+            HandleCanceled();
+
+            if (_handleQueue.IsEmpty)
             {
-                Internal.ITreeHandleAble _current = _handleQueue.DequeueRisky();
-                Promise current = (Promise) _current;
-
-                while (current._nextBranches.IsNotEmpty)
-                {
-                    current._nextBranches.DequeueRisky().Handle(current);
-                }
-                current._nextBranches.ClearLast();
-
-                current._notHandling = true;
-                _current.Repool();
-            }
-
-            _handleQueue.ClearLast();
-            _runningHandles = false;
-        }
-
-        // Cancel promises in a breadth-first manner.
-        // TODO: Move this to config and wrap in #if CANCEL
-        private static ValueLinkedQueue<Internal.ITreeHandleAble> _cancelQueue;
-        private static bool _runningCancels;
-
-        protected static void AddToCancelQueue(Internal.ITreeHandleAble cancelation)
-        {
-            _cancelQueue.Enqueue(cancelation);
-        }
-
-        protected static void AddToCancelQueueRisky(Internal.ITreeHandleAble cancelation)
-        {
-            _cancelQueue.EnqueueRisky(cancelation);
-        }
-
-        // TODO: Make this async
-        private static void ContinueCanceling()
-        {
-            if (_runningCancels)
-            {
-                // ContinueCanceling is running higher in the program stack, so just return.
+                _runningHandles = false;
                 return;
             }
 
-            _runningCancels = true;
-
-            while (_handleQueue.IsNotEmpty)
+            do
             {
-                _handleQueue.DequeueRisky().Cancel();
-            }
+                do
+                {
+                    Internal.ITreeHandleAble _current = _handleQueue.DequeueRisky();
+                    Promise current = (Promise) _current;
 
-            _cancelQueue.ClearLast();
-            _runningCancels = false;
+                    while (current._nextBranches.IsNotEmpty)
+                    {
+                        current._nextBranches.DequeueRisky().Handle(current);
+                    }
+                    current._nextBranches.ClearLast();
+
+                    current._notHandling = true;
+                    _current.Repool();
+                } while (_handleQueue.IsNotEmpty);
+
+                HandleCanceled();
+            } while (_handleQueue.IsNotEmpty);
+
+            _handleQueue.ClearLast();
+            _runningHandles = false;
         }
     }
 
@@ -2417,11 +2397,12 @@ namespace ProtoPromise
                     OnClearPool += () => _pool.Clear();
                 }
 
-                public static FinallyDelegate GetOrCreate(Action onFinally, Promise owner)
+                public static FinallyDelegate GetOrCreate(Action onFinally, Promise owner, int skipFrames)
                 {
                     var del = _pool.IsNotEmpty ? (FinallyDelegate)_pool.Pop() : new FinallyDelegate();
                     del._onFinally = onFinally;
                     del._owner = owner;
+                    SetCreatedStackTrace(del, skipFrames + 1);
                     return del;
                 }
 
@@ -2461,6 +2442,8 @@ namespace ProtoPromise
                     InvokeAndCatchAndDispose();
                 }
 
+                void ITreeHandleAble.OnSubscribeToCanceled(IValueContainer cancelValue) { }
+
                 void ITreeHandleAble.Repool() { throw new InvalidOperationException(); }
             }
 
@@ -2479,10 +2462,11 @@ namespace ProtoPromise
                     OnClearPool += () => _pool.Clear();
                 }
 
-                public static CancelDelegate GetOrCreate(Action onCanceled)
+                public static CancelDelegate GetOrCreate(Action onCanceled, int skipFrames)
                 {
                     var del = _pool.IsNotEmpty ? (CancelDelegate)_pool.Pop() : new CancelDelegate();
                     del._onCanceled = onCanceled;
+                    SetCreatedStackTrace(del, skipFrames + 1);
                     return del;
                 }
 
@@ -2515,6 +2499,8 @@ namespace ProtoPromise
                     Dispose();
                 }
 
+                void ITreeHandleAble.OnSubscribeToCanceled(IValueContainer cancelValue) { }
+
                 void ITreeHandleAble.Repool() { throw new InvalidOperationException(); }
             }
 
@@ -2534,10 +2520,11 @@ namespace ProtoPromise
                     OnClearPool += () => _pool.Clear();
                 }
 
-                public static CancelDelegate<T> GetOrCreate(Action<T> onCanceled)
+                public static CancelDelegate<T> GetOrCreate(Action<T> onCanceled, int skipFrames)
                 {
                     var del = _pool.IsNotEmpty ? (CancelDelegate<T>)_pool.Pop() : new CancelDelegate<T>();
                     del._onCanceled = onCanceled;
+                    SetCreatedStackTrace(del, skipFrames + 1);
                     return del;
                 }
 
@@ -2577,6 +2564,11 @@ namespace ProtoPromise
                 void ITreeHandleAble.Handle(Promise feed)
                 {
                     Dispose();
+                }
+                
+                void ITreeHandleAble.OnSubscribeToCanceled(IValueContainer cancelValue)
+                {
+                    _cancelValue = cancelValue;
                 }
 
                 void ITreeHandleAble.Repool() { throw new InvalidOperationException(); }
@@ -2881,8 +2873,9 @@ namespace ProtoPromise
             public partial interface ITreeHandleAble : ILinked<ITreeHandleAble>
             {
                 void Handle(Promise feed);
-                void Cancel();
                 void Repool();
+                void Cancel();
+                void OnSubscribeToCanceled(IValueContainer cancelValue);
                 void AssignCancelValue(IValueContainer cancelValue);
             }
 
