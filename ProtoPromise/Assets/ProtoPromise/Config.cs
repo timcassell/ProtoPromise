@@ -6,16 +6,28 @@
 #define PROGRESS
 // define DEBUG to enable debugging options in RELEASE mode. undef DEBUG to disable debugging options in DEBUG mode.
 //#define DEBUG
-// TODO: Obsolete attributes.
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 using System;
 
 namespace ProtoPromise
 {
     partial class Promise
     {
+        public enum State : byte
+        {
+            Pending,
+            Resolved,
+            Rejected,
+#if !CANCEL
+            [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", false)]
+#endif
+            Canceled // This violates Promises/A+ 2.1 when CANCEL is enabled.
+        }
+
         public enum GeneratedStacktrace : byte
         {
             /// <summary>
@@ -66,7 +78,6 @@ namespace ProtoPromise
             /// </summary>
             public const int ProgressDecimalBits = 13;
 
-            // TODO: Check this before pooling internal objects.
             private static PoolType _objectPooling = PoolType.Internal;
             /// <summary>
             /// Highly recommend to leave this None or Internal in DEBUG mode, so that exceptions will propagate if/when promises are used incorrectly after they have already completed.
@@ -76,10 +87,168 @@ namespace ProtoPromise
 #if DEBUG
             public static GeneratedStacktrace DebugStacktraceGenerator { get; set; }
 #else
-#pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
             public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
-#pragma warning restore RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 #endif
+        }
+
+        partial class DeferredBase
+        {
+#if CANCEL
+            public State State { get; protected set; }
+#else
+            public State State { get { return Promise._state; } protected set { } }
+#endif
+
+            /// <summary>
+            /// Report progress between 0 and 1.
+            /// </summary>
+#if !PROGRESS
+            [Obsolete("Define PROGRESS in ProtoPromise/Config.cs to enable progress reports.", true)]
+#endif
+            public abstract void ReportProgress(float progress);
+
+#if !CANCEL
+            [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
+#endif
+
+            public void Cancel()
+            {
+                ValidateCancel();
+                var promise = Promise;
+                ValidateOperation(promise);
+
+                if (State == State.Pending)
+                {
+                    promise.Release();
+                }
+                else
+                {
+                    Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+                    return;
+                }
+
+                State = State.Canceled;
+                promise.Cancel();
+            }
+
+#if !CANCEL
+            [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
+#endif
+            public void Cancel<TCancel>(TCancel reason)
+            {
+                ValidateCancel();
+                var promise = Promise;
+                ValidateOperation(promise);
+
+                if (State == State.Pending)
+                {
+                    promise.Release();
+                }
+                else
+                {
+                    Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
+                    return;
+                }
+
+                State = State.Canceled;
+                promise.Cancel(reason);
+            }
+        }
+
+#if !PROGRESS
+        [Obsolete("Define PROGRESS in ProtoPromise/Config.cs to enable progress reports.", true)]
+#endif
+        public Promise Progress(Action<float> onProgress)
+        {
+            ValidateProgress();
+#if PROGRESS
+            ProgressInternal(onProgress, 1);
+#endif
+            return this;
+        }
+
+#if !CANCEL
+        [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
+#endif
+        public Promise Canceled(Action onCanceled)
+        {
+            AddCancelDelegate(onCanceled, 1);
+            return this;
+        }
+
+#if !CANCEL
+        [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
+#endif
+        public Promise Canceled<TCancel>(Action<TCancel> onCanceled)
+        {
+            AddCancelDelegate(onCanceled, 1);
+            return this;
+        }
+
+        protected void AddCancelDelegate(Action onCanceled, int skipFrames)
+        {
+            ValidateCancel();
+            ValidateOperation(this);
+            ValidateArgument(onCanceled, "onCanceled");
+
+            AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled, 1));
+        }
+
+        protected void AddCancelDelegate<TCancel>(Action<TCancel> onCanceled, int skipFrames)
+        {
+            ValidateCancel();
+            ValidateOperation(this);
+            ValidateArgument(onCanceled, "onCanceled");
+
+            AddWaiter(Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled, 1));
+        }
+
+        /// <summary>
+        /// Cancels this promise and all promises that have been chained from this.
+        /// Does nothing if this promise isn't pending.
+        /// </summary>
+#if !CANCEL
+        [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
+#endif
+        public void Cancel()
+        {
+            ValidateCancel();
+            ValidateOperation(this);
+
+            if (_state != State.Pending)
+            {
+                return;
+            }
+
+            _rejectedOrCanceledValue = Internal.CancelVoid.GetOrCreate();
+            _rejectedOrCanceledValue.Retain();
+
+            CancelProgressListeners();
+            OnCancel();
+        }
+
+        /// <summary>
+        /// Cancels this promise and all promises that have been chained from this with the provided cancel reason.
+        /// Does nothing if this promise isn't pending.
+        /// </summary>
+#if !CANCEL
+        [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
+#endif
+        public void Cancel<TCancel>(TCancel reason)
+        {
+            ValidateCancel();
+            ValidateOperation(this);
+
+            if (_state != State.Pending)
+            {
+                return;
+            }
+
+            _rejectedOrCanceledValue = Internal.CancelValue<TCancel>.GetOrCreate(reason);
+            _rejectedOrCanceledValue.Retain();
+
+            CancelProgressListeners();
+            OnCancel();
         }
 
 
@@ -299,12 +468,12 @@ namespace ProtoPromise
         // Cancel promises in a breadth-first manner.
         private static ValueLinkedQueue<Internal.ITreeHandleAble> _cancelQueue;
 
-        protected static void AddToCancelQueue(Internal.ITreeHandleAble cancelation)
+        private static void AddToCancelQueue(Internal.ITreeHandleAble cancelation)
         {
             _cancelQueue.Enqueue(cancelation);
         }
 
-        protected static void AddToCancelQueueRisky(Internal.ITreeHandleAble cancelation)
+        private static void AddToCancelQueueRisky(Internal.ITreeHandleAble cancelation)
         {
             _cancelQueue.EnqueueRisky(cancelation);
         }
@@ -333,7 +502,7 @@ namespace ProtoPromise
         {
             ValidateReturn(other);
 #if CANCEL
-            if (_state == PromiseState.Canceled)
+            if (_state == State.Canceled)
             {
                 // Don't wait for anything if this promise was canceled during the callback, just place in the handle queue so it can be repooled.
                 AddToHandleQueue(this);
@@ -403,7 +572,6 @@ namespace ProtoPromise
         partial void ClearPrevious();
         partial void ResetDepth();
         partial void SubscribeProgress(Promise other);
-        partial void ProgressInternal(Action<float> onProgress, int skipFrames);
 
         partial void ClearProgressListeners();
         partial void ResolveProgressListeners();
@@ -484,7 +652,7 @@ namespace ProtoPromise
 
         protected void ReportProgress(float progress)
         {
-            if (progress >= 1f | _state == PromiseState.Canceled)
+            if (progress >= 1f | _state != State.Pending)
             {
                 // Don't report progress 1.0, that will be reported automatically when the promise is resolved.
                 return;
@@ -538,29 +706,30 @@ namespace ProtoPromise
 
         protected virtual void SubscribeProgressIfWaiter(Internal.IProgressListener progressListener) { }
 
-        partial void ProgressInternal(Action<float> onProgress, int skipFrames)
+        protected void ProgressInternal(Action<float> onProgress, int skipFrames)
         {
-            if (_state == PromiseState.Rejected || _state == PromiseState.Canceled)
+            ValidateOperation(this);
+            ValidateArgument(onProgress, "onProgress");
+
+            if ((byte) _state > 1) // Same as if ( _state == State.Rejected || _state == State.Canceled)
             {
                 // Don't report progress if the promise is canceled or rejected.
                 return;
             }
 
-            if (_state == PromiseState.Resolved)
+            if (_state == State.Resolved)
             {
+                var progressHandler = Internal.ResolvedProgressHandler.GetOrCreate(onProgress, skipFrames + 1);
                 // Equivalent to calling AddWaiter, but this skips some branches that we already checked here.
-                var progressHandler = Internal.ResolvedProgressHandler.GetOrCreate(onProgress);
-                SetCreatedStackTrace(progressHandler, skipFrames + 1);
                 _nextBranches.Enqueue(progressHandler);
-                if (_notHandling)
+                if (!_handling)
                 {
                     AddToHandleQueue(this);
                 }
                 return;
             }
 
-            var progressDelegate = Internal.ProgressDelegate.GetOrCreate(onProgress, this);
-            SetCreatedStackTrace(progressDelegate, skipFrames + 1);
+            var progressDelegate = Internal.ProgressDelegate.GetOrCreate(onProgress, this, skipFrames + 1);
             Internal.IProgressListener progressListener = progressDelegate;
 
             // Directly add to listeners for this promise.
@@ -592,23 +761,23 @@ namespace ProtoPromise
             // promise is the root of the promise tree.
             switch (promise._state)
             {
-                case PromiseState.Pending:
+                case State.Pending:
                 {
                     promise.SubscribeProgressIfWaiter(progressListener);
                     progressListener.SetInitialAmount(promise._waitDepthAndProgress);
                     break;
                 }
-                case PromiseState.Resolved:
+                case State.Resolved:
                 {
                     progressListener.SetInitialAmount(promise._waitDepthAndProgress.GetIncrementedWholeTruncated());
                     break;
                 }
-                case PromiseState.Rejected:
+                case State.Rejected:
                 {
                     progressListener.CancelIfOwner(promise);
                     break;
                 }
-                case PromiseState.Canceled:
+                default: // case State.Canceled:
                 {
                     progressListener.Cancel();
                     break;
@@ -723,10 +892,11 @@ namespace ProtoPromise
 
                 private ResolvedProgressHandler() { }
 
-                public static ResolvedProgressHandler GetOrCreate(Action<float> onProgress)
+                public static ResolvedProgressHandler GetOrCreate(Action<float> onProgress, int skipFrames)
                 {
                     var handler = _pool.IsNotEmpty ? (ResolvedProgressHandler) _pool.Pop() : new ResolvedProgressHandler();
                     handler._onProgress = onProgress;
+                    SetCreatedStackTrace(handler, skipFrames + 1);
                     return handler;
                 }
 
@@ -735,7 +905,10 @@ namespace ProtoPromise
                     // Feed is guaranteed to be resolved.
                     var temp = _onProgress;
                     _onProgress = null;
-                    _pool.Push(this);
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
                     try
                     {
                         temp.Invoke(1f);
@@ -786,12 +959,12 @@ namespace ProtoPromise
 
                 private ProgressDelegate() { }
 
-                public static ProgressDelegate GetOrCreate(Action<float> onProgress, Promise owner)
+                public static ProgressDelegate GetOrCreate(Action<float> onProgress, Promise owner, int skipFrames)
                 {
                     var progress = _pool.IsNotEmpty ? (ProgressDelegate) _pool.Pop() : new ProgressDelegate();
                     progress._onProgress = onProgress;
                     progress._owner = owner;
-                    progress._done = false;
+                    SetCreatedStackTrace(progress, skipFrames + 1);
                     return progress;
                 }
 
@@ -889,7 +1062,11 @@ namespace ProtoPromise
                 private void Dispose()
                 {
                     _onProgress = null;
-                    _pool.Push(this);
+                    _done = false;
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
                 }
             }
 
@@ -922,7 +1099,7 @@ namespace ProtoPromise
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
                 {
-                    if (_state != PromiseState.Pending)
+                    if (_state != State.Pending)
                     {
                         previous = null;
                         return false;
@@ -957,7 +1134,7 @@ namespace ProtoPromise
 
                 void IProgressListener.Invoke()
                 {
-                    if (_state != PromiseState.Pending)
+                    if (_state != State.Pending)
                     {
                         return;
                     }
@@ -1024,7 +1201,7 @@ namespace ProtoPromise
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
                 {
-                    if (_state != PromiseState.Pending)
+                    if (_state != State.Pending)
                     {
                         previous = null;
                         return false;
@@ -1059,7 +1236,7 @@ namespace ProtoPromise
 
                 void IProgressListener.Invoke()
                 {
-                    if (_state != PromiseState.Pending)
+                    if (_state != State.Pending)
                     {
                         return;
                     }
@@ -1144,6 +1321,111 @@ namespace ProtoPromise
             }
         }
 #endif
+
+        private void Resolve()
+        {
+#if CANCEL
+            if (_state == State.Canceled)
+            {
+                return;
+            }
+#endif
+            AddToHandleQueue(this);
+        }
+
+        private void AddWaiter(Internal.ITreeHandleAble waiter)
+        {
+            if ((_state == State.Resolved | _state == State.Rejected) & !_handling)
+            {
+                // Continue handling if this is resolved or rejected and it's not already being handled.
+                _nextBranches.Enqueue(waiter);
+                AddToHandleQueue(this);
+            }
+#if CANCEL
+            else if (_state == State.Canceled)
+            {
+                waiter.OnSubscribeToCanceled(_rejectedOrCanceledValue);
+                AddToCancelQueue(waiter);
+            }
+#endif
+            else
+            {
+                _nextBranches.Enqueue(waiter);
+            }
+        }
+
+        void Internal.ITreeHandleAble.Handle(Promise feed)
+        {
+#if CANCEL
+            if (_state == State.Canceled)
+            {
+                // Place in the handle queue so it can be repooled.
+                AddToHandleQueue(this);
+                return;
+            }
+#endif
+            feed._wasWaitedOn = true;
+            ClearPrevious();
+            try
+            {
+                Handle(feed);
+            }
+            catch (Exception e)
+            {
+                var ex = Internal.UnhandledExceptionException.GetOrCreate(e);
+                SetStackTraceFromCreated(this, ex);
+#if CANCEL
+                if (_state == State.Canceled)
+                {
+                    AddRejectionToUnhandledStack(ex);
+                    // Place in the handle queue so it can be repooled.
+                    AddToHandleQueue(this);
+                }
+                else
+#endif
+                {
+                    RejectInternal(ex);
+                }
+            }
+        }
+
+        protected virtual void OnCancel()
+        {
+            ClearProgressListeners();
+
+#if CANCEL
+            if (_nextBranches.IsNotEmpty)
+            {
+                // Add safe for first item.
+                var next = _nextBranches.DequeueRisky();
+                next.AssignCancelValue(_rejectedOrCanceledValue);
+                AddToCancelQueue(next);
+
+                // Add risky for remaining items.
+                while (_nextBranches.IsNotEmpty)
+                {
+                    next = _nextBranches.DequeueRisky();
+                    next.AssignCancelValue(_rejectedOrCanceledValue);
+                    AddToCancelQueueRisky(next);
+                }
+                _nextBranches.ClearLast();
+            }
+#endif
+        }
+
+        private void ResolveWithStateCheck()
+        {
+#if CANCEL
+            if (_state == State.Canceled)
+            {
+                AddToHandleQueue(this);
+            }
+            else
+#endif
+            {
+                ResolveInternal();
+            }
+        }
     }
 
     partial class Promise<T>
@@ -1181,7 +1463,19 @@ namespace ProtoPromise
 
         // Calls to this get compiled away when CANCEL is defined.
         static partial void ValidateCancel();
-#if !CANCEL
+#if CANCEL
+        public new Promise<T> Canceled(Action onCanceled)
+        {
+            AddCancelDelegate(onCanceled, 1);
+            return this;
+        }
+
+        public new Promise<T> Canceled<TCancel>(Action<TCancel> onCanceled)
+        {
+            AddCancelDelegate(onCanceled, 1);
+            return this;
+        }
+#else
         static partial void ValidateCancel()
         {
             ThrowCancelException();
@@ -1190,12 +1484,44 @@ namespace ProtoPromise
 
         // Calls to these get compiled away when PROGRESS is defined.
         static partial void ValidateProgress();
-#if !PROGRESS
+#if PROGRESS
+        public new Promise<T> Progress(Action<float> onProgress)
+        {
+            ProgressInternal(onProgress, 1);
+            return this;
+        }
+#else
         static partial void ValidateProgress()
         {
             ThrowProgressException();
         }
 #endif
+
+        protected void Resolve(T value)
+        {
+#if CANCEL
+            if (_state == State.Canceled)
+            {
+                return;
+            }
+#endif
+            _value = value;
+            AddToHandleQueue(this);
+        }
+
+        protected void ResolveWithStateCheck(T value)
+        {
+#if CANCEL
+            if (_state == State.Canceled)
+            {
+                AddToHandleQueue(this);
+            }
+            else
+#endif
+            {
+                ResolveInternal(value);
+            }
+        }
     }
 
     partial class Promise
@@ -1227,5 +1553,7 @@ namespace ProtoPromise
         }
     }
 }
+#pragma warning restore RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
+#pragma warning restore CS0618 // Type or member is obsolete
 #pragma warning restore IDE0034 // Simplify 'default' expression
 #pragma warning restore IDE0018 // Inline variable declaration

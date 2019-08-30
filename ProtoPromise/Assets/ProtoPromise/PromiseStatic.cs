@@ -16,12 +16,12 @@ namespace ProtoPromise
 			internal static PromiseClosure New()
 #pragma warning restore RECS0146 // Member hides static member from outer class
 			{
-				return pool.IsNotEmpty ? pool.Pop() : new PromiseClosure();
+				return _pool.IsNotEmpty ? _pool.Pop() : new PromiseClosure();
 			}
 
 			static PromiseClosure()
 			{
-				Internal.OnClearPool += () => pool.Clear();
+				Internal.OnClearPool += () => _pool.Clear();
 			}
 
 			protected PromiseClosure() { }
@@ -32,7 +32,7 @@ namespace ProtoPromise
 			private void AddToPool()
 			{
 				promise = null;
-				pool.Push(this);
+                _pool.Push(this);
 			}
 
 			public void ResolveClosure()
@@ -78,12 +78,12 @@ namespace ProtoPromise
 			internal static AllClosure New()
 #pragma warning restore RECS0146 // Member hides static member from outer class
 			{
-				return pool.IsNotEmpty ? pool.Pop() : new AllClosure();
+				return _pool.IsNotEmpty ? _pool.Pop() : new AllClosure();
 			}
 
 			static AllClosure()
 			{
-				Internal.OnClearPool += () => pool.Clear();
+				Internal.OnClearPool += () => _pool.Clear();
 			}
 
 			protected AllClosure() { }
@@ -94,7 +94,7 @@ namespace ProtoPromise
 			public void AddToPool()
 			{
 				masterDeferred = null;
-				pool.Push(this);
+                _pool.Push(this);
 			}
 		}
 
@@ -115,12 +115,12 @@ namespace ProtoPromise
 			internal static PromiseClosure<T> New()
 #pragma warning restore RECS0146 // Member hides static member from outer class
 			{
-				return pool.IsNotEmpty ? pool.Pop() : new PromiseClosure<T>();
+				return _pool.IsNotEmpty ? _pool.Pop() : new PromiseClosure<T>();
 			}
 
 			static PromiseClosure()
 			{
-				Internal.OnClearPool += () => pool.Clear();
+				Internal.OnClearPool += () => _pool.Clear();
 			}
 
 			protected PromiseClosure() { }
@@ -128,7 +128,7 @@ namespace ProtoPromise
 			private void AddToPool()
 			{
 				promise = null;
-				pool.Push(this);
+                _pool.Push(this);
 			}
 
 			public void ResolveClosure(T arg)
@@ -176,12 +176,12 @@ namespace ProtoPromise
 			internal static AllClosure<T> New()
 #pragma warning restore RECS0146 // Member hides static member from outer class
 			{
-				return pool.IsNotEmpty ? pool.Pop() : new AllClosure<T>();
+				return _pool.IsNotEmpty ? _pool.Pop() : new AllClosure<T>();
 			}
 
 			static AllClosure()
 			{
-				Internal.OnClearPool += () => pool.Clear();
+				Internal.OnClearPool += () => _pool.Clear();
 			}
 
 			protected AllClosure() { }
@@ -194,7 +194,7 @@ namespace ProtoPromise
 			{
 				args = null;
 				masterDeferred = null;
-				pool.Push(this);
+                _pool.Push(this);
 			}
 		}
 
@@ -283,12 +283,12 @@ namespace ProtoPromise
 			internal static PromiseClosureWithNonvalue<T1> New()
 #pragma warning restore RECS0146 // Member hides static member from outer class
 			{
-				return pool.IsNotEmpty ? pool.Pop() : new PromiseClosureWithNonvalue<T1>();
+				return _pool.IsNotEmpty ? _pool.Pop() : new PromiseClosureWithNonvalue<T1>();
 			}
 
 			static PromiseClosureWithNonvalue()
 			{
-				Internal.OnClearPool += () => pool.Clear();
+				Internal.OnClearPool += () => _pool.Clear();
 			}
 
 			protected PromiseClosureWithNonvalue() { }
@@ -307,7 +307,7 @@ namespace ProtoPromise
 				{
 					promises[i] = null;
 				}
-				pool.Push(this);
+                _pool.Push(this);
 			}
 
 			private void ResolveComplete()
@@ -390,12 +390,12 @@ namespace ProtoPromise
 			internal static RaceClosure New()
 #pragma warning restore RECS0146 // Member hides static member from outer class
 			{
-				return pool.IsNotEmpty ? pool.Pop() : new RaceClosure();
+				return _pool.IsNotEmpty ? _pool.Pop() : new RaceClosure();
 			}
 
 			static RaceClosure()
 			{
-				Internal.OnClearPool += () => pool.Clear();
+				Internal.OnClearPool += () => _pool.Clear();
 			}
 
 			protected RaceClosure() { }
@@ -408,8 +408,8 @@ namespace ProtoPromise
 				var def = deferred;
 				deferred = null;
 				promise = null;
-				pool.Push(this);
-				if (def.State == PromiseState.Pending)
+                _pool.Push(this);
+				if (def.State == State.Pending)
 				{
 					def.Resolve();
 				}
@@ -421,8 +421,8 @@ namespace ProtoPromise
 				deferred = null;
 				var p = promise;
 				promise = null;
-				pool.Push(this);
-				if (def.State == PromiseState.Pending)
+                _pool.Push(this);
+				if (def.State == State.Pending)
 				{
 					def.Promise.RejectDirect(p._rejectedOrCanceledValue);
 					def.Dispose();
@@ -443,12 +443,12 @@ namespace ProtoPromise
 			internal static RaceClosure<T> New()
 #pragma warning restore RECS0146 // Member hides static member from outer class
 			{
-				return pool.IsNotEmpty ? pool.Pop() : new RaceClosure<T>();
+				return _pool.IsNotEmpty ? _pool.Pop() : new RaceClosure<T>();
 			}
 
 			static RaceClosure()
 			{
-				Internal.OnClearPool += () => pool.Clear();
+				Internal.OnClearPool += () => _pool.Clear();
 			}
 
 			protected RaceClosure() { }
@@ -461,8 +461,8 @@ namespace ProtoPromise
 				var def = deferred;
 				deferred = null;
 				promise = null;
-				pool.Push(this);
-				if (def.State == PromiseState.Pending)
+                _pool.Push(this);
+				if (def.State == State.Pending)
 				{
 					def.Resolve(arg);
 				}
@@ -474,8 +474,8 @@ namespace ProtoPromise
 				deferred = null;
 				var p = promise;
 				promise = null;
-				pool.Push(this);
-				if (def.State == PromiseState.Pending)
+                _pool.Push(this);
+				if (def.State == State.Pending)
 				{
 					def.Promise.RejectDirect(p._rejectedOrCanceledValue);
 					def.Dispose();

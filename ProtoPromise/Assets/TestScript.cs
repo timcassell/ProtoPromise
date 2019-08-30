@@ -8,7 +8,7 @@ using UnityEngine;
 
 public class TestScript : MonoBehaviour
 {
-	Deferred[] protoDeferreds = new Deferred[0];
+	Promise.Deferred[] protoDeferreds = new Promise.Deferred[0];
 	uPromise.Deferred[] uDeferreds = new uPromise.Deferred[0];
 	Task[] tasks = new Task[0];
 
@@ -45,6 +45,8 @@ public class TestScript : MonoBehaviour
 
 	private IEnumerator Start()
 	{
+        Promise.NewDeferred().Cancel();
+
 		//Debug.LogWarning(System.Threading.Thread.CurrentThread.ManagedThreadId);
 		//voidToVoid = () => { Debug.LogError(System.Threading.Thread.CurrentThread.ManagedThreadId); };
 		//Task task = new Task(voidToVoid);
@@ -84,8 +86,8 @@ public class TestScript : MonoBehaviour
 		//task2.RunSynchronously();
 
 
-		Deferred deferred = Promise.Deferred();
-		Deferred<int> deferred2 = Promise.Deferred<int>();
+		var deferred = Promise.NewDeferred();
+		var deferred2 = Promise.NewDeferred<int>();
 
 
 		var promise2 = deferred2.Promise
@@ -105,7 +107,6 @@ public class TestScript : MonoBehaviour
 				.Catch((Exception e) => { Debug.LogError("caught exception"); return e.ToString(); })
 				.Then(s => { Debug.Log("deferred.done " + s); return s; })
 				.Then(s => { Debug.Log(s); return s; })
-				.Done(() => Debug.LogWarning("Promise 1 done"))
 				.Finally(() => { Debug.LogError("promise 1 final"); })
 				;
 
@@ -115,7 +116,6 @@ public class TestScript : MonoBehaviour
 			.Then(s => Debug.Log(s))
 			.Complete(() => Debug.Log("deferred2 complete"))
 			//.Catch((Exception e) => { Debug.LogError("caught exception"); throw e; return e.ToString(); })
-			.Done()
 			.Finally(() => { Debug.LogError("promise 2 final"); })
 			//.Then(s => s)
 			;
@@ -273,7 +273,7 @@ public class TestScript : MonoBehaviour
 				{
 					if (protoDeferreds.Length != trials)
 					{
-						protoDeferreds = new Deferred[trials];
+						protoDeferreds = new Promise.Deferred[trials];
 					}
 					protoCreation = 0;
 
@@ -282,7 +282,7 @@ public class TestScript : MonoBehaviour
 
 					for (int j = 0; j < trials; ++j)
 					{
-						protoDeferreds[j] = Promise.Deferred();
+						protoDeferreds[j] = Promise.NewDeferred();
 					}
 
 					watch.Stop();

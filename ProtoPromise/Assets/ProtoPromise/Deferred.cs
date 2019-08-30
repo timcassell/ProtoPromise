@@ -4,18 +4,8 @@ namespace ProtoPromise
 {
 	partial class Promise
     {
-        public enum PromiseState : byte
+        public abstract partial class DeferredBase : ICancelableAny, IRetainable
         {
-            Pending,
-            Resolved,
-            Rejected,
-            Canceled // This violates Promises/A+ API when CANCEL is enabled.
-        }
-
-        public abstract class DeferredBase : ICancelableAny, IRetainable
-        {
-            public PromiseState State { get; protected set; }
-
             public virtual Promise Promise { get; protected set; }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
@@ -34,15 +24,6 @@ namespace ProtoPromise
             }
 
             public bool IsRetained { get { return Promise.IsRetained; } }
-
-            /// <summary>
-            /// Report progress between 0 and 1.
-            /// </summary>
-            public abstract void ReportProgress(float progress);
-
-            public abstract void Cancel();
-
-            public abstract void Cancel<TCancel>(TCancel reason);
             
             public abstract void Reject();
 
@@ -88,7 +69,7 @@ namespace ProtoPromise
 
                 public void Reset()
                 {
-                    State = PromiseState.Pending;
+                    State = State.Pending;
                 }
 
                 public override void ReportProgress(float progress)
@@ -98,7 +79,7 @@ namespace ProtoPromise
                     ValidateOperation(promise);
                     ValidateProgress(progress);
 
-                    if (State != PromiseState.Pending)
+                    if (State != State.Pending)
                     {
                         Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
                         return;
@@ -112,7 +93,7 @@ namespace ProtoPromise
                     var promise = Promise;
                     ValidateOperation(promise);
 
-                    if (State == PromiseState.Pending)
+                    if (State == State.Pending)
                     {
                         promise.Release();
                     }
@@ -122,48 +103,8 @@ namespace ProtoPromise
                         return;
                     }
 
-                    State = PromiseState.Resolved;
+                    State = State.Resolved;
                     promise.Resolve();
-                }
-
-                public override void Cancel()
-                {
-                    var promise = Promise;
-                    ValidateCancel();
-                    ValidateOperation(promise);
-
-                    if (State == PromiseState.Pending)
-                    {
-                        promise.Release();
-                    }
-                    else
-                    {
-                        Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
-                        return;
-                    }
-
-                    State = PromiseState.Canceled;
-                    promise.Cancel();
-                }
-
-                public override void Cancel<TCancel>(TCancel reason)
-                {
-                    var promise = Promise;
-                    ValidateCancel();
-                    ValidateOperation(promise);
-
-                    if (State == PromiseState.Pending)
-                    {
-                        promise.Release();
-                    }
-                    else
-                    {
-                        Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
-                        return;
-                    }
-
-                    State = PromiseState.Canceled;
-                    promise.Cancel(reason);
                 }
 
                 public override void Reject()
@@ -171,10 +112,10 @@ namespace ProtoPromise
                     var promise = Promise;
                     ValidateOperation(promise);
 
-                    if (State == PromiseState.Pending)
+                    if (State == State.Pending)
                     {
                         promise.Release();
-                        State = PromiseState.Rejected;
+                        State = State.Rejected;
                     }
                     else
                     {
@@ -189,10 +130,10 @@ namespace ProtoPromise
                     var promise = Promise;
                     ValidateOperation(promise);
 
-                    if (State == PromiseState.Pending)
+                    if (State == State.Pending)
                     {
                         promise.Release();
-                        State = PromiseState.Rejected;
+                        State = State.Rejected;
                     }
                     else
                     {
@@ -208,13 +149,13 @@ namespace ProtoPromise
                     var rejectValue = UnhandledExceptionException.GetOrCreate(exception);
                     _SetStackTraceFromCreated(promise, rejectValue);
 
-                    if (State != PromiseState.Pending)
+                    if (State != State.Pending)
                     {
                         AddRejectionToUnhandledStack(rejectValue);
                         return;
                     }
 
-                    State = PromiseState.Rejected;
+                    State = State.Rejected;
                     promise.Release();
                     promise.RejectWithStateCheck(rejectValue);
                 }
@@ -235,7 +176,7 @@ namespace ProtoPromise
 
                 public void Reset()
                 {
-                    State = PromiseState.Pending;
+                    State = State.Pending;
                 }
 
                 public override void ReportProgress(float progress)
@@ -245,7 +186,7 @@ namespace ProtoPromise
                     ValidateOperation(promise);
                     ValidateProgress(progress);
 
-                    if (State != PromiseState.Pending)
+                    if (State != State.Pending)
                     {
                         Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
                         return;
@@ -259,7 +200,7 @@ namespace ProtoPromise
                     var promise = Promise;
                     ValidateOperation(promise);
 
-                    if (State == PromiseState.Pending)
+                    if (State == State.Pending)
                     {
                         promise.Release();
                     }
@@ -269,48 +210,8 @@ namespace ProtoPromise
                         return;
                     }
 
-                    State = PromiseState.Resolved;
+                    State = State.Resolved;
                     promise.Resolve(arg);
-                }
-
-                public override void Cancel()
-                {
-                    var promise = Promise;
-                    ValidateCancel();
-                    ValidateOperation(promise);
-
-                    if (State == PromiseState.Pending)
-                    {
-                        promise.Release();
-                    }
-                    else
-                    {
-                        Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
-                        return;
-                    }
-
-                    State = PromiseState.Canceled;
-                    promise.Cancel();
-                }
-
-                public override void Cancel<TCancel>(TCancel reason)
-                {
-                    var promise = Promise;
-                    ValidateCancel();
-                    ValidateOperation(promise);
-
-                    if (State == PromiseState.Pending)
-                    {
-                        promise.Release();
-                    }
-                    else
-                    {
-                        Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
-                        return;
-                    }
-
-                    State = PromiseState.Canceled;
-                    promise.Cancel(reason);
                 }
 
                 public override void Reject()
@@ -318,10 +219,10 @@ namespace ProtoPromise
                     var promise = Promise;
                     ValidateOperation(promise);
 
-                    if (State == PromiseState.Pending)
+                    if (State == State.Pending)
                     {
                         promise.Release();
-                        State = PromiseState.Rejected;
+                        State = State.Rejected;
                     }
                     else
                     {
@@ -336,10 +237,10 @@ namespace ProtoPromise
                     var promise = Promise;
                     ValidateOperation(promise);
 
-                    if (State == PromiseState.Pending)
+                    if (State == State.Pending)
                     {
                         promise.Release();
-                        State = PromiseState.Rejected;
+                        State = State.Rejected;
                     }
                     else
                     {
@@ -355,13 +256,13 @@ namespace ProtoPromise
                     var rejectValue = ProtoPromise.Promise.Internal.UnhandledExceptionException.GetOrCreate(exception);
                     _SetStackTraceFromCreated(promise, rejectValue);
 
-                    if (State != PromiseState.Pending)
+                    if (State != State.Pending)
                     {
                         AddRejectionToUnhandledStack(rejectValue);
                         return;
                     }
 
-                    State = PromiseState.Rejected;
+                    State = State.Rejected;
                     promise.Release();
                     promise.RejectWithStateCheck(rejectValue);
                 }

@@ -2,7 +2,8 @@ using System;
 
 namespace ProtoPromise
 {
-	public abstract partial class Promise : ICancelableAny, IRetainable
+    // TODO: add ToYieldInstruction.
+    public abstract partial class Promise : ICancelableAny, IRetainable
 	{
 		public void Retain()
 		{
@@ -22,7 +23,7 @@ namespace ProtoPromise
             checked
 #endif
             {
-                if (--_retainCounter == 0 & _state != PromiseState.Pending & _notHandling)
+                if (--_retainCounter == 0 & _state != State.Pending & !_handling)
                 {
                     // Place in the handle queue so it can be repooled.
                     AddToHandleQueue(this);
@@ -30,7 +31,7 @@ namespace ProtoPromise
             }
         }
 
-        public virtual bool IsRetained
+        public bool IsRetained
         {
             get
             {
@@ -38,78 +39,6 @@ namespace ProtoPromise
                 return _retainCounter > 0;
             }
         }
-
-        public Promise Canceled(Action onCanceled)
-		{
-			ValidateCancel();
-            ValidateOperation(this);
-            ValidateArgument(onCanceled, "onCanceled");
-
-            AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled, 1));
-			return this;
-		}
-
-		public Promise Canceled<TCancel>(Action<TCancel> onCanceled)
-		{
-			ValidateCancel();
-            ValidateOperation(this);
-            ValidateArgument(onCanceled, "onCanceled");
-
-            AddWaiter(Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled, 1));
-            return this;
-        }
-
-		/// <summary>
-		/// Cancels this promise and all promises that have been chained from this.
-		/// Does nothing if this promise isn't pending.
-		/// </summary>
-		public void Cancel()
-		{
-			ValidateCancel();
-            ValidateOperation(this);
-
-            if (_state != PromiseState.Pending)
-			{
-				return;
-			}
-
-            _rejectedOrCanceledValue = Internal.CancelVoid.GetOrCreate();
-			_rejectedOrCanceledValue.Retain();
-
-            CancelProgressListeners();
-            OnCancel();
-		}
-
-		/// <summary>
-		/// Cancels this promise and all promises that have been chained from this with the provided cancel reason.
-		/// Does nothing if this promise isn't pending.
-		/// </summary>
-		public void Cancel<TCancel>(TCancel reason)
-		{
-			ValidateCancel();
-            ValidateOperation(this);
-
-            if (_state != PromiseState.Pending)
-			{
-				return;
-			}
-
-            _rejectedOrCanceledValue = Internal.CancelValue<TCancel>.GetOrCreate(reason);
-			_rejectedOrCanceledValue.Retain();
-
-            CancelProgressListeners();
-            OnCancel();
-        }
-
-		public Promise Progress(Action<float> onProgress)
-		{
-            ValidateProgress();
-            ValidateOperation(this);
-            ValidateArgument(onProgress, "onProgress");
-
-            ProgressInternal(onProgress, 1);
-			return this;
-		}
 
 		public Promise Finally(Action onFinally)
 		{
@@ -438,24 +367,6 @@ namespace ProtoPromise
 
 	public abstract partial class Promise<T> : Promise
 	{
-		public new Promise<T> Canceled(Action onCanceled)
-		{
-			base.Canceled(onCanceled);
-			return this;
-		}
-
-		public new Promise<T> Canceled<TCancel>(Action<TCancel> onCanceled)
-		{
-			base.Canceled(onCanceled);
-			return this;
-		}
-
-		public new Promise<T> Progress(Action<float> onProgress)
-		{
-			base.Progress(onProgress);
-			return this;
-		}
-
 		public new Promise<T> ThenDuplicate()
 		{
 			var promise = Promise.Internal.LitePromise<T>.GetOrCreate(1);
