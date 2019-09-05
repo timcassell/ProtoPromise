@@ -2,14 +2,15 @@
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 using System;
+using System.Collections.Generic;
 
 namespace ProtoPromise
 {
-    partial class Promise : Promise.Internal.ITreeHandleAble, Promise.Internal.IStacktraceable
+    partial class Promise : Promise.Internal.ITreeHandleable, Promise.Internal.IStacktraceable
     {
-        Internal.ITreeHandleAble ILinked<Internal.ITreeHandleAble>.Next { get; set; }
+        Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
 
-        private ValueLinkedQueue<Internal.ITreeHandleAble> _nextBranches;
+        private ValueLinkedQueue<Internal.ITreeHandleable> _nextBranches;
         protected Internal.IValueContainer _rejectedOrCanceledValue;
         private uint _retainCounter;
         protected State _state;
@@ -123,36 +124,45 @@ namespace ProtoPromise
 
         protected abstract void Handle(Promise feed);
 
-        void Internal.ITreeHandleAble.Cancel()
+        void Internal.ITreeHandleable.Cancel()
         {
             OnCancel();
+            // Place in the handle queue so it can be repooled.
             AddToHandleQueue(this);
         }
 
-        void Internal.ITreeHandleAble.AssignCancelValue(Internal.IValueContainer cancelValue)
+        protected virtual void AssignCancelValue(Internal.IValueContainer cancelValue)
         {
             // If _rejectedOrCanceledValue is not null, it means this was already canceled with another value.
             if (_rejectedOrCanceledValue != null)
             {
+                _state = State.Canceled;
                 _rejectedOrCanceledValue = cancelValue;
                 _rejectedOrCanceledValue.Retain();
             }
         }
 
-        void Internal.ITreeHandleAble.OnSubscribeToCanceled(Internal.IValueContainer cancelValue)
+        void Internal.ITreeHandleable.AssignCancelValue(Internal.IValueContainer cancelValue)
+        {
+            AssignCancelValue(cancelValue);
+        }
+
+        void Internal.ITreeHandleable.OnSubscribeToCanceled(Internal.IValueContainer cancelValue)
         {
             _rejectedOrCanceledValue = cancelValue;
             _rejectedOrCanceledValue.Retain();
             CancelProgressListeners();
         }
 
-        void Internal.ITreeHandleAble.Repool()
+        void Internal.ITreeHandleable.Repool()
         {
             if (_retainCounter == 0)
             {
                 if (!_wasWaitedOn & _state == State.Rejected)
                 {
                     // Rejection wasn't caught.
+                    // TODO: Check this in Destructor.
+                    _wasWaitedOn = true;
                     AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValue);
                 }
                 Dispose();
@@ -194,7 +204,7 @@ namespace ProtoPromise
         }
 
         // Handle promises in a breadth-first manner.
-        private static ValueLinkedQueue<Internal.ITreeHandleAble> _handleQueue;
+        private static ValueLinkedQueue<Internal.ITreeHandleable> _handleQueue;
         private static bool _runningHandles;
 
         protected static void AddToHandleQueue(Promise promise)
@@ -226,7 +236,7 @@ namespace ProtoPromise
             {
                 do
                 {
-                    Internal.ITreeHandleAble _current = _handleQueue.DequeueRisky();
+                    Internal.ITreeHandleable _current = _handleQueue.DequeueRisky();
                     Promise current = (Promise) _current;
 
                     while (current._nextBranches.IsNotEmpty)
@@ -286,7 +296,7 @@ namespace ProtoPromise
 
             public abstract class PoolablePromise<TPromise> : Promise where TPromise : PoolablePromise<TPromise>
             {
-                protected static ValueLinkedStack<ITreeHandleAble> _pool;
+                protected static ValueLinkedStack<ITreeHandleable> _pool;
 
                 static PoolablePromise()
                 {
@@ -305,7 +315,7 @@ namespace ProtoPromise
 
             public abstract class PoolablePromise<T, TPromise> : Promise<T> where TPromise : PoolablePromise<T, TPromise>
             {
-                protected static ValueLinkedStack<ITreeHandleAble> _pool;
+                protected static ValueLinkedStack<ITreeHandleable> _pool;
 
                 static PoolablePromise()
                 {
@@ -332,7 +342,7 @@ namespace ProtoPromise
                     promise.Reset(skipFrames + 1);
                     promise.ResetDepth();
                     // Wait on itself.
-                    promise._nextBranches = new ValueLinkedQueue<ITreeHandleAble>(promise);
+                    promise._nextBranches = new ValueLinkedQueue<ITreeHandleable>(promise);
                     return promise;
                 }
 
@@ -359,7 +369,7 @@ namespace ProtoPromise
                     promise.Reset(skipFrames + 1);
                     promise.ResetDepth();
                     // Wait on itself.
-                    promise._nextBranches = new ValueLinkedQueue<ITreeHandleAble>(promise);
+                    promise._nextBranches = new ValueLinkedQueue<ITreeHandleable>(promise);
                     return promise;
                 }
 
@@ -385,7 +395,7 @@ namespace ProtoPromise
                     var promise = GetOrCreateAsDuplicate(skipFrames + 1);
                     promise.ResetDepth();
                     // Wait on itself.
-                    promise._nextBranches = new ValueLinkedQueue<ITreeHandleAble>(promise);
+                    promise._nextBranches = new ValueLinkedQueue<ITreeHandleable>(promise);
                     return promise;
                 }
 
@@ -439,7 +449,7 @@ namespace ProtoPromise
                     var promise = GetOrCreateAsDuplicate(skipFrames + 1);
                     promise.ResetDepth();
                     // Wait on itself.
-                    promise._nextBranches = new ValueLinkedQueue<ITreeHandleAble>(promise);
+                    promise._nextBranches = new ValueLinkedQueue<ITreeHandleable>(promise);
                     return promise;
                 }
 
@@ -2031,11 +2041,11 @@ namespace ProtoPromise
 #endregion
 
 #region Delegate Wrappers
-            public sealed partial class FinallyDelegate : ITreeHandleAble
+            public sealed partial class FinallyDelegate : ITreeHandleable
             {
-                ITreeHandleAble ILinked<ITreeHandleAble>.Next { get; set; }
+                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
-                private static ValueLinkedStack<ITreeHandleAble> _pool;
+                private static ValueLinkedStack<ITreeHandleable> _pool;
 
                 private Promise _owner;
                 private Action _onFinally;
@@ -2082,28 +2092,28 @@ namespace ProtoPromise
                     }
                 }
 
-                void ITreeHandleAble.Cancel()
+                void ITreeHandleable.Cancel()
                 {
                     InvokeAndCatchAndDispose();
                 }
 
-                void ITreeHandleAble.AssignCancelValue(IValueContainer cancelValue) { }
+                void ITreeHandleable.AssignCancelValue(IValueContainer cancelValue) { }
 
-                void ITreeHandleAble.Handle(Promise feed)
+                void ITreeHandleable.Handle(Promise feed)
                 {
                     InvokeAndCatchAndDispose();
                 }
 
-                void ITreeHandleAble.OnSubscribeToCanceled(IValueContainer cancelValue) { }
+                void ITreeHandleable.OnSubscribeToCanceled(IValueContainer cancelValue) { }
 
-                void ITreeHandleAble.Repool() { throw new InvalidOperationException(); }
+                void ITreeHandleable.Repool() { throw new InvalidOperationException(); }
             }
 
-            public sealed partial class CancelDelegate : ITreeHandleAble
+            public sealed partial class CancelDelegate : ITreeHandleable
             {
-                ITreeHandleAble ILinked<ITreeHandleAble>.Next { get; set; }
+                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
-                private static ValueLinkedStack<ITreeHandleAble> _pool;
+                private static ValueLinkedStack<ITreeHandleable> _pool;
 
                 private Action _onCanceled;
 
@@ -2131,7 +2141,7 @@ namespace ProtoPromise
                     }
                 }
 
-                void ITreeHandleAble.Cancel()
+                void ITreeHandleable.Cancel()
                 {
                     var callback = _onCanceled;
                     Dispose();
@@ -2147,23 +2157,23 @@ namespace ProtoPromise
                     }
                 }
 
-                void ITreeHandleAble.AssignCancelValue(IValueContainer cancelValue) { }
+                void ITreeHandleable.AssignCancelValue(IValueContainer cancelValue) { }
 
-                void ITreeHandleAble.Handle(Promise feed)
+                void ITreeHandleable.Handle(Promise feed)
                 {
                     Dispose();
                 }
 
-                void ITreeHandleAble.OnSubscribeToCanceled(IValueContainer cancelValue) { }
+                void ITreeHandleable.OnSubscribeToCanceled(IValueContainer cancelValue) { }
 
-                void ITreeHandleAble.Repool() { throw new InvalidOperationException(); }
+                void ITreeHandleable.Repool() { throw new InvalidOperationException(); }
             }
 
-            public sealed partial class CancelDelegate<T> : ITreeHandleAble
+            public sealed partial class CancelDelegate<T> : ITreeHandleable
             {
-                ITreeHandleAble ILinked<ITreeHandleAble>.Next { get; set; }
+                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
-                private static ValueLinkedStack<ITreeHandleAble> _pool;
+                private static ValueLinkedStack<ITreeHandleable> _pool;
 
                 private IValueContainer _cancelValue;
                 private Action<T> _onCanceled;
@@ -2193,7 +2203,7 @@ namespace ProtoPromise
                     }
                 }
 
-                void ITreeHandleAble.Cancel()
+                void ITreeHandleable.Cancel()
                 {
                     var callback = _onCanceled;
                     var cancelValue = _cancelValue;
@@ -2214,22 +2224,22 @@ namespace ProtoPromise
                     }
                 }
 
-                void ITreeHandleAble.AssignCancelValue(IValueContainer cancelValue)
+                void ITreeHandleable.AssignCancelValue(IValueContainer cancelValue)
                 {
                     _cancelValue = cancelValue;
                 }
 
-                void ITreeHandleAble.Handle(Promise feed)
+                void ITreeHandleable.Handle(Promise feed)
                 {
                     Dispose();
                 }
                 
-                void ITreeHandleAble.OnSubscribeToCanceled(IValueContainer cancelValue)
+                void ITreeHandleable.OnSubscribeToCanceled(IValueContainer cancelValue)
                 {
                     _cancelValue = cancelValue;
                 }
 
-                void ITreeHandleAble.Repool() { throw new InvalidOperationException(); }
+                void ITreeHandleable.Repool() { throw new InvalidOperationException(); }
             }
 
             public class DelegateVoid : IDelegate, ILinked<DelegateVoid>
@@ -2540,7 +2550,7 @@ namespace ProtoPromise
             //}
 #endregion
 
-            public partial interface ITreeHandleAble : ILinked<ITreeHandleAble>
+            public partial interface ITreeHandleable : ILinked<ITreeHandleable>
             {
                 void Handle(Promise feed);
                 void Repool();
@@ -2855,11 +2865,269 @@ namespace ProtoPromise
 #endregion
 
 #region Control Promises
-            // TODO
-            //public sealed class AllPromise : PromiseWaitPromise<AllPromise>
-            //{
-            //}
-#endregion
+            public interface ITreeHandleProgressListener : ITreeHandleable, IProgressListener
+            {
+                void Handle(Promise feed, int index);
+                void ReAdd(PromisePassThrough passThrough);
+            }
+            
+            public sealed class PromisePassThrough : ITreeHandleable, ILinked<PromisePassThrough>
+            {
+                private static ValueLinkedStack<PromisePassThrough> _pool;
+
+                static PromisePassThrough()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+                PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
+
+                public Promise owner;
+                public ITreeHandleProgressListener target;
+
+                private int _index;
+
+                public static PromisePassThrough GetOrCreate(Promise owner, ITreeHandleProgressListener target, int index)
+                {
+                    var passThrough = _pool.IsNotEmpty ? _pool.Pop() : new PromisePassThrough();
+                    passThrough.owner = owner;
+                    passThrough.target = target;
+                    passThrough._index = index;
+                    return passThrough;
+                }
+
+                private PromisePassThrough() { }
+
+                public void Reset()
+                {
+                    owner = null;
+                    target = null;
+                }
+
+                public void Repool()
+                {
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
+                void ITreeHandleable.AssignCancelValue(IValueContainer cancelValue)
+                {
+                    if (target != null)
+                    {
+                        target.AssignCancelValue(cancelValue);
+                    }
+                }
+                void ITreeHandleable.Cancel()
+                {
+                    var temp = target;
+                    Reset();
+                    if (temp != null)
+                    {
+                        temp.Cancel();
+                    }
+                }
+                void ITreeHandleable.Handle(Promise feed)
+                {
+                    var temp = target;
+                    Reset();
+                    if (temp != null)
+                    {
+                        temp.Handle(feed, _index);
+                    }
+                }
+                void ITreeHandleable.OnSubscribeToCanceled(IValueContainer cancelValue)
+                {
+                    target.OnSubscribeToCanceled(cancelValue);
+                }
+            }
+
+            // TODO: Disposed check only needs to check pending || isretained, no need for a DisposedChecker class.
+            public sealed class AllPromise : PoolablePromise<AllPromise>, ITreeHandleProgressListener
+            {
+                // TODO: maybe make IsRetained account for waitCount?
+                private uint _waitCount;
+                private ValueLinkedStack<PromisePassThrough> passThroughs;
+                // These are used to avoid rounding errors when normalizing the progress.
+                private float _expected;
+                private UnsignedFixed32 _currentAmount;
+                private bool _invokingProgress;
+
+                private AllPromise() { }
+
+                public static Promise GetOrCreate<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
+                {
+                    if (!promises.MoveNext())
+                    {
+                        // If promises is empty, just return a resolved promise.
+                        return Resolved();
+                    }
+                    var promise = _pool.IsNotEmpty ? (AllPromise) _pool.Pop() : new AllPromise();
+                    promise.Reset(skipFrames + 1);
+                    promise._invokingProgress = false;
+                    promise._currentAmount = default(UnsignedFixed32);
+
+                    var target = promises.Current;
+                    uint expectedProgressCounter = target._waitDepthAndProgress.WholePart;
+                    int promiseCounter = 0;
+                    // Hook up pass throughs
+                    var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseCounter));
+                    while (promises.MoveNext())
+                    {
+                        target = promises.Current;
+                        expectedProgressCounter += target._waitDepthAndProgress.WholePart;
+                        passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseCounter));
+                    }
+                    promise.passThroughs = passThroughs;
+
+                    uint depth = (uint) promiseCounter;
+                    promise._waitDepthAndProgress = new UnsignedFixed32(depth);
+                    // Retain this until all promises resolve/reject/cancel
+                    promise._waitCount = depth + 1u;
+                    promise._retainCounter = promise._waitCount;
+                    promise._expected = expectedProgressCounter + promise._waitCount;
+                    return promise;
+                }
+
+                void ITreeHandleProgressListener.Handle(Promise feed, int index)
+                {
+                    --_waitCount;
+                    --_retainCounter;
+
+                    if (_state != State.Pending)
+                    {
+                        return;
+                    }
+
+                    feed._wasWaitedOn = true;
+                    if (feed._state == State.Rejected)
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValue);
+                    }
+                    else if (_waitCount == 0)
+                    {
+                        ResolveInternal();
+                    }
+                }
+
+                protected override void AssignCancelValue(IValueContainer cancelValue)
+                {
+                    --_retainCounter;
+                    base.AssignCancelValue(cancelValue);
+                }
+
+                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
+                {
+                    // This is guaranteed to be pending.
+                    previous = this;
+                    return true;
+                }
+
+                // TODO: Handle AllPromise iteratively instead of recursively
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    bool firstSubscribe = _progressListeners.IsEmpty;
+                    if (firstSubscribe & _state == State.Pending)
+                    {
+                        // Remove this.passThroughs before adding to passThroughs. They are re-added in the SubscribeProgressToBranchesAndRoots loop.
+                        while (this.passThroughs.IsNotEmpty)
+                        {
+                            var passThrough = this.passThroughs.Pop();
+                            // TODO: if owner is null: repool, else: passThroughs.Push
+                            if (passThrough.owner == null)
+                            {
+                                // The promise was already finished.
+                            }
+                        }
+                    }
+
+                    previous = null;
+                    return false;
+                }
+
+                protected override void SubscribeProgressRoot(IProgressListener progressListener)
+                {
+                    _progressListeners.Push(progressListener);
+                }
+
+                void ITreeHandleProgressListener.ReAdd(PromisePassThrough passThrough)
+                {
+                    passThroughs.Push(passThrough);
+                }
+
+                void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
+                {
+                    if (_state != State.Pending)
+                    {
+                        return;
+                    }
+
+                    _currentAmount.Increment(amount.ToUInt32());
+                    if (!_invokingProgress)
+                    {
+                        _invokingProgress = true;
+                        // Always add new listeners to the back.
+                        AddToBackOfProgressQueue(this);
+                    }
+                }
+
+                private void IncrementProgress(uint amount)
+                {
+                    if (_state != State.Pending)
+                    {
+                        return;
+                    }
+
+                    _currentAmount.Increment(amount);
+                    if (!_invokingProgress)
+                    {
+                        _invokingProgress = true;
+                        // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
+                        AddToFrontOfProgressQueue(this);
+                    }
+                }
+
+                void IProgressListener.ResolveProgress(Promise sender, uint increment)
+                {
+                    // This automatically prevents the decimal part from getting to 1.0 since this promise will be resolved before the progress is resolved.
+                    IncrementProgress(increment);
+                }
+
+                void IProgressListener.IncrementProgress(uint amount)
+                {
+                    IncrementProgress(amount);
+                }
+
+                void IProgressListener.Invoke()
+                {
+                    if (_state != State.Pending)
+                    {
+                        return;
+                    }
+
+                    _invokingProgress = false;
+
+                    // Calculate the normalized progress for all the awaited promises.
+                    // Divide twice is slower, but gives better precision than single divide.
+                    float progress = ((float) _currentAmount.WholePart / _expected) + (_currentAmount.DecimalPart / _expected);
+
+                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
+
+                    foreach (var progressListener in _progressListeners)
+                    {
+                        progressListener.IncrementProgress(increment);
+                    }
+                }
+
+                // Not used. The promise handles cancel.
+                void IProgressListener.CancelProgressIfOwner(Promise sender) { }
+                void IProgressListener.CancelProgress() { }
+
+                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
+            }
+            #endregion
         }
     }
 }

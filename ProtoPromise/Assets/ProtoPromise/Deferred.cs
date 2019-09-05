@@ -6,6 +6,8 @@ namespace ProtoPromise
     {
         public abstract partial class DeferredBase : ICancelableAny, IRetainable
         {
+            public State State { get; protected set; }
+
             public virtual Promise Promise { get; protected set; }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.

@@ -2,7 +2,6 @@ using System;
 
 namespace ProtoPromise
 {
-    // TODO: add ToYieldInstruction.
     public abstract partial class Promise : ICancelableAny, IRetainable
 	{
 		public void Retain()
@@ -40,7 +39,14 @@ namespace ProtoPromise
             }
         }
 
-		public Promise Finally(Action onFinally)
+        public YieldInstruction ToYieldInstruction()
+        {
+            var yield = YieldInstruction.GetOrCreate();
+            AddWaiter(yield);
+            return yield;
+        }
+
+        public Promise Finally(Action onFinally)
 		{
             ValidateOperation(this);
             ValidateArgument(onFinally, "onFinally");

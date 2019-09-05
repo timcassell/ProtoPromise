@@ -4,6 +4,31 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
+#if !UNITY_5_3_OR_NEWER
+namespace UnityEngine
+{
+    /// <summary>
+    /// Custom yield instruction. Use yield return StartCoroutine(customYieldInstruction)
+    /// </summary>
+    public abstract class CustomYieldInstruction : IEnumerator
+    {
+        public abstract bool keepWaiting { get; }
+
+        public object Current { get { return null; } }
+
+        public bool MoveNext()
+        {
+            return keepWaiting;
+        }
+
+        public void Reset()
+        {
+            throw new NotImplementedException();
+        }
+    }
+}
+#endif
+
 namespace ProtoPromise
 {
 	public interface ICancelable
@@ -31,7 +56,67 @@ namespace ProtoPromise
 
     partial class Promise
 	{
-		public class InvalidReturnException : InvalidOperationException
+        public sealed class YieldInstruction : UnityEngine.CustomYieldInstruction, Internal.ITreeHandleable, IDisposable
+        {
+            Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
+
+            private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+            
+            static YieldInstruction()
+            {
+                Internal.OnClearPool += () => _pool.Clear();
+            }
+
+            public State State { get; private set; }
+
+            public override bool keepWaiting
+            {
+                get
+                {
+                    return State == State.Pending;
+                }
+            }
+
+            private YieldInstruction() { }
+
+            public static YieldInstruction GetOrCreate()
+            {
+                return _pool.IsNotEmpty ? (YieldInstruction) _pool.Pop() : new YieldInstruction();
+            }
+
+            /// <summary>
+            /// Adds this object back to the pool.
+            /// Don't try to access it after disposing! Results are undefined.
+            /// </summary>
+            /// <remarks>Call <see cref="Dispose"/> when you are finished using the
+            /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/>. The <see cref="Dispose"/> method leaves the
+            /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/> in an unusable state. After calling
+            /// <see cref="Dispose"/>, you must release all references to the
+            /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/> so the garbage collector can reclaim the memory
+            /// that the <see cref="T:ProtoPromise.Promise.YieldInstruction"/> was occupying.</remarks>
+            public void Dispose()
+            {
+                _pool.Push(this);
+            }
+
+            void Internal.ITreeHandleable.Cancel()
+            {
+                State = State.Canceled;
+            }
+            
+            void Internal.ITreeHandleable.Handle(Promise feed)
+            {
+                State = feed._state;
+            }
+
+            void Internal.ITreeHandleable.AssignCancelValue(Internal.IValueContainer cancelValue) { }
+
+            void Internal.ITreeHandleable.OnSubscribeToCanceled(Internal.IValueContainer cancelValue) { }
+
+            void Internal.ITreeHandleable.Repool() { throw new InvalidOperationException(); }
+        }
+
+        public class InvalidReturnException : InvalidOperationException
 		{
 			public InvalidReturnException(string message, string stackTrace = null, Exception innerException = null) : base(message, innerException)
 			{
@@ -119,7 +204,13 @@ namespace ProtoPromise
 		public bool IsEmpty { get { return _first == null; } }
 		public bool IsNotEmpty { get { return _first != null; } }
 
-		public void Clear()
+        public ValueLinkedStack(T item)
+        {
+            item.Next = null;
+            _first = item;
+        }
+
+        public void Clear()
 		{
 			_first = null;
 		}
@@ -172,6 +263,7 @@ namespace ProtoPromise
 
 		public ValueLinkedQueue(T item)
 		{
+            item.Next = null;
 			_first = _last = item;
 		}
 
@@ -190,7 +282,8 @@ namespace ProtoPromise
 		{
 			if (_first == null)
 			{
-				_first = _last = item;
+                item.Next = null;
+                _first = _last = item;
 			}
 			else
 			{
@@ -204,6 +297,7 @@ namespace ProtoPromise
         /// </summary>
         public void EnqueueRisky(T item)
         {
+            item.Next = null;
             _last.Next = item;
             _last = item;
         }
@@ -212,6 +306,7 @@ namespace ProtoPromise
         {
             if (_first == null)
             {
+                item.Next = null;
                 _first = _last = item;
             }
             else
@@ -226,6 +321,7 @@ namespace ProtoPromise
         /// </summary>
         public void PushRisky(T item)
         {
+            item.Next = null;
             item.Next = _first;
             _first = item;
         }
