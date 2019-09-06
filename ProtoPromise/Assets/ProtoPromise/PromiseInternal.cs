@@ -2905,11 +2905,18 @@ namespace ProtoPromise
                     target = null;
                 }
 
-                public void Repool()
+                public static void Repool(ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
                     if (Config.ObjectPooling != PoolType.None)
                     {
-                        _pool.Push(this);
+                        while (passThroughs.IsNotEmpty)
+                        {
+                            _pool.Push(passThroughs.Pop());
+                        }
+                    }
+                    else
+                    {
+                        passThroughs.Clear();
                     }
                 }
 
@@ -2944,7 +2951,6 @@ namespace ProtoPromise
                 }
             }
 
-            // TODO: Disposed check only needs to check pending || isretained, no need for a DisposedChecker class.
             public sealed class AllPromise : PoolablePromise<AllPromise>, ITreeHandleProgressListener
             {
                 // TODO: maybe make IsRetained account for waitCount?
@@ -2998,6 +3004,10 @@ namespace ProtoPromise
 
                     if (_state != State.Pending)
                     {
+                        if (_waitCount == 0)
+                        {
+                            PromisePassThrough.Repool(ref passThroughs);
+                        }
                         return;
                     }
 
@@ -3008,7 +3018,14 @@ namespace ProtoPromise
                     }
                     else if (_waitCount == 0)
                     {
+                        PromisePassThrough.Repool(ref passThroughs);
                         ResolveInternal();
+                    }
+                    else
+                    {
+                        bool subscribedProgress = _progressListeners.IsNotEmpty;
+                        uint increment = subscribedProgress ? feed._waitDepthAndProgress.GetDifferenceToNextWholeAsUInt32() : feed._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32();
+                        IncrementProgress(increment);
                     }
                 }
 
@@ -3025,20 +3042,25 @@ namespace ProtoPromise
                     return true;
                 }
 
-                // TODO: Handle AllPromise iteratively instead of recursively
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     if (firstSubscribe & _state == State.Pending)
                     {
                         // Remove this.passThroughs before adding to passThroughs. They are re-added in the SubscribeProgressToBranchesAndRoots loop.
-                        while (this.passThroughs.IsNotEmpty)
+                        var tempPassThroughs = this.passThroughs;
+                        this.passThroughs.Clear();
+                        while (tempPassThroughs.IsNotEmpty)
                         {
                             var passThrough = this.passThroughs.Pop();
-                            // TODO: if owner is null: repool, else: passThroughs.Push
                             if (passThrough.owner == null)
                             {
-                                // The promise was already finished.
+                                // The promise was already finished, don't subscribe.
+                                this.passThroughs.Push(passThrough);
+                            }
+                            else
+                            {
+                                passThroughs.Push(passThrough);
                             }
                         }
                     }
@@ -3075,11 +3097,6 @@ namespace ProtoPromise
 
                 private void IncrementProgress(uint amount)
                 {
-                    if (_state != State.Pending)
-                    {
-                        return;
-                    }
-
                     _currentAmount.Increment(amount);
                     if (!_invokingProgress)
                     {
@@ -3089,25 +3106,22 @@ namespace ProtoPromise
                     }
                 }
 
-                void IProgressListener.ResolveProgress(Promise sender, uint increment)
-                {
-                    // This automatically prevents the decimal part from getting to 1.0 since this promise will be resolved before the progress is resolved.
-                    IncrementProgress(increment);
-                }
-
                 void IProgressListener.IncrementProgress(uint amount)
                 {
-                    IncrementProgress(amount);
+                    if (_state == State.Pending)
+                    {
+                        IncrementProgress(amount);
+                    }
                 }
 
                 void IProgressListener.Invoke()
                 {
+                    _invokingProgress = false;
+
                     if (_state != State.Pending)
                     {
                         return;
                     }
-
-                    _invokingProgress = false;
 
                     // Calculate the normalized progress for all the awaited promises.
                     // Divide twice is slower, but gives better precision than single divide.
@@ -3121,7 +3135,8 @@ namespace ProtoPromise
                     }
                 }
 
-                // Not used. The promise handles cancel.
+                // Not used. The promise handles resolve and cancel.
+                void IProgressListener.ResolveProgress(Promise sender, uint increment) { }
                 void IProgressListener.CancelProgressIfOwner(Promise sender) { }
                 void IProgressListener.CancelProgress() { }
 
