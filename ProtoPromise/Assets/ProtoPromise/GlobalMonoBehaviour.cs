@@ -2,9 +2,10 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 using System;
 using System.Collections;
+using Proto.Promises;
 using UnityEngine;
 
-namespace ProtoPromise
+namespace Proto
 {
 	public interface IYieldIntercept
 	{
@@ -207,13 +208,17 @@ namespace ProtoPromise
 			{
 				if (_instance == null)
 				{
-					_instance = new GameObject("ProtoPromise.GlobalMonoBehaviour").AddComponent<GlobalMonoBehaviour>();
-					_instance.gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
+					_instance = new GameObject("ProtoPromise.GlobalMonoBehaviour")
+                    {
+                        hideFlags = HideFlags.HideAndDontSave // Don't show in hierarchy and don't destroy.
+                    }
+                    .AddComponent<GlobalMonoBehaviour>();
 				}
 				return _instance;
 			}
 		}
 
+        // TODO: Return something more useful than a delegate.
 		/// <summary>
 		/// Waits for <paramref name="yieldInstruction"/> to complete, then calls <paramref name="onComplete"/>.
 		/// If <paramref name="yieldInstruction"/> is not a Unity supported <see cref="YieldInstruction"/> or <see cref="CustomYieldInstruction"/>, and it is not intercepted, then this will wait for 1 frame.

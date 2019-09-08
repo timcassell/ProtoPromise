@@ -29,7 +29,7 @@ namespace UnityEngine
 }
 #endif
 
-namespace ProtoPromise
+namespace Proto.Promises
 {
 	public interface ICancelable
 	{
@@ -50,7 +50,12 @@ namespace ProtoPromise
 	{
 		void Retain();
 		void Release();
-        bool IsRetained { get; }
+    }
+
+    public interface IPotentialCancelation
+    {
+        IPotentialCancelation CatchCancelation(Action onCanceled);
+        IPotentialCancelation CatchCancelation<TCancel>(Action<TCancel> onCanceled);
     }
 
 
@@ -101,19 +106,18 @@ namespace ProtoPromise
 
             void Internal.ITreeHandleable.Cancel()
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 State = State.Canceled;
+#pragma warning restore CS0618 // Type or member is obsolete
             }
-            
+
             void Internal.ITreeHandleable.Handle(Promise feed)
             {
                 State = feed._state;
             }
 
             void Internal.ITreeHandleable.AssignCancelValue(Internal.IValueContainer cancelValue) { }
-
             void Internal.ITreeHandleable.OnSubscribeToCanceled(Internal.IValueContainer cancelValue) { }
-
-            void Internal.ITreeHandleable.Repool() { throw new InvalidOperationException(); }
         }
 
         public class InvalidReturnException : InvalidOperationException
@@ -639,6 +643,42 @@ namespace ProtoPromise
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+    }
+
+    public struct ArrayEnumerator<T> : IEnumerator<T>
+    {
+        private T[] collection;
+        private int index;
+
+        public ArrayEnumerator(T[] array)
+        {
+            index = -1;
+            collection = array;
+        }
+
+        public T Current
+        {
+            get
+            {
+                return collection[index];
+            }
+        }
+
+        object IEnumerator.Current { get { return Current; } }
+
+        void IDisposable.Dispose() { }
+
+        bool IEnumerator.MoveNext()
+        {
+            return ++index < collection.Length;
+        }
+
+        void IEnumerator.Reset()
+        {
+#pragma warning disable RECS0083 // Shows NotImplementedException throws in the quick task bar
+            throw new NotImplementedException();
+#pragma warning restore RECS0083 // Shows NotImplementedException throws in the quick task bar
         }
     }
 }

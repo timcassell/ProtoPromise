@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ProtoPromise
+namespace Proto.Promises
 {
 	partial class Promise
     {
@@ -25,8 +25,6 @@ namespace ProtoPromise
                 Promise.Release();
             }
 
-            public bool IsRetained { get { return Promise.IsRetained; } }
-            
             public abstract void Reject();
 
             public abstract void Reject<TReject>(TReject reason);
@@ -255,7 +253,7 @@ namespace ProtoPromise
                 public void RejectWithPromiseStacktrace(Exception exception)
                 {
                     var promise = Promise;
-                    var rejectValue = ProtoPromise.Promise.Internal.UnhandledExceptionException.GetOrCreate(exception);
+                    var rejectValue = Proto.Promises.Promise.Internal.UnhandledExceptionException.GetOrCreate(exception);
                     _SetStackTraceFromCreated(promise, rejectValue);
 
                     if (State != State.Pending)

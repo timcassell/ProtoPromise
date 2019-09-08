@@ -1,545 +1,193 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace ProtoPromise
+namespace Proto.Promises
 {
 	public partial class Promise
 	{
-		// Acts like a compiler-generated closure class, except this can be re-used.
-		private class PromiseClosure : ILinked<PromiseClosure>
-		{
-			PromiseClosure ILinked<PromiseClosure>.Next { get; set; }
+		// TODO
+		//public static Promise<T[]> All<T>(params Promise<T>[] promises)
+		//{
+		//}
 
-			private static ValueLinkedStack<PromiseClosure> _pool;
-
-#pragma warning disable RECS0146 // Member hides static member from outer class
-			internal static PromiseClosure New()
-#pragma warning restore RECS0146 // Member hides static member from outer class
-			{
-				return _pool.IsNotEmpty ? _pool.Pop() : new PromiseClosure();
-			}
-
-			static PromiseClosure()
-			{
-				Internal.OnClearPool += () => _pool.Clear();
-			}
-
-			protected PromiseClosure() { }
-
-			public Promise promise;
-			public AllClosure allClosure;
-
-			private void AddToPool()
-			{
-				promise = null;
-                _pool.Push(this);
-			}
-
-			public void ResolveClosure()
-			{
-				var deferred = allClosure.masterDeferred;
-				if (--allClosure.waiting == 0)
-				{
-					allClosure.AddToPool();
-					if (deferred != null)
-					{
-						deferred.Resolve();
-					}
-				}
-				AddToPool();
-			}
-
-			public void RejectClosure()
-			{
-				var deferred = allClosure.masterDeferred;
-				if (--allClosure.waiting == 0)
-				{
-					allClosure.AddToPool();
-				}
-				if (deferred != null)
-				{
-					deferred.Promise.RejectDirect(promise._rejectedOrCanceledValue);
-					deferred.Dispose();
-				}
-				AddToPool();
-			}
-		}
-
-		// Acts like a compiler-generated closure class, except this can be re-used.
-		private class AllClosure : ILinked<AllClosure>
-		{
-			AllClosure ILinked<AllClosure>.Next { get; set; }
-
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<AllClosure> _pool;
-#pragma warning restore RECS0108 // Warns about static fields in generic types
-
-#pragma warning disable RECS0146 // Member hides static member from outer class
-			internal static AllClosure New()
-#pragma warning restore RECS0146 // Member hides static member from outer class
-			{
-				return _pool.IsNotEmpty ? _pool.Pop() : new AllClosure();
-			}
-
-			static AllClosure()
-			{
-				Internal.OnClearPool += () => _pool.Clear();
-			}
-
-			protected AllClosure() { }
-
-			public Deferred masterDeferred;
-			public int waiting;
-
-			public void AddToPool()
-			{
-				masterDeferred = null;
-                _pool.Push(this);
-			}
-		}
-
-		// Acts like a compiler-generated closure class, except this can be re-used.
-		private class PromiseClosure<T> : ILinked<PromiseClosure<T>>
-		{
-			PromiseClosure<T> ILinked<PromiseClosure<T>>.Next { get; set; }
-
-			public Promise<T> promise;
-			public int index;
-			public AllClosure<T> allClosure;
-
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<PromiseClosure<T>> _pool;
-#pragma warning restore RECS0108 // Warns about static fields in generic types
-
-#pragma warning disable RECS0146 // Member hides static member from outer class
-			internal static PromiseClosure<T> New()
-#pragma warning restore RECS0146 // Member hides static member from outer class
-			{
-				return _pool.IsNotEmpty ? _pool.Pop() : new PromiseClosure<T>();
-			}
-
-			static PromiseClosure()
-			{
-				Internal.OnClearPool += () => _pool.Clear();
-			}
-
-			protected PromiseClosure() { }
-
-			private void AddToPool()
-			{
-				promise = null;
-                _pool.Push(this);
-			}
-
-			public void ResolveClosure(T arg)
-			{
-				var deferred = allClosure.masterDeferred;
-				var args = allClosure.args;
-				args[index] = arg;
-				if (--allClosure.waiting == 0)
-				{
-					allClosure.AddToPool();
-					if (deferred != null)
-					{
-						deferred.Resolve(args);
-					}
-				}
-				AddToPool();
-			}
-
-			public void RejectClosure()
-			{
-				var deferred = allClosure.masterDeferred;
-				if (--allClosure.waiting == 0)
-				{
-					allClosure.AddToPool();
-				}
-				if (deferred != null)
-				{
-					deferred.Promise.RejectDirect(promise._rejectedOrCanceledValue);
-					deferred.Dispose();
-				}
-				AddToPool();
-			}
-		}
-
-		// Acts like a compiler-generated closure class, except this can be re-used.
-		private class AllClosure<T> : ILinked<AllClosure<T>>
-		{
-			AllClosure<T> ILinked<AllClosure<T>>.Next { get; set; }
-
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<AllClosure<T>> _pool;
-#pragma warning restore RECS0108 // Warns about static fields in generic types
-
-#pragma warning disable RECS0146 // Member hides static member from outer class
-			internal static AllClosure<T> New()
-#pragma warning restore RECS0146 // Member hides static member from outer class
-			{
-				return _pool.IsNotEmpty ? _pool.Pop() : new AllClosure<T>();
-			}
-
-			static AllClosure()
-			{
-				Internal.OnClearPool += () => _pool.Clear();
-			}
-
-			protected AllClosure() { }
-
-			public Promise<T[]>.Deferred masterDeferred;
-			public int waiting;
-			public T[] args;
-
-			public void AddToPool()
-			{
-				args = null;
-				masterDeferred = null;
-                _pool.Push(this);
-			}
-		}
-
-		// TODO: handle canceled promises.
-		public static Promise<T[]> All<T>(params Promise<T>[] promises)
-		{
-			if (promises.Length == 0)
-			{
-				return Resolved(new T[0]);
-			}
-
-			AllClosure<T> allClosure = AllClosure<T>.New();
-
-			int waiting = promises.Length;
-
-			allClosure.masterDeferred = GetDeferred<T[]>();
-			var promise = allClosure.masterDeferred.Promise; // Cache the promise in case they all resolve synchronously.
-			allClosure.waiting = waiting;
-			allClosure.args = new T[waiting];
-
-			for (int i = 0; i < waiting; ++i)
-			{
-				PromiseClosure<T> promiseClosure = PromiseClosure<T>.New();
-
-				promiseClosure.allClosure = allClosure;
-				promiseClosure.index = i;
-				promiseClosure.promise = promises[i];
-
-				promiseClosure.promise
-					.Then(promiseClosure.ResolveClosure, promiseClosure.RejectClosure)
-					.Done();
-			}
-
-			return promise;
-		}
-
-		public static Promise<T[]> All<T>(IEnumerable<Promise<T>> promises)
-		{
-			return All(System.Linq.Enumerable.ToArray(promises));
-		}
+		//public static Promise<T[]> All<T>(IEnumerable<Promise<T>> promises)
+		//{
+		//}
 
 		public static Promise All(params Promise[] promises)
 		{
-			if (promises.Length == 0)
-			{
-				return Resolved();
-			}
-
-			AllClosure allClosure = AllClosure.New();
-
-			allClosure.masterDeferred = GetDeferred();
-			var promise = allClosure.masterDeferred.Promise; // Cache the promise in case they all resolve synchronously.
-			allClosure.waiting = promises.Length;
-
-			for (int i = 0, max = promises.Length; i < max; ++i)
-			{
-				PromiseClosure promiseClosure = PromiseClosure.New();
-
-				promiseClosure.allClosure = allClosure;
-				promiseClosure.promise = promises[i];
-
-				promiseClosure.promise
-		            .Then(promiseClosure.ResolveClosure, promiseClosure.RejectClosure)
-					.Done();
-			}
-
-			return promise;
+            return Internal.AllPromise.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
 		}
 
 		public static Promise All(IEnumerable<Promise> promises)
 		{
-			return All(System.Linq.Enumerable.ToArray(promises));
+            return Internal.AllPromise.GetOrCreate(promises.GetEnumerator(), 1);
 		}
 
 
 		// Acts like a compiler-generated closure class, except this can be re-used.
-		private class PromiseClosureWithNonvalue<T1> : ILinked<PromiseClosureWithNonvalue<T1>>
-		{
-			PromiseClosureWithNonvalue<T1> ILinked<PromiseClosureWithNonvalue<T1>>.Next { get; set; }
+//		private class PromiseClosureWithNonvalue<T1> : ILinked<PromiseClosureWithNonvalue<T1>>
+//		{
+//			PromiseClosureWithNonvalue<T1> ILinked<PromiseClosureWithNonvalue<T1>>.Next { get; set; }
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<PromiseClosureWithNonvalue<T1>> _pool;
-#pragma warning restore RECS0108 // Warns about static fields in generic types
+//#pragma warning disable RECS0108 // Warns about static fields in generic types
+//			private static ValueLinkedStack<PromiseClosureWithNonvalue<T1>> _pool;
+//#pragma warning restore RECS0108 // Warns about static fields in generic types
 
-#pragma warning disable RECS0146 // Member hides static member from outer class
-			internal static PromiseClosureWithNonvalue<T1> New()
-#pragma warning restore RECS0146 // Member hides static member from outer class
-			{
-				return _pool.IsNotEmpty ? _pool.Pop() : new PromiseClosureWithNonvalue<T1>();
-			}
+//#pragma warning disable RECS0146 // Member hides static member from outer class
+//			internal static PromiseClosureWithNonvalue<T1> New()
+//#pragma warning restore RECS0146 // Member hides static member from outer class
+		//	{
+		//		return _pool.IsNotEmpty ? _pool.Pop() : new PromiseClosureWithNonvalue<T1>();
+		//	}
 
-			static PromiseClosureWithNonvalue()
-			{
-				Internal.OnClearPool += () => _pool.Clear();
-			}
+		//	static PromiseClosureWithNonvalue()
+		//	{
+		//		Internal.OnClearPool += () => _pool.Clear();
+		//	}
 
-			protected PromiseClosureWithNonvalue() { }
+		//	protected PromiseClosureWithNonvalue() { }
 
-			// non-value promise is the last element.
-			public readonly Promise[] promises = new Promise[2];
-			int waiting = 2;
-			public Promise<T1>.Deferred deferred;
-			T1 value;
+		//	// non-value promise is the last element.
+		//	public readonly Promise[] promises = new Promise[2];
+		//	int waiting = 2;
+		//	public Promise<T1>.Deferred deferred;
+		//	T1 value;
 
-			private void AddToPool()
-			{
-				waiting = 2;
-				deferred = null;
-				for (int i = 0; i < waiting; ++i)
-				{
-					promises[i] = null;
-				}
-                _pool.Push(this);
-			}
+		//	private void AddToPool()
+		//	{
+		//		waiting = 2;
+		//		deferred = null;
+		//		for (int i = 0; i < waiting; ++i)
+		//		{
+		//			promises[i] = null;
+		//		}
+  //              _pool.Push(this);
+		//	}
 
-			private void ResolveComplete()
-			{
-				if (--waiting == 0)
-				{
-					var temp = deferred;
-					AddToPool();
-					if (temp != null)
-					{
-						temp.Resolve(value);
-					}
-				}
-			}
+		//	private void ResolveComplete()
+		//	{
+		//		if (--waiting == 0)
+		//		{
+		//			var temp = deferred;
+		//			AddToPool();
+		//			if (temp != null)
+		//			{
+		//				temp.Resolve(value);
+		//			}
+		//		}
+		//	}
 
-			void RejectComplete(int index)
-			{
-				var temp = deferred;
-				var rejectValue = promises[index]._rejectedOrCanceledValue;
-				if (--waiting == 0)
-				{
-					AddToPool();
-				}
-				if (temp != null)
-				{
-					temp.Promise.RejectDirect(rejectValue);
-					temp.Dispose();
-				}
-			}
+		//	void RejectComplete(int index)
+		//	{
+		//		var temp = deferred;
+		//		var rejectValue = promises[index]._rejectedOrCanceledValue;
+		//		if (--waiting == 0)
+		//		{
+		//			AddToPool();
+		//		}
+		//		if (temp != null)
+		//		{
+		//			temp.Promise.RejectDirect(rejectValue);
+		//			temp.Dispose();
+		//		}
+		//	}
 
-			public void ResolveClosure()
-			{
-				ResolveComplete();
-			}
+		//	public void ResolveClosure()
+		//	{
+		//		ResolveComplete();
+		//	}
 
-			public void ResolveClosure(T1 arg)
-			{
-				value = arg;
-				ResolveComplete();
-			}
+		//	public void ResolveClosure(T1 arg)
+		//	{
+		//		value = arg;
+		//		ResolveComplete();
+		//	}
 
-			public void RejectClosure0()
-			{
-				RejectComplete(0);
-			}
+		//	public void RejectClosure0()
+		//	{
+		//		RejectComplete(0);
+		//	}
 
-			public void RejectClosure1()
-			{
-				RejectComplete(1);
-			}
-		}
+		//	public void RejectClosure1()
+		//	{
+		//		RejectComplete(1);
+		//	}
+		//}
 
-		public static Promise<T1> All<T1>(Promise<T1> promise1, Promise promise2)
-		{
-			PromiseClosureWithNonvalue<T1> allClosure = PromiseClosureWithNonvalue<T1>.New();
+		//public static Promise<T1> All<T1>(Promise<T1> promise1, Promise promise2)
+		//{
+		//	PromiseClosureWithNonvalue<T1> allClosure = PromiseClosureWithNonvalue<T1>.New();
 
-			allClosure.deferred = GetDeferred<T1>();
-			var promise = allClosure.deferred.Promise; // Cache the promise in case they all resolve synchronously.
-			allClosure.promises[0] = promise1;
-			allClosure.promises[1] = promise2;
+		//	allClosure.deferred = GetDeferred<T1>();
+		//	var promise = allClosure.deferred.Promise; // Cache the promise in case they all resolve synchronously.
+		//	allClosure.promises[0] = promise1;
+		//	allClosure.promises[1] = promise2;
 
-			promise1.Then(allClosure.ResolveClosure, allClosure.RejectClosure0);
-			promise2.Then(allClosure.ResolveClosure, allClosure.RejectClosure1);
+		//	promise1.Then(allClosure.ResolveClosure, allClosure.RejectClosure0);
+		//	promise2.Then(allClosure.ResolveClosure, allClosure.RejectClosure1);
 
-			return promise;
-		}
+		//	return promise;
+		//}
 
+        // TODO
+		//public static Promise<T> Race<T>(params Promise<T>[] promises)
+		//{
+		//	if (promises.Length == 0)
+		//	{
+		//		Logger.LogWarning("Promise.Race - Race started with an empty collection. Returned promise will never resolve!");
+		//	}
 
+		//	var masterDeferred = GetDeferred<T>();
 
-		// Acts like a compiler-generated closure class, except this can be re-used.
-		private class RaceClosure : ILinked<RaceClosure>
-		{
-			RaceClosure ILinked<RaceClosure>.Next { get; set; }
+		//	for (int i = 0, max = promises.Length; i < max; ++i)
+		//	{
+		//		RaceClosure<T> raceClosure = RaceClosure<T>.New();
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<RaceClosure> _pool;
-#pragma warning restore RECS0108 // Warns about static fields in generic types
+		//		raceClosure.deferred = masterDeferred;
+		//		raceClosure.promise = promises[i];
 
-#pragma warning disable RECS0146 // Member hides static member from outer class
-			internal static RaceClosure New()
-#pragma warning restore RECS0146 // Member hides static member from outer class
-			{
-				return _pool.IsNotEmpty ? _pool.Pop() : new RaceClosure();
-			}
+		//		raceClosure.promise
+		//			.Then(raceClosure.ResolveClosure, raceClosure.RejectClosure)
+		//			.Done();
+		//	}
 
-			static RaceClosure()
-			{
-				Internal.OnClearPool += () => _pool.Clear();
-			}
+		//	return masterDeferred.Promise;
+		//}
 
-			protected RaceClosure() { }
+		//public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
+		//{
+		//	return Race(System.Linq.Enumerable.ToArray(promises));
+		//}
 
-			public Deferred deferred;
-			public Promise promise;
+		//public static Promise Race(params Promise[] promises)
+		//{
+		//	if (promises.Length == 0)
+		//	{
+		//		Logger.LogWarning("Promise.Race - Race started with an empty collection. Returned promise will never resolve!");
+		//	}
 
-			public void ResolveClosure()
-			{
-				var def = deferred;
-				deferred = null;
-				promise = null;
-                _pool.Push(this);
-				if (def.State == State.Pending)
-				{
-					def.Resolve();
-				}
-			}
+		//	var masterDeferred = GetDeferred();
 
-			public void RejectClosure()
-			{
-				var def = deferred;
-				deferred = null;
-				var p = promise;
-				promise = null;
-                _pool.Push(this);
-				if (def.State == State.Pending)
-				{
-					def.Promise.RejectDirect(p._rejectedOrCanceledValue);
-					def.Dispose();
-				}
-			}
-		}
+		//	for (int i = 0, max = promises.Length; i < max; ++i)
+		//	{
+		//		RaceClosure raceClosure = RaceClosure.New();
 
-		// Acts like a compiler-generated closure class, except this can be re-used.
-		private class RaceClosure<T> : ILinked<RaceClosure<T>>
-		{
-			RaceClosure<T> ILinked<RaceClosure<T>>.Next { get; set; }
+		//		raceClosure.deferred = masterDeferred;
+		//		raceClosure.promise = promises[i];
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-			private static ValueLinkedStack<RaceClosure<T>> _pool;
-#pragma warning restore RECS0108 // Warns about static fields in generic types
+		//		raceClosure.promise
+		//	        .Then(raceClosure.ResolveClosure, raceClosure.RejectClosure)
+		//			.Done();
+		//	}
 
-#pragma warning disable RECS0146 // Member hides static member from outer class
-			internal static RaceClosure<T> New()
-#pragma warning restore RECS0146 // Member hides static member from outer class
-			{
-				return _pool.IsNotEmpty ? _pool.Pop() : new RaceClosure<T>();
-			}
+		//	return masterDeferred.Promise;
+		//}
 
-			static RaceClosure()
-			{
-				Internal.OnClearPool += () => _pool.Clear();
-			}
-
-			protected RaceClosure() { }
-
-			public Promise<T>.Deferred deferred;
-			public Promise<T> promise;
-
-			public void ResolveClosure(T arg)
-			{
-				var def = deferred;
-				deferred = null;
-				promise = null;
-                _pool.Push(this);
-				if (def.State == State.Pending)
-				{
-					def.Resolve(arg);
-				}
-			}
-
-			public void RejectClosure()
-			{
-				var def = deferred;
-				deferred = null;
-				var p = promise;
-				promise = null;
-                _pool.Push(this);
-				if (def.State == State.Pending)
-				{
-					def.Promise.RejectDirect(p._rejectedOrCanceledValue);
-					def.Dispose();
-				}
-			}
-		}
-
-		public static Promise<T> Race<T>(params Promise<T>[] promises)
-		{
-			if (promises.Length == 0)
-			{
-				Logger.LogWarning("Promise.Race - Race started with an empty collection. Returned promise will never resolve!");
-			}
-
-			var masterDeferred = GetDeferred<T>();
-
-			for (int i = 0, max = promises.Length; i < max; ++i)
-			{
-				RaceClosure<T> raceClosure = RaceClosure<T>.New();
-
-				raceClosure.deferred = masterDeferred;
-				raceClosure.promise = promises[i];
-
-				raceClosure.promise
-					.Then(raceClosure.ResolveClosure, raceClosure.RejectClosure)
-					.Done();
-			}
-
-			return masterDeferred.Promise;
-		}
-
-		public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
-		{
-			return Race(System.Linq.Enumerable.ToArray(promises));
-		}
-
-		public static Promise Race(params Promise[] promises)
-		{
-			if (promises.Length == 0)
-			{
-				Logger.LogWarning("Promise.Race - Race started with an empty collection. Returned promise will never resolve!");
-			}
-
-			var masterDeferred = GetDeferred();
-
-			for (int i = 0, max = promises.Length; i < max; ++i)
-			{
-				RaceClosure raceClosure = RaceClosure.New();
-
-				raceClosure.deferred = masterDeferred;
-				raceClosure.promise = promises[i];
-
-				raceClosure.promise
-			        .Then(raceClosure.ResolveClosure, raceClosure.RejectClosure)
-					.Done();
-			}
-
-			return masterDeferred.Promise;
-		}
-
-		public static Promise Race(IEnumerable<Promise> promises)
-		{
-			return Race(System.Linq.Enumerable.ToArray(promises));
-		}
+		//public static Promise Race(IEnumerable<Promise> promises)
+		//{
+		//	return Race(System.Linq.Enumerable.ToArray(promises));
+		//}
 
 		public static Promise Sequence(params Func<Promise>[] funcs)
 		{
@@ -561,6 +209,7 @@ namespace ProtoPromise
 		}
 
 
+        // TODO: clean this up.
 		// Acts like a compiler-generated closure class, except this can be re-used.
 		private class CancelClosure : ILinked<CancelClosure>
 		{
@@ -598,7 +247,7 @@ namespace ProtoPromise
 
 			CancelClosure cancelClosure = cancelClosures.IsEmpty ? new CancelClosure() : cancelClosures.Pop();
 			cancelClosure.cancel = GlobalMonoBehaviour.Yield(yieldInstruction, (Action<TYieldInstruction>) promise.Resolve);
-			promise.Canceled(cancelClosure.Invoke);
+			//promise.Canceled(cancelClosure.Invoke);
 			promise.Complete(cancelClosure.AddToPool);
 
 			return promise;
@@ -681,34 +330,6 @@ namespace ProtoPromise
 		{
 			var promise = Internal.LitePromise.GetOrCreate(1);
 			promise.Reject(1);
-			return promise;
-		}
-
-		public static Promise<T> Canceled<T, TCancel>(TCancel reason)
-		{
-			var promise = Internal.LitePromise<T>.GetOrCreate(1);
-			promise.Cancel(reason);
-			return promise;
-		}
-
-		public static Promise Canceled<TCancel>(TCancel reason)
-		{
-			var promise = Internal.LitePromise.GetOrCreate(1);
-			promise.Cancel(reason);
-			return promise;
-		}
-
-		public static Promise<T> Canceled<T>()
-		{
-			var promise = Internal.LitePromise<T>.GetOrCreate(1);
-			promise.Cancel();
-			return promise;
-		}
-
-		public static Promise Canceled()
-		{
-			var promise = Internal.LitePromise.GetOrCreate(1);
-			promise.Cancel();
 			return promise;
 		}
 

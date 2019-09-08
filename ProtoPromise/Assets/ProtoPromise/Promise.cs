@@ -1,9 +1,9 @@
 using System;
 
-namespace ProtoPromise
+namespace Proto.Promises
 {
-    public abstract partial class Promise : ICancelableAny, IRetainable
-	{
+    public abstract partial class Promise : ICancelableAny, IRetainable, IPotentialCancelation
+    {
 		public void Retain()
 		{
             ValidateOperation(this);
@@ -30,15 +30,6 @@ namespace ProtoPromise
             }
         }
 
-        public bool IsRetained
-        {
-            get
-            {
-                ValidateOperation(this);
-                return _retainCounter > 0;
-            }
-        }
-
         public YieldInstruction ToYieldInstruction()
         {
             var yield = YieldInstruction.GetOrCreate();
@@ -53,15 +44,6 @@ namespace ProtoPromise
 
             AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, this, 1));
             return this;
-		}
-
-		public Promise ThenDuplicate()
-		{
-            ValidateOperation(this);
-
-            var promise = GetDuplicate();
-			HookupNewPromise(promise);
-			return promise;
 		}
 
 #region Resolve Callbacks
@@ -372,13 +354,15 @@ namespace ProtoPromise
 	}
 
 	public abstract partial class Promise<T> : Promise
-	{
-		public new Promise<T> ThenDuplicate()
-		{
-			var promise = Promise.Internal.LitePromise<T>.GetOrCreate(1);
-            HookupNewPromise(promise);
-			return promise;
-		}
+    {
+        public new Promise<T> Finally(Action onFinally)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onFinally, "onFinally");
+
+            AddWaiter(Promise.Internal.FinallyDelegate.GetOrCreate(onFinally, this, 1));
+            return this;
+        }
 
 #region Resolve Callbacks
 		public Promise Then(Action<T> onResolved)

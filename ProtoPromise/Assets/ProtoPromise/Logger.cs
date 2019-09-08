@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace ProtoPromise
+namespace Proto
 {
 	/// <summary>
 	/// Assign your own delegates to use your own logger instead of Unity's default.

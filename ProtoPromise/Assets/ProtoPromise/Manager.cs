@@ -1,10 +1,9 @@
-﻿namespace ProtoPromise
+﻿namespace Proto.Promises
 {
     partial class Promise
     {
         public static class Manager
         {
-            // TODO: Call these
             public static void HandleCompletes()
             {
                 HandleComplete();
@@ -14,7 +13,15 @@
             public static void HandleCompletesAndProgress()
             {
                 HandleComplete();
-                HandleProgress();
+                Promise.HandleProgress();
+                ThrowUnhandledRejections();
+            }
+
+#pragma warning disable RECS0146 // Member hides static member from outer class
+            public static void HandleProgress()
+#pragma warning restore RECS0146 // Member hides static member from outer class
+            {
+                Promise.HandleProgress();
                 ThrowUnhandledRejections();
             }
 
@@ -23,7 +30,7 @@
             /// </summary>
             public static void ClearObjectPool()
             {
-                ValueLinkedStackZeroGC<Internal.IProgressListener>.ClearPooledNodes();
+                ClearPooledProgress();
                 Internal.OnClearPool.Invoke();
             }
         }

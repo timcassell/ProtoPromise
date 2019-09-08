@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using ProtoPromise;
+using Proto.Promises;
 using UnityEngine;
 
 public class TestScript : MonoBehaviour
@@ -42,10 +42,10 @@ public class TestScript : MonoBehaviour
 	}
 	public RunType runType = RunType.None;
 
-
-	private IEnumerator Start()
+    private IEnumerator Start()
 	{
-        Promise.NewDeferred().Cancel();
+        Promise.Config.ObjectPooling = Promise.PoolType.All;
+        //Promise.Config.DebugStacktraceGenerator = Promise.GeneratedStacktrace.All;
 
 		//Debug.LogWarning(System.Threading.Thread.CurrentThread.ManagedThreadId);
 		//voidToVoid = () => { Debug.LogError(System.Threading.Thread.CurrentThread.ManagedThreadId); };
@@ -86,42 +86,42 @@ public class TestScript : MonoBehaviour
 		//task2.RunSynchronously();
 
 
-		var deferred = Promise.NewDeferred();
-		var deferred2 = Promise.NewDeferred<int>();
+		//var deferred = Promise.NewDeferred();
+		//var deferred2 = Promise.NewDeferred<int>();
 
 
-		var promise2 = deferred2.Promise
-				  .Then(i => { Debug.Log("deferred2.done: " + i); return i; })
-			//.End()
-			//.Catch(e => {})
-			//.Fail<int>(x => { Debug.LogError("Rejected: " + x); return x;})
-			;
+		//var promise2 = deferred2.Promise
+		//		  .Then(i => { Debug.Log("deferred2.done: " + i); return i; })
+		//	//.End()
+		//	//.Catch(e => {})
+		//	//.Fail<int>(x => { Debug.LogError("Rejected: " + x); return x;})
+		//	;
 
-		deferred.Promise
-				.Then(() => Debug.Log("deferred1.then"))
-				.Complete(() => Debug.LogWarning("Promise 1 complete"))
-				.Then(() => promise2)
-		 		.Then(x => { Debug.Log("deferred.then " + x); /*throw new InvalidCastException();*/ return "deferred string."; })
-				.Then(x => { Debug.Log("Promise.Done " + x); return x; })
-				//.Catch<ArgumentException>( e => { Debug.LogError("caught argument"); return e.ToString(); })
-				.Catch((Exception e) => { Debug.LogError("caught exception"); return e.ToString(); })
-				.Then(s => { Debug.Log("deferred.done " + s); return s; })
-				.Then(s => { Debug.Log(s); return s; })
-				.Finally(() => { Debug.LogError("promise 1 final"); })
-				;
+		//deferred.Promise
+  //              .Then(() => Debug.Log("deferred1.then"))
+  //              .Complete(() => Debug.LogWarning("Promise 1 complete"))
+		//		.Then(() => 1)
+  //              .Then(x => { Debug.Log("deferred.then " + x); /*throw new InvalidCastException();*/ return "deferred string."; })
+		//		.Then(x => { Debug.Log("Promise.Done " + x); return x; })
+		//		//.Catch<ArgumentException>( e => { Debug.LogError("caught argument"); return e.ToString(); })
+		//		//.Catch((Exception e) => { Debug.LogError("caught exception"); return e.ToString(); })
+		//		.Then(s => { Debug.Log("deferred.done " + s); return s; })
+		//		.Then(s => { Debug.Log(s); return s; })
+		//		.Finally(() => { Debug.LogError("promise 1 final"); })
+		//		;
 
 
-		promise2
-			.Then(() => { Debug.Log("deferred2.then"); return "deferred2 string."; })
-			.Then(s => Debug.Log(s))
-			.Complete(() => Debug.Log("deferred2 complete"))
-			//.Catch((Exception e) => { Debug.LogError("caught exception"); throw e; return e.ToString(); })
-			.Finally(() => { Debug.LogError("promise 2 final"); })
-			//.Then(s => s)
-			;
-		deferred2.Resolve(199);
+		//promise2
+			//.Then(() => { Debug.Log("deferred2.then"); return "deferred2 string."; })
+			//.Then(s => Debug.Log(s))
+			//.Complete(() => Debug.Log("deferred2 complete"))
+			////.Catch((Exception e) => { Debug.LogError("caught exception"); throw e; return e.ToString(); })
+			//.Finally(() => { Debug.LogError("promise 2 final"); })
+			////.Then(s => s)
+			//;
 
-		deferred.Resolve();
+        //deferred.Resolve();
+        //deferred2.Resolve(199);
 
 		//try
 		//{
@@ -177,8 +177,8 @@ public class TestScript : MonoBehaviour
 		//	deferred2.Throw(e);
 		//}
 
-		//StartCoroutine(Executor());
-		//StartCoroutine(Log());
+		StartCoroutine(Executor());
+		StartCoroutine(Log());
 
 		yield break;
 	}
@@ -189,7 +189,7 @@ public class TestScript : MonoBehaviour
 
 	void Cb (WaitForSeconds wait)
 	{
-		ProtoPromise.GlobalMonoBehaviour.Yield(wait, CB);
+		Proto.GlobalMonoBehaviour.Yield(wait, CB);
 	}
 
 	IEnumerator Executor()
@@ -438,8 +438,9 @@ public class TestScript : MonoBehaviour
 					watch.Start();
 
 					lolDeferred.Resolve();
+                    Promise.Manager.HandleCompletes();
 
-					watch.Stop();
+                    watch.Stop();
 					protoResolve += watch.ElapsedTicks;
 					break;
 				}
