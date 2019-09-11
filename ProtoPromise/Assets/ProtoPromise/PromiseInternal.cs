@@ -2866,13 +2866,13 @@ namespace Proto.Promises
 #endregion
 
 #region Multi Promises
-            public partial interface ITreeHandleProgressListener : ITreeHandleable
+            public partial interface IMultiTreeHandleable : ITreeHandleable
             {
                 void Handle(Promise feed, int index);
                 void ReAdd(PromisePassThrough passThrough);
             }
             
-            public sealed class PromisePassThrough : ITreeHandleable, ILinked<PromisePassThrough>
+            public sealed partial class PromisePassThrough : ITreeHandleable, ILinked<PromisePassThrough>
             {
                 private static ValueLinkedStack<PromisePassThrough> _pool;
 
@@ -2885,16 +2885,17 @@ namespace Proto.Promises
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
 
                 public Promise owner;
-                public ITreeHandleProgressListener target;
+                public IMultiTreeHandleable target;
 
                 private int _index;
 
-                public static PromisePassThrough GetOrCreate(Promise owner, ITreeHandleProgressListener target, int index)
+                public static PromisePassThrough GetOrCreate(Promise owner, IMultiTreeHandleable target, int index)
                 {
                     var passThrough = _pool.IsNotEmpty ? _pool.Pop() : new PromisePassThrough();
                     passThrough.owner = owner;
                     passThrough.target = target;
                     passThrough._index = index;
+                    owner.AddWaiter(passThrough);
                     return passThrough;
                 }
 
@@ -2925,28 +2926,19 @@ namespace Proto.Promises
 
                 void ITreeHandleable.AssignCancelValue(IValueContainer cancelValue)
                 {
-                    if (target != null)
-                    {
-                        target.AssignCancelValue(cancelValue);
-                    }
+                    target.AssignCancelValue(cancelValue);
                 }
                 void ITreeHandleable.Cancel()
                 {
                     var temp = target;
                     Reset();
-                    if (temp != null)
-                    {
-                        temp.Cancel();
-                    }
+                    temp.Cancel();
                 }
                 void ITreeHandleable.Handle(Promise feed)
                 {
                     var temp = target;
                     Reset();
-                    if (temp != null)
-                    {
-                        temp.Handle(feed, _index);
-                    }
+                    temp.Handle(feed, _index);
                 }
                 void ITreeHandleable.OnSubscribeToCanceled(IValueContainer cancelValue)
                 {
@@ -2954,7 +2946,7 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed partial class AllPromise : PoolablePromise<AllPromise>, ITreeHandleProgressListener
+            public sealed partial class AllPromise : PoolablePromise<AllPromise>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> passThroughs;
                 private uint _waitCount;
@@ -2971,12 +2963,14 @@ namespace Proto.Promises
                     var promise = _pool.IsNotEmpty ? (AllPromise) _pool.Pop() : new AllPromise();
 
                     var target = promises.Current;
+                    ValidateOperation(target);
                     int promiseIndex = 0;
                     // Hook up pass throughs
                     var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
+                        ValidateOperation(target);
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }
                     promise.passThroughs = passThroughs;
@@ -2989,7 +2983,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                void ITreeHandleProgressListener.Handle(Promise feed, int index)
+                void IMultiTreeHandleable.Handle(Promise feed, int index)
                 {
                     --_waitCount;
 #if DEBUG
@@ -3012,6 +3006,10 @@ namespace Proto.Promises
                     if (feed._state == State.Rejected)
                     {
                         RejectInternal(feed._rejectedOrCanceledValue);
+                        if (_waitCount == 0)
+                        {
+                            PromisePassThrough.Repool(ref passThroughs);
+                        }
                     }
                     else if (_waitCount == 0)
                     {
@@ -3037,7 +3035,288 @@ namespace Proto.Promises
                     base.AssignCancelValue(cancelValue);
                 }
 
-                void ITreeHandleProgressListener.ReAdd(PromisePassThrough passThrough)
+                void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
+                {
+                    passThroughs.Push(passThrough);
+                }
+
+                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
+            }
+
+            public sealed partial class AllPromise<T> : PoolablePromise<IList<T>, AllPromise<T>>, IMultiTreeHandleable
+            {
+                private ValueLinkedStack<PromisePassThrough> passThroughs;
+                private uint _waitCount;
+
+                private AllPromise() { }
+
+                public static Promise<IList<T>> GetOrCreate<TEnumerator>(TEnumerator promises, IList<T> valueContainer, int skipFrames) where TEnumerator : IEnumerator<Promise>
+                {
+                    if (!promises.MoveNext())
+                    {
+                        // If promises is empty, just return a resolved promise.
+                        valueContainer.Clear();
+                        return Resolved(valueContainer);
+                    }
+                    var promise = _pool.IsNotEmpty ? (AllPromise<T>) _pool.Pop() : new AllPromise<T>();
+                    promise._value = valueContainer;
+
+                    var target = promises.Current;
+                    ValidateOperation(target);
+                    int promiseIndex = 0;
+                    // Hook up pass throughs
+                    var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
+                    while (promises.MoveNext())
+                    {
+                        target = promises.Current;
+                        ValidateOperation(target);
+                        passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
+                    }
+                    promise.passThroughs = passThroughs;
+
+                    // Retain this until all promises resolve/reject/cancel
+                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._retainCounter = promise._waitCount;
+
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                void IMultiTreeHandleable.Handle(Promise feed, int index)
+                {
+                    --_waitCount;
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+
+                    if (_state != State.Pending)
+                    {
+                        if (_waitCount == 0)
+                        {
+                            PromisePassThrough.Repool(ref passThroughs);
+                        }
+                        return;
+                    }
+
+                    feed._wasWaitedOn = true;
+                    if (feed._state == State.Rejected)
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValue);
+                        if (_waitCount == 0)
+                        {
+                            PromisePassThrough.Repool(ref passThroughs);
+                        }
+                    }
+                    else
+                    {
+                        _value[index] = feed.GetValue<T>();
+                        if (_waitCount == 0)
+                        {
+                            PromisePassThrough.Repool(ref passThroughs);
+                            ResolveInternal();
+                        }
+                        else
+                        {
+                            IncrementProgress(feed);
+                        }
+                    }
+                }
+
+                partial void IncrementProgress(Promise feed);
+
+                protected override void AssignCancelValue(IValueContainer cancelValue)
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+                    base.AssignCancelValue(cancelValue);
+                }
+
+                void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
+                {
+                    passThroughs.Push(passThrough);
+                }
+
+                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
+            }
+
+            public sealed partial class RacePromise : PoolablePromise<RacePromise>, IMultiTreeHandleable
+            {
+                private ValueLinkedStack<PromisePassThrough> passThroughs;
+                private uint _waitCount;
+
+                private RacePromise() { }
+
+                public static Promise GetOrCreate<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
+                {
+                    if (!promises.MoveNext())
+                    {
+#pragma warning disable RECS0163 // Suggest the usage of the nameof operator
+                        throw new ArgumentException("Cannot race 0 promises.", "promises");
+#pragma warning restore RECS0163 // Suggest the usage of the nameof operator
+                    }
+                    var promise = _pool.IsNotEmpty ? (RacePromise) _pool.Pop() : new RacePromise();
+
+                    var target = promises.Current;
+                    ValidateOperation(target);
+                    int promiseIndex = 0;
+                    // Hook up pass throughs
+                    var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
+                    while (promises.MoveNext())
+                    {
+                        target = promises.Current;
+                        ValidateOperation(target);
+                        passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
+                    }
+                    promise.passThroughs = passThroughs;
+
+                    // Retain this until all promises resolve/reject/cancel
+                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._retainCounter = promise._waitCount;
+
+                    promise.ResetDepth();
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                void IMultiTreeHandleable.Handle(Promise feed, int index)
+                {
+                    --_waitCount;
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+
+                    if (_waitCount == 0)
+                    {
+                        PromisePassThrough.Repool(ref passThroughs);
+                    }
+
+                    if (_state != State.Pending)
+                    {
+                        return;
+                    }
+
+                    feed._wasWaitedOn = true;
+                    if (feed._state == State.Rejected)
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValue);
+                    }
+                    else
+                    {
+                        ResolveInternal();
+                    }
+                }
+
+                protected override void AssignCancelValue(IValueContainer cancelValue)
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+                    base.AssignCancelValue(cancelValue);
+                }
+
+                void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
+                {
+                    passThroughs.Push(passThrough);
+                }
+
+                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
+            }
+
+            public sealed partial class RacePromise<T> : PoolablePromise<T, RacePromise<T>>, IMultiTreeHandleable
+            {
+                private ValueLinkedStack<PromisePassThrough> passThroughs;
+                private uint _waitCount;
+
+                private RacePromise() { }
+
+                public static Promise<T> GetOrCreate<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
+                {
+                    if (!promises.MoveNext())
+                    {
+#pragma warning disable RECS0163 // Suggest the usage of the nameof operator
+                        throw new ArgumentException("Cannot race 0 promises.", "promises");
+#pragma warning restore RECS0163 // Suggest the usage of the nameof operator
+                    }
+                    var promise = _pool.IsNotEmpty ? (RacePromise<T>) _pool.Pop() : new RacePromise<T>();
+
+                    var target = promises.Current;
+                    ValidateOperation(target);
+                    int promiseIndex = 0;
+                    // Hook up pass throughs
+                    var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
+                    while (promises.MoveNext())
+                    {
+                        target = promises.Current;
+                        ValidateOperation(target);
+                        passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
+                    }
+                    promise.passThroughs = passThroughs;
+
+                    // Retain this until all promises resolve/reject/cancel
+                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._retainCounter = promise._waitCount;
+
+                    promise.ResetDepth();
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                void IMultiTreeHandleable.Handle(Promise feed, int index)
+                {
+                    --_waitCount;
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+
+                    if (_waitCount == 0)
+                    {
+                        PromisePassThrough.Repool(ref passThroughs);
+                    }
+
+                    if (_state != State.Pending)
+                    {
+                        return;
+                    }
+
+                    feed._wasWaitedOn = true;
+                    if (feed._state == State.Rejected)
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValue);
+                    }
+                    else
+                    {
+                        ResolveInternal(feed.GetValue<T>());
+                    }
+                }
+
+                protected override void AssignCancelValue(IValueContainer cancelValue)
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+                    base.AssignCancelValue(cancelValue);
+                }
+
+                void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     passThroughs.Push(passThrough);
                 }

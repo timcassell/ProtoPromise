@@ -13,6 +13,7 @@
 #pragma warning disable CS0618 // Type or member is obsolete
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 using System;
+using System.Collections.Generic;
 
 namespace Proto.Promises
 {
@@ -74,7 +75,7 @@ namespace Proto.Promises
             /// <para/>
             /// Max Whole Number: 2^(32-<see cref="ProgressDecimalBits"/>)
             /// Precision: 1/(2^<see cref="ProgressDecimalBits"/>)
-            /// Don't make this smaller than 8 since the maximum contiguous integer representable in a float is 2^24
+            /// Don't make this smaller than 8 since the maximum contiguous integer representable in a float is 2^24 (and conversely, don't make this larger than 24)
             /// <para/>
             /// NOTE: promises that don't wait (.Then with an onResolved that simply returns a value or void) don't count towards the promise chain limit.
             /// </summary>
@@ -92,6 +93,8 @@ namespace Proto.Promises
 #else
             public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
 #endif
+
+            public static IPromiseYielder Yielder { get; set; }
         }
 
         partial class DeferredBase
@@ -475,6 +478,7 @@ namespace Proto.Promises
             }
         }
 
+        // TODO: skipFrames
         static protected void ValidateNotDisposed(Internal.IValueContainer valueContainer, string message)
         {
             if (ReferenceEquals(valueContainer, Internal.DisposedChecker.instance))
@@ -483,6 +487,7 @@ namespace Proto.Promises
             }
         }
 
+        // TODO: skipFrames
         static partial void ValidateOperation(Promise promise)
         {
             ValidateNotDisposed(promise._rejectedOrCanceledValue, "Always nullify your references when you are finished with them!" +
@@ -694,6 +699,7 @@ namespace Proto.Promises
         static partial void ClearPooledProgress()
         {
             ValueLinkedStackZeroGC<Internal.IProgressListener>.ClearPooledNodes();
+            ValueLinkedStackZeroGC<Internal.IInvokable>.ClearPooledNodes();
         }
 
         partial void ClearProgressListeners()
@@ -842,7 +848,7 @@ namespace Proto.Promises
                 // passThroughs are removed from their targets before adding to passThroughs. Add them back here.
                 var passThrough = passThroughs.Pop();
                 promise = passThrough.owner;
-                progressListener = passThrough.target;
+                progressListener = passThrough;
                 passThrough.target.ReAdd(passThrough);
                 goto Repeat;
             }
@@ -886,15 +892,15 @@ namespace Proto.Promises
         }
 
         // Handle progress.
-        private static ValueLinkedQueueZeroGC<Internal.IProgressListener> _progressQueue;
+        private static ValueLinkedQueueZeroGC<Internal.IInvokable> _progressQueue;
         private static bool _runningProgress;
 
-        private static void AddToFrontOfProgressQueue(Internal.IProgressListener progressListener)
+        private static void AddToFrontOfProgressQueue(Internal.IInvokable progressListener)
         {
             _progressQueue.Push(progressListener);
         }
 
-        private static void AddToBackOfProgressQueue(Internal.IProgressListener progressListener)
+        private static void AddToBackOfProgressQueue(Internal.IInvokable progressListener)
         {
             _progressQueue.Enqueue(progressListener);
         }
@@ -937,6 +943,12 @@ namespace Proto.Promises
                     _value = wholePart << Config.ProgressDecimalBits;
                 }
 
+                public UnsignedFixed32(float decimalPart)
+                {
+                    // Don't bother rounding, we don't want to accidentally round to 1.0.
+                    _value = (uint) (decimalPart * DecimalMax);
+                }
+
                 public uint WholePart { get { return _value >> Config.ProgressDecimalBits; } }
                 public float DecimalPart { get { return (float) DecimalPartAsUInt32 / (float) DecimalMax; } }
                 private uint DecimalPartAsUInt32 { get { return _value & DecimalMask; } }
@@ -976,6 +988,16 @@ namespace Proto.Promises
                 public void Increment(uint increment)
                 {
                     _value += increment;
+                }
+
+                public static bool operator >(UnsignedFixed32 a, UnsignedFixed32 b)
+                {
+                    return a._value > b._value;
+                }
+
+                public static bool operator <(UnsignedFixed32 a, UnsignedFixed32 b)
+                {
+                    return a._value < b._value;
                 }
             }
 
@@ -1032,19 +1054,27 @@ namespace Proto.Promises
                 void ITreeHandleable.Cancel() { throw new InvalidOperationException(); }
             }
 
+            public interface IInvokable
+            {
+                void Invoke();
+            }
+
             public interface IProgressListener
             {
                 void SetInitialAmount(UnsignedFixed32 amount);
-                void Invoke();
                 void IncrementProgress(uint amount);
                 void ResolveProgress(Promise sender, uint increment);
                 void CancelProgressIfOwner(Promise sender);
                 void CancelProgress();
             }
 
-            partial interface ITreeHandleProgressListener : IProgressListener { }
+            partial interface IMultiTreeHandleable
+            {
+                void IncrementProgress(uint amount, uint expected);
+                void SetInitialAmount(uint amount, uint expected);
+            }
 
-            public sealed class ProgressDelegate : IProgressListener, IStacktraceable
+            public sealed class ProgressDelegate : IProgressListener, IInvokable, IStacktraceable
             {
 #if DEBUG
                 string IStacktraceable.Stacktrace { get; set; }
@@ -1089,7 +1119,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IProgressListener.Invoke()
+                void IInvokable.Invoke()
                 {
                     _handling = false;
 
@@ -1177,7 +1207,7 @@ namespace Proto.Promises
                 }
             }
 
-            public abstract class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise>, IProgressListener where TPromise : PromiseWaitPromise<TPromise>
+            public abstract class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise>, IProgressListener, IInvokable where TPromise : PromiseWaitPromise<TPromise>
             {
                 // This is used to avoid rounding errors when normalizing the progress.
                 private UnsignedFixed32 _currentAmount;
@@ -1240,7 +1270,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IProgressListener.Invoke()
+                void IInvokable.Invoke()
                 {
                     if (_state != State.Pending)
                     {
@@ -1287,7 +1317,7 @@ namespace Proto.Promises
                 void IProgressListener.CancelProgress() { }
             }
 
-            public abstract class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise>, IProgressListener where TPromise : PromiseWaitPromise<T, TPromise>
+            public abstract class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise>, IProgressListener, IInvokable where TPromise : PromiseWaitPromise<T, TPromise>
             {
                 // This is used to avoid rounding errors when normalizing the progress.
                 private UnsignedFixed32 _currentAmount;
@@ -1349,7 +1379,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IProgressListener.Invoke()
+                void IInvokable.Invoke()
                 {
                     if (_state != State.Pending)
                     {
@@ -1444,7 +1474,25 @@ namespace Proto.Promises
                 }
             }
 
-            partial class AllPromise : PoolablePromise<AllPromise>
+            partial class PromisePassThrough : IProgressListener
+            {
+                void IProgressListener.IncrementProgress(uint amount)
+                {
+                    target.IncrementProgress(amount, owner._waitDepthAndProgress.ToUInt32() + 1u);
+                }
+
+                void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
+                {
+                    target.SetInitialAmount(amount.ToUInt32(), owner._waitDepthAndProgress.ToUInt32() + 1u);
+                }
+
+                // Not used. The promise handles resolve and cancel.
+                void IProgressListener.ResolveProgress(Promise sender, uint increment) { }
+                void IProgressListener.CancelProgressIfOwner(Promise sender) { }
+                void IProgressListener.CancelProgress() { }
+            }
+
+            partial class AllPromise : PoolablePromise<AllPromise>, IInvokable
             {
                 // These are used to avoid rounding errors when normalizing the progress.
                 private float _expected;
@@ -1453,20 +1501,24 @@ namespace Proto.Promises
 
                 protected override void Reset(int skipFrames)
                 {
-                    base.Reset(skipFrames + 1);
-                    _invokingProgress = false;
-                    _currentAmount = default(UnsignedFixed32);
-
-                    uint promiseCounter = 0;
-                    uint expectedProgressCounter = 0;
-                    foreach (var passThrough in passThroughs)
+#if DEBUG
+                    checked
+#endif
                     {
-                        ++promiseCounter;
-                        expectedProgressCounter += passThrough.owner._waitDepthAndProgress.WholePart;
+                        base.Reset(skipFrames + 1);
+                        _currentAmount = default(UnsignedFixed32);
 
+                        uint promiseCounter = 0;
+                        uint expectedProgressCounter = 0;
+                        foreach (var passThrough in passThroughs)
+                        {
+                            ++promiseCounter;
+                            expectedProgressCounter += passThrough.owner._waitDepthAndProgress.WholePart;
+
+                        }
+                        _expected = expectedProgressCounter + _waitCount;
+                        _waitDepthAndProgress = new UnsignedFixed32(promiseCounter - 1);
                     }
-                    _expected = expectedProgressCounter + _waitCount;
-                    _waitDepthAndProgress = new UnsignedFixed32(promiseCounter - 1);
                 }
 
                 partial void IncrementProgress(Promise feed)
@@ -1515,14 +1567,10 @@ namespace Proto.Promises
                     _progressListeners.Push(progressListener);
                 }
 
-                void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
+                void IMultiTreeHandleable.SetInitialAmount(uint amount, uint expected)
                 {
-                    if (_state != State.Pending)
-                    {
-                        return;
-                    }
-
-                    _currentAmount.Increment(amount.ToUInt32());
+                    // This is guaranteed to be pending.
+                    _currentAmount.Increment(amount);
                     if (!_invokingProgress)
                     {
                         _invokingProgress = true;
@@ -1531,10 +1579,15 @@ namespace Proto.Promises
                     }
                 }
 
+                void IMultiTreeHandleable.IncrementProgress(uint amount, uint expected)
+                {
+                    IncrementProgress(amount);
+                }
+
                 private void IncrementProgress(uint amount)
                 {
                     _currentAmount.Increment(amount);
-                    if (!_invokingProgress)
+                    if (!_invokingProgress & _state == State.Pending)
                     {
                         _invokingProgress = true;
                         // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
@@ -1542,15 +1595,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IProgressListener.IncrementProgress(uint amount)
-                {
-                    if (_state == State.Pending)
-                    {
-                        IncrementProgress(amount);
-                    }
-                }
-
-                void IProgressListener.Invoke()
+                void IInvokable.Invoke()
                 {
                     _invokingProgress = false;
 
@@ -1570,11 +1615,361 @@ namespace Proto.Promises
                         progressListener.IncrementProgress(increment);
                     }
                 }
+            }
 
-                // Not used. The promise handles resolve and cancel.
-                void IProgressListener.ResolveProgress(Promise sender, uint increment) { }
-                void IProgressListener.CancelProgressIfOwner(Promise sender) { }
-                void IProgressListener.CancelProgress() { }
+            partial class AllPromise<T> : PoolablePromise<IList<T>, AllPromise<T>>, IInvokable
+            {
+                // These are used to avoid rounding errors when normalizing the progress.
+                private float _expected;
+                private UnsignedFixed32 _currentAmount;
+                private bool _invokingProgress;
+
+                protected override void Reset(int skipFrames)
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        base.Reset(skipFrames + 1);
+                        _currentAmount = default(UnsignedFixed32);
+
+                        uint promiseCounter = 0;
+                        uint expectedProgressCounter = 0;
+                        foreach (var passThrough in passThroughs)
+                        {
+                            ++promiseCounter;
+                            expectedProgressCounter += passThrough.owner._waitDepthAndProgress.WholePart;
+
+                        }
+                        _expected = expectedProgressCounter + _waitCount;
+                        _waitDepthAndProgress = new UnsignedFixed32(promiseCounter - 1);
+                    }
+                }
+
+                partial void IncrementProgress(Promise feed)
+                {
+                    bool subscribedProgress = _progressListeners.IsNotEmpty;
+                    uint increment = subscribedProgress ? feed._waitDepthAndProgress.GetDifferenceToNextWholeAsUInt32() : feed._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32();
+                    IncrementProgress(increment);
+                }
+
+                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
+                {
+                    // This is guaranteed to be pending.
+                    previous = this;
+                    return true;
+                }
+
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    bool firstSubscribe = _progressListeners.IsEmpty;
+                    if (firstSubscribe & _state == State.Pending)
+                    {
+                        // Remove this.passThroughs before adding to passThroughs. They are re-added in the SubscribeProgressToBranchesAndRoots loop.
+                        var tempPassThroughs = this.passThroughs;
+                        this.passThroughs.Clear();
+                        while (tempPassThroughs.IsNotEmpty)
+                        {
+                            var passThrough = this.passThroughs.Pop();
+                            if (passThrough.owner == null)
+                            {
+                                // The promise was already finished, don't subscribe.
+                                this.passThroughs.Push(passThrough);
+                            }
+                            else
+                            {
+                                passThroughs.Push(passThrough);
+                            }
+                        }
+                    }
+
+                    previous = null;
+                    return false;
+                }
+
+                protected override void SubscribeProgressRoot(IProgressListener progressListener)
+                {
+                    _progressListeners.Push(progressListener);
+                }
+
+                void IMultiTreeHandleable.SetInitialAmount(uint amount, uint expected)
+                {
+                    // This is guaranteed to be pending.
+                    _currentAmount.Increment(amount);
+                    if (!_invokingProgress)
+                    {
+                        _invokingProgress = true;
+                        // Always add new listeners to the back.
+                        AddToBackOfProgressQueue(this);
+                    }
+                }
+
+                void IMultiTreeHandleable.IncrementProgress(uint amount, uint expected)
+                {
+                    IncrementProgress(amount);
+                }
+
+                private void IncrementProgress(uint amount)
+                {
+                    _currentAmount.Increment(amount);
+                    if (!_invokingProgress & _state == State.Pending)
+                    {
+                        _invokingProgress = true;
+                        // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
+                        AddToFrontOfProgressQueue(this);
+                    }
+                }
+
+                void IInvokable.Invoke()
+                {
+                    _invokingProgress = false;
+
+                    if (_state != State.Pending)
+                    {
+                        return;
+                    }
+
+                    // Calculate the normalized progress for all the awaited promises.
+                    // Divide twice is slower, but gives better precision than single divide.
+                    float progress = ((float) _currentAmount.WholePart / _expected) + (_currentAmount.DecimalPart / _expected);
+
+                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
+
+                    foreach (var progressListener in _progressListeners)
+                    {
+                        progressListener.IncrementProgress(increment);
+                    }
+                }
+            }
+
+            partial class RacePromise : PoolablePromise<RacePromise>, IInvokable
+            {
+                private UnsignedFixed32 _currentAmount;
+                private bool _invokingProgress;
+
+                protected override void Reset(int skipFrames)
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        base.Reset(skipFrames + 1);
+                        _currentAmount = default(UnsignedFixed32);
+
+                        uint promiseCounter = 0;
+                        uint expectedProgressCounter = 0;
+                        foreach (var passThrough in passThroughs)
+                        {
+                            ++promiseCounter;
+                            expectedProgressCounter += passThrough.owner._waitDepthAndProgress.WholePart;
+
+                        }
+                        _waitDepthAndProgress = new UnsignedFixed32(promiseCounter - 1);
+                    }
+                }
+
+                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
+                {
+                    // This is guaranteed to be pending.
+                    previous = this;
+                    return true;
+                }
+
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    bool firstSubscribe = _progressListeners.IsEmpty;
+                    if (firstSubscribe & _state == State.Pending)
+                    {
+                        // Remove this.passThroughs before adding to passThroughs. They are re-added in the SubscribeProgressToBranchesAndRoots loop.
+                        var tempPassThroughs = this.passThroughs;
+                        this.passThroughs.Clear();
+                        while (tempPassThroughs.IsNotEmpty)
+                        {
+                            var passThrough = this.passThroughs.Pop();
+                            if (passThrough.owner == null)
+                            {
+                                // The promise was already finished, don't subscribe.
+                                this.passThroughs.Push(passThrough);
+                            }
+                            else
+                            {
+                                passThroughs.Push(passThrough);
+                            }
+                        }
+                    }
+
+                    previous = null;
+                    return false;
+                }
+
+                protected override void SubscribeProgressRoot(IProgressListener progressListener)
+                {
+                    _progressListeners.Push(progressListener);
+                }
+
+                void IMultiTreeHandleable.SetInitialAmount(uint amount, uint expected)
+                {
+                    // This is guaranteed to be pending.
+                    var newAmount = new UnsignedFixed32((float) amount / (float) expected);
+                    if (newAmount > _currentAmount)
+                    {
+                        _currentAmount = newAmount;
+                        if (!_invokingProgress)
+                        {
+                            _invokingProgress = true;
+                            // Always add new listeners to the back.
+                            AddToBackOfProgressQueue(this);
+                        }
+                    }
+                }
+
+                void IMultiTreeHandleable.IncrementProgress(uint amount, uint expected)
+                {
+                    var newAmount = new UnsignedFixed32((float) amount / (float) expected);
+                    if (_state == State.Pending & newAmount > _currentAmount)
+                    {
+                        _currentAmount = newAmount;
+                        if (!_invokingProgress)
+                        {
+                            _invokingProgress = true;
+                            // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
+                            AddToFrontOfProgressQueue(this);
+                        }
+                    }
+                }
+
+                void IInvokable.Invoke()
+                {
+                    _invokingProgress = false;
+
+                    if (_state != State.Pending)
+                    {
+                        return;
+                    }
+
+                    // _currentAmount and _waitDepthAndProgress both only use the decimal part, so we can simply grab the entire uint rather than getting only the decimal part.
+                    uint increment = _currentAmount.ToUInt32() - _waitDepthAndProgress.ToUInt32();
+
+                    foreach (var progressListener in _progressListeners)
+                    {
+                        progressListener.IncrementProgress(increment);
+                    }
+                }
+            }
+
+            partial class RacePromise<T> : PoolablePromise<T, RacePromise<T>>, IInvokable
+            {
+                private UnsignedFixed32 _currentAmount;
+                private bool _invokingProgress;
+
+                protected override void Reset(int skipFrames)
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        base.Reset(skipFrames + 1);
+                        _currentAmount = default(UnsignedFixed32);
+
+                        uint promiseCounter = 0;
+                        uint expectedProgressCounter = 0;
+                        foreach (var passThrough in passThroughs)
+                        {
+                            ++promiseCounter;
+                            expectedProgressCounter += passThrough.owner._waitDepthAndProgress.WholePart;
+
+                        }
+                        _waitDepthAndProgress = new UnsignedFixed32(promiseCounter - 1);
+                    }
+                }
+
+                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
+                {
+                    // This is guaranteed to be pending.
+                    previous = this;
+                    return true;
+                }
+
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    bool firstSubscribe = _progressListeners.IsEmpty;
+                    if (firstSubscribe & _state == State.Pending)
+                    {
+                        // Remove this.passThroughs before adding to passThroughs. They are re-added in the SubscribeProgressToBranchesAndRoots loop.
+                        var tempPassThroughs = this.passThroughs;
+                        this.passThroughs.Clear();
+                        while (tempPassThroughs.IsNotEmpty)
+                        {
+                            var passThrough = this.passThroughs.Pop();
+                            if (passThrough.owner == null)
+                            {
+                                // The promise was already finished, don't subscribe.
+                                this.passThroughs.Push(passThrough);
+                            }
+                            else
+                            {
+                                passThroughs.Push(passThrough);
+                            }
+                        }
+                    }
+
+                    previous = null;
+                    return false;
+                }
+
+                protected override void SubscribeProgressRoot(IProgressListener progressListener)
+                {
+                    _progressListeners.Push(progressListener);
+                }
+
+                void IMultiTreeHandleable.SetInitialAmount(uint amount, uint expected)
+                {
+                    // This is guaranteed to be pending.
+                    var newAmount = new UnsignedFixed32((float) amount / (float) expected);
+                    if (newAmount > _currentAmount)
+                    {
+                        _currentAmount = newAmount;
+                        if (!_invokingProgress)
+                        {
+                            _invokingProgress = true;
+                            // Always add new listeners to the back.
+                            AddToBackOfProgressQueue(this);
+                        }
+                    }
+                }
+
+                void IMultiTreeHandleable.IncrementProgress(uint amount, uint expected)
+                {
+                    var newAmount = new UnsignedFixed32((float) amount / (float) expected);
+                    if (_state == State.Pending & newAmount > _currentAmount)
+                    {
+                        _currentAmount = newAmount;
+                        if (!_invokingProgress)
+                        {
+                            _invokingProgress = true;
+                            // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
+                            AddToFrontOfProgressQueue(this);
+                        }
+                    }
+                }
+
+                void IInvokable.Invoke()
+                {
+                    _invokingProgress = false;
+
+                    if (_state != State.Pending)
+                    {
+                        return;
+                    }
+
+                    // _currentAmount and _waitDepthAndProgress both only use the decimal part, so we can simply grab the entire uint rather than getting only the decimal part.
+                    uint increment = _currentAmount.ToUInt32() - _waitDepthAndProgress.ToUInt32();
+
+                    foreach (var progressListener in _progressListeners)
+                    {
+                        progressListener.IncrementProgress(increment);
+                    }
+                }
             }
         }
 #endif
