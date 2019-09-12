@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
+//using System.Threading.Tasks;
 using Proto.Promises;
 using UnityEngine;
 
@@ -10,7 +10,7 @@ public class TestScript : MonoBehaviour
 {
 	Promise.Deferred[] protoDeferreds = new Promise.Deferred[0];
 	uPromise.Deferred[] uDeferreds = new uPromise.Deferred[0];
-	Task[] tasks = new Task[0];
+	//Task[] tasks = new Task[0];
 
 
 	Action voidToVoid = () => { };
@@ -20,9 +20,9 @@ public class TestScript : MonoBehaviour
 	Func<int, float> toFloat = x => 0f;
 	Func<int, int> intToInt = x => x;
 
-	Func<Task, int> taskVoidToInt = x => 0;
-	Func<Task<int>, float> taskIntToFloat = x => 0f;
-	Action<Task<float>> taskFloatToVoid = x => { };
+	//Func<Task, int> taskVoidToInt = x => 0;
+	//Func<Task<int>, float> taskIntToFloat = x => 0f;
+	//Action<Task<float>> taskFloatToVoid = x => { };
 
 	public int thenCount = 100;
 	public int trials = 100;
@@ -91,7 +91,7 @@ public class TestScript : MonoBehaviour
 
 
         var promise2 = deferred2.Promise
-                .Then(Promise.Yield)
+                .Then(x => Promise.Yield(x))
                 .Then(i => { Debug.Log("deferred2.then: " + i); return i; });
 		//	//.End()
 		//	//.Catch(e => {})
@@ -304,24 +304,24 @@ public class TestScript : MonoBehaviour
 					uCreation = watch.ElapsedTicks;
 					break;
 				}
-			case RunType.Task:
-				{
-					if (tasks.Length != trials)
-					{
-						tasks = new Task[trials];
-					}
-					taskCreation = 0;
+			//case RunType.Task:
+				//{
+				//	if (tasks.Length != trials)
+				//	{
+				//		tasks = new Task[trials];
+				//	}
+				//	taskCreation = 0;
 
-					watch.Reset();
-					watch.Start();
-					for (int j = 0; j < trials; ++j)
-					{
-						tasks[j] = new Task(voidToVoid);
-					}
-					watch.Stop();
-					taskCreation = watch.ElapsedTicks;
-					break;
-				}
+				//	watch.Reset();
+				//	watch.Start();
+				//	for (int j = 0; j < trials; ++j)
+				//	{
+				//		tasks[j] = new Task(voidToVoid);
+				//	}
+				//	watch.Stop();
+				//	taskCreation = watch.ElapsedTicks;
+				//	break;
+				//}
 		}
 	}
 
@@ -400,26 +400,26 @@ public class TestScript : MonoBehaviour
 					uThen += watch.ElapsedTicks;
 					break;
 				}
-			case RunType.Task:
-				{
-					var task = tasks[index];
-					var taskInt = task.ContinueWith(taskVoidToInt);
-					var taskFloat = taskInt.ContinueWith(taskIntToFloat);
+			//case RunType.Task:
+				//{
+				//	var task = tasks[index];
+				//	var taskInt = task.ContinueWith(taskVoidToInt);
+				//	var taskFloat = taskInt.ContinueWith(taskIntToFloat);
 
-					watch.Reset();
-					watch.Start();
+				//	watch.Reset();
+				//	watch.Start();
 
-					for (int i = 0; i < thenCount; ++i)
-					{
-						task = taskFloat.ContinueWith(taskFloatToVoid);
-						taskInt = task.ContinueWith(taskVoidToInt);
-						taskFloat = taskInt.ContinueWith(taskIntToFloat);
-					}
+				//	for (int i = 0; i < thenCount; ++i)
+				//	{
+				//		task = taskFloat.ContinueWith(taskFloatToVoid);
+				//		taskInt = task.ContinueWith(taskVoidToInt);
+				//		taskFloat = taskInt.ContinueWith(taskIntToFloat);
+				//	}
 
-					watch.Stop();
-					taskThen += watch.ElapsedTicks;
-					break;
-				}
+				//	watch.Stop();
+				//	taskThen += watch.ElapsedTicks;
+				//	break;
+				//}
 		}
 	}
 
@@ -454,20 +454,20 @@ public class TestScript : MonoBehaviour
 					uResolve += watch.ElapsedTicks;
 					break;
 				}
-			case RunType.Task:
-				{
-					var task = tasks[index];
+			//case RunType.Task:
+				//{
+				//	var task = tasks[index];
 
-					watch.Reset();
-					watch.Start();
+				//	watch.Reset();
+				//	watch.Start();
 
-					task.RunSynchronously();
-					task.Wait();
+				//	task.RunSynchronously();
+				//	task.Wait();
 
-					watch.Stop();
-					taskResolve += watch.ElapsedTicks;
-					break;
-				}
+				//	watch.Stop();
+				//	taskResolve += watch.ElapsedTicks;
+				//	break;
+				//}
 		}
 	}
 }

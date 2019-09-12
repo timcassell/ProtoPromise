@@ -22,22 +22,22 @@ namespace Proto.Promises
 	{
 		public static Promise All(params Promise[] promises)
 		{
-            return Internal.AllPromise.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
+            return Internal.AllPromise0.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
 		}
 
 		public static Promise All(IEnumerable<Promise> promises)
 		{
-            return Internal.AllPromise.GetOrCreate(promises.GetEnumerator(), 1);
+            return Internal.AllPromise0.GetOrCreate(promises.GetEnumerator(), 1);
         }
 
         public static Promise AllNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            return Internal.AllPromise.GetOrCreate(promises, 1);
+            return Internal.AllPromise0.GetOrCreate(promises, 1);
         }
 
         public static Promise<IList<T>> All<T>(params Promise<T>[] promises)
         {
-            return Internal.AllPromise<T>.GetOrCreate(new ArrayEnumerator<Promise>(promises), new List<T>(promises.Length), 1);
+            return Internal.AllPromise<T>.GetOrCreate(new ArrayEnumerator<Promise<T>>(promises), new List<T>(promises.Length), 1);
         }
 
         public static Promise<IList<T>> All<T>(IEnumerable<Promise<T>> promises)
@@ -62,22 +62,22 @@ namespace Proto.Promises
 
         public static Promise Race(params Promise[] promises)
         {
-            return Internal.RacePromise.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
+            return Internal.RacePromise0.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
         }
 
         public static Promise Race(IEnumerable<Promise> promises)
         {
-            return Internal.RacePromise.GetOrCreate(promises.GetEnumerator(), 1);
+            return Internal.RacePromise0.GetOrCreate(promises.GetEnumerator(), 1);
         }
 
         public static Promise RaceNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            return Internal.RacePromise.GetOrCreate(promises, 1);
+            return Internal.RacePromise0.GetOrCreate(promises, 1);
         }
 
         public static Promise<T> Race<T>(params Promise<T>[] promises)
         {
-            return Internal.RacePromise<T>.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
+            return Internal.RacePromise<T>.GetOrCreate(new ArrayEnumerator<Promise<T>>(promises), 1);
         }
 
         public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
@@ -110,7 +110,7 @@ namespace Proto.Promises
             Promise promise = promises.Current.Invoke();
             while (promises.MoveNext())
             {
-                promise = promise.Then(promises.Current.Invoke);
+                promise = promise.Then(promises.Current);
             }
             return promise;
         }
@@ -136,7 +136,7 @@ namespace Proto.Promises
 
 		public static Promise New(Action<Deferred> resolver)
         {
-            var promise = Internal.DeferredPromise.GetOrCreate(1);
+            var promise = Internal.DeferredPromise0.GetOrCreate(1);
             try
             {
                 resolver.Invoke(promise.Deferred);
@@ -164,7 +164,7 @@ namespace Proto.Promises
 
 		public static Promise Resolved()
 		{
-			var promise = Internal.LitePromise.GetOrCreate(1);
+			var promise = Internal.LitePromise0.GetOrCreate(1);
 			promise.Resolve();
 			return promise;
 		}
@@ -185,7 +185,7 @@ namespace Proto.Promises
 
 		public static Promise Rejected<TReject>(TReject reason)
 		{
-			var promise = Internal.LitePromise.GetOrCreate(1);
+			var promise = Internal.LitePromise0.GetOrCreate(1);
 			promise.Reject(reason, 1);
 			return promise;
 		}
@@ -199,14 +199,14 @@ namespace Proto.Promises
 
 		public static Promise Rejected()
 		{
-			var promise = Internal.LitePromise.GetOrCreate(1);
+			var promise = Internal.LitePromise0.GetOrCreate(1);
 			promise.Reject(1);
 			return promise;
 		}
 
 		public static Deferred NewDeferred()
 		{
-            return Internal.DeferredPromise.GetOrCreate(1).Deferred;
+            return Internal.DeferredPromise0.GetOrCreate(1).Deferred;
 		}
 
 		public static Promise<T>.Deferred NewDeferred<T>()

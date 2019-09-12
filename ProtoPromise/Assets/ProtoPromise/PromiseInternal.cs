@@ -43,7 +43,7 @@ namespace Proto.Promises
 
         protected virtual Promise GetDuplicate()
         {
-            return Internal.DuplicatePromise.GetOrCreate(2);
+            return Internal.DuplicatePromise0.GetOrCreate(2);
         }
 
         protected void ResolveInternal()
@@ -203,7 +203,7 @@ namespace Proto.Promises
                 // Allow to re-use.
                 unhandled.Release();
             }
-            throw new AggregateException(unhandledExceptions);
+            //throw new AggregateException(unhandledExceptions);
         }
 
         // Handle promises in a breadth-first manner.
@@ -334,13 +334,13 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class DeferredPromise : PromiseWaitDeferred<DeferredPromise>
+            public sealed class DeferredPromise0 : PromiseWaitDeferred<DeferredPromise0>
             {
-                private DeferredPromise() { }
+                private DeferredPromise0() { }
 
-                public static DeferredPromise GetOrCreate(int skipFrames)
+                public static DeferredPromise0 GetOrCreate(int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (DeferredPromise) _pool.Pop() : new DeferredPromise();
+                    var promise = _pool.IsNotEmpty ? (DeferredPromise0) _pool.Pop() : new DeferredPromise0();
                     promise.Reset(skipFrames + 1);
                     promise.ResetDepth();
                     return promise;
@@ -376,13 +376,13 @@ namespace Proto.Promises
                 protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
             }
 
-            public sealed class LitePromise : PoolablePromise<LitePromise>
+            public sealed class LitePromise0 : PoolablePromise<LitePromise0>
             {
-                private LitePromise() { }
+                private LitePromise0() { }
 
-                public static LitePromise GetOrCreate(int skipFrames)
+                public static LitePromise0 GetOrCreate(int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (LitePromise) _pool.Pop() : new LitePromise();
+                    var promise = _pool.IsNotEmpty ? (LitePromise0) _pool.Pop() : new LitePromise0();
                     promise.Reset(skipFrames + 1);
                     promise.ResetDepth();
                     return promise;
@@ -449,13 +449,13 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class DuplicatePromise : PoolablePromise<DuplicatePromise>
+            public sealed class DuplicatePromise0 : PoolablePromise<DuplicatePromise0>
             {
-                private DuplicatePromise() { }
+                private DuplicatePromise0() { }
 
-                public static DuplicatePromise GetOrCreate(int skipFrames)
+                public static DuplicatePromise0 GetOrCreate(int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (DuplicatePromise) _pool.Pop() : new DuplicatePromise();
+                    var promise = _pool.IsNotEmpty ? (DuplicatePromise0) _pool.Pop() : new DuplicatePromise0();
                     promise.Reset(skipFrames + 1);
                     return promise;
                 }
@@ -500,15 +500,15 @@ namespace Proto.Promises
 #region Resolve Promises
             // Individual types for more common .Then(onResolved) calls to be more efficient.
 
-            public sealed class PromiseVoidResolve : PoolablePromise<PromiseVoidResolve>
+            public sealed class PromiseVoidResolve0 : PoolablePromise<PromiseVoidResolve0>
             {
                 private Action resolveHandler;
 
-                private PromiseVoidResolve() { }
+                private PromiseVoidResolve0() { }
 
-                public static PromiseVoidResolve GetOrCreate(Action resolveHandler, int skipFrames)
+                public static PromiseVoidResolve0 GetOrCreate(Action resolveHandler, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseVoidResolve)_pool.Pop() : new PromiseVoidResolve();
+                    var promise = _pool.IsNotEmpty ? (PromiseVoidResolve0)_pool.Pop() : new PromiseVoidResolve0();
                     promise.resolveHandler = resolveHandler;
                     promise.Reset(skipFrames + 1);
                     return promise;
@@ -642,15 +642,15 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class PromiseVoidResolvePromise : PromiseWaitPromise<PromiseVoidResolvePromise>
+            public sealed class PromiseVoidResolvePromise0 : PromiseWaitPromise<PromiseVoidResolvePromise0>
             {
                 private Func<Promise> resolveHandler;
 
-                private PromiseVoidResolvePromise() { }
+                private PromiseVoidResolvePromise0() { }
 
-                public static PromiseVoidResolvePromise GetOrCreate(Func<Promise> resolveHandler, int skipFrames)
+                public static PromiseVoidResolvePromise0 GetOrCreate(Func<Promise> resolveHandler, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseVoidResolvePromise)_pool.Pop() : new PromiseVoidResolvePromise();
+                    var promise = _pool.IsNotEmpty ? (PromiseVoidResolvePromise0)_pool.Pop() : new PromiseVoidResolvePromise0();
                     promise.resolveHandler = resolveHandler;
                     promise.Reset(skipFrames + 1);
                     return promise;
@@ -838,15 +838,15 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class PromiseVoidResolveDeferred : PromiseWaitDeferred<PromiseVoidResolveDeferred>
+            public sealed class PromiseVoidResolveDeferred0 : PromiseWaitDeferred<PromiseVoidResolveDeferred0>
             {
                 private Func<Action<Deferred>> resolveHandler;
 
-                private PromiseVoidResolveDeferred() { }
+                private PromiseVoidResolveDeferred0() { }
 
-                public static PromiseVoidResolveDeferred GetOrCreate(Func<Action<Deferred>> resolveHandler, int skipFrames)
+                public static PromiseVoidResolveDeferred0 GetOrCreate(Func<Action<Deferred>> resolveHandler, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseVoidResolveDeferred)_pool.Pop() : new PromiseVoidResolveDeferred();
+                    var promise = _pool.IsNotEmpty ? (PromiseVoidResolveDeferred0)_pool.Pop() : new PromiseVoidResolveDeferred0();
                     promise.resolveHandler = resolveHandler;
                     promise.Reset(skipFrames + 1);
                     return promise;
@@ -1050,15 +1050,15 @@ namespace Proto.Promises
 #region Reject Promises
             // Used IDelegate to reduce the amount of classes I would have to write to handle catches (Composition Over Inheritance).
             // I'm less concerned about performance for catches since exceptions are expensive anyway, and they are expected to be used less often than .Then(onResolved).
-            public sealed class PromiseReject : PoolablePromise<PromiseReject>
+            public sealed class PromiseReject0 : PoolablePromise<PromiseReject0>
             {
                 private IDelegate rejectHandler;
 
-                private PromiseReject() { }
+                private PromiseReject0() { }
 
-                public static PromiseReject GetOrCreate(IDelegate rejectHandler, int skipFrames)
+                public static PromiseReject0 GetOrCreate(IDelegate rejectHandler, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseReject)_pool.Pop() : new PromiseReject();
+                    var promise = _pool.IsNotEmpty ? (PromiseReject0)_pool.Pop() : new PromiseReject0();
                     promise.rejectHandler = rejectHandler;
                     promise.Reset(skipFrames + 1);
                     return promise;
@@ -1142,15 +1142,15 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class PromiseRejectPromise : PromiseWaitPromise<PromiseRejectPromise>
+            public sealed class PromiseRejectPromise0 : PromiseWaitPromise<PromiseRejectPromise0>
             {
                 private IDelegate<Promise> rejectHandler;
 
-                private PromiseRejectPromise() { }
+                private PromiseRejectPromise0() { }
 
-                public static PromiseRejectPromise GetOrCreate(IDelegate<Promise> rejectHandler, int skipFrames)
+                public static PromiseRejectPromise0 GetOrCreate(IDelegate<Promise> rejectHandler, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseRejectPromise)_pool.Pop() : new PromiseRejectPromise();
+                    var promise = _pool.IsNotEmpty ? (PromiseRejectPromise0)_pool.Pop() : new PromiseRejectPromise0();
                     promise.rejectHandler = rejectHandler;
                     promise.Reset(skipFrames + 1);
                     return promise;
@@ -1266,15 +1266,15 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class PromiseRejectDeferred : PromiseWaitDeferred<PromiseRejectDeferred>
+            public sealed class PromiseRejectDeferred0 : PromiseWaitDeferred<PromiseRejectDeferred0>
             {
                 private IDelegate<Action<Deferred>> rejectHandler;
 
-                private PromiseRejectDeferred() { }
+                private PromiseRejectDeferred0() { }
 
-                public static PromiseRejectDeferred GetOrCreate(IDelegate<Action<Deferred>> rejectHandler, int skipFrames)
+                public static PromiseRejectDeferred0 GetOrCreate(IDelegate<Action<Deferred>> rejectHandler, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseRejectDeferred)_pool.Pop() : new PromiseRejectDeferred();
+                    var promise = _pool.IsNotEmpty ? (PromiseRejectDeferred0)_pool.Pop() : new PromiseRejectDeferred0();
                     promise.rejectHandler = rejectHandler;
                     promise.Reset(skipFrames + 1);
                     return promise;
@@ -1400,15 +1400,15 @@ namespace Proto.Promises
 #endregion
 
 #region Resolve or Reject Promises
-            public sealed class PromiseResolveReject : PoolablePromise<PromiseResolveReject>
+            public sealed class PromiseResolveReject0 : PoolablePromise<PromiseResolveReject0>
             {
                 IDelegate onResolved, onRejected;
 
-                private PromiseResolveReject() { }
+                private PromiseResolveReject0() { }
 
-                public static PromiseResolveReject GetOrCreate(IDelegate onResolved, IDelegate onRejected, int skipFrames)
+                public static PromiseResolveReject0 GetOrCreate(IDelegate onResolved, IDelegate onRejected, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseResolveReject)_pool.Pop() : new PromiseResolveReject();
+                    var promise = _pool.IsNotEmpty ? (PromiseResolveReject0)_pool.Pop() : new PromiseResolveReject0();
                     promise.onResolved = onResolved;
                     promise.onRejected = onRejected;
                     promise.Reset(skipFrames + 1);
@@ -1501,15 +1501,15 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class PromiseResolveRejectPromise : PromiseWaitPromise<PromiseResolveRejectPromise>
+            public sealed class PromiseResolveRejectPromise0 : PromiseWaitPromise<PromiseResolveRejectPromise0>
             {
                 IDelegate<Promise> onResolved, onRejected;
 
-                private PromiseResolveRejectPromise() { }
+                private PromiseResolveRejectPromise0() { }
 
-                public static PromiseResolveRejectPromise GetOrCreate(IDelegate<Promise> onResolved, IDelegate<Promise> onRejected, int skipFrames)
+                public static PromiseResolveRejectPromise0 GetOrCreate(IDelegate<Promise> onResolved, IDelegate<Promise> onRejected, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise)_pool.Pop() : new PromiseResolveRejectPromise();
+                    var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise0)_pool.Pop() : new PromiseResolveRejectPromise0();
                     promise.onResolved = onResolved;
                     promise.onRejected = onRejected;
                     promise.Reset(skipFrames + 1);
@@ -1761,15 +1761,15 @@ namespace Proto.Promises
 #endregion
 
 #region Complete Promises
-            public sealed class PromiseComplete : PoolablePromise<PromiseComplete>
+            public sealed class PromiseComplete0 : PoolablePromise<PromiseComplete0>
             {
                 private Action onComplete;
 
-                private PromiseComplete() { }
+                private PromiseComplete0() { }
 
-                public static PromiseComplete GetOrCreate(Action onComplete, int skipFrames)
+                public static PromiseComplete0 GetOrCreate(Action onComplete, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseComplete)_pool.Pop() : new PromiseComplete();
+                    var promise = _pool.IsNotEmpty ? (PromiseComplete0)_pool.Pop() : new PromiseComplete0();
                     promise.onComplete = onComplete;
                     promise.Reset(skipFrames + 1);
                     return promise;
@@ -1819,15 +1819,15 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class PromiseCompletePromise : PromiseWaitPromise<PromiseCompletePromise>
+            public sealed class PromiseCompletePromise0 : PromiseWaitPromise<PromiseCompletePromise0>
             {
                 private Func<Promise> onComplete;
 
-                private PromiseCompletePromise() { }
+                private PromiseCompletePromise0() { }
 
-                public static PromiseCompletePromise GetOrCreate(Func<Promise> onComplete, int skipFrames)
+                public static PromiseCompletePromise0 GetOrCreate(Func<Promise> onComplete, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseCompletePromise)_pool.Pop() : new PromiseCompletePromise();
+                    var promise = _pool.IsNotEmpty ? (PromiseCompletePromise0)_pool.Pop() : new PromiseCompletePromise0();
                     promise.onComplete = onComplete;
                     promise.Reset(skipFrames + 1);
                     return promise;
@@ -1905,15 +1905,15 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class PromiseCompleteDeferred : PromiseWaitDeferred<PromiseCompleteDeferred>
+            public sealed class PromiseCompleteDeferred0 : PromiseWaitDeferred<PromiseCompleteDeferred0>
             {
                 Func<Action<Deferred>> onComplete;
 
-                private PromiseCompleteDeferred() { }
+                private PromiseCompleteDeferred0() { }
 
-                public static PromiseCompleteDeferred GetOrCreate(Func<Action<Deferred>> onComplete, int skipFrames)
+                public static PromiseCompleteDeferred0 GetOrCreate(Func<Action<Deferred>> onComplete, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseCompleteDeferred)_pool.Pop() : new PromiseCompleteDeferred();
+                    var promise = _pool.IsNotEmpty ? (PromiseCompleteDeferred0)_pool.Pop() : new PromiseCompleteDeferred0();
                     promise.onComplete = onComplete;
                     promise.Reset(skipFrames + 1);
                     return promise;
@@ -2114,7 +2114,7 @@ namespace Proto.Promises
                     ValidateOperation();
                     ValidateArgument(onCanceled, "onCanceled");
 
-                    var cancelation = CancelDelegate.GetOrCreate(onCanceled, 1);
+                    var cancelation = CancelDelegate0.GetOrCreate(onCanceled, 1);
                     _nextBranches.Enqueue(cancelation);
                     return cancelation;
                 }
@@ -2132,22 +2132,22 @@ namespace Proto.Promises
                 void ITreeHandleable.OnSubscribeToCanceled(IValueContainer cancelValue) { throw new InvalidOperationException(); }
             }
 
-            public sealed partial class CancelDelegate : PotentialCancelation, IPotentialCancelation
+            public sealed partial class CancelDelegate0 : PotentialCancelation, IPotentialCancelation
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
                 private Action _onCanceled;
 
-                private CancelDelegate() { }
+                private CancelDelegate0() { }
 
-                static CancelDelegate()
+                static CancelDelegate0()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
 
-                public static CancelDelegate GetOrCreate(Action onCanceled, int skipFrames)
+                public static CancelDelegate0 GetOrCreate(Action onCanceled, int skipFrames)
                 {
-                    var del = _pool.IsNotEmpty ? (CancelDelegate)_pool.Pop() : new CancelDelegate();
+                    var del = _pool.IsNotEmpty ? (CancelDelegate0)_pool.Pop() : new CancelDelegate0();
                     del._onCanceled = onCanceled;
                     SetNotDisposed(ref del.cancelValue);
                     SetCreatedStackTrace(del, skipFrames + 1);
@@ -2244,27 +2244,27 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class DelegateVoidVoid : IDelegate, ILinked<DelegateVoidVoid>
+            public sealed class DelegateVoidVoid0 : IDelegate, ILinked<DelegateVoidVoid0>
             {
-                DelegateVoidVoid ILinked<DelegateVoidVoid>.Next { get; set; }
+                DelegateVoidVoid0 ILinked<DelegateVoidVoid0>.Next { get; set; }
 
                 private Action _callback;
 
-                private static ValueLinkedStack<DelegateVoidVoid> _pool;
+                private static ValueLinkedStack<DelegateVoidVoid0> _pool;
 
-                public static DelegateVoidVoid GetOrCreate(Action callback)
+                public static DelegateVoidVoid0 GetOrCreate(Action callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidVoid();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidVoid0();
                     del._callback = callback;
                     return del;
                 }
 
-                static DelegateVoidVoid()
+                static DelegateVoidVoid0()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private DelegateVoidVoid() { }
+                private DelegateVoidVoid0() { }
 
                 public void DisposeAndInvoke()
                 {
@@ -3085,12 +3085,12 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed partial class AllPromise : PoolablePromise<AllPromise>, IMultiTreeHandleable
+            public sealed partial class AllPromise0 : PoolablePromise<AllPromise0>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> passThroughs;
                 private uint _waitCount;
 
-                private AllPromise() { }
+                private AllPromise0() { }
 
                 public static Promise GetOrCreate<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
                 {
@@ -3099,7 +3099,7 @@ namespace Proto.Promises
                         // If promises is empty, just return a resolved promise.
                         return Resolved();
                     }
-                    var promise = _pool.IsNotEmpty ? (AllPromise) _pool.Pop() : new AllPromise();
+                    var promise = _pool.IsNotEmpty ? (AllPromise0) _pool.Pop() : new AllPromise0();
 
                     var target = promises.Current;
                     ValidateOperation(target);
@@ -3189,7 +3189,7 @@ namespace Proto.Promises
 
                 private AllPromise() { }
 
-                public static Promise<IList<T>> GetOrCreate<TEnumerator>(TEnumerator promises, IList<T> valueContainer, int skipFrames) where TEnumerator : IEnumerator<Promise>
+                public static Promise<IList<T>> GetOrCreate<TEnumerator>(TEnumerator promises, IList<T> valueContainer, int skipFrames) where TEnumerator : IEnumerator<Promise<T>>
                 {
                     valueContainer.Clear();
                     if (!promises.MoveNext())
@@ -3287,12 +3287,12 @@ namespace Proto.Promises
                 protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
             }
 
-            public sealed partial class RacePromise : PoolablePromise<RacePromise>, IMultiTreeHandleable
+            public sealed partial class RacePromise0 : PoolablePromise<RacePromise0>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> passThroughs;
                 private uint _waitCount;
 
-                private RacePromise() { }
+                private RacePromise0() { }
 
                 public static Promise GetOrCreate<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
                 {
@@ -3302,7 +3302,7 @@ namespace Proto.Promises
                         throw new ArgumentException("Cannot race 0 promises.", "promises");
 #pragma warning restore RECS0163 // Suggest the usage of the nameof operator
                     }
-                    var promise = _pool.IsNotEmpty ? (RacePromise) _pool.Pop() : new RacePromise();
+                    var promise = _pool.IsNotEmpty ? (RacePromise0) _pool.Pop() : new RacePromise0();
 
                     var target = promises.Current;
                     ValidateOperation(target);
@@ -3383,7 +3383,7 @@ namespace Proto.Promises
 
                 private RacePromise() { }
 
-                public static Promise<T> GetOrCreate<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
+                public static Promise<T> GetOrCreate<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise<T>>
                 {
                     if (!promises.MoveNext())
                     {

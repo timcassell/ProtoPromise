@@ -179,7 +179,7 @@ namespace Proto.Promises
 
         public static Promise Canceled<TCancel>(TCancel reason)
         {
-            var promise = Internal.LitePromise.GetOrCreate(1);
+            var promise = Internal.LitePromise0.GetOrCreate(1);
             promise.Cancel(reason);
             return promise;
         }
@@ -193,7 +193,7 @@ namespace Proto.Promises
 
         public static Promise Canceled()
         {
-            var promise = Internal.LitePromise.GetOrCreate(1);
+            var promise = Internal.LitePromise0.GetOrCreate(1);
             promise.Cancel();
             return promise;
         }
@@ -258,7 +258,7 @@ namespace Proto.Promises
             ValidateOperation(this);
             ValidateArgument(onCanceled, "onCanceled");
 
-            var cancelation = Internal.CancelDelegate.GetOrCreate(onCanceled, 1);
+            var cancelation = Internal.CancelDelegate0.GetOrCreate(onCanceled, 1);
             AddWaiter(cancelation);
             return cancelation;
         }
@@ -1506,7 +1506,7 @@ namespace Proto.Promises
                 void IProgressListener.CancelProgress() { }
             }
 
-            partial class AllPromise : PoolablePromise<AllPromise>, IInvokable
+            partial class AllPromise0 : PoolablePromise<AllPromise0>, IInvokable
             {
                 // These are used to avoid rounding errors when normalizing the progress.
                 private float _expected;
@@ -1756,7 +1756,7 @@ namespace Proto.Promises
                 }
             }
 
-            partial class RacePromise : PoolablePromise<RacePromise>, IInvokable
+            partial class RacePromise0 : PoolablePromise<RacePromise0>, IInvokable
             {
                 private UnsignedFixed32 _currentAmount;
                 private bool _invokingProgress;
@@ -2200,7 +2200,7 @@ namespace Proto.Promises
 #endif
             }
 
-            partial class CancelDelegate : IStacktraceable
+            partial class CancelDelegate0 : IStacktraceable
             {
 #if DEBUG
                 string IStacktraceable.Stacktrace { get; set; }
