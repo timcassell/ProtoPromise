@@ -91,7 +91,8 @@ public class TestScript : MonoBehaviour
 
 
         var promise2 = deferred2.Promise
-                  .Then(i => { Debug.Log("deferred2.then: " + i); return i; });
+                .Then(Promise.Yield)
+                .Then(i => { Debug.Log("deferred2.then: " + i); return i; });
 		//	//.End()
 		//	//.Catch(e => {})
 		//	//.Fail<int>(x => { Debug.LogError("Rejected: " + x); return x;})

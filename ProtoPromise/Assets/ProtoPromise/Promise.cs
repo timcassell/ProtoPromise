@@ -114,7 +114,7 @@ namespace Proto.Promises
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseReject.GetOrCreate(Internal.DelegateVoid.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseReject.GetOrCreate(Internal.DelegateVoidVoid.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -124,17 +124,27 @@ namespace Proto.Promises
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseReject.GetOrCreate(Internal.DelegateArg<TReject>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseReject.GetOrCreate(Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
-		}
+        }
 
-		public Promise Catch(Func<Promise> onRejected)
+        public Promise Catch<TReject>(Action onRejected)
         {
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseRejectPromise.GetOrCreate(Internal.DelegateVoid<Promise>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseReject.GetOrCreate(Internal.DelegateVoidVoid<TReject>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        public Promise Catch(Func<Promise> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Internal.PromiseRejectPromise.GetOrCreate(Internal.DelegateVoidResult<Promise>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -144,17 +154,27 @@ namespace Proto.Promises
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseRejectPromise.GetOrCreate(Internal.DelegateArg<TReject, Promise>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseRejectPromise.GetOrCreate(Internal.DelegateArgResult<TReject, Promise>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
-		}
+        }
 
-		public Promise Catch(Func<Action<Deferred>> onRejected)
+        public Promise Catch<TReject>(Func<Promise> onRejected)
         {
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseRejectDeferred.GetOrCreate(Internal.DelegateVoid<Action<Deferred>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseRejectPromise.GetOrCreate(Internal.DelegateVoidResult<TReject, Promise>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        public Promise Catch(Func<Action<Deferred>> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Internal.PromiseRejectDeferred.GetOrCreate(Internal.DelegateVoidResult<Action<Deferred>>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -164,20 +184,30 @@ namespace Proto.Promises
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseRejectDeferred.GetOrCreate(Internal.DelegateArg<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseRejectDeferred.GetOrCreate(Internal.DelegateArgResult<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
-		}
+        }
+
+        public Promise Catch<TReject>(Func<Action<Deferred>> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Internal.PromiseRejectDeferred.GetOrCreate(Internal.DelegateVoidResult<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
 #endregion
 
 #region Resolve or Reject Callbacks
-		public Promise Then(Action onResolved, Action onRejected)
+        public Promise Then(Action onResolved, Action onRejected)
         {
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-			var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateVoid.GetOrCreate(onResolved), Internal.DelegateVoid.GetOrCreate(onRejected), 1);
+			var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateVoidVoid.GetOrCreate(onResolved), Internal.DelegateVoidVoid.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -188,18 +218,29 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateVoid.GetOrCreate(onResolved), Internal.DelegateArg<TReject>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateVoidVoid.GetOrCreate(onResolved), Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
-		}
+        }
 
-		public Promise<T> Then<T>(Func<T> onResolved, Func<T> onRejected)
+        public Promise Then<TReject>(Action onResolved, Action onRejected)
         {
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateVoid<T>.GetOrCreate(onResolved), Internal.DelegateVoid<T>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveReject.GetOrCreate(Internal.DelegateVoidVoid.GetOrCreate(onResolved), Internal.DelegateVoidVoid<TReject>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        public Promise<T> Then<T>(Func<T> onResolved, Func<T> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onResolved, "onResolved");
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateVoidResult<T>.GetOrCreate(onResolved), Internal.DelegateVoidResult<T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -210,18 +251,29 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateVoid<T>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, T>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateVoidResult<T>.GetOrCreate(onResolved), Internal.DelegateArgResult<TReject, T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
-		}
+        }
 
-		public Promise Then(Func<Promise> onResolved, Func<Promise> onRejected)
+        public Promise<T> Then<T, TReject>(Func<T> onResolved, Func<T> onRejected)
         {
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateVoid<Promise>.GetOrCreate(onResolved), Internal.DelegateVoid<Promise>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateVoidResult<T>.GetOrCreate(onResolved), Internal.DelegateVoidResult<TReject, T>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        public Promise Then(Func<Promise> onResolved, Func<Promise> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onResolved, "onResolved");
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateVoidResult<Promise>.GetOrCreate(onResolved), Internal.DelegateVoidResult<Promise>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -232,18 +284,29 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateVoid<Promise>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, Promise>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateVoidResult<Promise>.GetOrCreate(onResolved), Internal.DelegateArgResult<TReject, Promise>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
-		}
+        }
 
-		public Promise<T> Then<T>(Func<Promise<T>> onResolved, Func<Promise<T>> onRejected)
+        public Promise Then<TReject>(Func<Promise> onResolved, Func<Promise> onRejected)
         {
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoid<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateVoid<Promise<T>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise.GetOrCreate(Internal.DelegateVoidResult<Promise>.GetOrCreate(onResolved), Internal.DelegateVoidResult<TReject, Promise>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        public Promise<T> Then<T>(Func<Promise<T>> onResolved, Func<Promise<T>> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onResolved, "onResolved");
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoidResult<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateVoidResult<Promise<T>>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -254,18 +317,29 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoid<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateArg<TReject, Promise<T>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoidResult<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateArgResult<TReject, Promise<T>>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
-		}
+        }
+
+        public Promise<T> Then<T, TReject>(Func<Promise<T>> onResolved, Func<Promise<T>> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onResolved, "onResolved");
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoidResult<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateVoidResult<TReject, Promise<T>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
 #endregion
 
 #region Complete Callbacks
-		/// <summary>
-		/// Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
-		/// onResolvedOrRejected is invoked when this promise is resolved or rejected. It does not get invoked if this promise is canceled.
-		/// </summary>
-		public Promise Complete(Action onResolvedOrRejected)
+        /// <summary>
+        /// Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
+        /// onResolvedOrRejected is invoked when this promise is resolved or rejected. It does not get invoked if this promise is canceled.
+        /// </summary>
+        public Promise Complete(Action onResolvedOrRejected)
         {
             ValidateOperation(this);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected");
@@ -432,7 +506,7 @@ namespace Proto.Promises
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseReject<T>.GetOrCreate(Promise.Internal.DelegateVoid<T>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseReject<T>.GetOrCreate(Promise.Internal.DelegateVoidResult<T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -442,17 +516,27 @@ namespace Proto.Promises
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseReject<T>.GetOrCreate(Promise.Internal.DelegateArg<TReject, T>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseReject<T>.GetOrCreate(Promise.Internal.DelegateArgResult<TReject, T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
-		}
+        }
 
-		public Promise<T> Catch(Func<Promise<T>> onRejected)
+        public Promise<T> Catch<TReject>(Func<T> onRejected)
         {
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseRejectPromise<T>.GetOrCreate(Promise.Internal.DelegateVoid<Promise<T>>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseReject<T>.GetOrCreate(Promise.Internal.DelegateVoidResult<TReject, T>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        public Promise<T> Catch(Func<Promise<T>> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Promise.Internal.PromiseRejectPromise<T>.GetOrCreate(Promise.Internal.DelegateVoidResult<Promise<T>>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -462,17 +546,27 @@ namespace Proto.Promises
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseRejectPromise<T>.GetOrCreate(Promise.Internal.DelegateArg<TReject, Promise<T>>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseRejectPromise<T>.GetOrCreate(Promise.Internal.DelegateArgResult<TReject, Promise<T>>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
-		}
+        }
 
-		public Promise<T> Catch(Func<Action<Deferred>> onRejected)
+        public Promise<T> Catch<TReject>(Func<Promise<T>> onRejected)
         {
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseRejectDeferred<T>.GetOrCreate(Promise.Internal.DelegateVoid<Action<Deferred>>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseRejectPromise<T>.GetOrCreate(Promise.Internal.DelegateVoidResult<TReject, Promise<T>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        public Promise<T> Catch(Func<Action<Deferred>> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Promise.Internal.PromiseRejectDeferred<T>.GetOrCreate(Promise.Internal.DelegateVoidResult<Action<Deferred>>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -482,10 +576,20 @@ namespace Proto.Promises
             ValidateOperation(this);
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseRejectDeferred<T>.GetOrCreate(Promise.Internal.DelegateArg<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseRejectDeferred<T>.GetOrCreate(Promise.Internal.DelegateArgResult<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
+        
+        public Promise<T> Catch<TReject>(Func<Action<Deferred>> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Promise.Internal.PromiseRejectDeferred<T>.GetOrCreate(Promise.Internal.DelegateVoidResult<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
 #endregion
 
 #region Reject or Reject Callbacks
@@ -495,7 +599,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveReject.GetOrCreate(Promise.Internal.DelegateArg<T>.GetOrCreate(onResolved), Promise.Internal.DelegateVoid.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseResolveReject.GetOrCreate(Promise.Internal.DelegateArgVoid<T>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidVoid.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -506,18 +610,29 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveReject.GetOrCreate(Promise.Internal.DelegateArg<T>.GetOrCreate(onResolved), Promise.Internal.DelegateArg<TReject>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseResolveReject.GetOrCreate(Promise.Internal.DelegateArgVoid<T>.GetOrCreate(onResolved), Promise.Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
 
-		public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, Func<TResult> onRejected)
+        public Promise Then<TReject>(Action<T> onResolved, Action onRejected)
         {
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveReject<TResult>.GetOrCreate(Promise.Internal.DelegateArg<T, TResult>.GetOrCreate(onResolved), Promise.Internal.DelegateVoid<TResult>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseResolveReject.GetOrCreate(Promise.Internal.DelegateArgVoid<T>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidVoid<TReject>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, Func<TResult> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onResolved, "onResolved");
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Promise.Internal.PromiseResolveReject<TResult>.GetOrCreate(Promise.Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -528,18 +643,29 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveReject<TResult>.GetOrCreate(Promise.Internal.DelegateArg<T, TResult>.GetOrCreate(onResolved), Promise.Internal.DelegateArg<TReject, TResult>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseResolveReject<TResult>.GetOrCreate(Promise.Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved), Promise.Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
 
-		public Promise Then(Func<T, Promise> onResolved, Func<Promise> onRejected)
+        public Promise<TResult> Then<TResult, TReject>(Func<T, TResult> onResolved, Func<TResult> onRejected)
         {
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise.GetOrCreate(Promise.Internal.DelegateArg<T, Promise>.GetOrCreate(onResolved), Promise.Internal.DelegateVoid<Promise>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseResolveReject<TResult>.GetOrCreate(Promise.Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<TReject, TResult>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        public Promise Then(Func<T, Promise> onResolved, Func<Promise> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onResolved, "onResolved");
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Promise.Internal.PromiseResolveRejectPromise.GetOrCreate(Promise.Internal.DelegateArgResult<T, Promise>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<Promise>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -550,18 +676,29 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise.GetOrCreate(Promise.Internal.DelegateArg<T, Promise>.GetOrCreate(onResolved), Promise.Internal.DelegateArg<TReject, Promise>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseResolveRejectPromise.GetOrCreate(Promise.Internal.DelegateArgResult<T, Promise>.GetOrCreate(onResolved), Promise.Internal.DelegateArgResult<TReject, Promise>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
 
-		public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
+        public Promise Then<TReject>(Func<T, Promise> onResolved, Func<Promise> onRejected)
         {
             ValidateOperation(this);
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Promise.Internal.DelegateArg<T, Promise<TResult>>.GetOrCreate(onResolved), Promise.Internal.DelegateVoid<Promise<TResult>>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseResolveRejectPromise.GetOrCreate(Promise.Internal.DelegateArgResult<T, Promise>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<TReject, Promise>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onResolved, "onResolved");
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Promise.Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Promise.Internal.DelegateArgResult<T, Promise<TResult>>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<Promise<TResult>>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
@@ -572,10 +709,21 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved");
             ValidateArgument(onRejected, "onRejected");
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Promise.Internal.DelegateArg<T, Promise<TResult>>.GetOrCreate(onResolved), Promise.Internal.DelegateArg<TReject, Promise<TResult>>.GetOrCreate(onRejected), 1);
+            var promise = Promise.Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Promise.Internal.DelegateArgResult<T, Promise<TResult>>.GetOrCreate(onResolved), Promise.Internal.DelegateArgResult<TReject, Promise<TResult>>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
 			return promise;
 		}
+        
+        public Promise<TResult> Then<TResult, TReject>(Func<T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
+        {
+            ValidateOperation(this);
+            ValidateArgument(onResolved, "onResolved");
+            ValidateArgument(onRejected, "onRejected");
+
+            var promise = Promise.Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Promise.Internal.DelegateArgResult<T, Promise<TResult>>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<TReject, Promise<TResult>>.GetOrCreate(onRejected), 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
 #endregion
 	}
 }

@@ -94,7 +94,22 @@ namespace Proto.Promises
             public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
 #endif
 
-            public static IPromiseYielder Yielder { get; set; }
+            private static IPromiseYielder _yielder;
+            public static IPromiseYielder Yielder
+            {
+                get
+                {
+                    if (_yielder == null)
+                    {
+                        _yielder = PromiseBehaviour.Instance.gameObject.AddComponent<DefaultPromiseYielder>();
+                    }
+                    return _yielder;
+                }
+                set
+                {
+                    _yielder = value;
+                }
+            }
         }
 
         partial class DeferredBase
@@ -375,11 +390,10 @@ namespace Proto.Promises
 
                 private DisposedChecker() { }
 
-                void IValueContainer.Release() { throw new InvalidOperationException(); }
-
-                void IValueContainer.Retain() { throw new InvalidOperationException(); }
-
+                bool IValueContainer.ContainsType<U>() { throw new InvalidOperationException(); }
                 bool IValueContainer.TryGetValueAs<U>(out U value) { throw new InvalidOperationException(); }
+                void IValueContainer.Release() { throw new InvalidOperationException(); }
+                void IValueContainer.Retain() { throw new InvalidOperationException(); }
             }
         }
 

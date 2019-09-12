@@ -2244,29 +2244,29 @@ namespace Proto.Promises
                 }
             }
 
-            public class DelegateVoid : IDelegate, ILinked<DelegateVoid>
+            public sealed class DelegateVoidVoid : IDelegate, ILinked<DelegateVoidVoid>
             {
-                DelegateVoid ILinked<DelegateVoid>.Next { get; set; }
+                DelegateVoidVoid ILinked<DelegateVoidVoid>.Next { get; set; }
 
                 private Action _callback;
 
-                protected static ValueLinkedStack<DelegateVoid> _pool;
+                private static ValueLinkedStack<DelegateVoidVoid> _pool;
 
-                public static DelegateVoid GetOrCreate(Action callback)
+                public static DelegateVoidVoid GetOrCreate(Action callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoid();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidVoid();
                     del._callback = callback;
                     return del;
                 }
 
-                static DelegateVoid()
+                static DelegateVoidVoid()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private DelegateVoid() { }
+                private DelegateVoidVoid() { }
 
-                public void Invoke()
+                public void DisposeAndInvoke()
                 {
                     var temp = _callback;
                     Dispose();
@@ -2284,37 +2284,92 @@ namespace Proto.Promises
 
                 public bool DisposeAndTryInvoke(IValueContainer valueContainer)
                 {
-                    Invoke();
+                    DisposeAndInvoke();
                     return true;
                 }
 
                 public void DisposeAndInvoke(Promise feed)
                 {
-                    Invoke();
+                    DisposeAndInvoke();
                 }
             }
 
-            public sealed class DelegateArg<TArg> : IDelegate, ILinked<DelegateArg<TArg>>
+            public class DelegateVoidVoid<T> : IDelegate, ILinked<DelegateVoidVoid<T>>
             {
-                DelegateArg<TArg> ILinked<DelegateArg<TArg>>.Next { get; set; }
+                DelegateVoidVoid<T> ILinked<DelegateVoidVoid<T>>.Next { get; set; }
 
-                private Action<TArg> _callback;
+                private Action _callback;
 
-                private static ValueLinkedStack<DelegateArg<TArg>> _pool;
+                protected static ValueLinkedStack<DelegateVoidVoid<T>> _pool;
 
-                public static DelegateArg<TArg> GetOrCreate(Action<TArg> callback)
+                public static DelegateVoidVoid<T> GetOrCreate(Action callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArg<TArg>();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidVoid<T>();
                     del._callback = callback;
                     return del;
                 }
 
-                static DelegateArg()
+                static DelegateVoidVoid()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private DelegateArg() { }
+                private DelegateVoidVoid() { }
+
+                public void DisposeAndInvoke()
+                {
+                    var temp = _callback;
+                    Dispose();
+                    temp.Invoke();
+                }
+
+                public void Dispose()
+                {
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
+                public bool DisposeAndTryInvoke(IValueContainer valueContainer)
+                {
+                    if (valueContainer.ContainsType<T>())
+                    {
+                        DisposeAndInvoke();
+                        return true;
+                    }
+                    Dispose();
+                    return false;
+                }
+
+                public void DisposeAndInvoke(Promise feed)
+                {
+                    DisposeAndInvoke();
+                }
+            }
+
+            public sealed class DelegateArgVoid<TArg> : IDelegate, ILinked<DelegateArgVoid<TArg>>
+            {
+                DelegateArgVoid<TArg> ILinked<DelegateArgVoid<TArg>>.Next { get; set; }
+
+                private Action<TArg> _callback;
+
+                private static ValueLinkedStack<DelegateArgVoid<TArg>> _pool;
+
+                public static DelegateArgVoid<TArg> GetOrCreate(Action<TArg> callback)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgVoid<TArg>();
+                    del._callback = callback;
+                    return del;
+                }
+
+                static DelegateArgVoid()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                private DelegateArgVoid() { }
 
                 public void DisposeAndInvoke(TArg arg)
                 {
@@ -2350,27 +2405,27 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class DelegateVoid<TResult> : IDelegate<TResult>, ILinked<DelegateVoid<TResult>>
+            public sealed class DelegateVoidResult<TResult> : IDelegate<TResult>, ILinked<DelegateVoidResult<TResult>>
             {
-                DelegateVoid<TResult> ILinked<DelegateVoid<TResult>>.Next { get; set; }
+                DelegateVoidResult<TResult> ILinked<DelegateVoidResult<TResult>>.Next { get; set; }
 
                 private Func<TResult> _callback;
 
-                private static ValueLinkedStack<DelegateVoid<TResult>> _pool;
+                private static ValueLinkedStack<DelegateVoidResult<TResult>> _pool;
 
-                public static DelegateVoid<TResult> GetOrCreate(Func<TResult> callback)
+                public static DelegateVoidResult<TResult> GetOrCreate(Func<TResult> callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoid<TResult>();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidResult<TResult>();
                     del._callback = callback;
                     return del;
                 }
 
-                static DelegateVoid()
+                static DelegateVoidResult()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private DelegateVoid() { }
+                private DelegateVoidResult() { }
 
                 public TResult DisposeAndInvoke()
                 {
@@ -2400,27 +2455,83 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class DelegateArg<TArg, TResult> : IDelegate<TResult>, ILinked<DelegateArg<TArg, TResult>>
+            public sealed class DelegateVoidResult<T, TResult> : IDelegate<TResult>, ILinked<DelegateVoidResult<T, TResult>>
             {
-                DelegateArg<TArg, TResult> ILinked<DelegateArg<TArg, TResult>>.Next { get; set; }
+                DelegateVoidResult<T, TResult> ILinked<DelegateVoidResult<T, TResult>>.Next { get; set; }
 
-                private Func<TArg, TResult> _callback;
+                private Func<TResult> _callback;
 
-                private static ValueLinkedStack<DelegateArg<TArg, TResult>> _pool;
+                private static ValueLinkedStack<DelegateVoidResult<T, TResult>> _pool;
 
-                public static DelegateArg<TArg, TResult> GetOrCreate(Func<TArg, TResult> callback)
+                public static DelegateVoidResult<T, TResult> GetOrCreate(Func<TResult> callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArg<TArg, TResult>();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidResult<T, TResult>();
                     del._callback = callback;
                     return del;
                 }
 
-                static DelegateArg()
+                static DelegateVoidResult()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private DelegateArg() { }
+                private DelegateVoidResult() { }
+
+                public TResult DisposeAndInvoke()
+                {
+                    var temp = _callback;
+                    Dispose();
+                    return temp.Invoke();
+                }
+
+                public void Dispose()
+                {
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
+                public bool DisposeAndTryInvoke(IValueContainer valueContainer, out TResult result)
+                {
+                    if (valueContainer.ContainsType<T>())
+                    {
+                        result = DisposeAndInvoke();
+                        return true;
+                    }
+                    Dispose();
+                    result = default(TResult);
+                    return false;
+                }
+
+                public TResult DisposeAndInvoke(Promise feed)
+                {
+                    return DisposeAndInvoke();
+                }
+            }
+
+            public sealed class DelegateArgResult<TArg, TResult> : IDelegate<TResult>, ILinked<DelegateArgResult<TArg, TResult>>
+            {
+                DelegateArgResult<TArg, TResult> ILinked<DelegateArgResult<TArg, TResult>>.Next { get; set; }
+
+                private Func<TArg, TResult> _callback;
+
+                private static ValueLinkedStack<DelegateArgResult<TArg, TResult>> _pool;
+
+                public static DelegateArgResult<TArg, TResult> GetOrCreate(Func<TArg, TResult> callback)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgResult<TArg, TResult>();
+                    del._callback = callback;
+                    return del;
+                }
+
+                static DelegateArgResult()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                private DelegateArgResult() { }
 
                 public TResult DisposeAndInvoke(TArg arg)
                 {
@@ -2563,6 +2674,7 @@ namespace Proto.Promises
             public interface IValueContainer
             {
                 bool TryGetValueAs<U>(out U value);
+                bool ContainsType<U>();
                 void Retain();
                 void Release();
             }
@@ -2605,6 +2717,8 @@ namespace Proto.Promises
                     value = default(U);
                     return false;
                 }
+
+                public abstract bool ContainsType<U>();
             }
 
             public sealed class UnhandledExceptionVoid : UnhandledExceptionInternal
@@ -2656,6 +2770,11 @@ namespace Proto.Promises
                     {
                         _pool.Push(this);
                     }
+                }
+
+                public override bool ContainsType<U>()
+                {
+                    return false;
                 }
             }
 
@@ -2730,6 +2849,12 @@ namespace Proto.Promises
                         _pool.Push(this);
                     }
                 }
+
+                public override bool ContainsType<U>()
+                {
+                    // Can it be up-casted or down-casted, null or not?
+                    return typeof(U).IsAssignableFrom(typeof(T)) || Value is U;
+                }
             }
 
             public sealed class UnhandledExceptionException : UnhandledExceptionInternal
@@ -2773,6 +2898,11 @@ namespace Proto.Promises
                     value = default(U);
                     return false;
                 }
+
+                public override bool ContainsType<U>()
+                {
+                    return InnerException is U;
+                }
             }
 
             public sealed class CancelVoid : IValueContainer
@@ -2793,11 +2923,16 @@ namespace Proto.Promises
                     return false;
                 }
 
+#pragma warning disable RECS0096 // Type parameter is never used
+                public bool ContainsType<U>()
+#pragma warning restore RECS0096 // Type parameter is never used
+                {
+                    return false;
+                }
+
                 public void Retain() { }
 
                 public void Release() { }
-
-                public bool IsRetained { get { return false; } }
             }
 
             public sealed class CancelValue<T> : IValueContainer, ILinked<CancelValue<T>>
@@ -2847,6 +2982,12 @@ namespace Proto.Promises
                     return false;
                 }
 
+                public bool ContainsType<U>()
+                {
+                    // Can it be up-casted or down-casted, null or not?
+                    return typeof(U).IsAssignableFrom(typeof(T)) || Value is U;
+                }
+
                 public void Retain()
                 {
                     ++retainCounter;
@@ -2860,8 +3001,6 @@ namespace Proto.Promises
                         _pool.Push(this);
                     }
                 }
-
-                public bool IsRetained { get { return retainCounter > 0; } }
             }
 #endregion
 
