@@ -3052,10 +3052,10 @@ namespace Proto.Promises
 
                 public static Promise<IList<T>> GetOrCreate<TEnumerator>(TEnumerator promises, IList<T> valueContainer, int skipFrames) where TEnumerator : IEnumerator<Promise>
                 {
+                    valueContainer.Clear();
                     if (!promises.MoveNext())
                     {
                         // If promises is empty, just return a resolved promise.
-                        valueContainer.Clear();
                         return Resolved(valueContainer);
                     }
                     var promise = _pool.IsNotEmpty ? (AllPromise<T>) _pool.Pop() : new AllPromise<T>();
@@ -3064,12 +3064,14 @@ namespace Proto.Promises
                     var target = promises.Current;
                     ValidateOperation(target);
                     int promiseIndex = 0;
-                    // Hook up pass throughs
+                    // Hook up pass throughs and make sure the list has space for the values.
+                    valueContainer.Add(default(T));
                     var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
                         ValidateOperation(target);
+                        valueContainer.Add(default(T));
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }
                     promise.passThroughs = passThroughs;
