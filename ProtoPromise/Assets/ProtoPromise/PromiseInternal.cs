@@ -203,7 +203,18 @@ namespace Proto.Promises
                 // Allow to re-use.
                 unhandled.Release();
             }
-            //throw new AggregateException(unhandledExceptions);
+
+#if CSHARP_7_OR_LATER
+            throw new AggregateException(unhandledExceptions);
+#else
+            // .Net 3.5 dumb compiler can't convert IEnumerable<UnhandledExceptionInternal> to IEnumerable<Exception>
+            var exceptions = new List<Exception>();
+            foreach(var ex in unhandledExceptions)
+            {
+                exceptions.Add(ex);
+            }
+            throw new AggregateException(exceptions);
+#endif
         }
 
         // Handle promises in a breadth-first manner.
@@ -3464,7 +3475,7 @@ namespace Proto.Promises
 
                 protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
             }
-            #endregion
+#endregion
         }
     }
 }
