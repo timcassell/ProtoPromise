@@ -14,8 +14,6 @@ namespace Proto.Promises
 
         private sealed class DefaultPromiseYielder : MonoBehaviour, IPromiseYielder
         {
-            private static DefaultPromiseYielder _instance;
-
             static System.Action _onClearObjects;
 
             public static void ClearPooledObjects()
@@ -78,14 +76,6 @@ namespace Proto.Promises
                     }
                 }
 
-                void Cancel()
-                {
-                    _continue = false;
-                    _instance.StopCoroutine(this);
-                    onComplete = null;
-                    _pool.Push(this);
-                }
-
                 void IEnumerator.Reset() { }
             }
 
@@ -146,15 +136,6 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Cancel()
-                {
-                    _continue = false;
-                    _instance.StopCoroutine(this);
-                    onComplete = null;
-                    Current = default(T);
-                    _pool.Push(this);
-                }
-
                 void IEnumerator.Reset() { }
             }
 
@@ -163,7 +144,7 @@ namespace Proto.Promises
             {
                 Routine<TYieldInstruction> routine = Routine<TYieldInstruction>.GetOrCreate();
                 routine.Current = yieldInstruction;
-                routine.onComplete = Promise.NewDeferred<TYieldInstruction>();
+                routine.onComplete = NewDeferred<TYieldInstruction>();
 
                 if (routine._continue)
                 {
@@ -181,7 +162,7 @@ namespace Proto.Promises
             Promise IPromiseYielder.Yield()
             {
                 Routine routine = Routine.GetOrCreate();
-                routine.onComplete = Promise.NewDeferred();
+                routine.onComplete = NewDeferred();
 
                 if (routine._continue)
                 {
@@ -223,7 +204,12 @@ namespace Proto.Promises
 
         private void OnDestroy()
         {
-            Logger.LogWarning("PromiseBehaviour destroyed! Promise callbacks will no longer be automatically invoked!");
+#if UNITY_EDITOR
+            if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
+#endif
+            {
+                Logger.LogWarning("PromiseBehaviour destroyed! Promise callbacks will no longer be automatically invoked!");
+            }
         }
 
         private IEnumerator _Enumerator()

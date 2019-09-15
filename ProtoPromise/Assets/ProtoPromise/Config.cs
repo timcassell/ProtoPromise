@@ -556,13 +556,11 @@ namespace Proto.Promises
 
         static partial void AddToCancelQueue(Internal.ITreeHandleable cancelation)
         {
-            UnityEngine.Debug.LogError("AddToCancelQueue");
             _cancelQueue.Enqueue(cancelation);
         }
 
         static partial void AddToCancelQueueRisky(Internal.ITreeHandleable cancelation)
         {
-            UnityEngine.Debug.LogError("AddToCancelQueueRisky");
             _cancelQueue.EnqueueRisky(cancelation);
         }
 
@@ -721,6 +719,11 @@ namespace Proto.Promises
             _progressListeners.Clear();
         }
 
+        protected virtual uint GetIncrementMultiplier()
+        {
+            return 1u;
+        }
+
         partial void ResolveProgressListeners()
         {
             if (_progressListeners.IsEmpty)
@@ -735,7 +738,8 @@ namespace Proto.Promises
                 forwardListeners.Push(_progressListeners.Pop());
             } while (_progressListeners.IsNotEmpty);
 
-            uint increment = _waitDepthAndProgress.GetDifferenceToNextWholeAsUInt32();
+            // All and Race promises return a value depending on the promises they are waiting on. Other promises return 1.
+            uint increment = _waitDepthAndProgress.GetDifferenceToNextWholeAsUInt32() * GetIncrementMultiplier();
             do
             {
                 forwardListeners.Pop().ResolveProgress(this, increment);
@@ -769,7 +773,7 @@ namespace Proto.Promises
             uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
             foreach (var progressListener in _progressListeners)
             {
-                progressListener.IncrementProgress(increment);
+                progressListener.IncrementProgress(this, increment);
             }
         }
 
@@ -972,6 +976,11 @@ namespace Proto.Promises
                     return _value;
                 }
 
+                public double ToDouble()
+                {
+                    return (double) WholePart + DecimalPart;
+                }
+
                 public uint AssignNewDecimalPartAndGetDifferenceAsUInt32(float decimalPart)
                 {
                     uint oldDecimalPart = DecimalPartAsUInt32;
@@ -1076,7 +1085,7 @@ namespace Proto.Promises
             public interface IProgressListener
             {
                 void SetInitialAmount(UnsignedFixed32 amount);
-                void IncrementProgress(uint amount);
+                void IncrementProgress(Promise sender, uint amount);
                 void ResolveProgress(Promise sender, uint increment);
                 void CancelProgressIfOwner(Promise sender);
                 void CancelProgress();
@@ -1084,8 +1093,8 @@ namespace Proto.Promises
 
             partial interface IMultiTreeHandleable
             {
-                void IncrementProgress(uint amount, uint expected);
-                void SetInitialAmount(uint amount, uint expected);
+                void IncrementProgress(uint increment, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount);
+                void SetInitialAmount(uint increment, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount);
             }
 
             public sealed class ProgressDelegate : IProgressListener, IInvokable, IStacktraceable
@@ -1144,9 +1153,9 @@ namespace Proto.Promises
                     }
 
                     // Calculate the normalized progress for the depth that the listener was added.
-                    // Divide twice is slower, but gives better precision than single divide.
-                    float expected = _owner._waitDepthAndProgress.WholePart + 1u;
-                    InvokeAndCatch(_onProgress, ((float) _current.WholePart / expected) + (_current.DecimalPart / expected));
+                    // Use double for better precision.
+                    double expected = _owner._waitDepthAndProgress.WholePart + 1u;
+                    InvokeAndCatch(_onProgress, (float) (_current.ToDouble() / expected));
                 }
 
                 // This is called by the promise in forward order that listeners were added.
@@ -1169,7 +1178,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IProgressListener.IncrementProgress(uint amount)
+                void IProgressListener.IncrementProgress(Promise sender, uint amount)
                 {
                     _current.Increment(amount);
                     if (!_handling)
@@ -1294,15 +1303,15 @@ namespace Proto.Promises
                     _invokingProgress = false;
 
                     // Calculate the normalized progress for the depth of the returned promise.
-                    // Divide twice is slower, but gives better precision than single divide.
-                    float expected = _previous._waitDepthAndProgress.WholePart + 1u;
-                    float progress = ((float) _currentAmount.WholePart / expected) + (_currentAmount.DecimalPart / expected);
+                    // Use double for better precision.
+                    double expected = _previous._waitDepthAndProgress.WholePart + 1u;
+                    float progress = (float) (_currentAmount.ToDouble() / expected);
 
                     uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
 
                     foreach (var progressListener in _progressListeners)
                     {
-                        progressListener.IncrementProgress(increment);
+                        progressListener.IncrementProgress(this, increment);
                     }
                 }
 
@@ -1310,17 +1319,15 @@ namespace Proto.Promises
                 {
                     _currentAmount = amount;
                     _invokingProgress = true;
-                    // Always add new listeners to the back.
-                    AddToBackOfProgressQueue(this);
+                    AddToFrontOfProgressQueue(this);
                 }
 
-                void IProgressListener.IncrementProgress(uint amount)
+                void IProgressListener.IncrementProgress(Promise sender, uint amount)
                 {
                     _currentAmount.Increment(amount);
                     if (!_invokingProgress)
                     {
                         _invokingProgress = true;
-                        // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
                         AddToFrontOfProgressQueue(this);
                     }
                 }
@@ -1403,15 +1410,15 @@ namespace Proto.Promises
                     _invokingProgress = false;
 
                     // Calculate the normalized progress for the depth of the cached promise.
-                    // Divide twice is slower, but gives better precision than single divide.
-                    float expected = _previous._waitDepthAndProgress.WholePart + 1u;
-                    float progress = ((float) _currentAmount.WholePart / expected) + (_currentAmount.DecimalPart / expected);
+                    // Use double for better precision.
+                    double expected = _previous._waitDepthAndProgress.WholePart + 1u;
+                    float progress = (float) (_currentAmount.ToDouble() / expected);
 
                     uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
 
                     foreach (var progressListener in _progressListeners)
                     {
-                        progressListener.IncrementProgress(increment);
+                        progressListener.IncrementProgress(this, increment);
                     }
                 }
 
@@ -1419,17 +1426,15 @@ namespace Proto.Promises
                 {
                     _currentAmount = amount;
                     _invokingProgress = true;
-                    // Always add new listeners to the back.
-                    AddToBackOfProgressQueue(this);
+                    AddToFrontOfProgressQueue(this);
                 }
 
-                void IProgressListener.IncrementProgress(uint amount)
+                void IProgressListener.IncrementProgress(Promise sender, uint amount)
                 {
                     _currentAmount.Increment(amount);
                     if (!_invokingProgress)
                     {
                         _invokingProgress = true;
-                        // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
                         AddToFrontOfProgressQueue(this);
                     }
                 }
@@ -1490,14 +1495,14 @@ namespace Proto.Promises
 
             partial class PromisePassThrough : IProgressListener
             {
-                void IProgressListener.IncrementProgress(uint amount)
+                void IProgressListener.IncrementProgress(Promise sender, uint amount)
                 {
-                    target.IncrementProgress(amount, owner._waitDepthAndProgress.ToUInt32() + 1u);
+                    target.IncrementProgress(amount, sender._waitDepthAndProgress, owner._waitDepthAndProgress);
                 }
 
                 void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
                 {
-                    target.SetInitialAmount(amount.ToUInt32(), owner._waitDepthAndProgress.ToUInt32() + 1u);
+                    target.SetInitialAmount(amount.ToUInt32(), amount, owner._waitDepthAndProgress);
                 }
 
                 // Not used. The promise handles resolve and cancel.
@@ -1522,16 +1527,18 @@ namespace Proto.Promises
                         base.Reset(skipFrames + 1);
                         _currentAmount = default(UnsignedFixed32);
 
-                        uint promiseCounter = 0;
                         uint expectedProgressCounter = 0;
+                        uint maxWaitDepth = 0;
                         foreach (var passThrough in passThroughs)
                         {
-                            ++promiseCounter;
-                            expectedProgressCounter += passThrough.owner._waitDepthAndProgress.WholePart;
-
+                            uint waitDepth = passThrough.owner._waitDepthAndProgress.WholePart;
+                            expectedProgressCounter += waitDepth;
+                            maxWaitDepth = Math.Max(maxWaitDepth, waitDepth);
                         }
                         _expected = expectedProgressCounter + _waitCount;
-                        _waitDepthAndProgress = new UnsignedFixed32(promiseCounter - 1);
+
+                        // Expect the longest chain to finish last.
+                        _waitDepthAndProgress = new UnsignedFixed32(maxWaitDepth);
                     }
                 }
 
@@ -1559,7 +1566,7 @@ namespace Proto.Promises
                         this.passThroughs.Clear();
                         while (tempPassThroughs.IsNotEmpty)
                         {
-                            var passThrough = this.passThroughs.Pop();
+                            var passThrough = tempPassThroughs.Pop();
                             if (passThrough.owner == null)
                             {
                                 // The promise was already finished, don't subscribe.
@@ -1581,19 +1588,18 @@ namespace Proto.Promises
                     _progressListeners.Push(progressListener);
                 }
 
-                void IMultiTreeHandleable.SetInitialAmount(uint amount, uint expected)
+                void IMultiTreeHandleable.SetInitialAmount(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
                     // This is guaranteed to be pending.
                     _currentAmount.Increment(amount);
                     if (!_invokingProgress)
                     {
                         _invokingProgress = true;
-                        // Always add new listeners to the back.
-                        AddToBackOfProgressQueue(this);
+                        AddToFrontOfProgressQueue(this);
                     }
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, uint expected)
+                void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
                     IncrementProgress(amount);
                 }
@@ -1604,9 +1610,13 @@ namespace Proto.Promises
                     if (!_invokingProgress & _state == State.Pending)
                     {
                         _invokingProgress = true;
-                        // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
                         AddToFrontOfProgressQueue(this);
                     }
+                }
+
+                protected override uint GetIncrementMultiplier()
+                {
+                    return _waitDepthAndProgress.WholePart + 1u;
                 }
 
                 void IInvokable.Invoke()
@@ -1619,14 +1629,14 @@ namespace Proto.Promises
                     }
 
                     // Calculate the normalized progress for all the awaited promises.
-                    // Divide twice is slower, but gives better precision than single divide.
-                    float progress = ((float) _currentAmount.WholePart / _expected) + (_currentAmount.DecimalPart / _expected);
+                    // Use double for better precision.
+                    float progress = (float) (_currentAmount.ToDouble() / _expected);
 
-                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
+                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress) * GetIncrementMultiplier();
 
                     foreach (var progressListener in _progressListeners)
                     {
-                        progressListener.IncrementProgress(increment);
+                        progressListener.IncrementProgress(this, increment);
                     }
                 }
             }
@@ -1647,16 +1657,18 @@ namespace Proto.Promises
                         base.Reset(skipFrames + 1);
                         _currentAmount = default(UnsignedFixed32);
 
-                        uint promiseCounter = 0;
                         uint expectedProgressCounter = 0;
+                        uint maxWaitDepth = 0;
                         foreach (var passThrough in passThroughs)
                         {
-                            ++promiseCounter;
-                            expectedProgressCounter += passThrough.owner._waitDepthAndProgress.WholePart;
-
+                            uint waitDepth = passThrough.owner._waitDepthAndProgress.WholePart;
+                            expectedProgressCounter += waitDepth;
+                            maxWaitDepth = Math.Max(maxWaitDepth, waitDepth);
                         }
                         _expected = expectedProgressCounter + _waitCount;
-                        _waitDepthAndProgress = new UnsignedFixed32(promiseCounter - 1);
+
+                        // Expect the longest chain to finish last.
+                        _waitDepthAndProgress = new UnsignedFixed32(maxWaitDepth);
                     }
                 }
 
@@ -1684,7 +1696,7 @@ namespace Proto.Promises
                         this.passThroughs.Clear();
                         while (tempPassThroughs.IsNotEmpty)
                         {
-                            var passThrough = this.passThroughs.Pop();
+                            var passThrough = tempPassThroughs.Pop();
                             if (passThrough.owner == null)
                             {
                                 // The promise was already finished, don't subscribe.
@@ -1706,19 +1718,18 @@ namespace Proto.Promises
                     _progressListeners.Push(progressListener);
                 }
 
-                void IMultiTreeHandleable.SetInitialAmount(uint amount, uint expected)
+                void IMultiTreeHandleable.SetInitialAmount(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
                     // This is guaranteed to be pending.
                     _currentAmount.Increment(amount);
                     if (!_invokingProgress)
                     {
                         _invokingProgress = true;
-                        // Always add new listeners to the back.
-                        AddToBackOfProgressQueue(this);
+                        AddToFrontOfProgressQueue(this);
                     }
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, uint expected)
+                void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
                     IncrementProgress(amount);
                 }
@@ -1729,9 +1740,13 @@ namespace Proto.Promises
                     if (!_invokingProgress & _state == State.Pending)
                     {
                         _invokingProgress = true;
-                        // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
                         AddToFrontOfProgressQueue(this);
                     }
+                }
+
+                protected override uint GetIncrementMultiplier()
+                {
+                    return _waitDepthAndProgress.WholePart + 1u;
                 }
 
                 void IInvokable.Invoke()
@@ -1744,14 +1759,14 @@ namespace Proto.Promises
                     }
 
                     // Calculate the normalized progress for all the awaited promises.
-                    // Divide twice is slower, but gives better precision than single divide.
-                    float progress = ((float) _currentAmount.WholePart / _expected) + (_currentAmount.DecimalPart / _expected);
+                    // Use double for better precision.
+                    float progress = (float) (_currentAmount.ToDouble() / _expected);
 
-                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
+                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress) * GetIncrementMultiplier();
 
                     foreach (var progressListener in _progressListeners)
                     {
-                        progressListener.IncrementProgress(increment);
+                        progressListener.IncrementProgress(this, increment);
                     }
                 }
             }
@@ -1770,15 +1785,14 @@ namespace Proto.Promises
                         base.Reset(skipFrames + 1);
                         _currentAmount = default(UnsignedFixed32);
 
-                        uint promiseCounter = 0;
-                        uint expectedProgressCounter = 0;
+                        uint minWaitDepth = uint.MaxValue;
                         foreach (var passThrough in passThroughs)
                         {
-                            ++promiseCounter;
-                            expectedProgressCounter += passThrough.owner._waitDepthAndProgress.WholePart;
-
+                            minWaitDepth = Math.Min(minWaitDepth, passThrough.owner._waitDepthAndProgress.WholePart);
                         }
-                        _waitDepthAndProgress = new UnsignedFixed32(promiseCounter - 1);
+
+                        // Expect the shortest chain to finish first.
+                        _waitDepthAndProgress = new UnsignedFixed32(minWaitDepth);
                     }
                 }
 
@@ -1799,7 +1813,7 @@ namespace Proto.Promises
                         this.passThroughs.Clear();
                         while (tempPassThroughs.IsNotEmpty)
                         {
-                            var passThrough = this.passThroughs.Pop();
+                            var passThrough = tempPassThroughs.Pop();
                             if (passThrough.owner == null)
                             {
                                 // The promise was already finished, don't subscribe.
@@ -1821,35 +1835,37 @@ namespace Proto.Promises
                     _progressListeners.Push(progressListener);
                 }
 
-                void IMultiTreeHandleable.SetInitialAmount(uint amount, uint expected)
+                private void SetAmount(UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
-                    // This is guaranteed to be pending.
-                    var newAmount = new UnsignedFixed32((float) amount / (float) expected);
+                    // Use double for better precision.
+                    float progress = (float) ((double) senderAmount.ToUInt32() * (double) GetIncrementMultiplier() / (double) ownerAmount.GetIncrementedWholeTruncated().ToUInt32());
+                    var newAmount = new UnsignedFixed32(progress);
                     if (newAmount > _currentAmount)
                     {
                         _currentAmount = newAmount;
                         if (!_invokingProgress)
                         {
                             _invokingProgress = true;
-                            // Always add new listeners to the back.
-                            AddToBackOfProgressQueue(this);
+                            AddToFrontOfProgressQueue(this);
                         }
                     }
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, uint expected)
+                void IMultiTreeHandleable.SetInitialAmount(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
-                    var newAmount = new UnsignedFixed32((float) amount / (float) expected);
-                    if (_state == State.Pending & newAmount > _currentAmount)
-                    {
-                        _currentAmount = newAmount;
-                        if (!_invokingProgress)
-                        {
-                            _invokingProgress = true;
-                            // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
-                            AddToFrontOfProgressQueue(this);
-                        }
-                    }
+                    // This is guaranteed to be pending.
+                    SetAmount(senderAmount, ownerAmount);
+                }
+
+                void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
+                {
+                    // This is guaranteed to be pending.
+                    SetAmount(senderAmount, ownerAmount);
+                }
+
+                protected override uint GetIncrementMultiplier()
+                {
+                    return _waitDepthAndProgress.WholePart + 1u;
                 }
 
                 void IInvokable.Invoke()
@@ -1861,12 +1877,17 @@ namespace Proto.Promises
                         return;
                     }
 
-                    // _currentAmount and _waitDepthAndProgress both only use the decimal part, so we can simply grab the entire uint rather than getting only the decimal part.
-                    uint increment = _currentAmount.ToUInt32() - _waitDepthAndProgress.ToUInt32();
+                    uint multiplier = GetIncrementMultiplier();
+
+                    // Calculate the normalized progress.
+                    // Use double for better precision.
+                    float progress = (float) (_currentAmount.ToDouble() / multiplier);
+
+                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress) * multiplier;
 
                     foreach (var progressListener in _progressListeners)
                     {
-                        progressListener.IncrementProgress(increment);
+                        progressListener.IncrementProgress(this, increment);
                     }
                 }
             }
@@ -1885,15 +1906,14 @@ namespace Proto.Promises
                         base.Reset(skipFrames + 1);
                         _currentAmount = default(UnsignedFixed32);
 
-                        uint promiseCounter = 0;
-                        uint expectedProgressCounter = 0;
+                        uint minWaitDepth = uint.MaxValue;
                         foreach (var passThrough in passThroughs)
                         {
-                            ++promiseCounter;
-                            expectedProgressCounter += passThrough.owner._waitDepthAndProgress.WholePart;
-
+                            minWaitDepth = Math.Min(minWaitDepth, passThrough.owner._waitDepthAndProgress.WholePart);
                         }
-                        _waitDepthAndProgress = new UnsignedFixed32(promiseCounter - 1);
+
+                        // Expect the shortest chain to finish first.
+                        _waitDepthAndProgress = new UnsignedFixed32(minWaitDepth);
                     }
                 }
 
@@ -1914,7 +1934,7 @@ namespace Proto.Promises
                         this.passThroughs.Clear();
                         while (tempPassThroughs.IsNotEmpty)
                         {
-                            var passThrough = this.passThroughs.Pop();
+                            var passThrough = tempPassThroughs.Pop();
                             if (passThrough.owner == null)
                             {
                                 // The promise was already finished, don't subscribe.
@@ -1936,35 +1956,37 @@ namespace Proto.Promises
                     _progressListeners.Push(progressListener);
                 }
 
-                void IMultiTreeHandleable.SetInitialAmount(uint amount, uint expected)
+                private void SetAmount(UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
-                    // This is guaranteed to be pending.
-                    var newAmount = new UnsignedFixed32((float) amount / (float) expected);
+                    // Use double for better precision.
+                    float progress = (float) ((double) senderAmount.ToUInt32() * (double) GetIncrementMultiplier() / (double) ownerAmount.GetIncrementedWholeTruncated().ToUInt32());
+                    var newAmount = new UnsignedFixed32(progress);
                     if (newAmount > _currentAmount)
                     {
                         _currentAmount = newAmount;
                         if (!_invokingProgress)
                         {
                             _invokingProgress = true;
-                            // Always add new listeners to the back.
-                            AddToBackOfProgressQueue(this);
+                            AddToFrontOfProgressQueue(this);
                         }
                     }
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, uint expected)
+                void IMultiTreeHandleable.SetInitialAmount(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
-                    var newAmount = new UnsignedFixed32((float) amount / (float) expected);
-                    if (_state == State.Pending & newAmount > _currentAmount)
-                    {
-                        _currentAmount = newAmount;
-                        if (!_invokingProgress)
-                        {
-                            _invokingProgress = true;
-                            // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
-                            AddToFrontOfProgressQueue(this);
-                        }
-                    }
+                    // This is guaranteed to be pending.
+                    SetAmount(senderAmount, ownerAmount);
+                }
+
+                void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
+                {
+                    // This is guaranteed to be pending.
+                    SetAmount(senderAmount, ownerAmount);
+                }
+
+                protected override uint GetIncrementMultiplier()
+                {
+                    return _waitDepthAndProgress.WholePart + 1u;
                 }
 
                 void IInvokable.Invoke()
@@ -1976,12 +1998,17 @@ namespace Proto.Promises
                         return;
                     }
 
-                    // _currentAmount and _waitDepthAndProgress both only use the decimal part, so we can simply grab the entire uint rather than getting only the decimal part.
-                    uint increment = _currentAmount.ToUInt32() - _waitDepthAndProgress.ToUInt32();
+                    uint multiplier = GetIncrementMultiplier();
+
+                    // Calculate the normalized progress.
+                    // Use double for better precision.
+                    float progress = (float) (_currentAmount.ToDouble() / multiplier);
+
+                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress) * multiplier;
 
                     foreach (var progressListener in _progressListeners)
                     {
-                        progressListener.IncrementProgress(increment);
+                        progressListener.IncrementProgress(this, increment);
                     }
                 }
             }

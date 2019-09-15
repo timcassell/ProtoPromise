@@ -2010,7 +2010,6 @@ namespace Proto.Promises
 
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
-                private Promise _owner;
                 private Action _onFinally;
 
                 private FinallyDelegate() { }
@@ -2024,7 +2023,6 @@ namespace Proto.Promises
                 {
                     var del = _pool.IsNotEmpty ? (FinallyDelegate)_pool.Pop() : new FinallyDelegate();
                     del._onFinally = onFinally;
-                    del._owner = owner;
                     SetCreatedStackTrace(del, skipFrames + 1);
                     return del;
                 }
@@ -2048,7 +2046,6 @@ namespace Proto.Promises
                 void Dispose()
                 {
                     _onFinally = null;
-                    _owner = null;
                     if (Config.ObjectPooling != PoolType.None)
                     {
                         _pool.Push(this);
