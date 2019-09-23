@@ -20,31 +20,55 @@ namespace Proto.Promises
 
     public partial class Promise
 	{
+        /// <summary>
+        /// Returns a promise that will resolve when all <paramref name="promises"/> have resolved.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
 		public static Promise All(params Promise[] promises)
 		{
             return Internal.AllPromise0.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
 		}
 
-		public static Promise All(IEnumerable<Promise> promises)
+        /// <summary>
+        /// Returns a promise that will resolve when all <paramref name="promises"/> have resolved.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise All(IEnumerable<Promise> promises)
 		{
             return Internal.AllPromise0.GetOrCreate(promises.GetEnumerator(), 1);
         }
 
+        /// <summary>
+        /// Returns a promise that will resolve when all <paramref name="promises"/> have resolved.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
         public static Promise AllNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             return Internal.AllPromise0.GetOrCreate(promises, 1);
         }
 
+        /// <summary>
+        /// Returns a promise that will resolve with a list of values in the same order as <paramref name="promises"/> when they have all resolved.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
         public static Promise<IList<T>> All<T>(params Promise<T>[] promises)
         {
             return Internal.AllPromise<T>.GetOrCreate(new ArrayEnumerator<Promise<T>>(promises), new List<T>(promises.Length), 1);
         }
 
+        /// <summary>
+        /// Returns a promise that will resolve with a list of values in the same order as <paramref name="promises"/>s when they have all resolved.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
         public static Promise<IList<T>> All<T>(IEnumerable<Promise<T>> promises)
         {
             return Internal.AllPromise<T>.GetOrCreate(promises.GetEnumerator(), new List<T>(), 1);
         }
 
+        /// <summary>
+        /// Returns a promise that will resolve with <paramref name="valueContainer"/> in the same order as <paramref name="promises"/> when they have all resolved.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
         public static Promise<IList<T>> AllNonAlloc<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Internal.AllPromise<T>.GetOrCreate(promises, valueContainer, 1);
@@ -60,59 +84,139 @@ namespace Proto.Promises
 
         //}
 
+        /// <summary>
+        /// Returns a promise that will resolve when the first of the <paramref name="promises"/> has resolved.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
         public static Promise Race(params Promise[] promises)
         {
             return Internal.RacePromise0.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
         }
 
+        /// <summary>
+        /// Returns a promise that will resolve when the first of the <paramref name="promises"/> has resolved.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
         public static Promise Race(IEnumerable<Promise> promises)
         {
             return Internal.RacePromise0.GetOrCreate(promises.GetEnumerator(), 1);
         }
 
+        /// <summary>
+        /// Returns a promise that will resolve when the first of the <paramref name="promises"/> has resolved.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
         public static Promise RaceNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             return Internal.RacePromise0.GetOrCreate(promises, 1);
         }
 
+        /// <summary>
+        /// Returns a promise that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
         public static Promise<T> Race<T>(params Promise<T>[] promises)
         {
             return Internal.RacePromise<T>.GetOrCreate(new ArrayEnumerator<Promise<T>>(promises), 1);
         }
 
+        /// <summary>
+        /// Returns a promise that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
         public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
         {
             return Internal.RacePromise<T>.GetOrCreate(promises.GetEnumerator(), 1);
         }
 
+        /// <summary>
+        /// Returns a promise that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
         public static Promise<T> RaceNonAlloc<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Internal.RacePromise<T>.GetOrCreate(promises, 1);
         }
 
+        /// <summary>
+        /// Runs <paramref name="funcs"/> in sequence, returning a promise that will resolve when all promises have resolved.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
         public static Promise Sequence(params Func<Promise>[] funcs)
 		{
-            return SequenceNonAlloc(new ArrayEnumerator<Func<Promise>>(funcs));
+            return Internal.SequencePromise0.GetOrCreate(new ArrayEnumerator<Func<Promise>>(funcs), 1);
 		}
 
-		public static Promise Sequence(IEnumerable<Func<Promise>> funcs)
+        /// <summary>
+        /// Runs <paramref name="funcs"/> in sequence, returning a promise that will resolve when all promises have resolved.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise Sequence(IEnumerable<Func<Promise>> funcs)
 		{
-            return SequenceNonAlloc(funcs.GetEnumerator());
+            return Internal.SequencePromise0.GetOrCreate(funcs.GetEnumerator(), 1);
 		}
 
-        public static Promise SequenceNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Func<Promise>>
+        /// <summary>
+        /// Runs <paramref name="funcs"/> in sequence, returning a promise that will resolve when all promises have resolved.
+        /// If any promise is rejected or canceled, the returned promise will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise SequenceNonAlloc<TEnumerator>(TEnumerator funcs) where TEnumerator : IEnumerator<Func<Promise>>
         {
-            if (!promises.MoveNext())
-            {
-                // If promises is empty, just return a resolved promise.
-                return Resolved();
-            }
-            Promise promise = promises.Current.Invoke();
-            while (promises.MoveNext())
-            {
-                promise = promise.Then(promises.Current);
-            }
-            return promise;
+            return Internal.SequencePromise0.GetOrCreate(funcs, 1);
+        }
+
+        /// <summary>
+        /// Returns a promise that will resolve when the first of the <paramref name="promises"/> has resolved.
+        /// If all promises are rejected or canceled, the returned promise will be rejected or canceled with the same reason as the last promise that is rejected or canceled.
+        /// </summary>
+        public static Promise First(params Promise[] promises)
+        {
+            return Internal.FirstPromise0.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
+        }
+
+        /// <summary>
+        /// Returns a promise that will resolve when the first of the <paramref name="promises"/> has resolved.
+        /// If all promises are rejected or canceled, the returned promise will be rejected or canceled with the same reason as the last promise that is rejected or canceled.
+        /// </summary>
+        public static Promise First(IEnumerable<Promise> promises)
+        {
+            return Internal.FirstPromise0.GetOrCreate(promises.GetEnumerator(), 1);
+        }
+
+        /// <summary>
+        /// Returns a promise that will resolve when the first of the <paramref name="promises"/> has resolved.
+        /// If all promises are rejected or canceled, the returned promise will be rejected or canceled with the same reason as the last promise that is rejected or canceled.
+        /// </summary>
+        public static Promise FirstNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
+        {
+            return Internal.FirstPromise0.GetOrCreate(promises, 1);
+        }
+
+        /// <summary>
+        /// Returns a promise that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned promise will be rejected or canceled with the same reason as the last promise that is rejected or canceled.
+        /// </summary>
+        public static Promise<T> First<T>(params Promise<T>[] promises)
+        {
+            return Internal.FirstPromise<T>.GetOrCreate(new ArrayEnumerator<Promise<T>>(promises), 1);
+        }
+
+        /// <summary>
+        /// Returns a promise that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned promise will be rejected or canceled with the same reason as the last promise that is rejected or canceled.
+        /// </summary>
+        public static Promise<T> First<T>(IEnumerable<Promise<T>> promises)
+        {
+            return Internal.FirstPromise<T>.GetOrCreate(promises.GetEnumerator(), 1);
+        }
+
+        /// <summary>
+        /// Returns a promise that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned promise will be rejected or canceled with the same reason as the last promise that is rejected or canceled.
+        /// </summary>
+        public static Promise<T> FirstNonAlloc<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
+        {
+            return Internal.FirstPromise<T>.GetOrCreate(promises, 1);
         }
 
         /// <summary>
@@ -143,7 +247,17 @@ namespace Proto.Promises
             }
             catch (Exception e)
             {
-                promise.Deferred.Reject(e);
+                var deferred = promise.Deferred;
+                if (deferred.State == State.Pending)
+                {
+                    deferred.Reject(e);
+                }
+                else
+                {
+                    var rejectValue = Internal.UnhandledExceptionException.GetOrCreate(e);
+                    _SetStackTraceFromCreated(promise, rejectValue);
+                    AddRejectionToUnhandledStack(rejectValue);
+                }
             }
             return promise;
 		}
@@ -157,7 +271,17 @@ namespace Proto.Promises
             }
             catch (Exception e)
             {
-                promise.Deferred.Reject(e);
+                var deferred = promise.Deferred;
+                if (deferred.State == State.Pending)
+                {
+                    deferred.Reject(e);
+                }
+                else
+                {
+                    var rejectValue = Internal.UnhandledExceptionException.GetOrCreate(e);
+                    _SetStackTraceFromCreated(promise, rejectValue);
+                    AddRejectionToUnhandledStack(rejectValue);
+                }
             }
             return promise;
         }

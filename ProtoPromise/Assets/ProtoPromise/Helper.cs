@@ -938,5 +938,3 @@ namespace Proto.Promises
         }
     }
 }
-#pragma warning restore IDE0018 // Inline variable declaration
-#pragma warning restore IDE0034 // Simplify 'default' expression

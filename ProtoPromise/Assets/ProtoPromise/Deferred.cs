@@ -253,7 +253,7 @@ namespace Proto.Promises
                 public void RejectWithPromiseStacktrace(Exception exception)
                 {
                     var promise = Promise;
-                    var rejectValue = Proto.Promises.Promise.Internal.UnhandledExceptionException.GetOrCreate(exception);
+                    var rejectValue = Promises.Promise.Internal.UnhandledExceptionException.GetOrCreate(exception);
                     _SetStackTraceFromCreated(promise, rejectValue);
 
                     if (State != State.Pending)

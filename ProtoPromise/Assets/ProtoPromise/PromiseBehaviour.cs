@@ -184,7 +184,7 @@ namespace Proto.Promises
     {
         static PromiseBehaviour()
         {
-            Instance = new GameObject("ProtoPromise.PromiseBehaviour").AddComponent<PromiseBehaviour>();
+            Instance = new GameObject("Proto.Promises.PromiseBehaviour").AddComponent<PromiseBehaviour>();
         }
 
         public static PromiseBehaviour Instance { get; private set; }

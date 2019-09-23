@@ -6,7 +6,7 @@ namespace Proto.Promises
     partial class Promise
     {
         [InitializeOnLoad]
-        public static class ExecutionOrderSetter
+        private static class ExecutionOrderSetter
         {
             static ExecutionOrderSetter()
             {

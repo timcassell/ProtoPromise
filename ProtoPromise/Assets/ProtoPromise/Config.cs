@@ -8,6 +8,7 @@
 //#define DEBUG
 //#undef DEBUG
 
+#pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -101,6 +102,7 @@ namespace Proto.Promises
                 {
                     if (_yielder == null)
                     {
+                        // Lazily create a new yielder if necessary. This allows users to assign their own yielder without the default ever being created.
                         _yielder = PromiseBehaviour.Instance.gameObject.AddComponent<DefaultPromiseYielder>();
                     }
                     return _yielder;
@@ -445,6 +447,8 @@ namespace Proto.Promises
                 .ToString();
         }
 
+        protected virtual void BorrowPassthroughs(ref ValueLinkedStack<Internal.PromisePassThrough> passThroughs) { }
+
         partial void ValidateReturn(Promise other)
         {
             if (other == null)
@@ -463,14 +467,28 @@ namespace Proto.Promises
                 throw new InvalidReturnException("A disposed promise was returned.", innerException: e);
             }
 
-            // TODO: handle checking through AllPromise.
             // A promise cannot wait on itself.
-            for (var prev = other; prev != null; prev = prev._previous)
+
+            // This allows us to check AllPromises and RacePromises iteratively.
+            ValueLinkedStack<Internal.PromisePassThrough> passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>();
+            var prev = other;
+        Repeat:
+            for (; prev != null; prev = prev._previous)
             {
                 if (prev == this)
                 {
                     throw new InvalidReturnException("Circular Promise chain detected.", other._createdStackTrace);
                 }
+                prev.BorrowPassthroughs(ref passThroughs);
+            }
+
+            if (passThroughs.IsNotEmpty)
+            {
+                // passThroughs are removed from their targets before adding to passThroughs. Add them back here.
+                var passThrough = passThroughs.Pop();
+                passThrough.target.ReAdd(passThrough);
+                prev = passThrough.owner;
+                goto Repeat;
             }
         }
 
@@ -529,6 +547,147 @@ namespace Proto.Promises
         public override string ToString()
         {
             return string.Format("Type: Promise, Id: {0}, State: {1}", _id, _state);
+        }
+
+        partial class Internal
+        {
+            partial class AllPromise0
+            {
+                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
+                    var tempPassThroughs = this.passThroughs;
+                    this.passThroughs.Clear();
+                    while (tempPassThroughs.IsNotEmpty)
+                    {
+                        var passThrough = tempPassThroughs.Pop();
+                        if (passThrough.owner == null)
+                        {
+                            // The owner already completed.
+                            this.passThroughs.Push(passThrough);
+                        }
+                        else
+                        {
+                            passThroughs.Push(passThrough);
+                        }
+                    }
+                }
+            }
+
+            partial class AllPromise<T>
+            {
+                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
+                    var tempPassThroughs = this.passThroughs;
+                    this.passThroughs.Clear();
+                    while (tempPassThroughs.IsNotEmpty)
+                    {
+                        var passThrough = tempPassThroughs.Pop();
+                        if (passThrough.owner == null)
+                        {
+                            // The owner already completed.
+                            this.passThroughs.Push(passThrough);
+                        }
+                        else
+                        {
+                            passThroughs.Push(passThrough);
+                        }
+                    }
+                }
+            }
+
+            partial class RacePromise0
+            {
+                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
+                    var tempPassThroughs = this.passThroughs;
+                    this.passThroughs.Clear();
+                    while (tempPassThroughs.IsNotEmpty)
+                    {
+                        var passThrough = tempPassThroughs.Pop();
+                        if (passThrough.owner == null)
+                        {
+                            // The owner already completed.
+                            this.passThroughs.Push(passThrough);
+                        }
+                        else
+                        {
+                            passThroughs.Push(passThrough);
+                        }
+                    }
+                }
+            }
+
+            partial class RacePromise<T>
+            {
+                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
+                    var tempPassThroughs = this.passThroughs;
+                    this.passThroughs.Clear();
+                    while (tempPassThroughs.IsNotEmpty)
+                    {
+                        var passThrough = tempPassThroughs.Pop();
+                        if (passThrough.owner == null)
+                        {
+                            // The owner already completed.
+                            this.passThroughs.Push(passThrough);
+                        }
+                        else
+                        {
+                            passThroughs.Push(passThrough);
+                        }
+                    }
+                }
+            }
+
+            partial class FirstPromise0
+            {
+                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
+                    var tempPassThroughs = this.passThroughs;
+                    this.passThroughs.Clear();
+                    while (tempPassThroughs.IsNotEmpty)
+                    {
+                        var passThrough = tempPassThroughs.Pop();
+                        if (passThrough.owner == null)
+                        {
+                            // The owner already completed.
+                            this.passThroughs.Push(passThrough);
+                        }
+                        else
+                        {
+                            passThroughs.Push(passThrough);
+                        }
+                    }
+                }
+            }
+
+            partial class FirstPromise<T>
+            {
+                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
+                    var tempPassThroughs = this.passThroughs;
+                    this.passThroughs.Clear();
+                    while (tempPassThroughs.IsNotEmpty)
+                    {
+                        var passThrough = tempPassThroughs.Pop();
+                        if (passThrough.owner == null)
+                        {
+                            // The owner already completed.
+                            this.passThroughs.Push(passThrough);
+                        }
+                        else
+                        {
+                            passThroughs.Push(passThrough);
+                        }
+                    }
+                }
+            }
         }
 #else
         private void SetDisposed()
@@ -664,6 +823,21 @@ namespace Proto.Promises
                 }
             }
 #pragma warning restore RECS0001 // Class is declared partial but has only one part
+
+#if PROGRESS
+            partial class SequencePromise0
+            {
+                // Only wrap the promise to normalize its progress. If we're not using progress, we can just use the promise as-is.
+                static partial void GetFirstPromise(ref Promise promise, int skipFrames)
+                {
+                    var newPromise = _pool.IsNotEmpty ? (Promise) _pool.Pop() : new SequencePromise0();
+                    newPromise.Reset(skipFrames + 1);
+                    newPromise.ResetDepth();
+                    newPromise.WaitFor(promise);
+                    promise = newPromise;
+                }
+            }
+#endif
         }
 
         // Calls to these get compiled away when PROGRESS is undefined.
@@ -858,7 +1032,7 @@ namespace Proto.Promises
             // This allows us to subscribe progress to AllPromises and RacePromises iteratively instead of recursively
             ValueLinkedStack<Internal.PromisePassThrough> passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>();
 
-            Repeat:
+        Repeat:
             SubscribeProgressToChain(promise, progressListener, ref passThroughs);
 
             if (passThroughs.IsNotEmpty)
@@ -1511,7 +1685,7 @@ namespace Proto.Promises
                 void IProgressListener.CancelProgress() { }
             }
 
-            partial class AllPromise0 : PoolablePromise<AllPromise0>, IInvokable
+            partial class AllPromise0 : IInvokable
             {
                 // These are used to avoid rounding errors when normalizing the progress.
                 private float _expected;
@@ -1537,7 +1711,7 @@ namespace Proto.Promises
                         }
                         _expected = expectedProgressCounter + _waitCount;
 
-                        // Expect the longest chain to finish last.
+                        // Use the longest chain as this depth.
                         _waitDepthAndProgress = new UnsignedFixed32(maxWaitDepth);
                     }
                 }
@@ -1561,22 +1735,7 @@ namespace Proto.Promises
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     if (firstSubscribe & _state == State.Pending)
                     {
-                        // Remove this.passThroughs before adding to passThroughs. They are re-added in the SubscribeProgressToBranchesAndRoots loop.
-                        var tempPassThroughs = this.passThroughs;
-                        this.passThroughs.Clear();
-                        while (tempPassThroughs.IsNotEmpty)
-                        {
-                            var passThrough = tempPassThroughs.Pop();
-                            if (passThrough.owner == null)
-                            {
-                                // The promise was already finished, don't subscribe.
-                                this.passThroughs.Push(passThrough);
-                            }
-                            else
-                            {
-                                passThroughs.Push(passThrough);
-                            }
-                        }
+                        BorrowPassthroughs(ref passThroughs);
                     }
 
                     previous = null;
@@ -1641,7 +1800,7 @@ namespace Proto.Promises
                 }
             }
 
-            partial class AllPromise<T> : PoolablePromise<IList<T>, AllPromise<T>>, IInvokable
+            partial class AllPromise<T> : IInvokable
             {
                 // These are used to avoid rounding errors when normalizing the progress.
                 private float _expected;
@@ -1667,7 +1826,7 @@ namespace Proto.Promises
                         }
                         _expected = expectedProgressCounter + _waitCount;
 
-                        // Expect the longest chain to finish last.
+                        // Use the longest chain as this depth.
                         _waitDepthAndProgress = new UnsignedFixed32(maxWaitDepth);
                     }
                 }
@@ -1691,22 +1850,7 @@ namespace Proto.Promises
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     if (firstSubscribe & _state == State.Pending)
                     {
-                        // Remove this.passThroughs before adding to passThroughs. They are re-added in the SubscribeProgressToBranchesAndRoots loop.
-                        var tempPassThroughs = this.passThroughs;
-                        this.passThroughs.Clear();
-                        while (tempPassThroughs.IsNotEmpty)
-                        {
-                            var passThrough = tempPassThroughs.Pop();
-                            if (passThrough.owner == null)
-                            {
-                                // The promise was already finished, don't subscribe.
-                                this.passThroughs.Push(passThrough);
-                            }
-                            else
-                            {
-                                passThroughs.Push(passThrough);
-                            }
-                        }
+                        BorrowPassthroughs(ref passThroughs);
                     }
 
                     previous = null;
@@ -1771,7 +1915,7 @@ namespace Proto.Promises
                 }
             }
 
-            partial class RacePromise0 : PoolablePromise<RacePromise0>, IInvokable
+            partial class RacePromise0 : IInvokable
             {
                 private UnsignedFixed32 _currentAmount;
                 private bool _invokingProgress;
@@ -1808,22 +1952,7 @@ namespace Proto.Promises
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     if (firstSubscribe & _state == State.Pending)
                     {
-                        // Remove this.passThroughs before adding to passThroughs. They are re-added in the SubscribeProgressToBranchesAndRoots loop.
-                        var tempPassThroughs = this.passThroughs;
-                        this.passThroughs.Clear();
-                        while (tempPassThroughs.IsNotEmpty)
-                        {
-                            var passThrough = tempPassThroughs.Pop();
-                            if (passThrough.owner == null)
-                            {
-                                // The promise was already finished, don't subscribe.
-                                this.passThroughs.Push(passThrough);
-                            }
-                            else
-                            {
-                                passThroughs.Push(passThrough);
-                            }
-                        }
+                        BorrowPassthroughs(ref passThroughs);
                     }
 
                     previous = null;
@@ -1892,7 +2021,7 @@ namespace Proto.Promises
                 }
             }
 
-            partial class RacePromise<T> : PoolablePromise<T, RacePromise<T>>, IInvokable
+            partial class RacePromise<T> : IInvokable
             {
                 private UnsignedFixed32 _currentAmount;
                 private bool _invokingProgress;
@@ -1929,22 +2058,219 @@ namespace Proto.Promises
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     if (firstSubscribe & _state == State.Pending)
                     {
-                        // Remove this.passThroughs before adding to passThroughs. They are re-added in the SubscribeProgressToBranchesAndRoots loop.
-                        var tempPassThroughs = this.passThroughs;
-                        this.passThroughs.Clear();
-                        while (tempPassThroughs.IsNotEmpty)
+                        BorrowPassthroughs(ref passThroughs);
+                    }
+
+                    previous = null;
+                    return false;
+                }
+
+                protected override void SubscribeProgressRoot(IProgressListener progressListener)
+                {
+                    _progressListeners.Push(progressListener);
+                }
+
+                private void SetAmount(UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
+                {
+                    // Use double for better precision.
+                    float progress = (float) ((double) senderAmount.ToUInt32() * (double) GetIncrementMultiplier() / (double) ownerAmount.GetIncrementedWholeTruncated().ToUInt32());
+                    var newAmount = new UnsignedFixed32(progress);
+                    if (newAmount > _currentAmount)
+                    {
+                        _currentAmount = newAmount;
+                        if (!_invokingProgress)
                         {
-                            var passThrough = tempPassThroughs.Pop();
-                            if (passThrough.owner == null)
-                            {
-                                // The promise was already finished, don't subscribe.
-                                this.passThroughs.Push(passThrough);
-                            }
-                            else
-                            {
-                                passThroughs.Push(passThrough);
-                            }
+                            _invokingProgress = true;
+                            AddToFrontOfProgressQueue(this);
                         }
+                    }
+                }
+
+                void IMultiTreeHandleable.SetInitialAmount(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
+                {
+                    // This is guaranteed to be pending.
+                    SetAmount(senderAmount, ownerAmount);
+                }
+
+                void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
+                {
+                    // This is guaranteed to be pending.
+                    SetAmount(senderAmount, ownerAmount);
+                }
+
+                protected override uint GetIncrementMultiplier()
+                {
+                    return _waitDepthAndProgress.WholePart + 1u;
+                }
+
+                void IInvokable.Invoke()
+                {
+                    _invokingProgress = false;
+
+                    if (_state != State.Pending)
+                    {
+                        return;
+                    }
+
+                    uint multiplier = GetIncrementMultiplier();
+
+                    // Calculate the normalized progress.
+                    // Use double for better precision.
+                    float progress = (float) (_currentAmount.ToDouble() / multiplier);
+
+                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress) * multiplier;
+
+                    foreach (var progressListener in _progressListeners)
+                    {
+                        progressListener.IncrementProgress(this, increment);
+                    }
+                }
+            }
+
+            partial class FirstPromise0 : IInvokable
+            {
+                private UnsignedFixed32 _currentAmount;
+                private bool _invokingProgress;
+
+                protected override void Reset(int skipFrames)
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        base.Reset(skipFrames + 1);
+                        _currentAmount = default(UnsignedFixed32);
+
+                        uint minWaitDepth = uint.MaxValue;
+                        foreach (var passThrough in passThroughs)
+                        {
+                            minWaitDepth = Math.Min(minWaitDepth, passThrough.owner._waitDepthAndProgress.WholePart);
+                        }
+
+                        // Expect the shortest chain to finish first.
+                        _waitDepthAndProgress = new UnsignedFixed32(minWaitDepth);
+                    }
+                }
+
+                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
+                {
+                    // This is guaranteed to be pending.
+                    previous = this;
+                    return true;
+                }
+
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    bool firstSubscribe = _progressListeners.IsEmpty;
+                    if (firstSubscribe & _state == State.Pending)
+                    {
+                        BorrowPassthroughs(ref passThroughs);
+                    }
+
+                    previous = null;
+                    return false;
+                }
+
+                protected override void SubscribeProgressRoot(IProgressListener progressListener)
+                {
+                    _progressListeners.Push(progressListener);
+                }
+
+                private void SetAmount(UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
+                {
+                    // Use double for better precision.
+                    float progress = (float) ((double) senderAmount.ToUInt32() * (double) GetIncrementMultiplier() / (double) ownerAmount.GetIncrementedWholeTruncated().ToUInt32());
+                    var newAmount = new UnsignedFixed32(progress);
+                    if (newAmount > _currentAmount)
+                    {
+                        _currentAmount = newAmount;
+                        if (!_invokingProgress)
+                        {
+                            _invokingProgress = true;
+                            AddToFrontOfProgressQueue(this);
+                        }
+                    }
+                }
+
+                void IMultiTreeHandleable.SetInitialAmount(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
+                {
+                    // This is guaranteed to be pending.
+                    SetAmount(senderAmount, ownerAmount);
+                }
+
+                void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
+                {
+                    // This is guaranteed to be pending.
+                    SetAmount(senderAmount, ownerAmount);
+                }
+
+                protected override uint GetIncrementMultiplier()
+                {
+                    return _waitDepthAndProgress.WholePart + 1u;
+                }
+
+                void IInvokable.Invoke()
+                {
+                    _invokingProgress = false;
+
+                    if (_state != State.Pending)
+                    {
+                        return;
+                    }
+
+                    uint multiplier = GetIncrementMultiplier();
+
+                    // Calculate the normalized progress.
+                    // Use double for better precision.
+                    float progress = (float) (_currentAmount.ToDouble() / multiplier);
+
+                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress) * multiplier;
+
+                    foreach (var progressListener in _progressListeners)
+                    {
+                        progressListener.IncrementProgress(this, increment);
+                    }
+                }
+            }
+
+            partial class FirstPromise<T> : IInvokable
+            {
+                private UnsignedFixed32 _currentAmount;
+                private bool _invokingProgress;
+
+                protected override void Reset(int skipFrames)
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        base.Reset(skipFrames + 1);
+                        _currentAmount = default(UnsignedFixed32);
+
+                        uint minWaitDepth = uint.MaxValue;
+                        foreach (var passThrough in passThroughs)
+                        {
+                            minWaitDepth = Math.Min(minWaitDepth, passThrough.owner._waitDepthAndProgress.WholePart);
+                        }
+
+                        // Expect the shortest chain to finish first.
+                        _waitDepthAndProgress = new UnsignedFixed32(minWaitDepth);
+                    }
+                }
+
+                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
+                {
+                    // This is guaranteed to be pending.
+                    previous = this;
+                    return true;
+                }
+
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    bool firstSubscribe = _progressListeners.IsEmpty;
+                    if (firstSubscribe & _state == State.Pending)
+                    {
+                        BorrowPassthroughs(ref passThroughs);
                     }
 
                     previous = null;

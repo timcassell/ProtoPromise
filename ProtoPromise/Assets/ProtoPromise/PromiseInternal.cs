@@ -125,7 +125,7 @@ namespace Proto.Promises
 
         protected abstract void Handle(Promise feed);
 
-        void Internal.ITreeHandleable.Cancel()
+        protected virtual void _Cancel()
         {
 #pragma warning disable CS0618 // Type or member is obsolete
             _state = State.Canceled;
@@ -133,6 +133,11 @@ namespace Proto.Promises
             OnCancel();
             // Place in the handle queue so it can be repooled.
             AddToHandleQueue(this);
+        }
+
+        void Internal.ITreeHandleable.Cancel()
+        {
+            _Cancel();
         }
 
         protected virtual void AssignCancelValue(Internal.IValueContainer cancelValue)
@@ -187,36 +192,6 @@ namespace Proto.Promises
             _unhandledExceptions.Push(unhandledValue);
         }
 
-        private static void ThrowUnhandledRejections()
-        {
-            if (_unhandledExceptions.IsEmpty)
-            {
-                return;
-            }
-
-            var unhandledExceptions = _unhandledExceptions;
-            _unhandledExceptions.Clear();
-            // Reset handled flag.
-            foreach (Internal.UnhandledExceptionInternal unhandled in unhandledExceptions)
-            {
-                unhandled.handled = false;
-                // Allow to re-use.
-                unhandled.Release();
-            }
-
-#if CSHARP_7_OR_LATER
-            throw new AggregateException(unhandledExceptions);
-#else
-            // .Net 3.5 dumb compiler can't convert IEnumerable<UnhandledExceptionInternal> to IEnumerable<Exception>
-            var exceptions = new List<Exception>();
-            foreach(var ex in unhandledExceptions)
-            {
-                exceptions.Add(ex);
-            }
-            throw new AggregateException(exceptions);
-#endif
-        }
-
         // Handle promises in a breadth-first manner.
         private static ValueLinkedQueue<Internal.ITreeHandleable> _handleQueue;
         private static bool _runningHandles;
@@ -225,34 +200,6 @@ namespace Proto.Promises
         {
             promise._handling = true;
             _handleQueue.Enqueue(promise);
-        }
-
-        // This allows infinite .Then/.Catch callbacks, since it avoids recursion.
-        protected static void HandleComplete()
-        {
-            if (_runningHandles)
-            {
-                // HandleComplete is running higher in the program stack, so just return.
-                return;
-            }
-
-            _runningHandles = true;
-
-            // Cancels are high priority, make sure those delegates are invoked before anything else.
-            HandleCanceled();
-
-            while (_handleQueue.IsNotEmpty)
-            {
-                Promise current = (Promise) _handleQueue.DequeueRisky();
-                current.HandleBranches();
-                current._handling = false;
-
-                // In case a promise was canceled from a callback.
-                HandleCanceled();
-            }
-
-            _handleQueue.ClearLast();
-            _runningHandles = false;
         }
 
         protected virtual void HandleBranches()
@@ -3107,6 +3054,7 @@ namespace Proto.Promises
                         // If promises is empty, just return a resolved promise.
                         return Resolved();
                     }
+
                     var promise = _pool.IsNotEmpty ? (AllPromise0) _pool.Pop() : new AllPromise0();
 
                     var target = promises.Current;
@@ -3128,6 +3076,26 @@ namespace Proto.Promises
 
                     promise.Reset(skipFrames + 1);
                     return promise;
+                }
+
+                protected override void _Cancel()
+                {
+                    --_waitCount;
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+
+                    if (_waitCount == 0)
+                    {
+                        PromisePassThrough.Repool(ref passThroughs);
+                    }
+                    if (_state == State.Pending)
+                    {
+                        base._Cancel();
+                    }
                 }
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
@@ -3205,6 +3173,7 @@ namespace Proto.Promises
                         // If promises is empty, just return a resolved promise.
                         return Resolved(valueContainer);
                     }
+
                     var promise = _pool.IsNotEmpty ? (AllPromise<T>) _pool.Pop() : new AllPromise<T>();
                     promise._value = valueContainer;
 
@@ -3229,6 +3198,26 @@ namespace Proto.Promises
 
                     promise.Reset(skipFrames + 1);
                     return promise;
+                }
+
+                protected override void _Cancel()
+                {
+                    --_waitCount;
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+
+                    if (_waitCount == 0)
+                    {
+                        PromisePassThrough.Repool(ref passThroughs);
+                    }
+                    if (_state == State.Pending)
+                    {
+                        base._Cancel();
+                    }
                 }
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
@@ -3310,6 +3299,7 @@ namespace Proto.Promises
                         throw new ArgumentException("Cannot race 0 promises.", "promises");
 #pragma warning restore RECS0163 // Suggest the usage of the nameof operator
                     }
+
                     var promise = _pool.IsNotEmpty ? (RacePromise0) _pool.Pop() : new RacePromise0();
 
                     var target = promises.Current;
@@ -3329,9 +3319,28 @@ namespace Proto.Promises
                     promise._waitCount = (uint) promiseIndex + 1u;
                     promise._retainCounter = promise._waitCount;
 
-                    promise.ResetDepth();
                     promise.Reset(skipFrames + 1);
                     return promise;
+                }
+
+                protected override void _Cancel()
+                {
+                    --_waitCount;
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+
+                    if (_waitCount == 0)
+                    {
+                        PromisePassThrough.Repool(ref passThroughs);
+                    }
+                    if (_state == State.Pending)
+                    {
+                        base._Cancel();
+                    }
                 }
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
@@ -3399,6 +3408,7 @@ namespace Proto.Promises
                         throw new ArgumentException("Cannot race 0 promises.", "promises");
 #pragma warning restore RECS0163 // Suggest the usage of the nameof operator
                     }
+
                     var promise = _pool.IsNotEmpty ? (RacePromise<T>) _pool.Pop() : new RacePromise<T>();
 
                     var target = promises.Current;
@@ -3418,9 +3428,28 @@ namespace Proto.Promises
                     promise._waitCount = (uint) promiseIndex + 1u;
                     promise._retainCounter = promise._waitCount;
 
-                    promise.ResetDepth();
                     promise.Reset(skipFrames + 1);
                     return promise;
+                }
+
+                protected override void _Cancel()
+                {
+                    --_waitCount;
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+
+                    if (_waitCount == 0)
+                    {
+                        PromisePassThrough.Repool(ref passThroughs);
+                    }
+                    if (_state == State.Pending)
+                    {
+                        base._Cancel();
+                    }
                 }
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
@@ -3472,10 +3501,248 @@ namespace Proto.Promises
 
                 protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
             }
-#endregion
+
+            public sealed partial class SequencePromise0 : PromiseWaitPromise<SequencePromise0>
+            {
+                static partial void GetFirstPromise(ref Promise promise, int skipFrames);
+
+                public static Promise GetOrCreate<TEnumerator>(TEnumerator promiseFuncs, int skipFrames) where TEnumerator : IEnumerator<Func<Promise>>
+                {
+                    if (!promiseFuncs.MoveNext())
+                    {
+                        // If promiseFuncs is empty, just return a resolved promise.
+                        return Resolved();
+                    }
+
+                    Promise promise = promiseFuncs.Current.Invoke();
+                    GetFirstPromise(ref promise, skipFrames + 1);
+
+                    while (promiseFuncs.MoveNext())
+                    {
+                        promise = promise.Then(promiseFuncs.Current);
+                    }
+                    return promise;
+                }
+
+                protected override void Handle(Promise feed)
+                {
+                    if (feed._state == State.Resolved)
+                    {
+                        ResolveInternal();
+                    }
+                    else
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValue);
+                    }
+                }
+            }
+
+            public sealed partial class FirstPromise0 : PoolablePromise<FirstPromise0>, IMultiTreeHandleable
+            {
+                private ValueLinkedStack<PromisePassThrough> passThroughs;
+                private uint _waitCount;
+
+                private FirstPromise0() { }
+
+                public static Promise GetOrCreate<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
+                {
+                    if (!promises.MoveNext())
+                    {
+#pragma warning disable RECS0163 // Suggest the usage of the nameof operator
+                        throw new ArgumentException("Cannot race 0 promises.", "promises");
+#pragma warning restore RECS0163 // Suggest the usage of the nameof operator
+                    }
+
+                    var promise = _pool.IsNotEmpty ? (FirstPromise0) _pool.Pop() : new FirstPromise0();
+
+                    var target = promises.Current;
+                    ValidateOperation(target);
+                    int promiseIndex = 0;
+                    // Hook up pass throughs
+                    var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
+                    while (promises.MoveNext())
+                    {
+                        target = promises.Current;
+                        ValidateOperation(target);
+                        passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
+                    }
+                    promise.passThroughs = passThroughs;
+
+                    // Retain this until all promises resolve/reject/cancel
+                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._retainCounter = promise._waitCount;
+
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void _Cancel()
+                {
+                    --_waitCount;
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+
+                    if (_waitCount == 0)
+                    {
+                        PromisePassThrough.Repool(ref passThroughs);
+                        if (_state == State.Pending)
+                        {
+                            base._Cancel();
+                        }
+                    }
+                }
+
+                void IMultiTreeHandleable.Handle(Promise feed, int index)
+                {
+                    --_waitCount;
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+
+                    if (_waitCount == 0)
+                    {
+                        PromisePassThrough.Repool(ref passThroughs);
+                        if (_state == State.Pending)
+                        {
+                            feed._wasWaitedOn = true;
+                            if (feed._state == State.Resolved)
+                            {
+                                ResolveInternal();
+                            }
+                            else
+                            {
+                                RejectInternal(feed._rejectedOrCanceledValue);
+                            }
+                        }
+                        return;
+                    }
+
+                    if (_state == State.Pending & feed._state == State.Resolved)
+                    {
+                        feed._wasWaitedOn = true;
+                        ResolveInternal();
+                    }
+                }
+
+                protected override void AssignCancelValue(IValueContainer cancelValue)
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+                    base.AssignCancelValue(cancelValue);
+                }
+
+                void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
+                {
+                    passThroughs.Push(passThrough);
+                }
+
+                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
+            }
+
+            public sealed partial class FirstPromise<T> : PoolablePromise<T, FirstPromise<T>>, IMultiTreeHandleable
+            {
+                private ValueLinkedStack<PromisePassThrough> passThroughs;
+                private uint _waitCount;
+
+                private FirstPromise() { }
+
+                public static Promise<T> GetOrCreate<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise<T>>
+                {
+                    if (!promises.MoveNext())
+                    {
+#pragma warning disable RECS0163 // Suggest the usage of the nameof operator
+                        throw new ArgumentException("Cannot race 0 promises.", "promises");
+#pragma warning restore RECS0163 // Suggest the usage of the nameof operator
+                    }
+
+                    var promise = _pool.IsNotEmpty ? (FirstPromise<T>) _pool.Pop() : new FirstPromise<T>();
+
+                    var target = promises.Current;
+                    ValidateOperation(target);
+                    int promiseIndex = 0;
+                    // Hook up pass throughs
+                    var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
+                    while (promises.MoveNext())
+                    {
+                        target = promises.Current;
+                        ValidateOperation(target);
+                        passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
+                    }
+                    promise.passThroughs = passThroughs;
+
+                    // Retain this until all promises resolve/reject/cancel
+                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._retainCounter = promise._waitCount;
+
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                void IMultiTreeHandleable.Handle(Promise feed, int index)
+                {
+                    --_waitCount;
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+
+                    if (_waitCount == 0)
+                    {
+                        PromisePassThrough.Repool(ref passThroughs);
+                        if (_state == State.Pending)
+                        {
+                            feed._wasWaitedOn = true;
+                            if (feed._state == State.Resolved)
+                            {
+                                ResolveInternal();
+                            }
+                            else
+                            {
+                                RejectInternal(feed._rejectedOrCanceledValue);
+                            }
+                        }
+                        return;
+                    }
+
+                    if (_state == State.Pending & feed._state == State.Resolved)
+                    {
+                        feed._wasWaitedOn = true;
+                        ResolveInternal();
+                    }
+                }
+
+                protected override void AssignCancelValue(IValueContainer cancelValue)
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        --_retainCounter;
+                    }
+                    base.AssignCancelValue(cancelValue);
+                }
+
+                void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
+                {
+                    passThroughs.Push(passThrough);
+                }
+
+                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
+            }
+            #endregion
         }
     }
 }
-#pragma warning restore IDE0034 // Simplify 'default' expression
-#pragma warning restore IDE0018 // Inline variable declaration
-#pragma warning restore RECS0108 // Warns about static fields in generic types
