@@ -8,6 +8,10 @@ namespace Proto.Promises
         {
             public State State { get; protected set; }
 
+            /// <summary>
+            /// The promise that this controls.
+            /// </summary>
+            /// <value>The promise.</value>
             public virtual Promise Promise { get; protected set; }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
@@ -15,18 +19,33 @@ namespace Proto.Promises
 #endif
             protected DeferredBase() { }
 
+            /// <summary>
+            /// Retain this instance and the linked <see cref="Promise"/>.
+            /// <para/>This should always be paired with a call to <see cref="Release"/>
+            /// </summary>
             public void Retain()
             {
                 Promise.Retain();
             }
-            
+
+            /// <summary>
+            /// Release this instance and the linked <see cref="Promise"/>.
+            /// <para/>This should always be paired with a call to <see cref="Retain"/>
+            /// </summary>
             public void Release()
             {
                 Promise.Release();
             }
 
+            /// <summary>
+            /// Reject the linked <see cref="Promise"/> without a reason.
+            /// <para/>NOTE: It is recommended to always reject with a reason!
+            /// </summary>
             public abstract void Reject();
 
+            /// <summary>
+            /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// </summary>
             public abstract void Reject<TReject>(TReject reason);
         }
 
@@ -37,6 +56,9 @@ namespace Proto.Promises
 #endif
             protected Deferred() { }
 
+            /// <summary>
+            /// Resolve the linked <see cref="Promise"/>.
+            /// </summary>
             public abstract void Resolve();
         }
     }
@@ -52,7 +74,10 @@ namespace Proto.Promises
 #endif
             protected Deferred() { }
 
-            public abstract void Resolve(T arg);
+            /// <summary>
+            /// Resolve the linked <see cref="Promise"/> with <paramref name="value"/>.
+            /// </summary>
+            public abstract void Resolve(T value);
         }
     }
 
@@ -76,8 +101,8 @@ namespace Proto.Promises
                 {
                     var promise = Promise;
                     ValidateProgress();
-                    ValidateOperation(promise);
-                    ValidateProgress(progress);
+                    ValidateOperation(promise, 1);
+                    ValidateProgress(progress, 1);
 
                     if (State != State.Pending)
                     {
@@ -91,7 +116,7 @@ namespace Proto.Promises
                 public override void Resolve()
                 {
                     var promise = Promise;
-                    ValidateOperation(promise);
+                    ValidateOperation(promise, 1);
 
                     if (State == State.Pending)
                     {
@@ -110,7 +135,7 @@ namespace Proto.Promises
                 public override void Reject()
                 {
                     var promise = Promise;
-                    ValidateOperation(promise);
+                    ValidateOperation(promise, 1);
 
                     if (State == State.Pending)
                     {
@@ -128,7 +153,7 @@ namespace Proto.Promises
                 public override void Reject<TReject>(TReject reason)
                 {
                     var promise = Promise;
-                    ValidateOperation(promise);
+                    ValidateOperation(promise, 1);
 
                     if (State == State.Pending)
                     {
@@ -183,8 +208,8 @@ namespace Proto.Promises
                 {
                     var promise = Promise;
                     ValidateProgress();
-                    ValidateOperation(promise);
-                    ValidateProgress(progress);
+                    ValidateOperation(promise, 1);
+                    ValidateProgress(progress, 1);
 
                     if (State != State.Pending)
                     {
@@ -195,10 +220,10 @@ namespace Proto.Promises
                     promise.ReportProgress(progress);
                 }
 
-                public override void Resolve(T arg)
+                public override void Resolve(T value)
                 {
                     var promise = Promise;
-                    ValidateOperation(promise);
+                    ValidateOperation(promise, 1);
 
                     if (State == State.Pending)
                     {
@@ -211,13 +236,13 @@ namespace Proto.Promises
                     }
 
                     State = State.Resolved;
-                    promise.Resolve(arg);
+                    promise.Resolve(value);
                 }
 
                 public override void Reject()
                 {
                     var promise = Promise;
-                    ValidateOperation(promise);
+                    ValidateOperation(promise, 1);
 
                     if (State == State.Pending)
                     {
@@ -235,7 +260,7 @@ namespace Proto.Promises
                 public override void Reject<TReject>(TReject reason)
                 {
                     var promise = Promise;
-                    ValidateOperation(promise);
+                    ValidateOperation(promise, 1);
 
                     if (State == State.Pending)
                     {

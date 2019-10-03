@@ -95,6 +95,9 @@ namespace Proto.Promises
             public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
 #endif
 
+            public static IValueConverter _valueConverter = new DefaultValueConverter();
+            public static IValueConverter ValueConverter { get { return _valueConverter; } set { _valueConverter = value; } }
+
             private static IPromiseYielder _yielder;
             public static IPromiseYielder Yielder
             {
@@ -110,6 +113,33 @@ namespace Proto.Promises
                 set
                 {
                     _yielder = value;
+                }
+            }
+
+            private sealed class DefaultValueConverter : IValueConverter
+            {
+                bool IValueConverter.TryConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer, out TConvert converted)
+                {
+                    // This avoids boxing value types.
+#if CSHARP_7_OR_LATER
+                    if (valueContainer is IValueContainer<TConvert> casted)
+#else
+                    var casted = valueContainer as IValueContainer<TConvert>;
+                    if (casted != null)
+#endif
+                    {
+                        converted = casted.Value;
+                        return true;
+                    }
+                    // Can it be up-casted or down-casted, null or not?
+                    TOriginal value = valueContainer.Value;
+                    if (typeof(TConvert).IsAssignableFrom(typeof(TOriginal)) || value is TConvert)
+                    {
+                        converted = (TConvert) (object) value;
+                        return true;
+                    }
+                    converted = default(TConvert);
+                    return false;
                 }
             }
         }
@@ -129,9 +159,9 @@ namespace Proto.Promises
 #endif
             public void Cancel()
             {
-                ValidateCancel();
+                ValidateCancel(1);
                 var promise = Promise;
-                ValidateOperation(promise);
+                ValidateOperation(promise, 1);
 
                 if (State == State.Pending)
                 {
@@ -152,9 +182,9 @@ namespace Proto.Promises
 #endif
             public void Cancel<TCancel>(TCancel reason)
             {
-                ValidateCancel();
+                ValidateCancel(1);
                 var promise = Promise;
-                ValidateOperation(promise);
+                ValidateOperation(promise, 1);
 
                 if (State == State.Pending)
                 {
@@ -232,7 +262,7 @@ namespace Proto.Promises
 #endif
         public Promise ThenDuplicate()
         {
-            ValidateOperation(this);
+            ValidateOperation(this, 1);
 
             var promise = GetDuplicate();
             HookupNewPromise(promise);
@@ -251,28 +281,33 @@ namespace Proto.Promises
             return this;
         }
 
+        /// <summary>
+        /// <paramref name="onCanceled"/> will be invoked if this instance is canceled for any or no reason.
+        /// </summary>
 #if !CANCEL
         [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
 #endif
-        public IPotentialCancelation CatchCancelation(Action onCanceled)
+        public void CatchCancelation(Action onCanceled)
         {
-            ValidateCancel();
-            ValidateOperation(this);
-            ValidateArgument(onCanceled, "onCanceled");
+            ValidateCancel(1);
+            ValidateOperation(this, 1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
 
-            var cancelation = Internal.CancelDelegate0.GetOrCreate(onCanceled, 1);
-            AddWaiter(cancelation);
-            return cancelation;
+            AddWaiter(Internal.CancelDelegateAny.GetOrCreate(onCanceled, 1));
         }
 
+        /// <summary>
+        /// <paramref name="onCanceled"/> will be invoked if this instance is canceled with a reason that is the same type or inherited type of <typeparamref name="TCancel"/>.
+        /// If this instance is canceled with a reason that is incompatible with <typeparamref name="TCancel"/>, then the returned object will be canceled with that same reason.
+        /// </summary>
 #if !CANCEL
         [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
 #endif
         public IPotentialCancelation CatchCancelation<TCancel>(Action<TCancel> onCanceled)
         {
-            ValidateCancel();
-            ValidateOperation(this);
-            ValidateArgument(onCanceled, "onCanceled");
+            ValidateCancel(1);
+            ValidateOperation(this, 1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
 
             var cancelation = Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled, 1);
             AddWaiter(cancelation);
@@ -288,8 +323,8 @@ namespace Proto.Promises
 #endif
         public void Cancel()
         {
-            ValidateCancel();
-            ValidateOperation(this);
+            ValidateCancel(1);
+            ValidateOperation(this, 1);
 
             if (_state != State.Pending)
             {
@@ -314,8 +349,8 @@ namespace Proto.Promises
 #endif
         public void Cancel<TCancel>(TCancel reason)
         {
-            ValidateCancel();
-            ValidateOperation(this);
+            ValidateCancel(1);
+            ValidateOperation(this, 1);
 
             if (_state != State.Pending)
             {
@@ -351,19 +386,21 @@ namespace Proto.Promises
 
         protected static void _SetStackTraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException)
         {
-            SetStackTraceFromCreated(stacktraceable, unhandledException);
+            SetStacktraceFromCreated(stacktraceable, unhandledException);
         }
 
         // Calls to these get compiled away in RELEASE mode
-        static partial void ValidateOperation(Promise promise);
-        static partial void ValidateProgress(float progress);
-        static partial void ValidateArgument(Delegate del, string argName);
+        static partial void ValidateOperation(Promise promise, int skipFrames);
+        static partial void ValidateProgress(float progress, int skipFrames);
+        static partial void ValidateArgument(Delegate del, string argName, int skipFrames);
         partial void ValidateReturn(Promise other);
         static partial void ValidateReturn(Delegate other);
+        static partial void ValidatePotentialOperation(Internal.IValueContainer valueContainer, int skipFrames);
+        static partial void ValidateNotNull(Promise promise, string argName, string message, int skipFrames);
 
-        static partial void SetCreatedStackTrace(Internal.IStacktraceable stacktraceable, int skipFrames);
-        static partial void SetStackTraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException);
-        static partial void SetRejectStackTrace(Internal.UnhandledExceptionInternal unhandledException, int skipFrames);
+        static partial void SetCreatedStacktrace(Internal.IStacktraceable stacktraceable, int skipFrames);
+        static partial void SetStacktraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException);
+        static partial void SetRejectStacktrace(Internal.UnhandledExceptionInternal unhandledException, int skipFrames);
         static partial void SetDisposed(ref Internal.IValueContainer valueContainer);
         static partial void SetNotDisposed(ref Internal.IValueContainer valueContainer);
 #if DEBUG
@@ -399,7 +436,7 @@ namespace Proto.Promises
             }
         }
 
-        static partial void SetCreatedStackTrace(Internal.IStacktraceable stacktraceable, int skipFrames)
+        static partial void SetCreatedStacktrace(Internal.IStacktraceable stacktraceable, int skipFrames)
         {
             if (Config.DebugStacktraceGenerator == GeneratedStacktrace.All)
             {
@@ -407,22 +444,27 @@ namespace Proto.Promises
             }
         }
 
-        static partial void SetStackTraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException)
+        static partial void SetStacktraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException)
         {
             unhandledException.SetStackTrace(FormatStackTrace(stacktraceable.Stacktrace));
         }
 
-        static partial void SetRejectStackTrace(Internal.UnhandledExceptionInternal unhandledException, int skipFrames)
+        static partial void SetRejectStacktrace(Internal.UnhandledExceptionInternal unhandledException, int skipFrames)
         {
             if (Config.DebugStacktraceGenerator != GeneratedStacktrace.None)
             {
-                unhandledException.SetStackTrace(FormatStackTrace(GetStackTrace(skipFrames + 1)));
+                unhandledException.SetStackTrace(GetFormattedStacktrace(skipFrames + 1));
             }
         }
 
         private static string GetStackTrace(int skipFrames)
         {
             return new System.Diagnostics.StackTrace(skipFrames + 1, true).ToString();
+        }
+
+        private static string GetFormattedStacktrace(int skipFrames)
+        {
+            return FormatStackTrace(GetStackTrace(skipFrames + 1));
         }
 
         private static System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(128);
@@ -458,13 +500,9 @@ namespace Proto.Promises
             }
 
             // Validate returned promise as not disposed.
-            try
+            if (IsDisposed(other._rejectedOrCanceledValue))
             {
-                ValidateOperation(other);
-            }
-            catch (ObjectDisposedException e)
-            {
-                throw new InvalidReturnException("A disposed promise was returned.", innerException: e);
+                throw new InvalidReturnException("A disposed promise was returned.");
             }
 
             // A promise cannot wait on itself.
@@ -501,7 +539,7 @@ namespace Proto.Promises
             }
         }
 
-        static protected void ValidateProgressValue(float value)
+        protected static void ValidateProgressValue(float value, int skipFrames)
         {
             const string argName = "progress";
             if (value < 0f || value > 1f)
@@ -510,38 +548,54 @@ namespace Proto.Promises
             }
         }
 
-        // TODO: skipFrames
-        static protected void ValidateNotDisposed(Internal.IValueContainer valueContainer, string message)
+        private static bool IsDisposed(Internal.IValueContainer valueContainer)
         {
-            if (ReferenceEquals(valueContainer, Internal.DisposedChecker.instance))
+            return ReferenceEquals(valueContainer, Internal.DisposedChecker.instance);
+        }
+
+        static protected void ValidateNotDisposed(Internal.IValueContainer valueContainer, string message, int skipFrames)
+        {
+            if (IsDisposed(valueContainer))
             {
-                throw new ObjectDisposedException(message, default(Exception));
+                throw new PromiseDisposedException(message, GetFormattedStacktrace(skipFrames + 1));
             }
         }
 
-        // TODO: skipFrames
-        static partial void ValidateOperation(Promise promise)
+        static partial void ValidatePotentialOperation(Internal.IValueContainer valueContainer, int skipFrames)
+        {
+            ValidateNotDisposed(valueContainer, "You should never store IPotentialCancelations.", skipFrames + 1);
+        }
+
+        static partial void ValidateOperation(Promise promise, int skipFrames)
         {
             ValidateNotDisposed(promise._rejectedOrCanceledValue, "Always nullify your references when you are finished with them!" +
-                    " Call Retain() if you want to perform operations after the promise has finished. Remember to call Release() when you are finished with it!");
+                    " Call Retain() if you want to perform operations after the promise has finished. Remember to call Release() when you are finished with it!", skipFrames + 1);
         }
 
-        static partial void ValidateProgress(float progress)
+        static partial void ValidateProgress(float progress, int skipFrames)
         {
-            ValidateProgressValue(progress);
+            ValidateProgressValue(progress, skipFrames + 1);
         }
 
-        static protected void ValidateArg(Delegate del, string argName)
+        static protected void ValidateArg(Delegate del, string argName, int skipFrames)
         {
             if (del == null)
             {
-                throw new ArgumentNullException(argName);
+                throw new ElementNullException(argName, null, GetFormattedStacktrace(skipFrames + 1));
             }
         }
 
-        static partial void ValidateArgument(Delegate del, string argName)
+        static partial void ValidateArgument(Delegate del, string argName, int skipFrames)
         {
-            ValidateArg(del, argName);
+            ValidateArg(del, argName, skipFrames + 1);
+        }
+
+        static partial void ValidateNotNull(Promise promise, string argName, string message, int skipFrames)
+        {
+            if (promise == null)
+            {
+                throw new ElementNullException(argName, message, GetFormattedStacktrace(skipFrames + 1));
+            }
         }
 
         public override string ToString()
@@ -690,6 +744,11 @@ namespace Proto.Promises
             }
         }
 #else
+        private static string GetFormattedStacktrace(int skipFrames)
+        {
+            return null;
+        }
+
         private void SetDisposed()
         {
             // Allow GC to clean up the object if necessary.
@@ -704,7 +763,7 @@ namespace Proto.Promises
 
 
         // Calls to this get compiled away when CANCEL is defined.
-        static partial void ValidateCancel();
+        static partial void ValidateCancel(int skipFrames);
 
         static partial void AddToCancelQueue(Internal.ITreeHandleable cancelation);
         static partial void AddToCancelQueueRisky(Internal.ITreeHandleable cancelation);
@@ -769,18 +828,6 @@ namespace Proto.Promises
             {
 #if DEBUG
                 string Stacktrace { get; set; }
-#endif
-            }
-
-            partial class PotentialCancelation
-            {
-#if DEBUG
-#pragma warning disable RECS0146 // Member hides static member from outer class
-                partial void ValidateOperation()
-#pragma warning restore RECS0146 // Member hides static member from outer class
-                {
-                    ValidateNotDisposed(cancelValue, "Always nullify your references when you are finished with them!");
-                }
 #endif
             }
 
@@ -990,8 +1037,8 @@ namespace Proto.Promises
 
         protected void ProgressInternal(Action<float> onProgress, int skipFrames)
         {
-            ValidateOperation(this);
-            ValidateArgument(onProgress, "onProgress");
+            ValidateOperation(this, skipFrames + 1);
+            ValidateArgument(onProgress, "onProgress", skipFrames + 1);
 
             if ((byte) _state > 1) // Same as if ( _state == State.Rejected || _state == State.Canceled)
             {
@@ -1220,7 +1267,7 @@ namespace Proto.Promises
                 {
                     var handler = _pool.IsNotEmpty ? (ResolvedProgressHandler) _pool.Pop() : new ResolvedProgressHandler();
                     handler._onProgress = onProgress;
-                    SetCreatedStackTrace(handler, skipFrames + 1);
+                    SetCreatedStacktrace(handler, skipFrames + 1);
                     return handler;
                 }
 
@@ -1240,7 +1287,7 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                        SetStackTraceFromCreated(this, unhandledException);
+                        SetStacktraceFromCreated(this, unhandledException);
                         AddRejectionToUnhandledStack(unhandledException);
                     }
                 }
@@ -1298,7 +1345,7 @@ namespace Proto.Promises
                     progress._onProgress = onProgress;
                     progress._owner = owner;
                     progress._current = default(UnsignedFixed32);
-                    SetCreatedStackTrace(progress, skipFrames + 1);
+                    SetCreatedStacktrace(progress, skipFrames + 1);
                     return progress;
                 }
 
@@ -1311,7 +1358,7 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                        SetStackTraceFromCreated(this, unhandledException);
+                        SetStacktraceFromCreated(this, unhandledException);
                         AddRejectionToUnhandledStack(unhandledException);
                     }
                 }
@@ -2392,7 +2439,7 @@ namespace Proto.Promises
             catch (Exception e)
             {
                 var ex = Internal.UnhandledExceptionException.GetOrCreate(e);
-                SetStackTraceFromCreated(this, ex);
+                SetStacktraceFromCreated(this, ex);
 #if CANCEL
                 if (_state == State.Canceled)
                 {
@@ -2450,24 +2497,24 @@ namespace Proto.Promises
     partial class Promise<T>
     {
         // Calls to these get compiled away in RELEASE mode
-        static partial void ValidateOperation(Promise<T> promise);
-        static partial void ValidateArgument(Delegate del, string argName);
-        static partial void ValidateProgress(float progress);
+        static partial void ValidateOperation(Promise<T> promise, int skipFrames);
+        static partial void ValidateArgument(Delegate del, string argName, int skipFrames);
+        static partial void ValidateProgress(float progress, int skipFrames);
 #if DEBUG
-        static partial void ValidateProgress(float progress)
+        static partial void ValidateProgress(float progress, int skipFrames)
         {
-            ValidateProgressValue(progress);
+            ValidateProgressValue(progress, skipFrames + 1);
         }
 
-        static partial void ValidateOperation(Promise<T> promise)
+        static partial void ValidateOperation(Promise<T> promise, int skipFrames)
         {
             ValidateNotDisposed(promise._rejectedOrCanceledValue, "Always nullify your references when you are finished with them!" +
-                    " Call Retain() if you want to perform operations after the promise has finished. Remember to call Release() when you are finished with it!");
+                    " Call Retain() if you want to perform operations after the promise has finished. Remember to call Release() when you are finished with it!", skipFrames + 1);
         }
 
-        static partial void ValidateArgument(Delegate del, string argName)
+        static partial void ValidateArgument(Delegate del, string argName, int skipFrames)
         {
-            ValidateArg(del, argName);
+            ValidateArg(del, argName, skipFrames + 1);
         }
 
         public override string ToString()
@@ -2553,7 +2600,7 @@ namespace Proto.Promises
 #endif
             }
 
-            partial class CancelDelegate0 : IStacktraceable
+            partial class CancelDelegateAny : IStacktraceable
             {
 #if DEBUG
                 string IStacktraceable.Stacktrace { get; set; }

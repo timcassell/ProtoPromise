@@ -287,48 +287,91 @@ namespace System
 
 namespace Proto.Promises
 {
-	public interface ICancelable
-	{
-		void Cancel();
-	}
+    public interface IPromiseYielder
+    {
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that resolves after 1 frame.
+        /// </summary>
+        Promise Yield();
 
-	public interface ICancelable<T>
+        /// <summary>
+        /// Returns a <see cref="Promise{TYieldInstruction}"/> that resolves with the <paramref name="yieldInstruction"/> after the <paramref name="yieldInstruction"/> has completed.
+        /// </summary>
+        /// <param name="yieldInstruction">Yield instruction.</param>
+        /// <typeparam name="TYieldInstruction">The type of yieldInstruction.</typeparam>
+        Promise<TYieldInstruction> Yield<TYieldInstruction>(TYieldInstruction yieldInstruction);
+    }
+
+    public interface IValueConverter
+    {
+        bool TryConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer, out TConvert converted);
+    }
+
+    public interface IValueContainer<T>
+    {
+        T Value { get; }
+    }
+
+    public interface ICancelable
 	{
-		void Cancel(T reason);
+        /// <summary>
+        /// Cancel this instance without a reason.
+        /// </summary>
+		void Cancel();
 	}
 
 	public interface ICancelableAny : ICancelable
 	{
+        /// <summary>
+        /// Cancel this instance with the specified reason.
+        /// </summary>
 		void Cancel<TCancel>(TCancel reason);
 	}
 
 	public interface IRetainable
 	{
+        /// <summary>
+        /// Retain this instance.
+        /// <para/>This should always be paired with a call to <see cref="Release"/>
+        /// </summary>
 		void Retain();
+        /// <summary>
+        /// Release this instance.
+        /// <para/>This should always be paired with a call to <see cref="Retain"/>
+        /// </summary>
 		void Release();
     }
 
+    /// <summary>
+    /// Potential cancelation interface used to subscribe multiple cancelation callbacks accepting different types. Instances of this interface should never be stored.
+    /// </summary>
     public interface IPotentialCancelation
     {
-        IPotentialCancelation CatchCancelation(Action onCanceled);
+        /// <summary>
+        /// <paramref name="onCanceled"/> will be invoked if this instance is canceled for any or no reason.
+        /// </summary>
+        void CatchCancelation(Action onCanceled);
+        /// <summary>
+        /// <paramref name="onCanceled"/> will be invoked if this instance is canceled with a reason that is the same type or inherited type of <typeparamref name="TCancel"/>.
+        /// If this instance is canceled with a reason that is incompatible with <typeparamref name="TCancel"/>, then the returned object will be canceled with that same reason.
+        /// </summary>
         IPotentialCancelation CatchCancelation<TCancel>(Action<TCancel> onCanceled);
     }
 
 
     partial class Promise
 	{
-        public sealed class YieldInstruction : UnityEngine.CustomYieldInstruction, Internal.ITreeHandleable, IDisposable
+        /// <summary>
+        /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise"/> it came from is complete.
+        /// An instance of this should be disposed when you are finished with it.
+        /// </summary>
+        public abstract class YieldInstruction : UnityEngine.CustomYieldInstruction, IDisposable
         {
-            Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
-
-            private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
-            
-            static YieldInstruction()
-            {
-                Internal.OnClearPool += () => _pool.Clear();
-            }
-
-            public State State { get; private set; }
+            /// <summary>
+            /// The state of the <see cref="Promise"/> this came from.
+            /// </summary>
+            /// <value>The state.</value>
+            public State State { get; protected set; }
 
             public override bool keepWaiting
             {
@@ -336,13 +379,6 @@ namespace Proto.Promises
                 {
                     return State == State.Pending;
                 }
-            }
-
-            private YieldInstruction() { }
-
-            public static YieldInstruction GetOrCreate()
-            {
-                return _pool.IsNotEmpty ? (YieldInstruction) _pool.Pop() : new YieldInstruction();
             }
 
             /// <summary>
@@ -355,7 +391,28 @@ namespace Proto.Promises
             /// <see cref="Dispose"/>, you must release all references to the
             /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/> so the garbage collector can reclaim the memory
             /// that the <see cref="T:ProtoPromise.Promise.YieldInstruction"/> was occupying.</remarks>
-            public void Dispose()
+            public abstract void Dispose();
+        }
+
+        private sealed class InternalYieldInstruction : YieldInstruction, Internal.ITreeHandleable
+        {
+            Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
+
+            private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+            
+            static InternalYieldInstruction()
+            {
+                Internal.OnClearPool += () => _pool.Clear();
+            }
+
+            private InternalYieldInstruction() { }
+
+            public static InternalYieldInstruction GetOrCreate()
+            {
+                return _pool.IsNotEmpty ? (InternalYieldInstruction) _pool.Pop() : new InternalYieldInstruction();
+            }
+
+            public override void Dispose()
             {
                 _pool.Push(this);
             }
@@ -374,6 +431,39 @@ namespace Proto.Promises
 
             void Internal.ITreeHandleable.AssignCancelValue(Internal.IValueContainer cancelValue) { }
             void Internal.ITreeHandleable.OnSubscribeToCanceled(Internal.IValueContainer cancelValue) { }
+        }
+
+        public class EmptyArgumentException : ArgumentException
+        {
+            public EmptyArgumentException(string paramName, string message, string stackTrace = null) : base(message, paramName)
+            {
+                _stackTrace = stackTrace;
+            }
+
+            private readonly string _stackTrace;
+            public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        }
+
+        public class ElementNullException : ArgumentNullException
+        {
+            public ElementNullException(string paramName, string message, string stackTrace = null) : base(paramName, message)
+            {
+                _stackTrace = stackTrace;
+            }
+
+            private readonly string _stackTrace;
+            public override string StackTrace { get { return _stackTrace; } }
+        }
+
+        public class PromiseDisposedException : ObjectDisposedException
+        {
+            public PromiseDisposedException(string message, string stackTrace = null) : base(message, default(Exception))
+            {
+                _stackTrace = stackTrace;
+            }
+
+            private readonly string _stackTrace;
+            public override string StackTrace { get { return _stackTrace; } }
         }
 
         public class InvalidReturnException : InvalidOperationException
@@ -395,13 +485,7 @@ namespace Proto.Promises
             public abstract object GetValue();
 
 			protected string _stackTrace;
-			public override sealed string StackTrace
-			{
-				get
-				{
-					return _stackTrace;
-				}
-			}
+            public override string StackTrace { get { return _stackTrace; } }
 		}
 	}
 
@@ -468,6 +552,16 @@ namespace Proto.Promises
         {
             item.Next = null;
             _first = item;
+        }
+
+        public void PushAndClear(ref ValueLinkedQueue<T> queue)
+        {
+            if (queue.IsNotEmpty)
+            {
+                queue.PeekLast().Next = _first;
+                _first = queue.Peek();
+                queue.Clear();
+            }
         }
 
         public void Clear()
@@ -613,7 +707,12 @@ namespace Proto.Promises
         public T Peek()
 		{
 			return _first;
-		}
+        }
+
+        public T PeekLast()
+        {
+            return _last;
+        }
 
         public Enumerator<T> GetEnumerator()
         {
@@ -631,7 +730,10 @@ namespace Proto.Promises
         }
     }
 
-    public sealed class ReusableValueContainer<T> : IDisposable, ILinked<ReusableValueContainer<T>>
+    /// <summary>
+    /// Reusable value container. Use <see cref="New(T)"/> to reuse a pooled instance or create a new instance, use <see cref="Dispose"/> to add the instance back to the pool.
+    /// </summary>
+    public sealed class ReusableValueContainer<T> : IValueContainer<T>, IDisposable, ILinked<ReusableValueContainer<T>>
     {
 #pragma warning disable RECS0108 // Warns about static fields in generic types
         private static ValueLinkedStack<ReusableValueContainer<T>> _pool;
@@ -644,7 +746,7 @@ namespace Proto.Promises
 
         ReusableValueContainer<T> ILinked<ReusableValueContainer<T>>.Next { get; set; }
 
-        public T value;
+        public T Value { get; set; }
 
         /// <summary>
         /// Returns a new reusable value container containing <paramref name="value"/>.
@@ -654,7 +756,7 @@ namespace Proto.Promises
         public static ReusableValueContainer<T> New(T value)
         {
             ReusableValueContainer<T> node = _pool.IsNotEmpty ? _pool.Pop() : new ReusableValueContainer<T>();
-            node.value = value;
+            node.Value = value;
             return node;
         }
 
@@ -670,7 +772,7 @@ namespace Proto.Promises
         /// the <see cref="T:ProtoPromise.ReusableValueContainer`1"/> was occupying.</remarks>
         public void Dispose()
         {
-            value = default(T);
+            Value = default(T);
             _pool.Push(this);
         }
     }
@@ -695,7 +797,7 @@ namespace Proto.Promises
             {
                 get
                 {
-                    return enumerator.Current.value;
+                    return enumerator.Current.Value;
                 }
             }
 
@@ -743,14 +845,14 @@ namespace Proto.Promises
         public T Pop()
         {
             var node = _stack.Pop();
-            T item = node.value;
+            T item = node.Value;
             node.Dispose();
             return item;
         }
 
         public T Peek()
         {
-            return _stack.Peek().value;
+            return _stack.Peek().Value;
         }
 
         public Enumerator GetEnumerator()
@@ -789,7 +891,7 @@ namespace Proto.Promises
             {
                 get
                 {
-                    return enumerator.Current.value;
+                    return enumerator.Current.Value;
                 }
             }
 
@@ -864,7 +966,7 @@ namespace Proto.Promises
         public T Dequeue()
         {
             var node = _queue.Dequeue();
-            T item = node.value;
+            T item = node.Value;
             node.Dispose();
             return item;
         }
@@ -876,14 +978,14 @@ namespace Proto.Promises
         public T DequeueRisky()
         {
             var node = _queue.DequeueRisky();
-            T item = node.value;
+            T item = node.Value;
             node.Dispose();
             return item;
         }
 
         public T Peek()
         {
-            return _queue.Peek().value;
+            return _queue.Peek().Value;
         }
 
         public Enumerator GetEnumerator()
@@ -935,6 +1037,14 @@ namespace Proto.Promises
 #pragma warning disable RECS0083 // Shows NotImplementedException throws in the quick task bar
             throw new NotImplementedException();
 #pragma warning restore RECS0083 // Shows NotImplementedException throws in the quick task bar
+        }
+    }
+
+    public static class ArrayExtensions
+    {
+        public static ArrayEnumerator<T> ToGenericEnumerator<T>(this T[] array)
+        {
+            return new ArrayEnumerator<T>(array);
         }
     }
 }

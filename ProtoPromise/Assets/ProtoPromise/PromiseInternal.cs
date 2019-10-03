@@ -29,7 +29,7 @@ namespace Proto.Promises
             _dontPool = Config.ObjectPooling != PoolType.All;
             _wasWaitedOn = false;
             SetNotDisposed(ref _rejectedOrCanceledValue);
-            SetCreatedStackTrace(this, skipFrames + 1);
+            SetCreatedStacktrace(this, skipFrames + 1);
         }
 
         protected virtual void Dispose()
@@ -56,7 +56,7 @@ namespace Proto.Promises
         protected void Reject(int skipFrames)
         {
             Internal.UnhandledExceptionInternal rejectValue = Internal.UnhandledExceptionVoid.GetOrCreate();
-            SetRejectStackTrace(rejectValue, skipFrames + 1);
+            SetRejectStacktrace(rejectValue, skipFrames + 1);
             RejectWithStateCheck(rejectValue);
         }
 
@@ -73,7 +73,7 @@ namespace Proto.Promises
             {
                 rejectValue = Internal.UnhandledException<TReject>.GetOrCreate(reason);
             }
-            SetRejectStackTrace(rejectValue, skipFrames + 1);
+            SetRejectStacktrace(rejectValue, skipFrames + 1);
             RejectWithStateCheck(rejectValue);
         }
 
@@ -1587,15 +1587,15 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class PromiseResolveRejectDeferred : PromiseWaitDeferred<PromiseResolveRejectDeferred>
+            public sealed class PromiseResolveRejectDeferred0 : PromiseWaitDeferred<PromiseResolveRejectDeferred0>
             {
                 IDelegate<Action<Deferred>> onResolved, onRejected;
 
-                private PromiseResolveRejectDeferred() { }
+                private PromiseResolveRejectDeferred0() { }
 
-                public static PromiseResolveRejectDeferred GetOrCreate(IDelegate<Action<Deferred>> onResolved, IDelegate<Action<Deferred>> onRejected, int skipFrames)
+                public static PromiseResolveRejectDeferred0 GetOrCreate(IDelegate<Action<Deferred>> onResolved, IDelegate<Action<Deferred>> onRejected, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseResolveRejectDeferred)_pool.Pop() : new PromiseResolveRejectDeferred();
+                    var promise = _pool.IsNotEmpty ? (PromiseResolveRejectDeferred0)_pool.Pop() : new PromiseResolveRejectDeferred0();
                     promise.onResolved = onResolved;
                     promise.onRejected = onRejected;
                     promise.Reset(skipFrames + 1);
@@ -1970,7 +1970,7 @@ namespace Proto.Promises
                 {
                     var del = _pool.IsNotEmpty ? (FinallyDelegate)_pool.Pop() : new FinallyDelegate();
                     del._onFinally = onFinally;
-                    SetCreatedStackTrace(del, skipFrames + 1);
+                    SetCreatedStacktrace(del, skipFrames + 1);
                     return del;
                 }
 
@@ -1985,7 +1985,7 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                        SetStackTraceFromCreated(this, unhandledException);
+                        SetStacktraceFromCreated(this, unhandledException);
                         AddRejectionToUnhandledStack(unhandledException);
                     }
                 }
@@ -2014,28 +2014,145 @@ namespace Proto.Promises
             }
 
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
-            public abstract partial class PotentialCancelation : ITreeHandleable, IPotentialCancelation
+            public abstract class PotentialCancelation : ITreeHandleable
 #pragma warning restore RECS0001 // Class is declared partial but has only one part
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
-                private ValueLinkedQueue<ITreeHandleable> _nextBranches;
-
-                protected IValueContainer cancelValue;
-
-                void ITreeHandleable.AssignCancelValue(IValueContainer cancelValue)
-                {
-                    this.cancelValue = cancelValue;
-                }
+                public virtual void AssignCancelValue(IValueContainer cancelValue) { }
 
                 void ITreeHandleable.Handle(Promise feed)
                 {
                     Dispose();
+                    DisposeBranches();
                 }
 
-                protected void HandleBranches(IValueContainer nextValue)
+                protected virtual void TakeBranches(ref ValueLinkedStack<ITreeHandleable> disposeStack) { }
+
+                public abstract void Cancel();
+
+                protected abstract void Dispose();
+
+                protected void DisposeBranches()
                 {
-                    if (_nextBranches.IsNotEmpty)
+                    var branches = new ValueLinkedStack<ITreeHandleable>();
+                    TakeBranches(ref branches);
+                    while (branches.IsNotEmpty)
+                    {
+                        var current = (PotentialCancelation) branches.Pop();
+                        current.Dispose();
+                        current.TakeBranches(ref branches);
+                    }
+                }
+
+                void ITreeHandleable.OnSubscribeToCanceled(IValueContainer cancelValue) { throw new InvalidOperationException(); }
+            }
+
+            public sealed partial class CancelDelegateAny : PotentialCancelation
+            {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                private Action _onCanceled;
+
+                private CancelDelegateAny() { }
+
+                static CancelDelegateAny()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                public static CancelDelegateAny GetOrCreate(Action onCanceled, int skipFrames)
+                {
+                    var del = _pool.IsNotEmpty ? (CancelDelegateAny)_pool.Pop() : new CancelDelegateAny();
+                    del._onCanceled = onCanceled;
+                    SetCreatedStacktrace(del, skipFrames + 1);
+                    return del;
+                }
+
+                protected override void Dispose()
+                {
+                    _onCanceled = null;
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
+                public override void Cancel()
+                {
+                    var callback = _onCanceled;
+                    Dispose();
+                    DisposeBranches();
+                    try
+                    {
+                        callback.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
+                        SetStacktraceFromCreated(this, unhandledException);
+                        AddRejectionToUnhandledStack(unhandledException);
+                    }
+                }
+            }
+
+            public sealed partial class CancelDelegate<T> : PotentialCancelation, IPotentialCancelation
+            {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                private ValueLinkedQueue<ITreeHandleable> _nextBranches;
+
+                private IValueContainer _cancelValue;
+
+                private Action<T> _onCanceled;
+
+                private CancelDelegate() { }
+
+                static CancelDelegate()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                public static CancelDelegate<T> GetOrCreate(Action<T> onCanceled, int skipFrames)
+                {
+                    var del = _pool.IsNotEmpty ? (CancelDelegate<T>)_pool.Pop() : new CancelDelegate<T>();
+                    del._onCanceled = onCanceled;
+                    SetNotDisposed(ref del._cancelValue);
+                    SetCreatedStacktrace(del, skipFrames + 1);
+                    return del;
+                }
+
+                protected override void Dispose()
+                {
+                    SetDisposed(ref _cancelValue);
+                    _onCanceled = null;
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
+                public override void Cancel()
+                {
+                    var callback = _onCanceled;
+                    var nextValue = _cancelValue;
+                    Dispose();
+                    T arg;
+                    if (_cancelValue.TryGetValueAs(out arg))
+                    {
+                        DisposeBranches();
+                        try
+                        {
+                            callback.Invoke(arg);
+                        }
+                        catch (Exception e)
+                        {
+                            UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
+                            SetStacktraceFromCreated(this, unhandledException);
+                            AddRejectionToUnhandledStack(unhandledException);
+                        }
+                    }
+                    else if (_nextBranches.IsNotEmpty)
                     {
                         // Add safe for first item.
                         var next = _nextBranches.DequeueRisky();
@@ -2053,150 +2170,24 @@ namespace Proto.Promises
                     }
                 }
 
-                protected virtual void Dispose()
+                void IPotentialCancelation.CatchCancelation(Action onCanceled)
                 {
-                    SetDisposed(ref cancelValue);
-                }
+                    ValidatePotentialOperation(_cancelValue, 1);
+                    ValidateArgument(onCanceled, "onCanceled", 1);
 
-#pragma warning disable RECS0146 // Member hides static member from outer class
-                partial void ValidateOperation();
-#pragma warning restore RECS0146 // Member hides static member from outer class
-
-                public abstract void Cancel();
-
-                IPotentialCancelation IPotentialCancelation.CatchCancelation(Action onCanceled)
-                {
-                    ValidateOperation();
-                    ValidateArgument(onCanceled, "onCanceled");
-
-                    var cancelation = CancelDelegate0.GetOrCreate(onCanceled, 1);
-                    _nextBranches.Enqueue(cancelation);
-                    return cancelation;
+                    _nextBranches.Enqueue(CancelDelegateAny.GetOrCreate(onCanceled, 1));
                 }
 
                 IPotentialCancelation IPotentialCancelation.CatchCancelation<TCancel>(Action<TCancel> onCanceled)
                 {
-                    ValidateOperation();
-                    ValidateArgument(onCanceled, "onCanceled");
+                    ValidatePotentialOperation(_cancelValue, 1);
+                    ValidateArgument(onCanceled, "onCanceled", 1);
 
                     var cancelation = CancelDelegate<TCancel>.GetOrCreate(onCanceled, 1);
                     _nextBranches.Enqueue(cancelation);
                     return cancelation;
                 }
 
-                void ITreeHandleable.OnSubscribeToCanceled(IValueContainer cancelValue) { throw new InvalidOperationException(); }
-            }
-
-            public sealed partial class CancelDelegate0 : PotentialCancelation, IPotentialCancelation
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                private Action _onCanceled;
-
-                private CancelDelegate0() { }
-
-                static CancelDelegate0()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                public static CancelDelegate0 GetOrCreate(Action onCanceled, int skipFrames)
-                {
-                    var del = _pool.IsNotEmpty ? (CancelDelegate0)_pool.Pop() : new CancelDelegate0();
-                    del._onCanceled = onCanceled;
-                    SetNotDisposed(ref del.cancelValue);
-                    SetCreatedStackTrace(del, skipFrames + 1);
-                    return del;
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    _onCanceled = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                public override void Cancel()
-                {
-                    var callback = _onCanceled;
-                    Dispose();
-                    try
-                    {
-                        if (cancelValue != null)
-                        {
-                            callback.Invoke();
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                        SetStackTraceFromCreated(this, unhandledException);
-                        AddRejectionToUnhandledStack(unhandledException);
-                    }
-                    HandleBranches(null);
-                }
-            }
-
-            public sealed partial class CancelDelegate<T> : PotentialCancelation, IPotentialCancelation
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                private Action<T> _onCanceled;
-
-                private CancelDelegate() { }
-
-                static CancelDelegate()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                public static CancelDelegate<T> GetOrCreate(Action<T> onCanceled, int skipFrames)
-                {
-                    var del = _pool.IsNotEmpty ? (CancelDelegate<T>)_pool.Pop() : new CancelDelegate<T>();
-                    del._onCanceled = onCanceled;
-                    SetNotDisposed(ref del.cancelValue);
-                    SetCreatedStackTrace(del, skipFrames + 1);
-                    return del;
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    _onCanceled = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                public override void Cancel()
-                {
-                    var callback = _onCanceled;
-                    var nextValue = cancelValue;
-                    Dispose();
-                    T arg;
-                    if (cancelValue != null && cancelValue.TryGetValueAs(out arg))
-                    {
-                        try
-                        {
-                            callback.Invoke(arg);
-                        }
-                        catch (Exception e)
-                        {
-                            UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                            SetStackTraceFromCreated(this, unhandledException);
-                            AddRejectionToUnhandledStack(unhandledException);
-                        }
-                        HandleBranches(nextValue);
-                    }
-                    else
-                    {
-                        HandleBranches(null);
-                    }
-                }
             }
 
             public sealed class DelegateVoidVoid0 : IDelegate, ILinked<DelegateVoidVoid0>
@@ -2618,7 +2609,7 @@ namespace Proto.Promises
             //}
 #endregion
 
-            public partial interface ITreeHandleable : ILinked<ITreeHandleable>
+            public interface ITreeHandleable : ILinked<ITreeHandleable>
             {
                 void Handle(Promise feed);
                 void Cancel();
@@ -2733,7 +2724,7 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class UnhandledException<T> : UnhandledExceptionInternal
+            public sealed class UnhandledException<T> : UnhandledExceptionInternal, IValueContainer<T>
             {
                 public T Value { get; private set; }
 
@@ -2762,25 +2753,7 @@ namespace Proto.Promises
 
                 public override bool TryGetValueAs<U>(out U value)
                 {
-                    // This avoids boxing value types.
-#if CSHARP_7_OR_LATER
-                    if (this is UnhandledException<U> casted)
-#else
-                    var casted = this as UnhandledException<U>;
-                    if (casted != null)
-#endif
-                    {
-                        value = casted.Value;
-                        return true;
-                    }
-                    // Can it be up-casted or down-casted, null or not?
-                    if (typeof(U).IsAssignableFrom(typeof(T)) || Value is U)
-                    {
-                        value = (U)(object)Value;
-                        return true;
-                    }
-                    value = default(U);
-                    return false;
+                    return Config.ValueConverter.TryConvert(this, out value);
                 }
 
                 public override string Message
@@ -2890,7 +2863,7 @@ namespace Proto.Promises
                 public void Release() { }
             }
 
-            public sealed class CancelValue<T> : IValueContainer, ILinked<CancelValue<T>>
+            public sealed class CancelValue<T> : IValueContainer, IValueContainer<T>, ILinked<CancelValue<T>>
             {
                 CancelValue<T> ILinked<CancelValue<T>>.Next { get; set; }
 
@@ -2916,25 +2889,7 @@ namespace Proto.Promises
 
                 public bool TryGetValueAs<U>(out U value)
                 {
-                    // This avoids boxing value types.
-#if CSHARP_7_OR_LATER
-                    if (this is CancelValue<U> casted)
-#else
-                    var casted = this as CancelValue<U>;
-                    if (casted != null)
-#endif
-                    {
-                        value = casted.Value;
-                        return true;
-                    }
-                    // Can it be up-casted or down-casted, null or not?
-                    if (typeof(U).IsAssignableFrom(typeof(T)) || Value is U)
-                    {
-                        value = (U)(object)Value;
-                        return true;
-                    }
-                    value = default(U);
-                    return false;
+                    return Config.ValueConverter.TryConvert(this, out value);
                 }
 
                 public bool ContainsType<U>()
@@ -3058,14 +3013,16 @@ namespace Proto.Promises
                     var promise = _pool.IsNotEmpty ? (AllPromise0) _pool.Pop() : new AllPromise0();
 
                     var target = promises.Current;
-                    ValidateOperation(target);
+                    ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                    ValidateOperation(target, skipFrames + 1);
                     int promiseIndex = 0;
                     // Hook up pass throughs
                     var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
-                        ValidateOperation(target);
+                        ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                        ValidateOperation(target, skipFrames + 1);
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }
                     promise.passThroughs = passThroughs;
@@ -3178,7 +3135,8 @@ namespace Proto.Promises
                     promise._value = valueContainer;
 
                     var target = promises.Current;
-                    ValidateOperation(target);
+                    ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                    ValidateOperation(target, skipFrames + 1);
                     int promiseIndex = 0;
                     // Hook up pass throughs and make sure the list has space for the values.
                     valueContainer.Add(default(T));
@@ -3186,7 +3144,8 @@ namespace Proto.Promises
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
-                        ValidateOperation(target);
+                        ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                        ValidateOperation(target, skipFrames + 1);
                         valueContainer.Add(default(T));
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }
@@ -3295,22 +3254,22 @@ namespace Proto.Promises
                 {
                     if (!promises.MoveNext())
                     {
-#pragma warning disable RECS0163 // Suggest the usage of the nameof operator
-                        throw new ArgumentException("Cannot race 0 promises.", "promises");
-#pragma warning restore RECS0163 // Suggest the usage of the nameof operator
+                        throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", GetFormattedStacktrace(skipFrames + 1));
                     }
 
                     var promise = _pool.IsNotEmpty ? (RacePromise0) _pool.Pop() : new RacePromise0();
 
                     var target = promises.Current;
-                    ValidateOperation(target);
+                    ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                    ValidateOperation(target, skipFrames + 1);
                     int promiseIndex = 0;
                     // Hook up pass throughs
                     var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
-                        ValidateOperation(target);
+                        ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                        ValidateOperation(target, skipFrames + 1);
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }
                     promise.passThroughs = passThroughs;
@@ -3404,22 +3363,22 @@ namespace Proto.Promises
                 {
                     if (!promises.MoveNext())
                     {
-#pragma warning disable RECS0163 // Suggest the usage of the nameof operator
-                        throw new ArgumentException("Cannot race 0 promises.", "promises");
-#pragma warning restore RECS0163 // Suggest the usage of the nameof operator
+                        throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", GetFormattedStacktrace(skipFrames + 1));
                     }
 
                     var promise = _pool.IsNotEmpty ? (RacePromise<T>) _pool.Pop() : new RacePromise<T>();
 
                     var target = promises.Current;
-                    ValidateOperation(target);
+                    ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                    ValidateOperation(target, skipFrames + 1);
                     int promiseIndex = 0;
                     // Hook up pass throughs
                     var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
-                        ValidateOperation(target);
+                        ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                        ValidateOperation(target, skipFrames + 1);
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }
                     promise.passThroughs = passThroughs;
@@ -3548,22 +3507,22 @@ namespace Proto.Promises
                 {
                     if (!promises.MoveNext())
                     {
-#pragma warning disable RECS0163 // Suggest the usage of the nameof operator
-                        throw new ArgumentException("Cannot race 0 promises.", "promises");
-#pragma warning restore RECS0163 // Suggest the usage of the nameof operator
+                        throw new EmptyArgumentException("promises", "You must provide at least one element to First.", GetFormattedStacktrace(skipFrames + 1));
                     }
 
                     var promise = _pool.IsNotEmpty ? (FirstPromise0) _pool.Pop() : new FirstPromise0();
 
                     var target = promises.Current;
-                    ValidateOperation(target);
+                    ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                    ValidateOperation(target, skipFrames + 1);
                     int promiseIndex = 0;
                     // Hook up pass throughs
                     var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
-                        ValidateOperation(target);
+                        ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                        ValidateOperation(target, skipFrames + 1);
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }
                     promise.passThroughs = passThroughs;
@@ -3661,22 +3620,22 @@ namespace Proto.Promises
                 {
                     if (!promises.MoveNext())
                     {
-#pragma warning disable RECS0163 // Suggest the usage of the nameof operator
-                        throw new ArgumentException("Cannot race 0 promises.", "promises");
-#pragma warning restore RECS0163 // Suggest the usage of the nameof operator
+                        throw new EmptyArgumentException("promises", "You must provide at least one element to First.", GetFormattedStacktrace(skipFrames + 1));
                     }
 
                     var promise = _pool.IsNotEmpty ? (FirstPromise<T>) _pool.Pop() : new FirstPromise<T>();
 
                     var target = promises.Current;
-                    ValidateOperation(target);
+                    ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                    ValidateOperation(target, skipFrames + 1);
                     int promiseIndex = 0;
                     // Hook up pass throughs
                     var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
-                        ValidateOperation(target);
+                        ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                        ValidateOperation(target, skipFrames + 1);
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }
                     promise.passThroughs = passThroughs;
