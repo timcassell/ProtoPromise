@@ -68,6 +68,9 @@ namespace Proto.Promises
             All
         }
 
+        /// <summary>
+        /// Promise configuration. Configuration settings affect the global behaviour of promises.
+        /// </summary>
         public static class Config
         {
 #if PROGRESS
@@ -95,10 +98,18 @@ namespace Proto.Promises
             public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
 #endif
 
-            public static IValueConverter _valueConverter = new DefaultValueConverter();
+            private static IValueConverter _valueConverter = new DefaultValueConverter();
+            /// <summary>
+            /// Value converter used to determine if a reject or cancel reason is convertible for a catch delegate expecting a reason.
+            /// <para/>The default implementation uses <see cref="Type.IsAssignableFrom(Type)"/>.
+            /// </summary>
             public static IValueConverter ValueConverter { get { return _valueConverter; } set { _valueConverter = value; } }
 
             private static IPromiseYielder _yielder;
+            /// <summary>
+            /// Yielder used to wait for a yield instruction to complete. This is used for <see cref="Yield"/> and <see cref="Yield{TYieldInstruction}(TYieldInstruction)"/>.
+            /// <para/>The default implementation uses Unity's coroutines.
+            /// </summary>
             public static IPromiseYielder Yielder
             {
                 get
@@ -141,6 +152,12 @@ namespace Proto.Promises
                     converted = default(TConvert);
                     return false;
                 }
+
+                bool IValueConverter.CanConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer)
+                {
+                    // Can it be up-casted or down-casted, null or not?
+                    return typeof(TConvert).IsAssignableFrom(typeof(TOriginal)) || valueContainer.Value is TConvert;
+                }
             }
         }
 
@@ -154,6 +171,9 @@ namespace Proto.Promises
 #endif
             public abstract void ReportProgress(float progress);
 
+            /// <summary>
+            /// Cancels the promise and all promises that have been chained from it without a reason.
+            /// </summary>
 #if !CANCEL
             [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
 #endif
@@ -177,6 +197,9 @@ namespace Proto.Promises
                 promise.Cancel();
             }
 
+            /// <summary>
+            /// Cancels the promise and all promises that have been chained from it with the provided cancel reason.
+            /// </summary>
 #if !CANCEL
             [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
 #endif
@@ -201,63 +224,70 @@ namespace Proto.Promises
             }
         }
 
-#if CANCEL
-        public static Promise<T> Canceled<T, TCancel>(TCancel reason)
+        /// <summary>
+        /// Returns a new <see cref="Promise"/> that will be canceled without a reason.
+        /// </summary>
+#if !CANCEL
+        [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
+#endif
+        public static Promise Canceled()
         {
-            var promise = Internal.LitePromise<T>.GetOrCreate(1);
-            promise.Cancel(reason);
+            ValidateCancel(1);
+
+            var promise = Internal.LitePromise0.GetOrCreate(1);
+            promise.Cancel();
             return promise;
         }
 
+        /// <summary>
+        /// Returns a new <see cref="Promise"/> that will be canceled with <paramref name="reason"/>.
+        /// </summary>
+#if !CANCEL
+        [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
+#endif
         public static Promise Canceled<TCancel>(TCancel reason)
         {
+            ValidateCancel(1);
+
             var promise = Internal.LitePromise0.GetOrCreate(1);
             promise.Cancel(reason);
             return promise;
         }
 
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}"/> that will be canceled without a reason.
+        /// </summary>
+#if !CANCEL
+        [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
+#endif
         public static Promise<T> Canceled<T>()
         {
+            ValidateCancel(1);
+
             var promise = Internal.LitePromise<T>.GetOrCreate(1);
             promise.Cancel();
             return promise;
         }
 
-        public static Promise Canceled()
-        {
-            var promise = Internal.LitePromise0.GetOrCreate(1);
-            promise.Cancel();
-            return promise;
-        }
-#else
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}"/> that will be canceled with <paramref name="reason"/>.
+        /// </summary>
+#if !CANCEL
         [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
+#endif
         public static Promise<T> Canceled<T, TCancel>(TCancel reason)
         {
-            ThrowCancelException();
-            return null;
+            ValidateCancel(1);
+
+            var promise = Internal.LitePromise<T>.GetOrCreate(1);
+            promise.Cancel(reason);
+            return promise;
         }
 
-        [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
-        public static Promise Canceled<TCancel>(TCancel reason)
-        {
-            ThrowCancelException();
-            return null;
-        }
-
-        [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
-        public static Promise<T> Canceled<T>()
-        {
-            ThrowCancelException();
-            return null;
-        }
-
-        [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
-        public static Promise Canceled()
-        {
-            ThrowCancelException();
-            return null;
-        }
-
+        /// <summary>
+        /// Returns a new <see cref="Promise"/> that adopts the state of this. This is mostly useful for branches that you expect might be canceled, and you don't want all branches to be canceled.
+        /// </summary>
+#if !CANCEL
         [Obsolete("This is mostly useful for cancelations of branched promises. Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", false)]
 #endif
         public Promise ThenDuplicate()
@@ -269,6 +299,10 @@ namespace Proto.Promises
             return promise;
         }
 
+        /// <summary>
+        /// Add a progress listener. <paramref name="onProgress"/> will be invoked with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// Returns this.
+        /// </summary>
 #if !PROGRESS
         [Obsolete("Define PROGRESS in ProtoPromise/Config.cs to enable progress reports.", true)]
 #endif
@@ -282,7 +316,8 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// <paramref name="onCanceled"/> will be invoked if this instance is canceled for any or no reason.
+        /// Add a cancel callback.
+        /// <para/>If this instance is canceled for any or no reason, <paramref name="onCanceled"/> will be invoked.
         /// </summary>
 #if !CANCEL
         [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
@@ -297,8 +332,10 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// <paramref name="onCanceled"/> will be invoked if this instance is canceled with a reason that is the same type or inherited type of <typeparamref name="TCancel"/>.
-        /// If this instance is canceled with a reason that is incompatible with <typeparamref name="TCancel"/>, then the returned object will be canceled with that same reason.
+        /// Add a cancel callback. Returns a new <see cref="IPotentialCancelation"/> object.
+        /// <para/>If this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with that reason.
+        /// <para/>If this is canceled for any other reason or no reason, the new <see cref="IPotentialCancelation"/> will be canceled with the same reason.
+        /// <para/>NOTE: <see cref="IPotentialCancelation"/> objects should never be cached, they should only be used to add onCanceled callbacks.
         /// </summary>
 #if !CANCEL
         [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
@@ -315,7 +352,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Cancels this promise and all promises that have been chained from this.
+        /// Cancels this promise and all promises that have been chained from this without a reason.
         /// Does nothing if this promise isn't pending.
         /// </summary>
 #if !CANCEL
@@ -2537,6 +2574,9 @@ namespace Proto.Promises
         }
 #endif
 
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}"/> that adopts the state of this. This is mostly useful for branches that you expect might be canceled, and you don't want all branches to be canceled.
+        /// </summary>
 #if !CANCEL
         [Obsolete("This is mostly useful for cancelations of branched promises. Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", false)]
 #endif
@@ -2550,6 +2590,10 @@ namespace Proto.Promises
         // Calls to these get compiled away when PROGRESS is defined.
         static partial void ValidateProgress();
 #if PROGRESS
+        /// <summary>
+        /// Add a progress listener. <paramref name="onProgress"/> will be invoked with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// Returns this.
+        /// </summary>
         public new Promise<T> Progress(Action<float> onProgress)
         {
             ProgressInternal(onProgress, 1);

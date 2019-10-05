@@ -287,6 +287,50 @@ namespace System
 
 namespace Proto.Promises
 {
+    public class EmptyArgumentException : ArgumentException
+    {
+        public EmptyArgumentException(string paramName, string message, string stackTrace = null) : base(message, paramName)
+        {
+            _stackTrace = stackTrace;
+        }
+        
+        private readonly string _stackTrace;
+        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+    }
+    
+    public class ElementNullException : ArgumentNullException
+    {
+        public ElementNullException(string paramName, string message, string stackTrace = null) : base(paramName, message)
+        {
+            _stackTrace = stackTrace;
+        }
+        
+        private readonly string _stackTrace;
+        public override string StackTrace { get { return _stackTrace; } }
+    }
+    
+    public class PromiseDisposedException : ObjectDisposedException
+    {
+        public PromiseDisposedException(string message, string stackTrace = null) : base(message, default(Exception))
+        {
+            _stackTrace = stackTrace;
+        }
+        
+        private readonly string _stackTrace;
+        public override string StackTrace { get { return _stackTrace; } }
+    }
+    
+    public class InvalidReturnException : InvalidOperationException
+    {
+        public InvalidReturnException(string message, string stackTrace = null, Exception innerException = null) : base(message, innerException)
+        {
+            _stackTrace = stackTrace;
+        }
+        
+        private readonly string _stackTrace;
+        public override string StackTrace { get { return _stackTrace; } }
+    }
+
     public interface IPromiseYielder
     {
         /// <summary>
@@ -304,7 +348,14 @@ namespace Proto.Promises
 
     public interface IValueConverter
     {
+        /// <summary>
+        /// Tries to convert valueContainer.Value to <typeparamref name="TConvert"/>. Returns true if successful, false otherwise.
+        /// </summary>
         bool TryConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer, out TConvert converted);
+        /// <summary>
+        /// Returns true if valueContainer.Value can be converted to <typeparamref name="TConvert"/>, false otherwise.
+        /// </summary>
+        bool CanConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer);
     }
 
     public interface IValueContainer<T>
@@ -348,12 +399,15 @@ namespace Proto.Promises
     public interface IPotentialCancelation
     {
         /// <summary>
-        /// <paramref name="onCanceled"/> will be invoked if this instance is canceled for any or no reason.
+        /// Add a cancel callback.
+        /// <para/>If this instance is canceled for any or no reason, <paramref name="onCanceled"/> will be invoked.
         /// </summary>
         void CatchCancelation(Action onCanceled);
         /// <summary>
-        /// <paramref name="onCanceled"/> will be invoked if this instance is canceled with a reason that is the same type or inherited type of <typeparamref name="TCancel"/>.
-        /// If this instance is canceled with a reason that is incompatible with <typeparamref name="TCancel"/>, then the returned object will be canceled with that same reason.
+        /// Add a cancel callback. Returns a new <see cref="IPotentialCancelation"/> object.
+        /// <para/>If this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with that reason.
+        /// <para/>If this is canceled for any other reason or no reason, the new <see cref="IPotentialCancelation"/> will be canceled with the same reason.
+        /// <para/>NOTE: <see cref="IPotentialCancelation"/> objects should never be cached, they should only be used to add onCanceled callbacks.
         /// </summary>
         IPotentialCancelation CatchCancelation<TCancel>(Action<TCancel> onCanceled);
     }
@@ -432,50 +486,6 @@ namespace Proto.Promises
             void Internal.ITreeHandleable.AssignCancelValue(Internal.IValueContainer cancelValue) { }
             void Internal.ITreeHandleable.OnSubscribeToCanceled(Internal.IValueContainer cancelValue) { }
         }
-
-        public class EmptyArgumentException : ArgumentException
-        {
-            public EmptyArgumentException(string paramName, string message, string stackTrace = null) : base(message, paramName)
-            {
-                _stackTrace = stackTrace;
-            }
-
-            private readonly string _stackTrace;
-            public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
-        }
-
-        public class ElementNullException : ArgumentNullException
-        {
-            public ElementNullException(string paramName, string message, string stackTrace = null) : base(paramName, message)
-            {
-                _stackTrace = stackTrace;
-            }
-
-            private readonly string _stackTrace;
-            public override string StackTrace { get { return _stackTrace; } }
-        }
-
-        public class PromiseDisposedException : ObjectDisposedException
-        {
-            public PromiseDisposedException(string message, string stackTrace = null) : base(message, default(Exception))
-            {
-                _stackTrace = stackTrace;
-            }
-
-            private readonly string _stackTrace;
-            public override string StackTrace { get { return _stackTrace; } }
-        }
-
-        public class InvalidReturnException : InvalidOperationException
-		{
-			public InvalidReturnException(string message, string stackTrace = null, Exception innerException = null) : base(message, innerException)
-			{
-				_stackTrace = stackTrace;
-			}
-
-			private readonly string _stackTrace;
-			public override string StackTrace { get { return _stackTrace; } }
-		}
 
 		public abstract class UnhandledException : Exception
         {
@@ -1004,6 +1014,9 @@ namespace Proto.Promises
         }
     }
 
+    /// <summary>
+    /// Generic Array enumerator. Use this instead of the default <see cref="Array.GetEnumerator"/> for passing it around as an <see cref="IEnumerator{T}"/>.
+    /// </summary>
     public struct ArrayEnumerator<T> : IEnumerator<T>
     {
         private T[] collection;
@@ -1042,6 +1055,9 @@ namespace Proto.Promises
 
     public static class ArrayExtensions
     {
+        /// <summary>
+        /// Get a generic array enumerator. Use this instead of the default <see cref="Array.GetEnumerator"/> for passing it around as an <see cref="IEnumerator{T}"/>.
+        /// </summary>
         public static ArrayEnumerator<T> ToGenericEnumerator<T>(this T[] array)
         {
             return new ArrayEnumerator<T>(array);

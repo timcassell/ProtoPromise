@@ -4,15 +4,17 @@ namespace Proto.Promises
 {
 	partial class Promise
     {
+        /// <summary>
+        /// Deferred base. An instance of this can be used to handle the state of the attached <see cref="Promise"/>. except resolve. You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to handle resolve.
+        /// </summary>
         public abstract partial class DeferredBase : ICancelableAny, IRetainable
         {
             public State State { get; protected set; }
 
             /// <summary>
-            /// The promise that this controls.
+            /// The <see cref="Promise"/> that this controls.
             /// </summary>
-            /// <value>The promise.</value>
-            public virtual Promise Promise { get; protected set; }
+            public Promise Promise { get; protected set; }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
             private
@@ -49,6 +51,9 @@ namespace Proto.Promises
             public abstract void Reject<TReject>(TReject reason);
         }
 
+        /// <summary>
+        /// An instance of this is used to handle the state of the <see cref="DeferredBase.Promise"/>.
+        /// </summary>
         public abstract class Deferred : DeferredBase
         {
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
@@ -64,9 +69,15 @@ namespace Proto.Promises
     }
 
 	public partial class Promise<T>
-	{
+    {
+        /// <summary>
+        /// An instance of this is used to handle the state of the <see cref="Promise"/>.
+        /// </summary>
 		public abstract new class Deferred : DeferredBase
         {
+            /// <summary>
+            /// The <see cref="Promise{T}"/> that this controls.
+            /// </summary>
             public new Promise<T> Promise { get { return (Promise<T>) base.Promise; } protected set { base.Promise = value; } }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.

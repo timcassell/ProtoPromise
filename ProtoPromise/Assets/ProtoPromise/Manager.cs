@@ -5,6 +5,9 @@ namespace Proto.Promises
 {
     partial class Promise
     {
+        /// <summary>
+        /// Promise manager. This can be used to cleared pooled objects (if enabled) or manually handle promises (not recommended for RELEASE builds).
+        /// </summary>
         public static class Manager
         {
             private static bool _willThrow;
@@ -13,7 +16,6 @@ namespace Proto.Promises
             /// Invokes callbacks for completed promises,
             /// then throws all unhandled rejections as <see cref="AggregateException"/>.
             /// <para/>Does nothing if completes are already being handled.
-            /// <para/>Does not throw if completes or progress are already being handled.
             /// </summary>
             public static void HandleCompletes()
             {
@@ -33,8 +35,7 @@ namespace Proto.Promises
             /// Invokes callbacks for completed promises,
             /// then invokes progress callbacks for all promises that had their progress updated,
             /// then throws all unhandled rejections as <see cref="AggregateException"/>.
-            /// <para/>Does not handle completes if completes are already being handled. Does not handle progress if progress is already being handled.
-            /// <para/>Does not throw if completes or progress are already being handled.
+            /// <para/>Does not handle completes if completes are already being handled. Does not handle progress if progress is already being handled or if progress is disabled.
             /// </summary>
             public static void HandleCompletesAndProgress()
             {
@@ -54,8 +55,7 @@ namespace Proto.Promises
             /// <summary>
             /// Invokes progress callbacks for all promises that had their progress updated,
             /// then throws all unhandled rejections as <see cref="AggregateException"/>.
-            /// <para/>Does nothing if progress is already being handled.
-            /// <para/>Does not throw if completes or progress are already being handled.
+            /// <para/>Does nothing if progress is already being handled or if progress is disabled.
             /// </summary>
 #pragma warning disable RECS0146 // Member hides static member from outer class
             public static void HandleProgress()

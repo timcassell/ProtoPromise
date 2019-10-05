@@ -2780,12 +2780,11 @@ namespace Proto.Promises
 
                 public override bool ContainsType<U>()
                 {
-                    // Can it be up-casted or down-casted, null or not?
-                    return typeof(U).IsAssignableFrom(typeof(T)) || Value is U;
+                    return Config.ValueConverter.CanConvert<T, U>(this);
                 }
             }
 
-            public sealed class UnhandledExceptionException : UnhandledExceptionInternal
+            public sealed class UnhandledExceptionException : UnhandledExceptionInternal, IValueContainer<Exception>
             {
                 private UnhandledExceptionException(Exception innerException) : base(innerException) { }
 
@@ -2805,6 +2804,8 @@ namespace Proto.Promises
                     }
                 }
 
+                Exception IValueContainer<Exception>.Value { get { return InnerException; } }
+
                 public override object GetValue()
                 {
                     return InnerException;
@@ -2812,24 +2813,12 @@ namespace Proto.Promises
 
                 public override bool TryGetValueAs<U>(out U value)
                 {
-#if CSHARP_7_OR_LATER
-                    if (InnerException is U val)
-                    {
-                        value = val;
-#else
-                    if (InnerException is U)
-                    {
-                        value = (U) (object) InnerException;
-#endif
-                        return true;
-                    }
-                    value = default(U);
-                    return false;
+                    return Config.ValueConverter.TryConvert(this, out value);
                 }
 
                 public override bool ContainsType<U>()
                 {
-                    return InnerException is U;
+                    return Config.ValueConverter.CanConvert<Exception, U>(this);
                 }
             }
 
@@ -2894,8 +2883,7 @@ namespace Proto.Promises
 
                 public bool ContainsType<U>()
                 {
-                    // Can it be up-casted or down-casted, null or not?
-                    return typeof(U).IsAssignableFrom(typeof(T)) || Value is U;
+                    return Config.ValueConverter.CanConvert<T, U>(this);
                 }
 
                 public void Retain()
