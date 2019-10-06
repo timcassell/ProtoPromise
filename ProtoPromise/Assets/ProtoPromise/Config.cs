@@ -433,7 +433,7 @@ namespace Proto.Promises
         partial void ValidateReturn(Promise other);
         static partial void ValidateReturn(Delegate other);
         static partial void ValidatePotentialOperation(Internal.IValueContainer valueContainer, int skipFrames);
-        static partial void ValidateNotNull(Promise promise, string argName, string message, int skipFrames);
+        static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames);
 
         static partial void SetCreatedStacktrace(Internal.IStacktraceable stacktraceable, int skipFrames);
         static partial void SetStacktraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException);
@@ -618,7 +618,7 @@ namespace Proto.Promises
         {
             if (del == null)
             {
-                throw new ElementNullException(argName, null, GetFormattedStacktrace(skipFrames + 1));
+                throw new ArgumentNullException(argName, null, GetFormattedStacktrace(skipFrames + 1));
             }
         }
 
@@ -627,7 +627,7 @@ namespace Proto.Promises
             ValidateArg(del, argName, skipFrames + 1);
         }
 
-        static partial void ValidateNotNull(Promise promise, string argName, string message, int skipFrames)
+        static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames)
         {
             if (promise == null)
             {

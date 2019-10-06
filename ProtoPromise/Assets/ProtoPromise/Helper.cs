@@ -297,8 +297,19 @@ namespace Proto.Promises
         private readonly string _stackTrace;
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
-    
-    public class ElementNullException : ArgumentNullException
+
+    public class ArgumentNullException : System.ArgumentNullException
+    {
+        public ArgumentNullException(string paramName, string message, string stackTrace = null) : base(paramName, message)
+        {
+            _stackTrace = stackTrace;
+        }
+
+        private readonly string _stackTrace;
+        public override string StackTrace { get { return _stackTrace; } }
+    }
+
+    public class ElementNullException : System.ArgumentNullException
     {
         public ElementNullException(string paramName, string message, string stackTrace = null) : base(paramName, message)
         {

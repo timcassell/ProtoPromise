@@ -53,14 +53,14 @@ namespace Proto.Promises
             AddToHandleQueue(this);
         }
 
-        protected void Reject(int skipFrames)
+        protected static Internal.UnhandledExceptionInternal CreateRejection(int skipFrames)
         {
             Internal.UnhandledExceptionInternal rejectValue = Internal.UnhandledExceptionVoid.GetOrCreate();
             SetRejectStacktrace(rejectValue, skipFrames + 1);
-            RejectWithStateCheck(rejectValue);
+            return rejectValue;
         }
 
-        protected void Reject<TReject>(TReject reason, int skipFrames)
+        protected static Internal.UnhandledExceptionInternal CreateRejection<TReject>(TReject reason, int skipFrames)
         {
             Internal.UnhandledExceptionInternal rejectValue;
             // Is TReject an exception (including if it's null)?
@@ -74,19 +74,7 @@ namespace Proto.Promises
                 rejectValue = Internal.UnhandledException<TReject>.GetOrCreate(reason);
             }
             SetRejectStacktrace(rejectValue, skipFrames + 1);
-            RejectWithStateCheck(rejectValue);
-        }
-
-        protected void RejectWithStateCheck(Internal.UnhandledExceptionInternal rejectValue)
-        {
-            if (_state != State.Pending | _rejectedOrCanceledValue != null)
-            {
-                AddRejectionToUnhandledStack(rejectValue);
-            }
-            else
-            {
-                RejectDirect(rejectValue);
-            }
+            return rejectValue;
         }
 
         protected void RejectDirect(Internal.IValueContainer rejectValue)
@@ -2743,6 +2731,9 @@ namespace Proto.Promises
                 {
                     UnhandledException<T> ex = _pool.IsNotEmpty ? (UnhandledException<T>) _pool.Pop() : new UnhandledException<T>();
                     ex.Value = value;
+#pragma warning disable RECS0017 // Possible compare of value type with 'null'
+                    ex._message = "A rejected value was not handled: " + (value == null ? "null" : value.ToString());
+#pragma warning restore RECS0017 // Possible compare of value type with 'null'
                     return ex;
                 }
 
@@ -2756,11 +2747,12 @@ namespace Proto.Promises
                     return Config.ValueConverter.TryConvert(this, out value);
                 }
 
+                private string _message;
                 public override string Message
                 {
                     get
                     {
-                        return "A rejected value was not handled: " + (Value.ToString() ?? "null");
+                        return _message;
                     }
                 }
 
@@ -3001,7 +2993,7 @@ namespace Proto.Promises
                     var promise = _pool.IsNotEmpty ? (AllPromise0) _pool.Pop() : new AllPromise0();
 
                     var target = promises.Current;
-                    ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                    ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
                     ValidateOperation(target, skipFrames + 1);
                     int promiseIndex = 0;
                     // Hook up pass throughs
@@ -3009,7 +3001,7 @@ namespace Proto.Promises
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
-                        ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                        ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
                         ValidateOperation(target, skipFrames + 1);
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }
@@ -3123,7 +3115,7 @@ namespace Proto.Promises
                     promise._value = valueContainer;
 
                     var target = promises.Current;
-                    ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                    ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
                     ValidateOperation(target, skipFrames + 1);
                     int promiseIndex = 0;
                     // Hook up pass throughs and make sure the list has space for the values.
@@ -3132,7 +3124,7 @@ namespace Proto.Promises
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
-                        ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                        ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
                         ValidateOperation(target, skipFrames + 1);
                         valueContainer.Add(default(T));
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
@@ -3248,7 +3240,7 @@ namespace Proto.Promises
                     var promise = _pool.IsNotEmpty ? (RacePromise0) _pool.Pop() : new RacePromise0();
 
                     var target = promises.Current;
-                    ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                    ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
                     ValidateOperation(target, skipFrames + 1);
                     int promiseIndex = 0;
                     // Hook up pass throughs
@@ -3256,7 +3248,7 @@ namespace Proto.Promises
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
-                        ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                        ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
                         ValidateOperation(target, skipFrames + 1);
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }
@@ -3357,7 +3349,7 @@ namespace Proto.Promises
                     var promise = _pool.IsNotEmpty ? (RacePromise<T>) _pool.Pop() : new RacePromise<T>();
 
                     var target = promises.Current;
-                    ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                    ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
                     ValidateOperation(target, skipFrames + 1);
                     int promiseIndex = 0;
                     // Hook up pass throughs
@@ -3365,7 +3357,7 @@ namespace Proto.Promises
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
-                        ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                        ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
                         ValidateOperation(target, skipFrames + 1);
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }
@@ -3501,7 +3493,7 @@ namespace Proto.Promises
                     var promise = _pool.IsNotEmpty ? (FirstPromise0) _pool.Pop() : new FirstPromise0();
 
                     var target = promises.Current;
-                    ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                    ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
                     ValidateOperation(target, skipFrames + 1);
                     int promiseIndex = 0;
                     // Hook up pass throughs
@@ -3509,7 +3501,7 @@ namespace Proto.Promises
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
-                        ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                        ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
                         ValidateOperation(target, skipFrames + 1);
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }
@@ -3614,7 +3606,7 @@ namespace Proto.Promises
                     var promise = _pool.IsNotEmpty ? (FirstPromise<T>) _pool.Pop() : new FirstPromise<T>();
 
                     var target = promises.Current;
-                    ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                    ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
                     ValidateOperation(target, skipFrames + 1);
                     int promiseIndex = 0;
                     // Hook up pass throughs
@@ -3622,7 +3614,7 @@ namespace Proto.Promises
                     while (promises.MoveNext())
                     {
                         target = promises.Current;
-                        ValidateNotNull(target, "promises", "A promise was null", skipFrames + 1);
+                        ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
                         ValidateOperation(target, skipFrames + 1);
                         passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
                     }

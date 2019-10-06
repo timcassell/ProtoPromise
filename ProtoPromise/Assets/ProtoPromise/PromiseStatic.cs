@@ -305,7 +305,8 @@ namespace Proto.Promises
         public static Promise Rejected()
         {
             var promise = Internal.LitePromise0.GetOrCreate(1);
-            promise.Reject(1);
+            var rejection = CreateRejection(1);
+            promise.RejectDirect(rejection);
             return promise;
         }
 
@@ -315,7 +316,8 @@ namespace Proto.Promises
         public static Promise Rejected<TReject>(TReject reason)
         {
             var promise = Internal.LitePromise0.GetOrCreate(1);
-            promise.Reject(reason, 1);
+            var rejection = CreateRejection(reason, 1);
+            promise.RejectDirect(rejection);
             return promise;
         }
 
@@ -325,7 +327,8 @@ namespace Proto.Promises
         public static Promise<T> Rejected<T>()
         {
             var promise = Internal.LitePromise<T>.GetOrCreate(1);
-            promise.Reject(1);
+            var rejection = CreateRejection(1);
+            promise.RejectDirect(rejection);
             return promise;
         }
 
@@ -335,8 +338,9 @@ namespace Proto.Promises
         public static Promise<T> Rejected<T, TReject>(TReject reason)
 		{
 			var promise = Internal.LitePromise<T>.GetOrCreate(1);
-			promise.Reject(reason, 1);
-			return promise;
+            var rejection = CreateRejection(reason, 1);
+            promise.RejectDirect(rejection);
+            return promise;
 		}
 
         /// <summary>

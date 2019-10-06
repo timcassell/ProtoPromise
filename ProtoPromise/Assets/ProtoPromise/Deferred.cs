@@ -148,17 +148,19 @@ namespace Proto.Promises
                     var promise = Promise;
                     ValidateOperation(promise, 1);
 
+                    var rejection = CreateRejection(1);
+
                     if (State == State.Pending)
                     {
                         promise.Release();
                         State = State.Rejected;
+                        promise.RejectDirect(rejection);
                     }
                     else
                     {
+                        AddRejectionToUnhandledStack(rejection);
                         Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
                     }
-
-                    promise.Reject(1);
                 }
 
                 public override void Reject<TReject>(TReject reason)
@@ -166,34 +168,37 @@ namespace Proto.Promises
                     var promise = Promise;
                     ValidateOperation(promise, 1);
 
+                    var rejection = CreateRejection(reason, 1);
+
                     if (State == State.Pending)
                     {
                         promise.Release();
                         State = State.Rejected;
+                        promise.RejectDirect(rejection);
                     }
                     else
                     {
+                        AddRejectionToUnhandledStack(rejection);
                         Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
                     }
-
-                    promise.Reject(reason, 1);
                 }
 
                 public void RejectWithPromiseStacktrace(Exception exception)
                 {
                     var promise = Promise;
-                    var rejectValue = UnhandledExceptionException.GetOrCreate(exception);
-                    _SetStackTraceFromCreated(promise, rejectValue);
+                    var rejection = UnhandledExceptionException.GetOrCreate(exception);
+                    _SetStackTraceFromCreated(promise, rejection);
 
-                    if (State != State.Pending)
+                    if (State == State.Pending)
                     {
-                        AddRejectionToUnhandledStack(rejectValue);
-                        return;
+                        State = State.Rejected;
+                        promise.Release();
+                        promise.RejectDirect(rejection);
                     }
-
-                    State = State.Rejected;
-                    promise.Release();
-                    promise.RejectWithStateCheck(rejectValue);
+                    else
+                    {
+                        AddRejectionToUnhandledStack(rejection);
+                    }
                 }
             }
         }
@@ -255,17 +260,19 @@ namespace Proto.Promises
                     var promise = Promise;
                     ValidateOperation(promise, 1);
 
+                    var rejection = CreateRejection(1);
+
                     if (State == State.Pending)
                     {
                         promise.Release();
                         State = State.Rejected;
+                        promise.RejectDirect(rejection);
                     }
                     else
                     {
+                        AddRejectionToUnhandledStack(rejection);
                         Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
                     }
-
-                    promise.Reject(1);
                 }
 
                 public override void Reject<TReject>(TReject reason)
@@ -273,34 +280,37 @@ namespace Proto.Promises
                     var promise = Promise;
                     ValidateOperation(promise, 1);
 
+                    var rejection = CreateRejection(reason, 1);
+
                     if (State == State.Pending)
                     {
                         promise.Release();
                         State = State.Rejected;
+                        promise.RejectDirect(rejection);
                     }
                     else
                     {
+                        AddRejectionToUnhandledStack(rejection);
                         Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
                     }
-
-                    promise.Reject(reason, 1);
                 }
 
                 public void RejectWithPromiseStacktrace(Exception exception)
                 {
                     var promise = Promise;
-                    var rejectValue = Promises.Promise.Internal.UnhandledExceptionException.GetOrCreate(exception);
-                    _SetStackTraceFromCreated(promise, rejectValue);
+                    var rejection = Promises.Promise.Internal.UnhandledExceptionException.GetOrCreate(exception);
+                    _SetStackTraceFromCreated(promise, rejection);
 
-                    if (State != State.Pending)
+                    if (State == State.Pending)
                     {
-                        AddRejectionToUnhandledStack(rejectValue);
-                        return;
+                        promise.Release();
+                        State = State.Rejected;
+                        promise.RejectDirect(rejection);
                     }
-
-                    State = State.Rejected;
-                    promise.Release();
-                    promise.RejectWithStateCheck(rejectValue);
+                    else
+                    {
+                        AddRejectionToUnhandledStack(rejection);
+                    }
                 }
             }
         }
