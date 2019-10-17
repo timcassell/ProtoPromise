@@ -2606,7 +2606,11 @@ namespace Proto.Promises
         }
 #endif
 
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
+        protected void Resolve(in T value)
+#else
         protected void Resolve(T value)
+#endif
         {
 #if CANCEL
             if (_state == State.Canceled)
@@ -2618,7 +2622,11 @@ namespace Proto.Promises
             AddToHandleQueue(this);
         }
 
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
+        protected void ResolveWithStateCheck(in T value)
+#else
         protected void ResolveWithStateCheck(T value)
+#endif
         {
 #if CANCEL
             if (_state == State.Canceled)

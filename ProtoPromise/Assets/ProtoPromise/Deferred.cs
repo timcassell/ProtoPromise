@@ -88,7 +88,11 @@ namespace Proto.Promises
             /// <summary>
             /// Resolve the linked <see cref="Promise"/> with <paramref name="value"/>.
             /// </summary>
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
+            public abstract void Resolve(in T value);
+#else
             public abstract void Resolve(T value);
+#endif
         }
     }
 
@@ -131,16 +135,15 @@ namespace Proto.Promises
 
                     if (State == State.Pending)
                     {
+                        State = State.Resolved;
                         promise.Release();
+                        promise.Resolve();
                     }
                     else
                     {
                         Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
                         return;
                     }
-
-                    State = State.Resolved;
-                    promise.Resolve();
                 }
 
                 public override void Reject()
@@ -152,8 +155,8 @@ namespace Proto.Promises
 
                     if (State == State.Pending)
                     {
-                        promise.Release();
                         State = State.Rejected;
+                        promise.Release();
                         promise.RejectDirect(rejection);
                     }
                     else
@@ -172,8 +175,8 @@ namespace Proto.Promises
 
                     if (State == State.Pending)
                     {
-                        promise.Release();
                         State = State.Rejected;
+                        promise.Release();
                         promise.RejectDirect(rejection);
                     }
                     else
@@ -236,23 +239,26 @@ namespace Proto.Promises
                     promise.ReportProgress(progress);
                 }
 
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
+                public override void Resolve(in T value)
+#else
                 public override void Resolve(T value)
+#endif
                 {
                     var promise = Promise;
                     ValidateOperation(promise, 1);
 
                     if (State == State.Pending)
                     {
+                        State = State.Resolved;
                         promise.Release();
+                        promise.Resolve(value);
                     }
                     else
                     {
                         Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
                         return;
                     }
-
-                    State = State.Resolved;
-                    promise.Resolve(value);
                 }
 
                 public override void Reject()
@@ -264,8 +270,8 @@ namespace Proto.Promises
 
                     if (State == State.Pending)
                     {
-                        promise.Release();
                         State = State.Rejected;
+                        promise.Release();
                         promise.RejectDirect(rejection);
                     }
                     else
@@ -284,8 +290,8 @@ namespace Proto.Promises
 
                     if (State == State.Pending)
                     {
-                        promise.Release();
                         State = State.Rejected;
+                        promise.Release();
                         promise.RejectDirect(rejection);
                     }
                     else

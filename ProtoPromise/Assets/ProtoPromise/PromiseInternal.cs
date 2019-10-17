@@ -18,11 +18,6 @@ namespace Proto.Promises
         private bool _handling; // Is not already being handled in HandleComplete.
         protected bool _dontPool;
 
-        protected virtual U GetValue<U>()
-        {
-            throw new InvalidOperationException();
-        }
-
         protected virtual void Reset(int skipFrames)
         {
             _state = State.Pending;
@@ -208,10 +203,6 @@ namespace Proto.Promises
     partial class Promise<T>
     {
         protected T _value;
-        protected override U GetValue<U>()
-        {
-            return (this as Promise<U>)._value;
-        }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
         private
@@ -223,7 +214,11 @@ namespace Proto.Promises
             return Promise.Internal.DuplicatePromise<T>.GetOrCreate(2);
         }
 
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
+        protected void ResolveInternal(in T value)
+#else
         protected void ResolveInternal(T value)
+#endif
         {
             _value = value;
             ResolveInternal();
@@ -241,6 +236,15 @@ namespace Proto.Promises
         protected static partial class Internal
         {
             internal static Action OnClearPool;
+
+            public abstract class PromiseInternal<T> : Promise<T>
+            {
+#if CSHARP_7_OR_LATER
+                public ref T Value { get { return ref _value; } }
+#else
+                public T Value { get { return _value; } }
+#endif
+            }
 
             public abstract class PoolablePromise<TPromise> : Promise where TPromise : PoolablePromise<TPromise>
             {
@@ -261,7 +265,7 @@ namespace Proto.Promises
                 }
             }
 
-            public abstract class PoolablePromise<T, TPromise> : Promise<T> where TPromise : PoolablePromise<T, TPromise>
+            public abstract class PoolablePromise<T, TPromise> : PromiseInternal<T> where TPromise : PoolablePromise<T, TPromise>
             {
                 protected static ValueLinkedStack<ITreeHandleable> _pool;
 
@@ -370,7 +374,11 @@ namespace Proto.Promises
                     return promise;
                 }
 
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
+                public new void Resolve(in T value)
+#else
                 public new void Resolve(T value)
+#endif
                 {
                     _value = value;
                     AddToHandleQueue(this);
@@ -386,7 +394,7 @@ namespace Proto.Promises
                 {
                     if (feed._state == State.Resolved)
                     {
-                        ResolveInternal(feed.GetValue<T>());
+                        ResolveInternal(((PromiseInternal<T>) feed).Value);
                     }
                     else
                     {
@@ -434,7 +442,7 @@ namespace Proto.Promises
                 {
                     if (feed._state == State.Resolved)
                     {
-                        ResolveInternal(feed.GetValue<T>());
+                        ResolveInternal(((PromiseInternal<T>) feed).Value);
                     }
                     else
                     {
@@ -502,7 +510,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
-                        callback.Invoke(feed.GetValue<TArg>());
+                        callback.Invoke(((PromiseInternal<TArg>) feed).Value);
                         ResolveWithStateCheck();
                     }
                     else
@@ -573,7 +581,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
-                        ResolveWithStateCheck(callback.Invoke(feed.GetValue<TArg>()));
+                        ResolveWithStateCheck(callback.Invoke(((PromiseInternal<TArg>) feed).Value));
                     }
                     else
                     {
@@ -671,7 +679,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
-                        WaitFor(callback.Invoke(feed.GetValue<TArg>()));
+                        WaitFor(callback.Invoke(((PromiseInternal<TArg>) feed).Value));
                     }
                     else
                     {
@@ -707,7 +715,7 @@ namespace Proto.Promises
                         // The returned promise is handling this.
                         if (feed._state == State.Resolved)
                         {
-                            ResolveInternal(feed.GetValue<TPromise>());
+                            ResolveInternal(((PromiseInternal<TPromise>) feed).Value);
                         }
                         else
                         {
@@ -756,7 +764,7 @@ namespace Proto.Promises
                         // The returned promise is handling this.
                         if (feed._state == State.Resolved)
                         {
-                            ResolveInternal(feed.GetValue<TPromise>());
+                            ResolveInternal(((PromiseInternal<TPromise>) feed).Value);
                         }
                         else
                         {
@@ -769,7 +777,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
-                        WaitFor(callback.Invoke(feed.GetValue<TArg>()));
+                        WaitFor(callback.Invoke(((PromiseInternal<TArg>) feed).Value));
                     }
                     else
                     {
@@ -864,7 +872,7 @@ namespace Proto.Promises
                     {
                         try
                         {
-                            var deferredAction = callback.Invoke(feed.GetValue<TArg>());
+                            var deferredAction = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
                             ValidateReturn(deferredAction);
                             deferredAction.Invoke(_deferredInternal);
                         }
@@ -968,7 +976,7 @@ namespace Proto.Promises
                     {
                         try
                         {
-                            var deferredAction = callback.Invoke(feed.GetValue<TArg>());
+                            var deferredAction = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
                             ValidateReturn(deferredAction);
                             deferredAction.Invoke(_deferredInternal);
                         }
@@ -1076,7 +1084,7 @@ namespace Proto.Promises
                     else
                     {
                         callback.Dispose();
-                        ResolveInternal(feed.GetValue<T>());
+                        ResolveInternal(((PromiseInternal<T>) feed).Value);
                     }
                 }
 
@@ -1171,7 +1179,7 @@ namespace Proto.Promises
                         // The returned promise is handling this.
                         if (feed._state == State.Resolved)
                         {
-                            ResolveInternal(feed.GetValue<TPromise>());
+                            ResolveInternal(((PromiseInternal<TPromise>) feed).Value);
                         }
                         else
                         {
@@ -1197,7 +1205,7 @@ namespace Proto.Promises
                     else
                     {
                         callback.Dispose();
-                        ResolveInternal(feed.GetValue<TPromise>());
+                        ResolveInternal(((PromiseInternal<TPromise>) feed).Value);
                     }
                 }
 
@@ -1329,7 +1337,7 @@ namespace Proto.Promises
                         // Deferred is never used, so just release.
                         Release();
                         callback.Dispose();
-                        ResolveInternal(feed.GetValue<TDeferred>());
+                        ResolveInternal(((PromiseInternal<TDeferred>) feed).Value);
                     }
                 }
 
@@ -1533,7 +1541,7 @@ namespace Proto.Promises
                         // The returned promise is handling this.
                         if (feed._state == State.Resolved)
                         {
-                            ResolveInternal(feed.GetValue<TPromise>());
+                            ResolveInternal(((PromiseInternal<TPromise>) feed).Value);
                         }
                         else
                         {
@@ -1829,7 +1837,7 @@ namespace Proto.Promises
                         // The returned promise is handling this.
                         if (feed._state == State.Resolved)
                         {
-                            ResolveInternal(feed.GetValue<T>());
+                            ResolveInternal(((PromiseInternal<T>) feed).Value);
                         }
                         else
                         {
@@ -2335,7 +2343,7 @@ namespace Proto.Promises
 
                 public void DisposeAndInvoke(Promise feed)
                 {
-                    DisposeAndInvoke(feed.GetValue<TArg>());
+                    DisposeAndInvoke(((PromiseInternal<TArg>) feed).Value);
                 }
             }
 
@@ -2498,7 +2506,7 @@ namespace Proto.Promises
 
                 public TResult DisposeAndInvoke(Promise feed)
                 {
-                    return DisposeAndInvoke(feed.GetValue<TArg>());
+                    return DisposeAndInvoke(((PromiseInternal<TArg>) feed).Value);
                 }
             }
 
@@ -3189,7 +3197,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _value[index] = feed.GetValue<T>();
+                        _value[index] = ((PromiseInternal<T>) feed).Value;
                         if (_waitCount == 0)
                         {
                             PromisePassThrough.Repool(ref passThroughs);
@@ -3418,7 +3426,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        ResolveInternal(feed.GetValue<T>());
+                        ResolveInternal(((PromiseInternal<T>) feed).Value);
                     }
                 }
 
@@ -3681,7 +3689,7 @@ namespace Proto.Promises
 
                 protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
             }
-            #endregion
+#endregion
         }
     }
 }
