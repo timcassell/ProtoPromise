@@ -3,7 +3,7 @@ using UnityEngine.TestTools;
 
 namespace Proto.Promises.Tests
 {
-    public class APlus_2_1
+    public class APlus_2_1_PromiseStates
     {
         public class _2_1_1_WhenPendingAPromise
         {

@@ -179,7 +179,7 @@ namespace Proto.Promises
 #endif
             public void Cancel()
             {
-                ValidateCancel(1);
+                ValidateCancel();
                 var promise = Promise;
                 ValidateOperation(promise, 1);
 
@@ -205,7 +205,7 @@ namespace Proto.Promises
 #endif
             public void Cancel<TCancel>(TCancel reason)
             {
-                ValidateCancel(1);
+                ValidateCancel();
                 var promise = Promise;
                 ValidateOperation(promise, 1);
 
@@ -232,7 +232,7 @@ namespace Proto.Promises
 #endif
         public static Promise Canceled()
         {
-            ValidateCancel(1);
+            ValidateCancel();
 
             var promise = Internal.LitePromise0.GetOrCreate(1);
             promise.Cancel();
@@ -247,7 +247,7 @@ namespace Proto.Promises
 #endif
         public static Promise Canceled<TCancel>(TCancel reason)
         {
-            ValidateCancel(1);
+            ValidateCancel();
 
             var promise = Internal.LitePromise0.GetOrCreate(1);
             promise.Cancel(reason);
@@ -262,7 +262,7 @@ namespace Proto.Promises
 #endif
         public static Promise<T> Canceled<T>()
         {
-            ValidateCancel(1);
+            ValidateCancel();
 
             var promise = Internal.LitePromise<T>.GetOrCreate(1);
             promise.Cancel();
@@ -277,7 +277,7 @@ namespace Proto.Promises
 #endif
         public static Promise<T> Canceled<T, TCancel>(TCancel reason)
         {
-            ValidateCancel(1);
+            ValidateCancel();
 
             var promise = Internal.LitePromise<T>.GetOrCreate(1);
             promise.Cancel(reason);
@@ -324,7 +324,7 @@ namespace Proto.Promises
 #endif
         public void CatchCancelation(Action onCanceled)
         {
-            ValidateCancel(1);
+            ValidateCancel();
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
@@ -342,7 +342,7 @@ namespace Proto.Promises
 #endif
         public IPotentialCancelation CatchCancelation<TCancel>(Action<TCancel> onCanceled)
         {
-            ValidateCancel(1);
+            ValidateCancel();
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
@@ -360,7 +360,7 @@ namespace Proto.Promises
 #endif
         public void Cancel()
         {
-            ValidateCancel(1);
+            ValidateCancel();
             ValidateOperation(this, 1);
 
             if (_state != State.Pending)
@@ -386,7 +386,7 @@ namespace Proto.Promises
 #endif
         public void Cancel<TCancel>(TCancel reason)
         {
-            ValidateCancel(1);
+            ValidateCancel();
             ValidateOperation(this, 1);
 
             if (_state != State.Pending)
@@ -526,8 +526,6 @@ namespace Proto.Promises
                 .ToString();
         }
 
-        protected virtual void BorrowPassthroughs(ref ValueLinkedStack<Internal.PromisePassThrough> passThroughs) { }
-
         partial void ValidateReturn(Promise other)
         {
             if (other == null)
@@ -639,6 +637,26 @@ namespace Proto.Promises
         {
             return string.Format("Type: Promise, Id: {0}, State: {1}", _id, _state);
         }
+#else
+        private static string GetFormattedStacktrace(int skipFrames)
+        {
+            return null;
+        }
+
+        private void SetDisposed()
+        {
+            // Allow GC to clean up the object if necessary.
+            _rejectedOrCanceledValue = null;
+        }
+
+        public override string ToString()
+        {
+            return string.Format("Type: Promise, State: {0}", _state);
+        }
+#endif
+
+#if DEBUG || PROGRESS
+        protected virtual void BorrowPassthroughs(ref ValueLinkedStack<Internal.PromisePassThrough> passThroughs) { }
 
         partial class Internal
         {
@@ -780,27 +798,10 @@ namespace Proto.Promises
                 }
             }
         }
-#else
-        private static string GetFormattedStacktrace(int skipFrames)
-        {
-            return null;
-        }
-
-        private void SetDisposed()
-        {
-            // Allow GC to clean up the object if necessary.
-            _rejectedOrCanceledValue = null;
-        }
-
-        public override string ToString()
-        {
-            return string.Format("Type: Promise, State: {0}", _state);
-        }
 #endif
 
-
         // Calls to this get compiled away when CANCEL is defined.
-        static partial void ValidateCancel(int skipFrames);
+        static partial void ValidateCancel();
 
         static partial void AddToCancelQueue(Internal.ITreeHandleable cancelation);
         static partial void AddToCancelQueueRisky(Internal.ITreeHandleable cancelation);

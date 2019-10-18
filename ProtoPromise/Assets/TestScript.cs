@@ -54,11 +54,11 @@ public class TestScript : MonoBehaviour
             .Then(() => PromiseWithProgress(5))
             .Then(() => PromiseWithProgress(5));
 
-        Promise.Race(p1, p2, p3)
-            .Then(() => PromiseWithProgress(5))
-            .Progress(p => sb.AppendLine(p.ToString()))
-            .Then(() => Debug.Log(sb))
-            ;
+        //Promise.Race(p1, p2, p3)
+            //.Then(() => PromiseWithProgress(5))
+            //.Progress(p => sb.AppendLine(p.ToString()))
+            //.Then(() => Debug.Log(sb))
+            //;
     }
 
     Promise PromiseWithProgress(int frames)
@@ -76,7 +76,7 @@ public class TestScript : MonoBehaviour
         while (current != frames)
         {
             yield return null;
-            deferred.ReportProgress((float) ++current / frames);
+            //deferred.ReportProgress((float) ++current / frames);
         }
         deferred.Resolve();
     }
@@ -294,9 +294,12 @@ public class TestScript : MonoBehaviour
 		}
 		if (runType != RunType.None)
 		{
-			Debug.LogFormat("ProtoPromise average Creation: {0}, Then: {1}, Resolve: {2}", protoCreation, protoThen, protoResolve);
-			Debug.LogFormat("uPromise average Creation: {0}, Then: {1}, Resolve: {2}", uCreation, uThen, uResolve);
-			Debug.LogFormat("Task average Creation: {0}, Then: {1}, Resolve: {2}", taskCreation, taskThen, taskResolve);
+			Debug.LogFormat("ProtoPromise average Creation: {0}, Then: {1}, Resolve: {2}\n" +
+				"uPromise average Creation: {3}, Then: {4}, Resolve: {5}\n" +
+                "Task average Creation: {6}, Then: {7}, Resolve: {8}",
+                protoCreation, protoThen, protoResolve,
+                uCreation, uThen, uResolve,
+                taskCreation, taskThen, taskResolve);
 		}
 		goto Reset;
 	}
@@ -305,7 +308,15 @@ public class TestScript : MonoBehaviour
 	{
 		GC.Collect();
 
-		switch (runType)
+        //int type = (int) runType;
+        //++type;
+        //if (type > 3)
+        //{
+        //    type = 0;
+        //}
+        //runType = (RunType) type;
+
+        switch (runType)
 		{
 			case RunType.ProtoPromise:
 				{

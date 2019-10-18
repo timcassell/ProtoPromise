@@ -5,7 +5,7 @@ using UnityEngine.TestTools;
 
 namespace Proto.Promises.Tests
 {
-    public class APlus_2_2
+    public class APlus_2_2_TheThenMethod
     {
         [TearDown]
         public void Teardown()
@@ -123,7 +123,7 @@ namespace Proto.Promises.Tests
                     promise.Then<int, string>(default(Func<Action<Promise<int>.Deferred>>), () => default(Action<Promise<int>.Deferred>));
                 });
 
-                deferred.Cancel();
+                deferred.Resolve();
 
                 var deferredInt = Promise.NewDeferred<int>();
 
@@ -210,7 +210,7 @@ namespace Proto.Promises.Tests
                     promiseInt.Then<int, string>(default(Func<int, Action<Promise<int>.Deferred>>), () => default(Action<Promise<int>.Deferred>));
                 });
 
-                deferredInt.Cancel();
+                deferredInt.Resolve(0);
             }
 
             [Test]
@@ -312,7 +312,7 @@ namespace Proto.Promises.Tests
                     promise.Then(() => default(Action<Promise<string>.Deferred>), default(Func<Exception, Action<Promise<string>.Deferred>>));
                 });
 
-                deferred.Cancel();
+                deferred.Resolve();
 
                 var deferredInt = Promise.NewDeferred<int>();
 
@@ -410,7 +410,7 @@ namespace Proto.Promises.Tests
                     promiseInt.Then((int x) => default(Action<Promise<string>.Deferred>), default(Func<Exception, Action<Promise<string>.Deferred>>));
                 });
 
-                deferredInt.Cancel();
+                deferredInt.Resolve(0);
             }
         }
 
