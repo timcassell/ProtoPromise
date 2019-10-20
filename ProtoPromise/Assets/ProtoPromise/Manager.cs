@@ -26,8 +26,8 @@ namespace Proto.Promises
 
                 if (!willThrow)
                 {
-                    ThrowUnhandledRejections();
                     _willThrow = false;
+                    ThrowUnhandledRejections();
                 }
             }
 
@@ -47,8 +47,8 @@ namespace Proto.Promises
 
                 if (!willThrow)
                 {
-                    ThrowUnhandledRejections();
                     _willThrow = false;
+                    ThrowUnhandledRejections();
                 }
             }
 
@@ -68,8 +68,8 @@ namespace Proto.Promises
 
                 if (!willThrow)
                 {
-                    ThrowUnhandledRejections();
                     _willThrow = false;
+                    ThrowUnhandledRejections();
                 }
             }
 

@@ -22,9 +22,9 @@ namespace Proto.Promises
                 }
             }
 #else
-                // GetRuntimeFields doesn't exist prior to .Net 4.0, and GetFields doesn't get private const fields.
-                // Also, we can be confident that the max execution order will forever be 32000 in the deprecated scripting runtime version.
-                int maxExecutionOrder = 32000;
+            // GetRuntimeFields doesn't exist prior to .Net 4.0, and GetFields doesn't get private const fields.
+            // Also, we can be confident that the max execution order will forever be 32000 in the deprecated scripting runtime version.
+            int maxExecutionOrder = 32000;
 #endif
 
             foreach (MonoScript monoScript in MonoImporter.GetAllRuntimeMonoScripts())

@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using System;
+using NUnit.Framework;
 using UnityEngine.TestTools;
 
 namespace Proto.Promises.Tests
@@ -7,18 +8,6 @@ namespace Proto.Promises.Tests
     {
         public class _2_1_1_WhenPendingAPromise
         {
-            [TearDown]
-            public void Teardown()
-            {
-                // Clean up.
-                try
-                {
-                    Promise.Manager.HandleCompletes();
-                }
-                catch (System.AggregateException) { }
-                LogAssert.NoUnexpectedReceived();
-            }
-
             [Test]
             public void _2_1_1_1_MayTransitionToEitherTheFulfilledOrRejectedState()
             {
@@ -36,23 +25,15 @@ namespace Proto.Promises.Tests
                 deferred.Reject();
 
                 Assert.AreEqual(Promise.State.Rejected, deferred.State);
+
+                // Clean up.
+                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                LogAssert.NoUnexpectedReceived();
             }
         }
 
         public class _2_1_2_WhenFulfilledAPromise
         {
-            [TearDown]
-            public void Teardown()
-            {
-                // Clean up.
-                try
-                {
-                    Promise.Manager.HandleCompletes();
-                }
-                catch (System.AggregateException) { }
-                LogAssert.NoUnexpectedReceived();
-            }
-
             [Test]
             public void _2_1_2_1_MustNotTransitionToAnyOtherState()
             {
@@ -75,8 +56,11 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(Promise.State.Resolved, deferred.State);
                 Assert.AreEqual(Promise.State.Resolved, deferredInt.State);
-            }
 
+                // Clean up.
+                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                LogAssert.NoUnexpectedReceived();
+            }
 
             [Test]
             public void _2_1_2_2_MustHaveAValueWhichMustNotChange()
@@ -89,13 +73,13 @@ namespace Proto.Promises.Tests
                 int result = -1;
                 int expected = 0;
 
-                TestHelper.AddCallbacks(deferred.Promise, num => { Assert.AreEqual(expected, num); result = num; }, null);
+                TestHelper.AddCallbacks(deferred.Promise, num => { Assert.AreEqual(expected, num); result = num; }, s => Assert.Fail("Promise was rejected when it should have been resolved."));
                 deferred.Resolve(expected);
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(expected, result);
 
-                TestHelper.AddCallbacks(deferred.Promise, num => { Assert.AreEqual(expected, num); result = num; }, null);
+                TestHelper.AddCallbacks(deferred.Promise, num => { Assert.AreEqual(expected, num); result = num; }, s => Assert.Fail("Promise was rejected when it should have been resolved."));
 
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
 
@@ -105,23 +89,15 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(expected, result);
 
                 deferred.Release();
+
+                // Clean up.
+                Promise.Manager.HandleCompletes();
+                LogAssert.NoUnexpectedReceived();
             }
         }
 
         public class _2_1_3_WhenRejectedAPromise
         {
-            [TearDown]
-            public void Teardown()
-            {
-                // Clean up.
-                try
-                {
-                    Promise.Manager.HandleCompletes();
-                }
-                catch (System.AggregateException) { }
-                LogAssert.NoUnexpectedReceived();
-            }
-
             [Test]
             public void _2_1_3_1_MustNotTransitionToAnyOtherState()
             {
@@ -144,6 +120,10 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(Promise.State.Rejected, deferred.State);
                 Assert.AreEqual(Promise.State.Rejected, deferredInt.State);
+
+                // Clean up.
+                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                LogAssert.NoUnexpectedReceived();
             }
 
             [Test]
@@ -156,7 +136,9 @@ namespace Proto.Promises.Tests
                 deferred.Retain();
                 string rejection = null;
                 string expected = "Fail Value";
-                TestHelper.AddCallbacks(deferred.Promise, null, failValue => {
+                int counter = 0;
+                TestHelper.AddCallbacks(deferred.Promise, () => Assert.Fail("Promise was resolved when it should have been rejected."), failValue => {
+                    ++counter;
                     rejection = failValue;
 
                     Assert.AreEqual(expected, failValue);
@@ -166,7 +148,7 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(expected, rejection);
 
-                TestHelper.AddCallbacks(deferred.Promise, null, failValue => {
+                TestHelper.AddCallbacks(deferred.Promise, () => Assert.Fail("Promise was resolved when it should have been rejected."), failValue => {
                     rejection = failValue;
 
                     Assert.AreEqual(expected, failValue);
@@ -175,16 +157,15 @@ namespace Proto.Promises.Tests
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
 
                 deferred.Reject("Different Fail Value");
+                deferred.Release();
                 // The second rejection will be added to the unhandled rejection queue instead of set as the promise's reason.
-                try
-                {
-                    Promise.Manager.HandleCompletes();
-                }
-                catch (System.AggregateException) { }
+                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
 
                 Assert.AreEqual(expected, rejection);
 
-                deferred.Release();
+                // Clean up.
+                Promise.Manager.HandleCompletes();
+                LogAssert.NoUnexpectedReceived();
             }
 
             [Test]
@@ -197,7 +178,7 @@ namespace Proto.Promises.Tests
                 deferred.Retain();
                 string rejection = null;
                 string expected = "Fail Value";
-                TestHelper.AddCallbacks(deferred.Promise, null, failValue => {
+                TestHelper.AddCallbacks(deferred.Promise, v => Assert.Fail("Promise was resolved when it should have been rejected."), failValue => {
                     rejection = failValue;
 
                     Assert.AreEqual(expected, failValue);
@@ -205,7 +186,7 @@ namespace Proto.Promises.Tests
                 deferred.Reject(expected);
                 Promise.Manager.HandleCompletes();
 
-                TestHelper.AddCallbacks(deferred.Promise, null, failValue => {
+                TestHelper.AddCallbacks(deferred.Promise, v => Assert.Fail("Promise was resolved when it should have been rejected."), failValue => {
                     rejection = failValue;
 
                     Assert.AreEqual(expected, failValue);
@@ -214,16 +195,15 @@ namespace Proto.Promises.Tests
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
 
                 deferred.Reject("Different Fail Value");
+                deferred.Release();
                 // The second rejection will be added to the unhandled rejection queue instead of set as the promise's reason.
-                try
-                {
-                    Promise.Manager.HandleCompletes();
-                }
-                catch (System.AggregateException) { }
+                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
 
                 Assert.AreEqual(expected, rejection);
 
-                deferred.Release();
+                // Clean up.
+                Promise.Manager.HandleCompletes();
+                LogAssert.NoUnexpectedReceived();
             }
         }
     }

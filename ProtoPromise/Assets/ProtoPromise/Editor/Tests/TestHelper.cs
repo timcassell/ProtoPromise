@@ -16,6 +16,8 @@ namespace Proto.Promises.Tests
         public const int rejectTKnownCallbacks = 18;
         public const int rejectTUnknownCallbacks = 9;
 
+        public const int completeCallbacks = 6;
+
         static Action<Promise.Deferred> resolveDeferredAction = deferred => deferred.Resolve();
         static Action<Promise<int>.Deferred> resolveDeferredActionInt = deferred => deferred.Resolve(0);
 
@@ -24,20 +26,29 @@ namespace Proto.Promises.Tests
             // Add empty delegates so no need for null check.
             onResolve += () => { };
             onReject += s => { };
-            onError += e => { };
+            if (onError == null)
+            {
+                onError = e => { throw e; };
+            }
 
             promise.Then(() => onResolve())
-                .Catch(onError);
+                .Catch(onError)
+                .Catch((string s) => { });
             promise.Then(() => { onResolve(); return 0; })
-                .Catch(onError);
+                .Catch(onError)
+                .Catch((string s) => { });
             promise.Then(() => { onResolve(); return Promise.Resolved(); })
-                .Catch(onError);
+                .Catch(onError)
+                .Catch((string s) => { });
             promise.Then(() => { onResolve(); return Promise.Resolved(0); })
-                .Catch(onError);
+                .Catch(onError)
+                .Catch((string s) => { });
             promise.Then(() => { onResolve(); return resolveDeferredAction; })
-                .Catch(onError);
+                .Catch(onError)
+                .Catch((string s) => { });
             promise.Then(() => { onResolve(); return resolveDeferredActionInt; })
-                .Catch(onError);
+                .Catch(onError)
+                .Catch((string s) => { });
 
             promise.Then(() => onResolve(), () => onReject(unknownRejectValue))
                 .Catch(onError);
@@ -108,20 +119,29 @@ namespace Proto.Promises.Tests
             // Add empty delegates so no need for null check.
             onResolve += x => { };
             onReject += s => { };
-            onError += e => { };
+            if (onError == null)
+            {
+                onError = e => { throw e; };
+            }
 
             promise.Then(x => onResolve(x))
-                .Catch(onError);
+                .Catch(onError)
+                .Catch((string s) => { });
             promise.Then(x => { onResolve(x); return 0; })
-                .Catch(onError);
+                .Catch(onError)
+                .Catch((string s) => { });
             promise.Then(x => { onResolve(x); return Promise.Resolved(); })
-                .Catch(onError);
+                .Catch(onError)
+                .Catch((string s) => { });
             promise.Then(x => { onResolve(x); return Promise.Resolved(0); })
-                .Catch(onError);
+                .Catch(onError)
+                .Catch((string s) => { });
             promise.Then(x => { onResolve(x); return resolveDeferredAction; })
-                .Catch(onError);
+                .Catch(onError)
+                .Catch((string s) => { });
             promise.Then(x => { onResolve(x); return resolveDeferredActionInt; })
-                .Catch(onError);
+                .Catch(onError)
+                .Catch((string s) => { });
 
             promise.Then(x => onResolve(x), () => onReject(unknownRejectValue))
                 .Catch(onError);
@@ -195,7 +215,10 @@ namespace Proto.Promises.Tests
             onResolve += () => { };
             onReject += s => { };
             onUnknownRejection += () => { };
-            onError += e => { };
+            if (onError == null)
+            {
+                onError = e => { throw e; };
+            }
 
             promise.Then(() => onResolve())
                 .Catch(onError);
@@ -280,7 +303,10 @@ namespace Proto.Promises.Tests
             onResolve += x => { };
             onReject += s => { };
             onUnknownRejection += () => { };
-            onError += e => { };
+            if (onError == null)
+            {
+                onError = e => { throw e; };
+            }
 
             promise.Then(x => onResolve(x))
                 .Catch(onError);
@@ -361,13 +387,27 @@ namespace Proto.Promises.Tests
                 .Catch(onError);
         }
 
+        public static void AddCompleteCallbacks(Promise promise, Action onComplete)
+        {
+            // Add empty delegate so no need for null check.
+            onComplete += () => { };
+
+            promise.Complete(() => onComplete());
+            promise.Complete(() => { onComplete(); return 0; });
+            promise.Complete(() => { onComplete(); return Promise.Resolved(); });
+            promise.Complete(() => { onComplete(); return Promise.Resolved(0); });
+            promise.Complete(() => { onComplete(); return deferred => deferred.Resolve(); });
+            promise.Complete(() => { onComplete(); return (Action<Promise<int>.Deferred>) (deferred => deferred.Resolve(0)); });
+        }
+
         public static void AssertRejectType<TReject>(Promise promise)
         {
             int rejectCounter = 0;
             AddCallbacks(promise,
                 () => Assert.Fail("Promise was resolved when it should be rejected with InvalidReturnException."),
                 (object e) => { Assert.IsInstanceOf<TReject>(e); ++rejectCounter; },
-                () => ++rejectCounter
+                () => ++rejectCounter,
+                e => Assert.IsInstanceOf<TReject>(e)
                 );
             Promise.Manager.HandleCompletes();
 
@@ -380,11 +420,12 @@ namespace Proto.Promises.Tests
             AddCallbacks(promise,
                 v => Assert.Fail("Promise was resolved when it should be rejected with InvalidReturnException."),
                 (object e) => { Assert.IsInstanceOf<TReject>(e); ++rejectCounter; },
-                () => ++rejectCounter
+                () => ++rejectCounter,
+                e => Assert.IsInstanceOf<TReject>(e)
                 );
             Promise.Manager.HandleCompletes();
 
-            Assert.AreEqual(rejectVoidCallbacks, rejectCounter);
+            Assert.AreEqual(rejectTCallbacks, rejectCounter);
         }
     }
 }

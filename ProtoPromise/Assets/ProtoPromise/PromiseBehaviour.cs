@@ -8,8 +8,13 @@ namespace Proto.Promises
     {
         static Promise()
         {
-            // Simply access a type member so that its static constructor is guaranteed to have run. This ensures that PromiseBehaviour is initialized before any promise actions are made.
-            var _ = PromiseBehaviour.Instance;
+#if UNITY_EDITOR
+            if (!UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
+#endif
+            {
+                // Simply access a type member so that its static constructor is guaranteed to have run. This ensures that PromiseBehaviour is initialized before any promise actions are made.
+                var _ = PromiseBehaviour.Instance;
+            }
         }
 
         private sealed class DefaultPromiseYielder : MonoBehaviour, IPromiseYielder

@@ -75,11 +75,10 @@ namespace Proto.Promises
         {
 #if PROGRESS
             /// <summary>
-            /// If you need to support more whole numbers (longer promise chains), decrease decimalBits. If you need higher precision, increase decimalBits.
+            /// If you need to support longer promise chains, decrease decimalBits. If you need higher precision, increase decimalBits.
             /// <para/>
-            /// Max Whole Number: 2^(32-<see cref="ProgressDecimalBits"/>)
+            /// Promise chain limit: 2^(32-<see cref="ProgressDecimalBits"/>),
             /// Precision: 1/(2^<see cref="ProgressDecimalBits"/>)
-            /// Don't make this smaller than 8 since the maximum contiguous integer representable in a float is 2^24 (and conversely, don't make this larger than 24)
             /// <para/>
             /// NOTE: promises that don't wait (.Then with an onResolved that simply returns a value or void) don't count towards the promise chain limit.
             /// </summary>
@@ -93,7 +92,8 @@ namespace Proto.Promises
             public static PoolType ObjectPooling { get { return _objectPooling; } set { _objectPooling = value; } }
 
 #if DEBUG
-            public static GeneratedStacktrace DebugStacktraceGenerator { get; set; }
+            private static GeneratedStacktrace _debugStacktraceGenerator = GeneratedStacktrace.Rejections;
+            public static GeneratedStacktrace DebugStacktraceGenerator { get { return _debugStacktraceGenerator; } set { _debugStacktraceGenerator = value; } }
 #else
             public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
 #endif
@@ -1227,7 +1227,7 @@ namespace Proto.Promises
                 }
 
                 public uint WholePart { get { return _value >> Config.ProgressDecimalBits; } }
-                public float DecimalPart { get { return (float) DecimalPartAsUInt32 / (float) DecimalMax; } }
+                private double DecimalPart { get { return (double) DecimalPartAsUInt32 / (double) DecimalMax; } }
                 private uint DecimalPartAsUInt32 { get { return _value & DecimalMask; } }
 
                 public uint ToUInt32()
