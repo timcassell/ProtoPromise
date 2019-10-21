@@ -42,31 +42,31 @@ public class TestScript : MonoBehaviour
 	}
 	public RunType runType = RunType.None;
 
-    System.Text.StringBuilder sb = new System.Text.StringBuilder();
+    //System.Text.StringBuilder sb = new System.Text.StringBuilder();
 
-    private void Awake()
-    {
-        var p1 = PromiseWithProgress(5)
-            .Then(() => PromiseWithProgress(5));
-        var p2 = PromiseWithProgress(5)
-            .Then(() => PromiseWithProgress(5));
-        var p3 = PromiseWithProgress(5)
-            .Then(() => PromiseWithProgress(5))
-            .Then(() => PromiseWithProgress(5));
+    //private void Awake()
+    //{
+    //    var p1 = PromiseWithProgress(5)
+    //        .Then(() => PromiseWithProgress(5));
+    //    var p2 = PromiseWithProgress(5)
+    //        .Then(() => PromiseWithProgress(5));
+    //    var p3 = PromiseWithProgress(5)
+    //        .Then(() => PromiseWithProgress(5))
+    //        .Then(() => PromiseWithProgress(5));
 
-        //Promise.Race(p1, p2, p3)
-            //.Then(() => PromiseWithProgress(5))
-            //.Progress(p => sb.AppendLine(p.ToString()))
-            //.Then(() => Debug.Log(sb))
-            //;
-    }
+    //    Promise.Race(p1, p2, p3)
+    //        .Then(() => PromiseWithProgress(5))
+    //        .Progress(p => sb.AppendLine(p.ToString()))
+    //        .Then(() => Debug.Log(sb))
+    //        ;
+    //}
 
-    Promise PromiseWithProgress(int frames)
-    {
-        var deferred = Promise.NewDeferred();
-        StartCoroutine(Progressor(deferred, frames));
-        return deferred.Promise;
-    }
+    //Promise PromiseWithProgress(int frames)
+    //{
+    //    var deferred = Promise.NewDeferred();
+    //    StartCoroutine(Progressor(deferred, frames));
+    //    return deferred.Promise;
+    //}
 
     IEnumerator Progressor(Promise.Deferred deferred, int frames)
     {

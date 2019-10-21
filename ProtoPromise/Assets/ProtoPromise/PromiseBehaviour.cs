@@ -9,7 +9,7 @@ namespace Proto.Promises
         static Promise()
         {
 #if UNITY_EDITOR
-            if (!UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
+            if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
 #endif
             {
                 // Simply access a type member so that its static constructor is guaranteed to have run. This ensures that PromiseBehaviour is initialized before any promise actions are made.
