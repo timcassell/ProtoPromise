@@ -138,7 +138,7 @@ namespace Proto.Promises
         /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is rejected or canceled, the new <see cref="Promise"/> will be rejected or canceled with the same reason.
         /// </summary>
-        public Promise Then(Func<Action<Deferred>> onResolved)
+        public Promise ThenDefer(Func<Action<Deferred>> onResolved)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -155,7 +155,7 @@ namespace Proto.Promises
         /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is rejected or canceled, the new <see cref="Promise{T}"/> will be rejected or canceled with the same reason.
         /// </summary>
-        public Promise<T> Then<T>(Func<Action<Promise<T>.Deferred>> onResolved)
+        public Promise<T> ThenDefer<T>(Func<Action<Promise<T>.Deferred>> onResolved)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -277,7 +277,7 @@ namespace Proto.Promises
         /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved.
         /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise Catch(Func<Action<Deferred>> onRejected)
+        public Promise CatchDefer(Func<Action<Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -295,7 +295,7 @@ namespace Proto.Promises
         /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved.
         /// <para/>If this is canceled or rejected for any other reason or no reason, the new <see cref="Promise"/> will be canceled or rejected with the same reason.
         /// </summary>
-        public Promise Catch<TReject>(Func<TReject, Action<Deferred>> onRejected)
+        public Promise CatchDefer<TReject>(Func<TReject, Action<Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -313,7 +313,7 @@ namespace Proto.Promises
         /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved.
         /// <para/>If this is canceled or rejected for any other reason or no reason, the new <see cref="Promise"/> will be canceled or rejected with the same reason.
         /// </summary>
-        public Promise Catch<TReject>(Func<Action<Deferred>> onRejected)
+        public Promise CatchDefer<TReject>(Func<Action<Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -549,7 +549,7 @@ namespace Proto.Promises
         /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise Then(Func<Action<Deferred>> onResolved, Func<Action<Deferred>> onRejected)
+        public Promise ThenDefer(Func<Action<Deferred>> onResolved, Func<Action<Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -568,7 +568,7 @@ namespace Proto.Promises
         /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise Then<TReject>(Func<Action<Deferred>> onResolved, Func<TReject, Action<Deferred>> onRejected)
+        public Promise ThenDefer<TReject>(Func<Action<Deferred>> onResolved, Func<TReject, Action<Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -587,7 +587,7 @@ namespace Proto.Promises
         /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise Then<TReject>(Func<Action<Deferred>> onResolved, Func<Action<Deferred>> onRejected)
+        public Promise ThenDefer<TReject>(Func<Action<Deferred>> onResolved, Func<Action<Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -606,7 +606,7 @@ namespace Proto.Promises
         /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<T> Then<T>(Func<Action<Promise<T>.Deferred>> onResolved, Func<Action<Promise<T>.Deferred>> onRejected)
+        public Promise<T> ThenDefer<T>(Func<Action<Promise<T>.Deferred>> onResolved, Func<Action<Promise<T>.Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -625,7 +625,7 @@ namespace Proto.Promises
         /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<T> Then<T, TReject>(Func<Action<Promise<T>.Deferred>> onResolved, Func<TReject, Action<Promise<T>.Deferred>> onRejected)
+        public Promise<T> ThenDefer<T, TReject>(Func<Action<Promise<T>.Deferred>> onResolved, Func<TReject, Action<Promise<T>.Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -644,7 +644,7 @@ namespace Proto.Promises
         /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<T> Then<T, TReject>(Func<Action<Promise<T>.Deferred>> onResolved, Func<Action<Promise<T>.Deferred>> onRejected)
+        public Promise<T> ThenDefer<T, TReject>(Func<Action<Promise<T>.Deferred>> onResolved, Func<Action<Promise<T>.Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -733,7 +733,7 @@ namespace Proto.Promises
         /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
         /// <para/>Note: Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
         /// </summary>
-        public Promise Complete(Func<Action<Deferred>> onResolvedOrRejected)
+        public Promise CompleteDefer(Func<Action<Deferred>> onResolvedOrRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
@@ -751,7 +751,7 @@ namespace Proto.Promises
         /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// <para/>Note: Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
         /// </summary>
-		public Promise<T> Complete<T>(Func<Action<Promise<T>.Deferred>> onResolvedOrRejected)
+		public Promise<T> CompleteDefer<T>(Func<Action<Promise<T>.Deferred>> onResolvedOrRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
@@ -855,7 +855,7 @@ namespace Proto.Promises
         /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is rejected or canceled, the new <see cref="Promise"/> will be rejected or canceled with the same reason.
         /// </summary>
-        public Promise Then(Func<T, Action<Promise.Deferred>> onResolved)
+        public Promise ThenDefer(Func<T, Action<Promise.Deferred>> onResolved)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -872,7 +872,7 @@ namespace Proto.Promises
         /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is rejected or canceled, the new <see cref="Promise{T}"/> will be rejected or canceled with the same reason.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, Action<Promise<TResult>.Deferred>> onResolved)
+        public Promise<TResult> ThenDefer<TResult>(Func<T, Action<Promise<TResult>.Deferred>> onResolved)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -994,7 +994,7 @@ namespace Proto.Promises
         /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved with the resolve value.
         /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<T> Catch(Func<Action<Deferred>> onRejected)
+        public Promise<T> CatchDefer(Func<Action<Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1012,7 +1012,7 @@ namespace Proto.Promises
         /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved with the resolve value.
         /// <para/>If this is canceled or rejected for any other reason or no reason, the new <see cref="Promise"/> will be canceled or rejected with the same reason.
         /// </summary>
-        public Promise<T> Catch<TReject>(Func<TReject, Action<Deferred>> onRejected)
+        public Promise<T> CatchDefer<TReject>(Func<TReject, Action<Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1030,7 +1030,7 @@ namespace Proto.Promises
         /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved with the resolve value.
         /// <para/>If this is canceled or rejected for any other reason or no reason, the new <see cref="Promise"/> will be canceled or rejected with the same reason.
         /// </summary>
-        public Promise<T> Catch<TReject>(Func<Action<Deferred>> onRejected)
+        public Promise<T> CatchDefer<TReject>(Func<Action<Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1266,7 +1266,7 @@ namespace Proto.Promises
         /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise Then(Func<T, Action<Promise.Deferred>> onResolved, Func<Action<Promise.Deferred>> onRejected)
+        public Promise ThenDefer(Func<T, Action<Promise.Deferred>> onResolved, Func<Action<Promise.Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1285,7 +1285,7 @@ namespace Proto.Promises
         /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise Then<TReject>(Func<T, Action<Promise.Deferred>> onResolved, Func<TReject, Action<Promise.Deferred>> onRejected)
+        public Promise ThenDefer<TReject>(Func<T, Action<Promise.Deferred>> onResolved, Func<TReject, Action<Promise.Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1304,7 +1304,7 @@ namespace Proto.Promises
         /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise Then<TReject>(Func<T, Action<Promise.Deferred>> onResolved, Func<Action<Promise.Deferred>> onRejected)
+        public Promise ThenDefer<TReject>(Func<T, Action<Promise.Deferred>> onResolved, Func<Action<Promise.Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1323,7 +1323,7 @@ namespace Proto.Promises
         /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, Action<Promise<TResult>.Deferred>> onResolved, Func<Action<Promise<TResult>.Deferred>> onRejected)
+        public Promise<TResult> ThenDefer<TResult>(Func<T, Action<Promise<TResult>.Deferred>> onResolved, Func<Action<Promise<TResult>.Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1342,7 +1342,7 @@ namespace Proto.Promises
         /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<T, Action<Promise<TResult>.Deferred>> onResolved, Func<TReject, Action<Promise<TResult>.Deferred>> onRejected)
+        public Promise<TResult> ThenDefer<TResult, TReject>(Func<T, Action<Promise<TResult>.Deferred>> onResolved, Func<TReject, Action<Promise<TResult>.Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1361,7 +1361,7 @@ namespace Proto.Promises
         /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<T, Action<Promise<TResult>.Deferred>> onResolved, Func<Action<Promise<TResult>.Deferred>> onRejected)
+        public Promise<TResult> ThenDefer<TResult, TReject>(Func<T, Action<Promise<TResult>.Deferred>> onResolved, Func<Action<Promise<TResult>.Deferred>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
