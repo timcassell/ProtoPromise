@@ -1161,7 +1161,879 @@ namespace Proto.Promises.Tests
                     Promise.Manager.HandleCompletes();
                     LogAssert.NoUnexpectedReceived();
                 }
+
+                [Test]
+                public void _2_3_3_3_3_IfWhenDeferredIsResolvedAnyFurtherCallsToResolveOrRejectAreIgnored()
+                {
+                    var resolveDeferred = Promise.NewDeferred();
+                    Assert.AreEqual(Promise.State.Pending, resolveDeferred.State);
+                    resolveDeferred.Retain();
+                    resolveDeferred.Resolve();
+                    Assert.AreEqual(Promise.State.Resolved, resolveDeferred.State);
+
+                    var rejectDeferred = Promise.NewDeferred();
+                    Assert.AreEqual(Promise.State.Pending, rejectDeferred.State);
+                    rejectDeferred.Retain();
+                    rejectDeferred.Reject("Fail value");
+                    Assert.AreEqual(Promise.State.Rejected, rejectDeferred.State);
+
+                    var resolveDeferredInt = Promise.NewDeferred<int>();
+                    Assert.AreEqual(Promise.State.Pending, resolveDeferredInt.State);
+                    resolveDeferredInt.Retain();
+                    resolveDeferredInt.Resolve(0);
+                    Assert.AreEqual(Promise.State.Resolved, resolveDeferredInt.State);
+
+                    var rejectDeferredInt = Promise.NewDeferred<int>();
+                    Assert.AreEqual(Promise.State.Pending, rejectDeferredInt.State);
+                    rejectDeferredInt.Retain();
+                    rejectDeferredInt.Reject("Fail value");
+                    Assert.AreEqual(Promise.State.Rejected, rejectDeferredInt.State);
+
+                    Promise.Deferred waitDeferred = null;
+                    Action<Promise.Deferred> deferredAction = deferred => {
+                        waitDeferred = deferred;
+                        Assert.AreEqual(Promise.State.Pending, waitDeferred.State);
+                    };
+                    Promise<int>.Deferred waitDeferredInt = null;
+                    Action<Promise<int>.Deferred> deferredIntAction = deferred => {
+                        waitDeferredInt = deferred;
+                        Assert.AreEqual(Promise.State.Pending, waitDeferredInt.State);
+                    };
+
+                    Promise.State expectedState = Promise.State.Pending;
+
+                    Action ignoreResolveAction = () => {
+                        LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
+                        waitDeferred.Resolve();
+                        Assert.AreEqual(expectedState, waitDeferred.State);
+                        Promise.Manager.HandleCompletes();
+                    };
+                    Action ignoreRejectAction = () => {
+                        LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
+                        waitDeferred.Reject("Fail value");
+                        Assert.AreEqual(expectedState, waitDeferred.State);
+                        Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                    };
+                    Action ignoreResolveIntAction = () => {
+                        LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
+                        waitDeferredInt.Resolve(0);
+                        Assert.AreEqual(expectedState, waitDeferred.State);
+                        Promise.Manager.HandleCompletes();
+                    };
+                    Action ignoreRejectIntAction = () => {
+                        LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
+                        waitDeferredInt.Reject("Fail value");
+                        Assert.AreEqual(expectedState, waitDeferred.State);
+                        Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                    };
+
+                    Action<Promise> assertResolved = promise => {
+                        promise.Retain();
+                        Promise.Manager.HandleCompletes();
+                        expectedState = Promise.State.Resolved;
+                        waitDeferred.Retain();
+                        waitDeferred.Resolve();
+                        TestHelper.AssertIgnore(promise, TestHelper.resolveVoidCallbacks, 0, ignoreRejectAction, ignoreResolveAction, ignoreRejectAction, ignoreResolveAction);
+                        waitDeferred.Release();
+                        promise.Release();
+                    };
+                    Action<Promise<int>> assertResolvedInt = promiseInt => {
+                        promiseInt.Retain();
+                        Promise.Manager.HandleCompletes();
+                        expectedState = Promise.State.Resolved;
+                        waitDeferredInt.Retain();
+                        waitDeferredInt.Resolve(0);
+                        TestHelper.AssertIgnore(promiseInt, TestHelper.resolveTCallbacks, 0, ignoreRejectIntAction, ignoreResolveIntAction, ignoreRejectIntAction, ignoreResolveIntAction);
+                        waitDeferredInt.Release();
+                        promiseInt.Release();
+                    };
+
+                    assertResolved.Invoke(resolveDeferred.Promise.ThenDefer(() => deferredAction));
+                    assertResolved.Invoke(resolveDeferred.Promise.ThenDefer(() => deferredAction, () => deferredAction));
+                    assertResolved.Invoke(resolveDeferred.Promise.ThenDefer<object>(() => deferredAction, failValue => deferredAction));
+                    assertResolved.Invoke(resolveDeferred.Promise.ThenDefer<object>(() => deferredAction, () => deferredAction));
+                    assertResolvedInt.Invoke(resolveDeferred.Promise.ThenDefer<int>(() => deferredIntAction));
+                    assertResolvedInt.Invoke(resolveDeferred.Promise.ThenDefer<int>(() => deferredIntAction, () => deferredIntAction));
+                    assertResolvedInt.Invoke(resolveDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, failValue => deferredIntAction));
+                    assertResolvedInt.Invoke(resolveDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, () => deferredIntAction));
+
+                    assertResolved.Invoke(rejectDeferred.Promise.ThenDefer(() => deferredAction, () => deferredAction));
+                    assertResolved.Invoke(rejectDeferred.Promise.ThenDefer<object>(() => deferredAction, failValue => deferredAction));
+                    assertResolved.Invoke(rejectDeferred.Promise.ThenDefer<object>(() => deferredAction, () => deferredAction));
+                    assertResolved.Invoke(rejectDeferred.Promise.CatchDefer(() => deferredAction));
+                    assertResolved.Invoke(rejectDeferred.Promise.CatchDefer<object>(failValue => deferredAction));
+                    assertResolved.Invoke(rejectDeferred.Promise.CatchDefer<object>(() => deferredAction));
+                    assertResolvedInt.Invoke(rejectDeferred.Promise.ThenDefer<int>(() => deferredIntAction, () => deferredIntAction));
+                    assertResolvedInt.Invoke(rejectDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, failValue => deferredIntAction));
+                    assertResolvedInt.Invoke(rejectDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, () => deferredIntAction));
+
+                    assertResolved.Invoke(resolveDeferredInt.Promise.ThenDefer(v => deferredAction));
+                    assertResolved.Invoke(resolveDeferredInt.Promise.ThenDefer(v => deferredAction, () => deferredAction));
+                    assertResolved.Invoke(resolveDeferredInt.Promise.ThenDefer<object>(v => deferredAction, failValue => deferredAction));
+                    assertResolved.Invoke(resolveDeferredInt.Promise.ThenDefer<object>(v => deferredAction, () => deferredAction));
+                    assertResolvedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction));
+                    assertResolvedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction, () => deferredIntAction));
+                    assertResolvedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, failValue => deferredIntAction));
+                    assertResolvedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, () => deferredIntAction));
+
+                    assertResolved.Invoke(rejectDeferredInt.Promise.ThenDefer(v => deferredAction, () => deferredAction));
+                    assertResolved.Invoke(rejectDeferredInt.Promise.ThenDefer<object>(v => deferredAction, failValue => deferredAction));
+                    assertResolved.Invoke(rejectDeferredInt.Promise.ThenDefer<object>(v => deferredAction, () => deferredAction));
+                    assertResolved.Invoke(rejectDeferredInt.Promise.CatchDefer(() => deferredAction));
+                    assertResolved.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(failValue => deferredAction));
+                    assertResolved.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(() => deferredAction));
+                    assertResolvedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction, () => deferredIntAction));
+                    assertResolvedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, failValue => deferredIntAction));
+                    assertResolvedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, () => deferredIntAction));
+                    assertResolvedInt.Invoke(rejectDeferredInt.Promise.CatchDefer(() => deferredIntAction));
+                    assertResolvedInt.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(failValue => deferredIntAction));
+                    assertResolvedInt.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(() => deferredIntAction));
+
+
+                    resolveDeferred.Release();
+                    resolveDeferredInt.Release();
+                    rejectDeferred.Release();
+                    rejectDeferredInt.Release();
+
+                    // Clean up.
+                    Promise.Manager.HandleCompletes();
+                    LogAssert.NoUnexpectedReceived();
+                }
+
+                [Test]
+                public void _2_3_3_3_3_IfWhenDeferredIsRejectedAnyFurtherCallsToResolveOrRejectAreIgnored()
+                {
+                    var resolveDeferred = Promise.NewDeferred();
+                    Assert.AreEqual(Promise.State.Pending, resolveDeferred.State);
+                    resolveDeferred.Retain();
+                    resolveDeferred.Resolve();
+                    Assert.AreEqual(Promise.State.Resolved, resolveDeferred.State);
+
+                    var rejectDeferred = Promise.NewDeferred();
+                    Assert.AreEqual(Promise.State.Pending, rejectDeferred.State);
+                    rejectDeferred.Retain();
+                    rejectDeferred.Reject("Fail value");
+                    Assert.AreEqual(Promise.State.Rejected, rejectDeferred.State);
+
+                    var resolveDeferredInt = Promise.NewDeferred<int>();
+                    Assert.AreEqual(Promise.State.Pending, resolveDeferredInt.State);
+                    resolveDeferredInt.Retain();
+                    resolveDeferredInt.Resolve(0);
+                    Assert.AreEqual(Promise.State.Resolved, resolveDeferredInt.State);
+
+                    var rejectDeferredInt = Promise.NewDeferred<int>();
+                    Assert.AreEqual(Promise.State.Pending, rejectDeferredInt.State);
+                    rejectDeferredInt.Retain();
+                    rejectDeferredInt.Reject("Fail value");
+                    Assert.AreEqual(Promise.State.Rejected, rejectDeferredInt.State);
+
+                    Promise.Deferred waitDeferred = null;
+                    Action<Promise.Deferred> deferredAction = deferred => {
+                        waitDeferred = deferred;
+                        Assert.AreEqual(Promise.State.Pending, waitDeferred.State);
+                    };
+                    Promise<int>.Deferred waitDeferredInt = null;
+                    Action<Promise<int>.Deferred> deferredIntAction = deferred => {
+                        waitDeferredInt = deferred;
+                        Assert.AreEqual(Promise.State.Pending, waitDeferredInt.State);
+                    };
+
+                    Promise.State expectedState = Promise.State.Pending;
+
+                    Action ignoreResolveAction = () => {
+                        LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
+                        waitDeferred.Resolve();
+                        Assert.AreEqual(expectedState, waitDeferred.State);
+                        Promise.Manager.HandleCompletes();
+                    };
+                    Action ignoreRejectAction = () => {
+                        LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
+                        waitDeferred.Reject("Fail value");
+                        Assert.AreEqual(expectedState, waitDeferred.State);
+                        Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                    };
+                    Action ignoreResolveIntAction = () => {
+                        LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
+                        waitDeferredInt.Resolve(0);
+                        Assert.AreEqual(expectedState, waitDeferred.State);
+                        Promise.Manager.HandleCompletes();
+                    };
+                    Action ignoreRejectIntAction = () => {
+                        LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
+                        waitDeferredInt.Reject("Fail value");
+                        Assert.AreEqual(expectedState, waitDeferred.State);
+                        Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                    };
+
+                    Action<Promise> assertRejected = promise => {
+                        promise.Retain();
+                        Promise.Manager.HandleCompletes();
+                        expectedState = Promise.State.Rejected;
+                        waitDeferred.Retain();
+                        waitDeferred.Reject("Fail value");
+                        TestHelper.AssertIgnore(promise, 0, TestHelper.rejectVoidCallbacks, ignoreRejectAction, ignoreResolveAction, ignoreRejectAction, ignoreResolveAction);
+                        waitDeferred.Release();
+                        promise.Release();
+                    };
+                    Action<Promise<int>> assertRejectedInt = promiseInt => {
+                        promiseInt.Retain();
+                        Promise.Manager.HandleCompletes();
+                        expectedState = Promise.State.Rejected;
+                        waitDeferredInt.Retain();
+                        waitDeferredInt.Reject("Fail value");
+                        TestHelper.AssertIgnore(promiseInt, 0, TestHelper.rejectTCallbacks, ignoreRejectIntAction, ignoreResolveIntAction, ignoreRejectIntAction, ignoreResolveIntAction);
+                        waitDeferredInt.Release();
+                        promiseInt.Release();
+                    };
+
+                    assertRejected.Invoke(resolveDeferred.Promise.ThenDefer(() => deferredAction));
+                    assertRejected.Invoke(resolveDeferred.Promise.ThenDefer(() => deferredAction, () => deferredAction));
+                    assertRejected.Invoke(resolveDeferred.Promise.ThenDefer<object>(() => deferredAction, failValue => deferredAction));
+                    assertRejected.Invoke(resolveDeferred.Promise.ThenDefer<object>(() => deferredAction, () => deferredAction));
+                    assertRejectedInt.Invoke(resolveDeferred.Promise.ThenDefer<int>(() => deferredIntAction));
+                    assertRejectedInt.Invoke(resolveDeferred.Promise.ThenDefer<int>(() => deferredIntAction, () => deferredIntAction));
+                    assertRejectedInt.Invoke(resolveDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, failValue => deferredIntAction));
+                    assertRejectedInt.Invoke(resolveDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, () => deferredIntAction));
+
+                    assertRejected.Invoke(rejectDeferred.Promise.ThenDefer(() => deferredAction, () => deferredAction));
+                    assertRejected.Invoke(rejectDeferred.Promise.ThenDefer<object>(() => deferredAction, failValue => deferredAction));
+                    assertRejected.Invoke(rejectDeferred.Promise.ThenDefer<object>(() => deferredAction, () => deferredAction));
+                    assertRejected.Invoke(rejectDeferred.Promise.CatchDefer(() => deferredAction));
+                    assertRejected.Invoke(rejectDeferred.Promise.CatchDefer<object>(failValue => deferredAction));
+                    assertRejected.Invoke(rejectDeferred.Promise.CatchDefer<object>(() => deferredAction));
+                    assertRejectedInt.Invoke(rejectDeferred.Promise.ThenDefer<int>(() => deferredIntAction, () => deferredIntAction));
+                    assertRejectedInt.Invoke(rejectDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, failValue => deferredIntAction));
+                    assertRejectedInt.Invoke(rejectDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, () => deferredIntAction));
+
+                    assertRejected.Invoke(resolveDeferredInt.Promise.ThenDefer(v => deferredAction));
+                    assertRejected.Invoke(resolveDeferredInt.Promise.ThenDefer(v => deferredAction, () => deferredAction));
+                    assertRejected.Invoke(resolveDeferredInt.Promise.ThenDefer<object>(v => deferredAction, failValue => deferredAction));
+                    assertRejected.Invoke(resolveDeferredInt.Promise.ThenDefer<object>(v => deferredAction, () => deferredAction));
+                    assertRejectedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction));
+                    assertRejectedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction, () => deferredIntAction));
+                    assertRejectedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, failValue => deferredIntAction));
+                    assertRejectedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, () => deferredIntAction));
+
+                    assertRejected.Invoke(rejectDeferredInt.Promise.ThenDefer(v => deferredAction, () => deferredAction));
+                    assertRejected.Invoke(rejectDeferredInt.Promise.ThenDefer<object>(v => deferredAction, failValue => deferredAction));
+                    assertRejected.Invoke(rejectDeferredInt.Promise.ThenDefer<object>(v => deferredAction, () => deferredAction));
+                    assertRejected.Invoke(rejectDeferredInt.Promise.CatchDefer(() => deferredAction));
+                    assertRejected.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(failValue => deferredAction));
+                    assertRejected.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(() => deferredAction));
+                    assertRejectedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction, () => deferredIntAction));
+                    assertRejectedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, failValue => deferredIntAction));
+                    assertRejectedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, () => deferredIntAction));
+                    assertRejectedInt.Invoke(rejectDeferredInt.Promise.CatchDefer(() => deferredIntAction));
+                    assertRejectedInt.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(failValue => deferredIntAction));
+                    assertRejectedInt.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(() => deferredIntAction));
+
+
+                    resolveDeferred.Release();
+                    resolveDeferredInt.Release();
+                    rejectDeferred.Release();
+                    rejectDeferredInt.Release();
+
+                    // Clean up.
+                    Promise.Manager.HandleCompletes();
+                    LogAssert.NoUnexpectedReceived();
+                }
+
+                public class _2_3_3_3_4_IfCallingXThrowsAnExceptionE
+                {
+                    [Test]
+                    public void _2_3_3_3_4_1_IfDeferredIsResolvedIgnoreIt()
+                    {
+                        var resolveDeferred = Promise.NewDeferred();
+                        Assert.AreEqual(Promise.State.Pending, resolveDeferred.State);
+                        resolveDeferred.Retain();
+                        resolveDeferred.Resolve();
+                        Assert.AreEqual(Promise.State.Resolved, resolveDeferred.State);
+
+                        var rejectDeferred = Promise.NewDeferred();
+                        Assert.AreEqual(Promise.State.Pending, rejectDeferred.State);
+                        rejectDeferred.Retain();
+                        rejectDeferred.Reject("Fail value");
+                        Assert.AreEqual(Promise.State.Rejected, rejectDeferred.State);
+
+                        var resolveDeferredInt = Promise.NewDeferred<int>();
+                        Assert.AreEqual(Promise.State.Pending, resolveDeferredInt.State);
+                        resolveDeferredInt.Retain();
+                        resolveDeferredInt.Resolve(0);
+                        Assert.AreEqual(Promise.State.Resolved, resolveDeferredInt.State);
+
+                        var rejectDeferredInt = Promise.NewDeferred<int>();
+                        Assert.AreEqual(Promise.State.Pending, rejectDeferredInt.State);
+                        rejectDeferredInt.Retain();
+                        rejectDeferredInt.Reject("Fail value");
+                        Assert.AreEqual(Promise.State.Rejected, rejectDeferredInt.State);
+
+                        Action<Promise.Deferred> deferredAction = deferred => {
+                            deferred.Resolve();
+                            throw new Exception("Fail value");
+                        };
+                        Action<Promise<int>.Deferred> deferredIntAction = deferred => {
+                            deferred.Resolve(0);
+                            throw new Exception("Fail value");
+                        };
+
+                        Action<Promise> assertResolved = promise => {
+                            int resolveCount = 0;
+                            TestHelper.AddCallbacks<object>(promise,
+                                () => ++resolveCount,
+                                o => Assert.Fail("Promise was rejected when it should have been resolved: " + o),
+                                () => Assert.Fail("Promise was rejected when it should have been resolved"));
+                            // Ignored exceptions get added to the unhandled exception queue instead of rejecting the promise.
+                            Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                            Assert.AreEqual(TestHelper.resolveVoidCallbacks, resolveCount);
+                        };
+                        Action<Promise<int>> assertResolvedInt = promise => {
+                            int resolveCount = 0;
+                            TestHelper.AddCallbacks<int, object>(promise,
+                                v => ++resolveCount,
+                                o => Assert.Fail("Promise was rejected when it should have been resolved: " + o),
+                                () => Assert.Fail("Promise was rejected when it should have been resolved"));
+                            // Ignored exceptions get added to the unhandled exception queue instead of rejecting the promise.
+                            Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                            Assert.AreEqual(TestHelper.resolveTCallbacks, resolveCount);
+                        };
+
+                        assertResolved.Invoke(resolveDeferred.Promise.ThenDefer(() => deferredAction));
+                        assertResolved.Invoke(resolveDeferred.Promise.ThenDefer(() => deferredAction, () => deferredAction));
+                        assertResolved.Invoke(resolveDeferred.Promise.ThenDefer<object>(() => deferredAction, failValue => deferredAction));
+                        assertResolved.Invoke(resolveDeferred.Promise.ThenDefer<object>(() => deferredAction, () => deferredAction));
+                        assertResolvedInt.Invoke(resolveDeferred.Promise.ThenDefer<int>(() => deferredIntAction));
+                        assertResolvedInt.Invoke(resolveDeferred.Promise.ThenDefer<int>(() => deferredIntAction, () => deferredIntAction));
+                        assertResolvedInt.Invoke(resolveDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, failValue => deferredIntAction));
+                        assertResolvedInt.Invoke(resolveDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, () => deferredIntAction));
+
+                        assertResolved.Invoke(rejectDeferred.Promise.ThenDefer(() => deferredAction, () => deferredAction));
+                        assertResolved.Invoke(rejectDeferred.Promise.ThenDefer<object>(() => deferredAction, failValue => deferredAction));
+                        assertResolved.Invoke(rejectDeferred.Promise.ThenDefer<object>(() => deferredAction, () => deferredAction));
+                        assertResolved.Invoke(rejectDeferred.Promise.CatchDefer(() => deferredAction));
+                        assertResolved.Invoke(rejectDeferred.Promise.CatchDefer<object>(failValue => deferredAction));
+                        assertResolved.Invoke(rejectDeferred.Promise.CatchDefer<object>(() => deferredAction));
+                        assertResolvedInt.Invoke(rejectDeferred.Promise.ThenDefer<int>(() => deferredIntAction, () => deferredIntAction));
+                        assertResolvedInt.Invoke(rejectDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, failValue => deferredIntAction));
+                        assertResolvedInt.Invoke(rejectDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, () => deferredIntAction));
+
+                        assertResolved.Invoke(resolveDeferredInt.Promise.ThenDefer(v => deferredAction));
+                        assertResolved.Invoke(resolveDeferredInt.Promise.ThenDefer(v => deferredAction, () => deferredAction));
+                        assertResolved.Invoke(resolveDeferredInt.Promise.ThenDefer<object>(v => deferredAction, failValue => deferredAction));
+                        assertResolved.Invoke(resolveDeferredInt.Promise.ThenDefer<object>(v => deferredAction, () => deferredAction));
+                        assertResolvedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction));
+                        assertResolvedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction, () => deferredIntAction));
+                        assertResolvedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, failValue => deferredIntAction));
+                        assertResolvedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, () => deferredIntAction));
+
+                        assertResolved.Invoke(rejectDeferredInt.Promise.ThenDefer(v => deferredAction, () => deferredAction));
+                        assertResolved.Invoke(rejectDeferredInt.Promise.ThenDefer<object>(v => deferredAction, failValue => deferredAction));
+                        assertResolved.Invoke(rejectDeferredInt.Promise.ThenDefer<object>(v => deferredAction, () => deferredAction));
+                        assertResolved.Invoke(rejectDeferredInt.Promise.CatchDefer(() => deferredAction));
+                        assertResolved.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(failValue => deferredAction));
+                        assertResolved.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(() => deferredAction));
+                        assertResolvedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction, () => deferredIntAction));
+                        assertResolvedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, failValue => deferredIntAction));
+                        assertResolvedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, () => deferredIntAction));
+                        assertResolvedInt.Invoke(rejectDeferredInt.Promise.CatchDefer(() => deferredIntAction));
+                        assertResolvedInt.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(failValue => deferredIntAction));
+                        assertResolvedInt.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(() => deferredIntAction));
+
+
+                        resolveDeferred.Release();
+                        resolveDeferredInt.Release();
+                        rejectDeferred.Release();
+                        rejectDeferredInt.Release();
+
+                        // Clean up.
+                        Promise.Manager.HandleCompletes();
+                        LogAssert.NoUnexpectedReceived();
+                    }
+
+                    [Test]
+                    public void _2_3_3_3_4_1_IfDeferredIsRejectedIgnoreIt()
+                    {
+                        var resolveDeferred = Promise.NewDeferred();
+                        Assert.AreEqual(Promise.State.Pending, resolveDeferred.State);
+                        resolveDeferred.Retain();
+                        resolveDeferred.Resolve();
+                        Assert.AreEqual(Promise.State.Resolved, resolveDeferred.State);
+
+                        var rejectDeferred = Promise.NewDeferred();
+                        Assert.AreEqual(Promise.State.Pending, rejectDeferred.State);
+                        rejectDeferred.Retain();
+                        rejectDeferred.Reject("Fail value");
+                        Assert.AreEqual(Promise.State.Rejected, rejectDeferred.State);
+
+                        var resolveDeferredInt = Promise.NewDeferred<int>();
+                        Assert.AreEqual(Promise.State.Pending, resolveDeferredInt.State);
+                        resolveDeferredInt.Retain();
+                        resolveDeferredInt.Resolve(0);
+                        Assert.AreEqual(Promise.State.Resolved, resolveDeferredInt.State);
+
+                        var rejectDeferredInt = Promise.NewDeferred<int>();
+                        Assert.AreEqual(Promise.State.Pending, rejectDeferredInt.State);
+                        rejectDeferredInt.Retain();
+                        rejectDeferredInt.Reject("Fail value");
+                        Assert.AreEqual(Promise.State.Rejected, rejectDeferredInt.State);
+
+                        Action<Promise.Deferred> deferredAction = deferred => {
+                            deferred.Reject("Fail value");
+                            throw new Exception("Fail value");
+                        };
+                        Action<Promise<int>.Deferred> deferredIntAction = deferred => {
+                            deferred.Reject("Fail value");
+                            throw new Exception("Fail value");
+                        };
+
+                        Action<Promise> assertRejected = promise => {
+                            int rejectCount = 0;
+                            TestHelper.AddCallbacks<string>(promise,
+                                () => Assert.Fail("Promise was resolved when it should have been rejected"),
+                                s => ++rejectCount,
+                                () => ++rejectCount);
+                            // Ignored exceptions get added to the unhandled exception queue instead of rejecting the promise.
+                            Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                            Assert.AreEqual(TestHelper.rejectVoidCallbacks, rejectCount);
+                        };
+                        Action<Promise<int>> assertRejectedInt = promise => {
+                            int rejectCount = 0;
+                            TestHelper.AddCallbacks<int, string>(promise,
+                                v => Assert.Fail("Promise was resolved when it should have been rejected: " + v),
+                                s => ++rejectCount,
+                                () => ++rejectCount);
+                            // Ignored exceptions get added to the unhandled exception queue instead of rejecting the promise.
+                            Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                            Assert.AreEqual(TestHelper.rejectVoidCallbacks, rejectCount);
+                        };
+
+                        assertRejected.Invoke(resolveDeferred.Promise.ThenDefer(() => deferredAction));
+                        assertRejected.Invoke(resolveDeferred.Promise.ThenDefer(() => deferredAction, () => deferredAction));
+                        assertRejected.Invoke(resolveDeferred.Promise.ThenDefer<object>(() => deferredAction, failValue => deferredAction));
+                        assertRejected.Invoke(resolveDeferred.Promise.ThenDefer<object>(() => deferredAction, () => deferredAction));
+                        assertRejectedInt.Invoke(resolveDeferred.Promise.ThenDefer<int>(() => deferredIntAction));
+                        assertRejectedInt.Invoke(resolveDeferred.Promise.ThenDefer<int>(() => deferredIntAction, () => deferredIntAction));
+                        assertRejectedInt.Invoke(resolveDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, failValue => deferredIntAction));
+                        assertRejectedInt.Invoke(resolveDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, () => deferredIntAction));
+
+                        assertRejected.Invoke(rejectDeferred.Promise.ThenDefer(() => deferredAction, () => deferredAction));
+                        assertRejected.Invoke(rejectDeferred.Promise.ThenDefer<object>(() => deferredAction, failValue => deferredAction));
+                        assertRejected.Invoke(rejectDeferred.Promise.ThenDefer<object>(() => deferredAction, () => deferredAction));
+                        assertRejected.Invoke(rejectDeferred.Promise.CatchDefer(() => deferredAction));
+                        assertRejected.Invoke(rejectDeferred.Promise.CatchDefer<object>(failValue => deferredAction));
+                        assertRejected.Invoke(rejectDeferred.Promise.CatchDefer<object>(() => deferredAction));
+                        assertRejectedInt.Invoke(rejectDeferred.Promise.ThenDefer<int>(() => deferredIntAction, () => deferredIntAction));
+                        assertRejectedInt.Invoke(rejectDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, failValue => deferredIntAction));
+                        assertRejectedInt.Invoke(rejectDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, () => deferredIntAction));
+
+                        assertRejected.Invoke(resolveDeferredInt.Promise.ThenDefer(v => deferredAction));
+                        assertRejected.Invoke(resolveDeferredInt.Promise.ThenDefer(v => deferredAction, () => deferredAction));
+                        assertRejected.Invoke(resolveDeferredInt.Promise.ThenDefer<object>(v => deferredAction, failValue => deferredAction));
+                        assertRejected.Invoke(resolveDeferredInt.Promise.ThenDefer<object>(v => deferredAction, () => deferredAction));
+                        assertRejectedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction));
+                        assertRejectedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction, () => deferredIntAction));
+                        assertRejectedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, failValue => deferredIntAction));
+                        assertRejectedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, () => deferredIntAction));
+
+                        assertRejected.Invoke(rejectDeferredInt.Promise.ThenDefer(v => deferredAction, () => deferredAction));
+                        assertRejected.Invoke(rejectDeferredInt.Promise.ThenDefer<object>(v => deferredAction, failValue => deferredAction));
+                        assertRejected.Invoke(rejectDeferredInt.Promise.ThenDefer<object>(v => deferredAction, () => deferredAction));
+                        assertRejected.Invoke(rejectDeferredInt.Promise.CatchDefer(() => deferredAction));
+                        assertRejected.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(failValue => deferredAction));
+                        assertRejected.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(() => deferredAction));
+                        assertRejectedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction, () => deferredIntAction));
+                        assertRejectedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, failValue => deferredIntAction));
+                        assertRejectedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, () => deferredIntAction));
+                        assertRejectedInt.Invoke(rejectDeferredInt.Promise.CatchDefer(() => deferredIntAction));
+                        assertRejectedInt.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(failValue => deferredIntAction));
+                        assertRejectedInt.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(() => deferredIntAction));
+
+
+                        resolveDeferred.Release();
+                        resolveDeferredInt.Release();
+                        rejectDeferred.Release();
+                        rejectDeferredInt.Release();
+
+                        // Clean up.
+                        Promise.Manager.HandleCompletes();
+                        LogAssert.NoUnexpectedReceived();
+                    }
+
+                    [Test]
+                    public void _2_3_3_3_4_2_IfDeferredIsPendingRejectPromiseWithEAsTheReason()
+                    {
+                        var resolveDeferred = Promise.NewDeferred();
+                        Assert.AreEqual(Promise.State.Pending, resolveDeferred.State);
+                        resolveDeferred.Retain();
+                        resolveDeferred.Resolve();
+                        Assert.AreEqual(Promise.State.Resolved, resolveDeferred.State);
+
+                        var rejectDeferred = Promise.NewDeferred();
+                        Assert.AreEqual(Promise.State.Pending, rejectDeferred.State);
+                        rejectDeferred.Retain();
+                        rejectDeferred.Reject("Fail value");
+                        Assert.AreEqual(Promise.State.Rejected, rejectDeferred.State);
+
+                        var resolveDeferredInt = Promise.NewDeferred<int>();
+                        Assert.AreEqual(Promise.State.Pending, resolveDeferredInt.State);
+                        resolveDeferredInt.Retain();
+                        resolveDeferredInt.Resolve(0);
+                        Assert.AreEqual(Promise.State.Resolved, resolveDeferredInt.State);
+
+                        var rejectDeferredInt = Promise.NewDeferred<int>();
+                        Assert.AreEqual(Promise.State.Pending, rejectDeferredInt.State);
+                        rejectDeferredInt.Retain();
+                        rejectDeferredInt.Reject("Fail value");
+                        Assert.AreEqual(Promise.State.Rejected, rejectDeferredInt.State);
+
+                        Exception expectedException = new Exception("Fail value");
+
+                        Action<Promise.Deferred> deferredAction = deferred => {
+                            throw expectedException;
+                        };
+                        Action<Promise<int>.Deferred> deferredIntAction = deferred => {
+                            throw expectedException;
+                        };
+
+                        Action<Promise> assertExcepted = promise => {
+                            int exceptionCount = 0;
+                            TestHelper.AddCallbacks<string>(promise,
+                                () => Assert.Fail("Promise was resolved when it should have been rejected"),
+                                s => Assert.Fail("Promise was rejected with a string when it should have been rejected with an Exception: " + s),
+                                () => ++exceptionCount,
+                                e => { Assert.AreEqual(expectedException, e); ++exceptionCount; });
+                            Promise.Manager.HandleCompletes();
+                            Assert.AreEqual(TestHelper.totalVoidCallbacks, exceptionCount);
+                        };
+                        Action<Promise<int>> assertExceptedInt = promise => {
+                            int exceptionCount = 0;
+                            TestHelper.AddCallbacks<int, string>(promise,
+                                v => Assert.Fail("Promise was resolved when it should have been rejected: " + v),
+                                s => Assert.Fail("Promise was rejected when it should have been resolved: " + s),
+                                () => ++exceptionCount,
+                                e => { Assert.AreEqual(expectedException, e); ++exceptionCount; });
+                            Promise.Manager.HandleCompletes();
+                            Assert.AreEqual(TestHelper.totalTCallbacks, exceptionCount);
+                        };
+
+                        assertExcepted.Invoke(resolveDeferred.Promise.ThenDefer(() => deferredAction));
+                        assertExcepted.Invoke(resolveDeferred.Promise.ThenDefer(() => deferredAction, () => deferredAction));
+                        assertExcepted.Invoke(resolveDeferred.Promise.ThenDefer<object>(() => deferredAction, failValue => deferredAction));
+                        assertExcepted.Invoke(resolveDeferred.Promise.ThenDefer<object>(() => deferredAction, () => deferredAction));
+                        assertExceptedInt.Invoke(resolveDeferred.Promise.ThenDefer<int>(() => deferredIntAction));
+                        assertExceptedInt.Invoke(resolveDeferred.Promise.ThenDefer<int>(() => deferredIntAction, () => deferredIntAction));
+                        assertExceptedInt.Invoke(resolveDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, failValue => deferredIntAction));
+                        assertExceptedInt.Invoke(resolveDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, () => deferredIntAction));
+
+                        assertExcepted.Invoke(rejectDeferred.Promise.ThenDefer(() => deferredAction, () => deferredAction));
+                        assertExcepted.Invoke(rejectDeferred.Promise.ThenDefer<object>(() => deferredAction, failValue => deferredAction));
+                        assertExcepted.Invoke(rejectDeferred.Promise.ThenDefer<object>(() => deferredAction, () => deferredAction));
+                        assertExcepted.Invoke(rejectDeferred.Promise.CatchDefer(() => deferredAction));
+                        assertExcepted.Invoke(rejectDeferred.Promise.CatchDefer<object>(failValue => deferredAction));
+                        assertExcepted.Invoke(rejectDeferred.Promise.CatchDefer<object>(() => deferredAction));
+                        assertExceptedInt.Invoke(rejectDeferred.Promise.ThenDefer<int>(() => deferredIntAction, () => deferredIntAction));
+                        assertExceptedInt.Invoke(rejectDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, failValue => deferredIntAction));
+                        assertExceptedInt.Invoke(rejectDeferred.Promise.ThenDefer<int, object>(() => deferredIntAction, () => deferredIntAction));
+
+                        assertExcepted.Invoke(resolveDeferredInt.Promise.ThenDefer(v => deferredAction));
+                        assertExcepted.Invoke(resolveDeferredInt.Promise.ThenDefer(v => deferredAction, () => deferredAction));
+                        assertExcepted.Invoke(resolveDeferredInt.Promise.ThenDefer<object>(v => deferredAction, failValue => deferredAction));
+                        assertExcepted.Invoke(resolveDeferredInt.Promise.ThenDefer<object>(v => deferredAction, () => deferredAction));
+                        assertExceptedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction));
+                        assertExceptedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction, () => deferredIntAction));
+                        assertExceptedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, failValue => deferredIntAction));
+                        assertExceptedInt.Invoke(resolveDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, () => deferredIntAction));
+
+                        assertExcepted.Invoke(rejectDeferredInt.Promise.ThenDefer(v => deferredAction, () => deferredAction));
+                        assertExcepted.Invoke(rejectDeferredInt.Promise.ThenDefer<object>(v => deferredAction, failValue => deferredAction));
+                        assertExcepted.Invoke(rejectDeferredInt.Promise.ThenDefer<object>(v => deferredAction, () => deferredAction));
+                        assertExcepted.Invoke(rejectDeferredInt.Promise.CatchDefer(() => deferredAction));
+                        assertExcepted.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(failValue => deferredAction));
+                        assertExcepted.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(() => deferredAction));
+                        assertExceptedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int>(v => deferredIntAction, () => deferredIntAction));
+                        assertExceptedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, failValue => deferredIntAction));
+                        assertExceptedInt.Invoke(rejectDeferredInt.Promise.ThenDefer<int, object>(v => deferredIntAction, () => deferredIntAction));
+                        assertExceptedInt.Invoke(rejectDeferredInt.Promise.CatchDefer(() => deferredIntAction));
+                        assertExceptedInt.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(failValue => deferredIntAction));
+                        assertExceptedInt.Invoke(rejectDeferredInt.Promise.CatchDefer<object>(() => deferredIntAction));
+
+
+                        resolveDeferred.Release();
+                        resolveDeferredInt.Release();
+                        rejectDeferred.Release();
+                        rejectDeferredInt.Release();
+
+                        // Clean up.
+                        Promise.Manager.HandleCompletes();
+                        LogAssert.NoUnexpectedReceived();
+                    }
+                }
             }
+        }
+
+        [Test]
+        public void _2_3_4_IfOnResolvedOrOnRejectedReturnsSuccessfullyResolvePromise()
+        {
+            var resolveDeferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, resolveDeferred.State);
+            resolveDeferred.Retain();
+            resolveDeferred.Resolve();
+            Assert.AreEqual(Promise.State.Resolved, resolveDeferred.State);
+
+            var rejectDeferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, rejectDeferred.State);
+            rejectDeferred.Retain();
+            rejectDeferred.Reject("Fail value");
+            Assert.AreEqual(Promise.State.Rejected, rejectDeferred.State);
+
+            var resolveDeferredInt = Promise.NewDeferred<int>();
+            Assert.AreEqual(Promise.State.Pending, resolveDeferredInt.State);
+            resolveDeferredInt.Retain();
+            resolveDeferredInt.Resolve(0);
+            Assert.AreEqual(Promise.State.Resolved, resolveDeferredInt.State);
+
+            var rejectDeferredInt = Promise.NewDeferred<int>();
+            Assert.AreEqual(Promise.State.Pending, rejectDeferredInt.State);
+            rejectDeferredInt.Retain();
+            rejectDeferredInt.Reject("Fail value");
+            Assert.AreEqual(Promise.State.Rejected, rejectDeferredInt.State);
+
+            Action<Promise> assertResolved = promise => {
+                int resolveCount = 0;
+                TestHelper.AddCallbacks<object>(promise,
+                    () => ++resolveCount,
+                    o => Assert.Fail("Promise was rejected when it should have been resolved: " + o),
+                    () => Assert.Fail("Promise was rejected when it should have been resolved"));
+                // Ignored exceptions get added to the unhandled exception queue instead of rejecting the promise.
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(TestHelper.resolveVoidCallbacks, resolveCount);
+            };
+
+            assertResolved.Invoke(resolveDeferred.Promise.Then(() => { }));
+            assertResolved.Invoke(resolveDeferred.Promise.Then(() => { }, () => Assert.Fail("Promise was rejected when it should have been resolved")));
+            assertResolved.Invoke(resolveDeferred.Promise.Then<object>(() => { }, failValue => Assert.Fail("Promise was rejected when it should have been resolved")));
+            assertResolved.Invoke(resolveDeferred.Promise.Then<object>(() => { }, () => Assert.Fail("Promise was rejected when it should have been resolved")));
+
+            assertResolved.Invoke(rejectDeferred.Promise.Then(() => Assert.Fail("Promise was resolved when it should have been rejected"), () => { }));
+            assertResolved.Invoke(rejectDeferred.Promise.Then<object>(() => Assert.Fail("Promise was resolved when it should have been rejected"), failValue => { }));
+            assertResolved.Invoke(rejectDeferred.Promise.Then<object>(() => Assert.Fail("Promise was resolved when it should have been rejected"), () => { }));
+            assertResolved.Invoke(rejectDeferred.Promise.Catch(() => { }));
+            assertResolved.Invoke(rejectDeferred.Promise.Catch<object>(failValue => { }));
+            assertResolved.Invoke(rejectDeferred.Promise.Catch<object>(() => { }));
+
+            assertResolved.Invoke(resolveDeferredInt.Promise.Then(v => { }));
+            assertResolved.Invoke(resolveDeferredInt.Promise.Then(v => { }, () => Assert.Fail("Promise was rejected when it should have been resolved")));
+            assertResolved.Invoke(resolveDeferredInt.Promise.Then<object>(v => { }, failValue => Assert.Fail("Promise was rejected when it should have been resolved")));
+            assertResolved.Invoke(resolveDeferredInt.Promise.Then<object>(v => { }, () => Assert.Fail("Promise was rejected when it should have been resolved")));
+
+            assertResolved.Invoke(rejectDeferredInt.Promise.Then(v => Assert.Fail("Promise was resolved when it should have been rejected"), () => { }));
+            assertResolved.Invoke(rejectDeferredInt.Promise.Then<object>(v => Assert.Fail("Promise was resolved when it should have been rejected"), failValue => { }));
+            assertResolved.Invoke(rejectDeferredInt.Promise.Then<object>(v => Assert.Fail("Promise was resolved when it should have been rejected"), () => { }));
+            assertResolved.Invoke(rejectDeferredInt.Promise.Catch(() => { }));
+            assertResolved.Invoke(rejectDeferredInt.Promise.Catch<object>(failValue => { }));
+            assertResolved.Invoke(rejectDeferredInt.Promise.Catch<object>(() => { }));
+
+
+            resolveDeferred.Release();
+            resolveDeferredInt.Release();
+            rejectDeferred.Release();
+            rejectDeferredInt.Release();
+
+            // Clean up.
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void _2_3_4_IfXIsNotAPromiseOrAFunctionFulfillPromiseWithX()
+        {
+            var resolveDeferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, resolveDeferred.State);
+            resolveDeferred.Retain();
+            resolveDeferred.Resolve();
+            Assert.AreEqual(Promise.State.Resolved, resolveDeferred.State);
+
+            var rejectDeferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, rejectDeferred.State);
+            rejectDeferred.Retain();
+            rejectDeferred.Reject("Fail value");
+            Assert.AreEqual(Promise.State.Rejected, rejectDeferred.State);
+
+            var resolveDeferredInt = Promise.NewDeferred<int>();
+            Assert.AreEqual(Promise.State.Pending, resolveDeferredInt.State);
+            resolveDeferredInt.Retain();
+            resolveDeferredInt.Resolve(0);
+            Assert.AreEqual(Promise.State.Resolved, resolveDeferredInt.State);
+
+            var rejectDeferredInt = Promise.NewDeferred<int>();
+            Assert.AreEqual(Promise.State.Pending, rejectDeferredInt.State);
+            rejectDeferredInt.Retain();
+            rejectDeferredInt.Reject("Fail value");
+            Assert.AreEqual(Promise.State.Rejected, rejectDeferredInt.State);
+
+            int expected = 100;
+
+            Action<Promise<int>> assertResolved = promise => {
+                int resolveCount = 0;
+                TestHelper.AddCallbacks<int, object>(promise,
+                    v => { Assert.AreEqual(expected, v); ++resolveCount; },
+                    o => Assert.Fail("Promise was rejected when it should have been resolved: " + o),
+                    () => Assert.Fail("Promise was rejected when it should have been resolved"));
+                // Ignored exceptions get added to the unhandled exception queue instead of rejecting the promise.
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(TestHelper.resolveVoidCallbacks, resolveCount);
+            };
+
+            assertResolved.Invoke(resolveDeferred.Promise.Then<int>(() => expected));
+            assertResolved.Invoke(resolveDeferred.Promise.Then<int>(() => expected, () => { Assert.Fail("Promise was rejected when it should have been resolved"); return 0; }));
+            assertResolved.Invoke(resolveDeferred.Promise.Then<int, object>(() => expected, failValue => { Assert.Fail("Promise was rejected when it should have been resolved"); return 0; }));
+            assertResolved.Invoke(resolveDeferred.Promise.Then<int, object>(() => expected, () => { Assert.Fail("Promise was rejected when it should have been resolved"); return 0; }));
+
+            assertResolved.Invoke(rejectDeferred.Promise.Then<int>(() => { Assert.Fail("Promise was resolved when it should have been rejected"); return 0; }, () => expected));
+            assertResolved.Invoke(rejectDeferred.Promise.Then<int, object>(() => { Assert.Fail("Promise was resolved when it should have been rejected"); return 0; }, failValue => expected));
+            assertResolved.Invoke(rejectDeferred.Promise.Then<int, object>(() => { Assert.Fail("Promise was resolved when it should have been rejected"); return 0; }, () => expected));
+
+            assertResolved.Invoke(resolveDeferredInt.Promise.Then<int>(v => expected));
+            assertResolved.Invoke(resolveDeferredInt.Promise.Then<int>(v => expected, () => { Assert.Fail("Promise was rejected when it should have been resolved"); return 0; }));
+            assertResolved.Invoke(resolveDeferredInt.Promise.Then<int, object>(v => expected, failValue => { Assert.Fail("Promise was rejected when it should have been resolved"); return 0; }));
+            assertResolved.Invoke(resolveDeferredInt.Promise.Then<int, object>(v => expected, () => { Assert.Fail("Promise was rejected when it should have been resolved"); return 0; }));
+
+            assertResolved.Invoke(rejectDeferredInt.Promise.Then<int>(v => { Assert.Fail("Promise was resolved when it should have been rejected"); return 0; }, () => expected));
+            assertResolved.Invoke(rejectDeferredInt.Promise.Then<int, object>(v => { Assert.Fail("Promise was resolved when it should have been rejected"); return 0; }, failValue => expected));
+            assertResolved.Invoke(rejectDeferredInt.Promise.Then<int, object>(v => { Assert.Fail("Promise was resolved when it should have been rejected"); return 0; }, () => expected));
+            assertResolved.Invoke(rejectDeferredInt.Promise.Catch(() => expected));
+            assertResolved.Invoke(rejectDeferredInt.Promise.Catch<object>(failValue => expected));
+            assertResolved.Invoke(rejectDeferredInt.Promise.Catch<object>(() => expected));
+
+
+            resolveDeferred.Release();
+            resolveDeferredInt.Release();
+            rejectDeferred.Release();
+            rejectDeferredInt.Release();
+
+            // Clean up.
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        // If a promise is resolved with a thenable that participates in a circular thenable chain, such that the recursive
+        // nature of[[Resolve]](promise, thenable) eventually causes[[Resolve]](promise, thenable) to be
+        // called again, following the above algorithm will lead to infinite recursion.Implementations are encouraged, but
+        // not required, to detect such recursion and reject promise with an informative Exception as the reason.
+
+        [Test]
+        public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChainRejectPromiseWithInvalidReturnExceptionAsTheReason()
+        {
+            Promise promise = null;
+            Promise<int> promiseInt = null;
+            var deferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+            deferred.Retain();
+            deferred.Resolve();
+            var deferredInt = Promise.NewDeferred<int>();
+            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+            deferredInt.Retain();
+            deferredInt.Resolve(0);
+
+            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
+
+
+            promise = deferred.Promise.Then(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+            promise = deferred.Promise.Then(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }), () => { rejectAssert(); return promise; });
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+            promise = deferred.Promise.Then(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }), (object failValue) => { rejectAssert(); return promise; });
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+            promise = deferred.Promise.Then<object>(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }), () => { rejectAssert(); return promise; });
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+
+            promiseInt = deferred.Promise.Then(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
+            promiseInt = deferred.Promise.Then(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0), () => { rejectAssert(); return promiseInt; });
+            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
+            promiseInt = deferred.Promise.Then(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0), (object failValue) => { rejectAssert(); return promiseInt; });
+            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
+            promiseInt = deferred.Promise.Then<int, object>(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0), () => { rejectAssert(); return promiseInt; });
+            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
+
+
+            promise = deferredInt.Promise.Then(v => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+            promise = deferredInt.Promise.Then(v => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }), () => { rejectAssert(); return promise; });
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+            promise = deferredInt.Promise.Then(v => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }), (object failValue) => { rejectAssert(); return promise; });
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+            promise = deferredInt.Promise.Then<object>(v => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }), () => { rejectAssert(); return promise; });
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+
+            promiseInt = deferredInt.Promise.Then(v => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
+            promiseInt = deferredInt.Promise.Then(v => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0), () => { rejectAssert(); return promiseInt; });
+            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
+            promiseInt = deferredInt.Promise.Then(v => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0), (object failValue) => { rejectAssert(); return promiseInt; });
+            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
+            promiseInt = deferredInt.Promise.Then<int, object>(v => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0), () => { rejectAssert(); return promiseInt; });
+            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
+
+
+            promise = deferred.Promise.Complete(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+            promiseInt = deferred.Promise.Complete(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
+
+
+            deferred.Release();
+            deferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+            deferred.Retain();
+            deferred.Reject("Fail value");
+            deferredInt.Release();
+            deferredInt = Promise.NewDeferred<int>();
+            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+            deferredInt.Retain();
+            deferredInt.Reject("Fail value");
+
+
+            promise = deferred.Promise.Catch(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+            promise = deferred.Promise.Catch((object failValue) => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+            promise = deferred.Promise.Catch<object>(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+            promise = deferred.Promise.Then(() => { resolveAssert(); return promise; }, () => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+            promise = deferred.Promise.Then(() => { resolveAssert(); return promise; }, (object failValue) => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+            promise = deferred.Promise.Then<object>(() => { resolveAssert(); return promise; }, () => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            TestHelper.AssertRejectType<InvalidReturnException>(promise);
+
+            promiseInt = deferredInt.Promise.Catch(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
+            promiseInt = deferredInt.Promise.Catch((object failValue) => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
+            promiseInt = deferredInt.Promise.Catch<object>(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
+            promiseInt = deferredInt.Promise.Then(() => { resolveAssert(); return promiseInt; }, () => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
+            promiseInt = deferredInt.Promise.Then(() => { resolveAssert(); return promiseInt; }, (object failValue) => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
+            promiseInt = deferredInt.Promise.Then<int, object>(() => { resolveAssert(); return promiseInt; }, () => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
+
+
+            promiseInt = deferredInt.Promise.Then(v => { resolveAssert(); return promiseInt; }, () => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
+            promiseInt = deferredInt.Promise.Then(v => { resolveAssert(); return promiseInt; }, (object failValue) => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
+            promiseInt = deferredInt.Promise.Then<int, object>(v => { resolveAssert(); return promiseInt; }, () => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
+
+            deferred.Release();
+            deferredInt.Release();
+
+            // Clean up.
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
         }
     }
 }

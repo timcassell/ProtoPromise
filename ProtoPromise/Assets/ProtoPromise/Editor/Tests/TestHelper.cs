@@ -11,12 +11,10 @@ namespace Proto.Promises.Tests
         public const int rejectVoidCallbacks = 27;
         public const int rejectTCallbacks = 27;
 
-        public const int rejectVoidKnownCallbacks = 18;
-        public const int rejectVoidUnknownCallbacks = 9;
-        public const int rejectTKnownCallbacks = 18;
-        public const int rejectTUnknownCallbacks = 9;
-
         public const int completeCallbacks = 6;
+
+        public const int totalVoidCallbacks = 33;
+        public const int totalTCallbacks = 33;
 
         static Action<Promise.Deferred> resolveDeferredAction = deferred => deferred.Resolve();
         static Action<Promise<int>.Deferred> resolveDeferredActionInt = deferred => deferred.Resolve(0);
@@ -404,7 +402,7 @@ namespace Proto.Promises.Tests
         {
             int rejectCounter = 0;
             AddCallbacks(promise,
-                () => Assert.Fail("Promise was resolved when it should be rejected with InvalidReturnException."),
+                () => Assert.Fail("Promise was resolved when it should be rejected with " + typeof(TReject)),
                 (object e) => { Assert.IsInstanceOf<TReject>(e); ++rejectCounter; },
                 () => ++rejectCounter,
                 e => Assert.IsInstanceOf<TReject>(e)
@@ -418,7 +416,7 @@ namespace Proto.Promises.Tests
         {
             int rejectCounter = 0;
             AddCallbacks(promise,
-                v => Assert.Fail("Promise was resolved when it should be rejected with InvalidReturnException."),
+                v => Assert.Fail("Promise was resolved when it should be rejected with " + typeof(TReject)),
                 (object e) => { Assert.IsInstanceOf<TReject>(e); ++rejectCounter; },
                 () => ++rejectCounter,
                 e => Assert.IsInstanceOf<TReject>(e)
@@ -426,6 +424,44 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(rejectTCallbacks, rejectCounter);
+        }
+
+        public static void AssertIgnore(Promise promise, int expectedResolveCount, int expectedRejectCount, params Action[] ignoreActions)
+        {
+            int resolveCounter = 0;
+            int rejectCounter = 0;
+
+            foreach (var action in ignoreActions)
+            {
+                resolveCounter = 0;
+                rejectCounter = 0;
+                action.Invoke();
+                Assert.AreEqual(0, resolveCounter);
+                Assert.AreEqual(0, rejectCounter);
+                AddCallbacks(promise, () => ++resolveCounter, s => ++rejectCounter);
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(expectedResolveCount, resolveCounter);
+                Assert.AreEqual(expectedRejectCount, rejectCounter);
+            }
+        }
+
+        public static void AssertIgnore<T>(Promise<T> promise, int expectedResolveCount, int expectedRejectCount, params Action[] ignoreActions)
+        {
+            int resolveCounter = 0;
+            int rejectCounter = 0;
+
+            foreach (var action in ignoreActions)
+            {
+                resolveCounter = 0;
+                rejectCounter = 0;
+                action.Invoke();
+                Assert.AreEqual(0, resolveCounter);
+                Assert.AreEqual(0, rejectCounter);
+                AddCallbacks(promise, v => ++resolveCounter, s => ++rejectCounter);
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(expectedResolveCount, resolveCounter);
+                Assert.AreEqual(expectedRejectCount, rejectCounter);
+            }
         }
     }
 }
