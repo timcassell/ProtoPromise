@@ -1,4 +1,5 @@
-﻿using System;
+﻿#pragma warning disable CS0672 // Member overrides obsolete member
+using System;
 
 namespace Proto.Promises
 {
@@ -136,8 +137,8 @@ namespace Proto.Promises
                     if (State == State.Pending)
                     {
                         State = State.Resolved;
+                        promise.ResolveDirect();
                         promise.Release();
-                        promise.Resolve();
                     }
                     else
                     {
@@ -156,8 +157,8 @@ namespace Proto.Promises
                     if (State == State.Pending)
                     {
                         State = State.Rejected;
-                        promise.Release();
                         promise.RejectDirect(rejection);
+                        promise.Release();
                     }
                     else
                     {
@@ -176,8 +177,8 @@ namespace Proto.Promises
                     if (State == State.Pending)
                     {
                         State = State.Rejected;
-                        promise.Release();
                         promise.RejectDirect(rejection);
+                        promise.Release();
                     }
                     else
                     {
@@ -195,8 +196,8 @@ namespace Proto.Promises
                     if (State == State.Pending)
                     {
                         State = State.Rejected;
-                        promise.Release();
                         promise.RejectDirect(rejection);
+                        promise.Release();
                     }
                     else
                     {
@@ -251,8 +252,8 @@ namespace Proto.Promises
                     if (State == State.Pending)
                     {
                         State = State.Resolved;
+                        promise.ResolveDirect(value);
                         promise.Release();
-                        promise.Resolve(value);
                     }
                     else
                     {
@@ -271,8 +272,8 @@ namespace Proto.Promises
                     if (State == State.Pending)
                     {
                         State = State.Rejected;
-                        promise.Release();
                         promise.RejectDirect(rejection);
+                        promise.Release();
                     }
                     else
                     {
@@ -291,8 +292,8 @@ namespace Proto.Promises
                     if (State == State.Pending)
                     {
                         State = State.Rejected;
-                        promise.Release();
                         promise.RejectDirect(rejection);
+                        promise.Release();
                     }
                     else
                     {
@@ -309,9 +310,9 @@ namespace Proto.Promises
 
                     if (State == State.Pending)
                     {
-                        promise.Release();
                         State = State.Rejected;
                         promise.RejectDirect(rejection);
+                        promise.Release();
                     }
                     else
                     {

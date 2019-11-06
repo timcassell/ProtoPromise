@@ -97,9 +97,7 @@ namespace Proto.Promises
 
                 while (_handleQueue.IsNotEmpty)
                 {
-                    Promise current = (Promise) _handleQueue.DequeueRisky();
-                    current.HandleBranches();
-                    current._handling = false;
+                    _handleQueue.DequeueRisky().Handle();
 
                     // In case a promise was canceled from a callback.
                     HandleCanceled();

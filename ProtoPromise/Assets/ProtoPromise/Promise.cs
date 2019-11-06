@@ -18,7 +18,7 @@ namespace Proto.Promises
 		{
             ValidateOperation(this, 1);
 #if DEBUG
-			checked
+			checked // If this fails, change _retainCounter to ulong.
 #endif
 			{
                 ++_retainCounter;
@@ -33,13 +33,31 @@ namespace Proto.Promises
         {
             ValidateOperation(this, 1);
 #if DEBUG
-            checked
+            checked // If this fails, it means you called Release before Retain somewhere.
 #endif
             {
-                if (--_retainCounter == 0 & _state != State.Pending & !_handling)
+                if (--_retainCounter == 0 & _state != State.Pending)
                 {
-                    // Place in the handle queue so it can be repooled.
-                    AddToHandleQueue(this);
+                    if (_state == State.Rejected & !_wasWaitedOn)
+                    {
+                        // Rejection wasn't caught.
+                        _wasWaitedOn = true;
+                        AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValueOrPrevious);
+                    }
+                    Dispose();
+                }
+            }
+        }
+
+        private void Repool()
+        {
+            if (_retainCounter == 0)
+            {
+                if (!_wasWaitedOn & _state == State.Rejected)
+                {
+                    // Rejection wasn't caught.
+                    _wasWaitedOn = true;
+                    AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValueOrPrevious);
                 }
             }
         }
@@ -49,7 +67,7 @@ namespace Proto.Promises
         /// </summary>
         public YieldInstruction ToYieldInstruction()
         {
-            var yield = InternalYieldInstruction.GetOrCreate();
+            var yield = InternalYieldInstruction.GetOrCreate(this);
             AddWaiter(yield);
             return yield;
         }
@@ -63,6 +81,7 @@ namespace Proto.Promises
             ValidateArgument(onFinally, "onFinally", 1);
 
             AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, this, 1));
+            ReleaseWithoutDisposeCheck(); // No need to keep this retained.
             return this;
 		}
 
@@ -780,6 +799,7 @@ namespace Proto.Promises
             ValidateArgument(onFinally, "onFinally", 1);
 
             AddWaiter(Promise.Internal.FinallyDelegate.GetOrCreate(onFinally, this, 1));
+            ReleaseWithoutDisposeCheck(); // No need to keep this retained.
             return this;
         }
 

@@ -285,7 +285,7 @@ namespace Proto.Promises
 		public static Promise Resolved()
 		{
 			var promise = Internal.LitePromise0.GetOrCreate(1);
-			promise.Resolve();
+			promise.ResolveDirect();
 			return promise;
         }
 
@@ -295,7 +295,7 @@ namespace Proto.Promises
 		public static Promise<T> Resolved<T>(T value)
 		{
 			var promise = Internal.LitePromise<T>.GetOrCreate(1);
-			promise.Resolve(value);
+			promise.ResolveDirect(value);
 			return promise;
         }
 

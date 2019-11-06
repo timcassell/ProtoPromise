@@ -1,39 +1,63 @@
 ﻿#pragma warning disable RECS0108 // Warns about static fields in generic types
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable CS0618 // Type or member is obsolete
 using System;
 using System.Collections.Generic;
 
 namespace Proto.Promises
 {
-    partial class Promise : Promise.Internal.ITreeHandleable, Promise.Internal.IStacktraceable
+    partial class Promise : Promise.Internal.ITreeHandleable, Promise.Internal.IStacktraceable, Promise.Internal.IValueContainerOrPreviousPromise
     {
         Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
 
         private ValueLinkedQueue<Internal.ITreeHandleable> _nextBranches;
-        protected Internal.IValueContainer _rejectedOrCanceledValue;
+        protected Internal.IValueContainerOrPreviousPromise _rejectedOrCanceledValueOrPrevious;
         private uint _retainCounter;
         protected State _state;
-        private bool _wasWaitedOn; // Tells the handler that another promise waited on this promise (either by .Then/.Catch from this promise, or by returning this promise in another promise's .Then/.Catch)
-        private bool _handling; // Is not already being handled in HandleComplete.
+        private bool _wasWaitedOn;
         protected bool _dontPool;
+
+        // This breaks Interface Segregation Principle, but cuts down on memory.
+        bool Internal.IValueContainerOrPreviousPromise.TryGetValueAs<U>(out U value) { throw new InvalidOperationException(); }
+        bool Internal.IValueContainerOrPreviousPromise.ContainsType<U>() { throw new InvalidOperationException(); }
+
+        ~Promise()
+        {
+            if (_state == State.Rejected & !_wasWaitedOn)
+            {
+                // Rejection wasn't caught.
+                AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValueOrPrevious);
+            }
+        }
 
         protected virtual void Reset(int skipFrames)
         {
             _state = State.Pending;
+            _retainCounter = 1;
             _dontPool = Config.ObjectPooling != PoolType.All;
             _wasWaitedOn = false;
-            SetNotDisposed(ref _rejectedOrCanceledValue);
+            SetNotDisposed(ref _rejectedOrCanceledValueOrPrevious);
             SetCreatedStacktrace(this, skipFrames + 1);
         }
 
         protected virtual void Dispose()
         {
-            if (_rejectedOrCanceledValue != null)
+            if (_rejectedOrCanceledValueOrPrevious != null)
             {
-                _rejectedOrCanceledValue.Release();
+                _rejectedOrCanceledValueOrPrevious.Release();
             }
-            SetDisposed(ref _rejectedOrCanceledValue);
+            SetDisposed(ref _rejectedOrCanceledValueOrPrevious);
+        }
+
+        protected void ReleaseWithoutDisposeCheck()
+        {
+#if DEBUG
+            checked
+#endif
+            {
+                --_retainCounter;
+            }
         }
 
         protected virtual Promise GetDuplicate()
@@ -41,11 +65,26 @@ namespace Proto.Promises
             return Internal.DuplicatePromise0.GetOrCreate(2);
         }
 
-        protected void ResolveInternal()
+        protected void CancelInternal(Internal.IValueContainerOrPreviousPromise cancelValue)
+        {
+            _state = State.Canceled;
+            CancelProgressListeners();
+            OnCancel();
+            _rejectedOrCanceledValueOrPrevious = cancelValue;
+            _rejectedOrCanceledValueOrPrevious.Retain();
+        }
+
+        protected void ResolveInternalWithoutRelease()
         {
             _state = State.Resolved;
             ResolveProgressListeners();
-            AddToHandleQueue(this);
+            AddToHandleQueueFront(ref _nextBranches);
+        }
+
+        protected void ResolveInternal()
+        {
+            ResolveInternalWithoutRelease();
+            Release();
         }
 
         protected static Internal.UnhandledExceptionInternal CreateRejection(int skipFrames)
@@ -72,29 +111,53 @@ namespace Proto.Promises
             return rejectValue;
         }
 
-        protected void RejectDirect(Internal.IValueContainer rejectValue)
-        {
-            _rejectedOrCanceledValue = rejectValue;
-            _rejectedOrCanceledValue.Retain();
-            AddToHandleQueue(this);
-        }
-
-        protected void RejectInternal(Internal.IValueContainer rejectValue)
+        protected void RejectInternalWithoutRelease(Internal.IValueContainerOrPreviousPromise rejectValue)
         {
             _state = State.Rejected;
+            _rejectedOrCanceledValueOrPrevious = rejectValue;
+            _rejectedOrCanceledValueOrPrevious.Retain();
             RejectProgressListeners();
-            RejectDirect(rejectValue);
+            AddToHandleQueueFront(ref _nextBranches);
+        }
+
+        protected void RejectInternal(Internal.IValueContainerOrPreviousPromise rejectValue)
+        {
+            RejectInternalWithoutRelease(rejectValue);
+            Release();
         }
 
         protected void HookupNewPromise(Promise newPromise)
         {
-            SetDepthAndPrevious(newPromise);
+            newPromise._rejectedOrCanceledValueOrPrevious = this;
+            newPromise.Retain(); // newPromise will release itself when it is complete.
+            SetDepth(newPromise);
             AddWaiter(newPromise);
+        }
+
+        protected virtual void Handle()
+        {
+            var feed = (Promise) _rejectedOrCanceledValueOrPrevious;
+            _rejectedOrCanceledValueOrPrevious = null;
+            feed._wasWaitedOn = true;
+            try
+            {
+                Handle(feed);
+            }
+            catch (Exception e)
+            {
+                var ex = Internal.UnhandledExceptionException.GetOrCreate(e);
+                SetStacktraceFromCreated(this, ex);
+                RejectInternalIfNotCanceled(ex);
+            }
+            finally
+            {
+                feed.Release();
+            }
         }
 
         private void HandleSelf()
         {
-            if (_rejectedOrCanceledValue == null)
+            if (_rejectedOrCanceledValueOrPrevious == null)
             {
                 _state = State.Resolved;
                 ResolveProgressListeners();
@@ -104,60 +167,48 @@ namespace Proto.Promises
                 _state = State.Rejected;
                 RejectProgressListeners();
             }
+            AddToHandleQueueFront(ref _nextBranches);
+            Release();
         }
 
-        protected abstract void Handle(Promise feed);
-
-        protected virtual void _Cancel()
+        protected void HandleSelfWithoutRelease(Promise feed)
         {
-#pragma warning disable CS0618 // Type or member is obsolete
-            _state = State.Canceled;
-#pragma warning restore CS0618 // Type or member is obsolete
-            OnCancel();
-            // Place in the handle queue so it can be repooled.
-            AddToHandleQueue(this);
+            if (feed._state == State.Resolved)
+            {
+                ResolveInternalWithoutRelease();
+            }
+            else
+            {
+                RejectInternalWithoutRelease(feed._rejectedOrCanceledValueOrPrevious);
+            }
         }
+
+        protected void HandleSelf(Promise feed)
+        {
+            if (feed._state == State.Resolved)
+            {
+                ResolveInternal();
+            }
+            else
+            {
+                RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+            }
+        }
+
+        protected virtual void Handle(Promise feed) { }
 
         void Internal.ITreeHandleable.Cancel()
         {
-            _Cancel();
+            _state = State.Canceled;
+            OnCancel();
+            Release();
         }
 
-        protected virtual void AssignCancelValue(Internal.IValueContainer cancelValue)
+        protected virtual void OnCancel()
         {
-            // If _rejectedOrCanceledValue is not null, it means this was already canceled with another value.
-            if (_rejectedOrCanceledValue != null)
-            {
-                _rejectedOrCanceledValue = cancelValue;
-                _rejectedOrCanceledValue.Retain();
-            }
-        }
-
-        void Internal.ITreeHandleable.AssignCancelValue(Internal.IValueContainer cancelValue)
-        {
-            AssignCancelValue(cancelValue);
-        }
-
-        void Internal.ITreeHandleable.OnSubscribeToCanceled(Internal.IValueContainer cancelValue)
-        {
-            _rejectedOrCanceledValue = cancelValue;
-            _rejectedOrCanceledValue.Retain();
-            CancelProgressListeners();
-        }
-
-        private void Repool()
-        {
-            if (_retainCounter == 0)
-            {
-                if (!_wasWaitedOn & _state == State.Rejected)
-                {
-                    // Rejection wasn't caught.
-                    // TODO: Check this in Destructor.
-                    _wasWaitedOn = true;
-                    AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValue);
-                }
-                Dispose();
-            }
+            _rejectedOrCanceledValueOrPrevious.Release();
+            ClearProgressListeners();
+            AddToCancelQueueFront(ref _nextBranches);
         }
 
         private static ValueLinkedStack<Internal.UnhandledExceptionInternal> _unhandledExceptions;
@@ -175,28 +226,18 @@ namespace Proto.Promises
             _unhandledExceptions.Push(unhandledValue);
         }
 
-        // Handle promises in a breadth-first manner.
+        // Handle promises in a depth-first manner.
         private static ValueLinkedQueue<Internal.ITreeHandleable> _handleQueue;
         private static bool _runningHandles;
 
-        protected static void AddToHandleQueue(Promise promise)
+        protected static void AddToHandleQueueBack(Internal.ITreeHandleable handleable)
         {
-            promise._handling = true;
-            _handleQueue.Enqueue(promise);
+            _handleQueue.Enqueue(handleable);
         }
 
-        protected virtual void HandleBranches()
+        protected static void AddToHandleQueueFront(ref ValueLinkedQueue<Internal.ITreeHandleable> handleables)
         {
-            // If we want, here we can switch to a handle approach that is a hybrid of breadth-first and depth-first,
-            // whereby we add to feed._nextBranches from Handle instead of directly to the handle queue, then add this _nextBranches to the front of the handle queue instead of the back.
-            // That would cost an extra 2 branches vs the current breadth-first implementation.
-            // Doing so would make it so that a single promise's entire tree gets handled before any other promise trees. Currently, multiple trees being handled will "bounce" between their .Then delegates.
-            while (_nextBranches.IsNotEmpty)
-            {
-                _nextBranches.DequeueRisky().Handle(this);
-            }
-            _nextBranches.ClearLast();
-            Repool();
+            _handleQueue.PushAndClear(ref handleables);
         }
     }
 
@@ -226,8 +267,14 @@ namespace Proto.Promises
 
         protected override void Dispose()
         {
-            base.Dispose();
             _value = default(T);
+            base.Dispose();
+        }
+
+        new protected void HandleSelf(Promise feed)
+        {
+            _value = ((Promise<T>) feed)._value;
+            base.HandleSelf(feed);
         }
     }
 
@@ -296,13 +343,17 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
                     HandleSelf();
-                    base.HandleBranches();
                 }
 
-                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
+                protected override void OnCancel()
+                {
+                    ClearProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
+                    Release();
+                }
             }
 
             public sealed class DeferredPromise<T> : PromiseWaitDeferred<T, DeferredPromise<T>>
@@ -317,13 +368,17 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
                     HandleSelf();
-                    base.HandleBranches();
                 }
 
-                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
+                protected override void OnCancel()
+                {
+                    ClearProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
+                    Release();
+                }
             }
 
             public sealed class LitePromise0 : PoolablePromise<LitePromise0>
@@ -338,27 +393,21 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                public new void Resolve()
+                public new void ResolveDirect()
                 {
-                    AddToHandleQueue(this);
+                    AddToHandleQueueBack(this);
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
                     HandleSelf();
-                    base.HandleBranches();
                 }
 
-                protected override void Handle(Promise feed)
+                protected override void OnCancel()
                 {
-                    if (feed._state == State.Resolved)
-                    {
-                        ResolveInternal();
-                    }
-                    else
-                    {
-                        RejectInternal(feed._rejectedOrCanceledValue);
-                    }
+                    ClearProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
+                    Release();
                 }
             }
 
@@ -375,31 +424,25 @@ namespace Proto.Promises
                 }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-                public new void Resolve(in T value)
+                public new void ResolveDirect(in T value)
 #else
-                public new void Resolve(T value)
+                public new void ResolveDirect(T value)
 #endif
                 {
                     _value = value;
-                    AddToHandleQueue(this);
+                    AddToHandleQueueBack(this);
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
                     HandleSelf();
-                    base.HandleBranches();
                 }
 
-                protected override void Handle(Promise feed)
+                protected override void OnCancel()
                 {
-                    if (feed._state == State.Resolved)
-                    {
-                        ResolveInternal(((PromiseInternal<T>) feed).Value);
-                    }
-                    else
-                    {
-                        RejectInternal(feed._rejectedOrCanceledValue);
-                    }
+                    ClearProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
+                    Release();
                 }
             }
 
@@ -416,14 +459,7 @@ namespace Proto.Promises
 
                 protected override void Handle(Promise feed)
                 {
-                    if (feed._state == State.Resolved)
-                    {
-                        ResolveInternal();
-                    }
-                    else
-                    {
-                        RejectInternal(feed._rejectedOrCanceledValue);
-                    }
+                    HandleSelf(feed);
                 }
             }
 
@@ -440,14 +476,7 @@ namespace Proto.Promises
 
                 protected override void Handle(Promise feed)
                 {
-                    if (feed._state == State.Resolved)
-                    {
-                        ResolveInternal(((PromiseInternal<T>) feed).Value);
-                    }
-                    else
-                    {
-                        RejectInternal(feed._rejectedOrCanceledValue);
-                    }
+                    HandleSelf(feed);
                 }
             }
 
@@ -475,18 +504,18 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         callback.Invoke();
-                        ResolveWithStateCheck();
+                        ResolveInternalIfNotCanceled();
                     }
                     else
                     {
-                        RejectInternal(feed._rejectedOrCanceledValue);
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     resolveHandler = null;
+                    base.OnCancel();
                 }
             }
 
@@ -511,18 +540,18 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         callback.Invoke(((PromiseInternal<TArg>) feed).Value);
-                        ResolveWithStateCheck();
+                        ResolveInternalIfNotCanceled();
                     }
                     else
                     {
-                        RejectInternal(feed._rejectedOrCanceledValue);
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     resolveHandler = null;
+                    base.OnCancel();
                 }
             }
 
@@ -546,18 +575,19 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
-                        ResolveWithStateCheck(callback.Invoke());
+                        _value = callback.Invoke();
+                        ResolveInternalIfNotCanceled();
                     }
                     else
                     {
-                        RejectInternal(feed._rejectedOrCanceledValue);
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     resolveHandler = null;
+                    base.OnCancel();
                 }
             }
 
@@ -581,18 +611,19 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
-                        ResolveWithStateCheck(callback.Invoke(((PromiseInternal<TArg>) feed).Value));
+                        _value = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
+                        ResolveInternalIfNotCanceled();
                     }
                     else
                     {
-                        RejectInternal(feed._rejectedOrCanceledValue);
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     resolveHandler = null;
+                    base.OnCancel();
                 }
             }
 
@@ -615,14 +646,7 @@ namespace Proto.Promises
                     if (resolveHandler == null)
                     {
                         // The returned promise is handling this.
-                        if (feed._state == State.Resolved)
-                        {
-                            ResolveInternal();
-                        }
-                        else
-                        {
-                            RejectInternal(feed._rejectedOrCanceledValue);
-                        }
+                        HandleSelf(feed);
                         return;
                     }
 
@@ -634,14 +658,14 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectInternal(feed._rejectedOrCanceledValue);
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     resolveHandler = null;
+                    base.OnCancel();
                 }
             }
 
@@ -664,14 +688,7 @@ namespace Proto.Promises
                     if (resolveHandler == null)
                     {
                         // The returned promise is handling this.
-                        if (feed._state == State.Resolved)
-                        {
-                            ResolveInternal();
-                        }
-                        else
-                        {
-                            RejectInternal(feed._rejectedOrCanceledValue);
-                        }
+                        HandleSelf(feed);
                         return;
                     }
 
@@ -683,14 +700,14 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectInternal(feed._rejectedOrCanceledValue);
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     resolveHandler = null;
+                    base.OnCancel();
                 }
             }
 
@@ -713,14 +730,7 @@ namespace Proto.Promises
                     if (resolveHandler == null)
                     {
                         // The returned promise is handling this.
-                        if (feed._state == State.Resolved)
-                        {
-                            ResolveInternal(((PromiseInternal<TPromise>) feed).Value);
-                        }
-                        else
-                        {
-                            RejectInternal(feed._rejectedOrCanceledValue);
-                        }
+                        HandleSelf(feed);
                         return;
                     }
 
@@ -732,14 +742,14 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectInternal(feed._rejectedOrCanceledValue);
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     resolveHandler = null;
+                    base.OnCancel();
                 }
             }
 
@@ -762,14 +772,7 @@ namespace Proto.Promises
                     if (resolveHandler == null)
                     {
                         // The returned promise is handling this.
-                        if (feed._state == State.Resolved)
-                        {
-                            ResolveInternal(((PromiseInternal<TPromise>) feed).Value);
-                        }
-                        else
-                        {
-                            RejectInternal(feed._rejectedOrCanceledValue);
-                        }
+                        HandleSelf(feed);
                         return;
                     }
 
@@ -781,14 +784,14 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectInternal(feed._rejectedOrCanceledValue);
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     resolveHandler = null;
+                    base.OnCancel();
                 }
             }
 
@@ -806,10 +809,16 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
-                    HandleSelf();
-                    base.HandleBranches();
+                    if (resolveHandler == null)
+                    {
+                        HandleSelf();
+                    }
+                    else
+                    {
+                        base.Handle();
+                    }
                 }
 
                 protected override void Handle(Promise feed)
@@ -818,9 +827,9 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        var deferredAction = callback.Invoke();
                         try
                         {
-                            var deferredAction = callback.Invoke();
                             ValidateReturn(deferredAction);
                             deferredAction.Invoke(_deferredInternal);
                         }
@@ -833,7 +842,7 @@ namespace Proto.Promises
                     {
                         // Deferred is never used, so just release.
                         Release();
-                        RejectInternal(feed._rejectedOrCanceledValue);
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
@@ -858,10 +867,16 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
-                    HandleSelf();
-                    base.HandleBranches();
+                    if (resolveHandler == null)
+                    {
+                        HandleSelf();
+                    }
+                    else
+                    {
+                        base.Handle();
+                    }
                 }
 
                 protected override void Handle(Promise feed)
@@ -870,9 +885,9 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        var deferredAction = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
                         try
                         {
-                            var deferredAction = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
                             ValidateReturn(deferredAction);
                             deferredAction.Invoke(_deferredInternal);
                         }
@@ -885,7 +900,7 @@ namespace Proto.Promises
                     {
                         // Deferred is never used, so just release.
                         Release();
-                        RejectInternal(feed._rejectedOrCanceledValue);
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
@@ -910,10 +925,16 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
-                    HandleSelf();
-                    base.HandleBranches();
+                    if (resolveHandler == null)
+                    {
+                        HandleSelf();
+                    }
+                    else
+                    {
+                        base.Handle();
+                    }
                 }
 
                 protected override void Handle(Promise feed)
@@ -922,9 +943,9 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        var deferredAction = callback.Invoke();
                         try
                         {
-                            var deferredAction = callback.Invoke();
                             ValidateReturn(deferredAction);
                             deferredAction.Invoke(_deferredInternal);
                         }
@@ -937,7 +958,7 @@ namespace Proto.Promises
                     {
                         // Deferred is never used, so just release.
                         Release();
-                        RejectInternal(feed._rejectedOrCanceledValue);
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
@@ -962,10 +983,16 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
-                    HandleSelf();
-                    base.HandleBranches();
+                    if (resolveHandler == null)
+                    {
+                        HandleSelf();
+                    }
+                    else
+                    {
+                        base.Handle();
+                    }
                 }
 
                 protected override void Handle(Promise feed)
@@ -974,9 +1001,9 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        var deferredAction = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
                         try
                         {
-                            var deferredAction = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
                             ValidateReturn(deferredAction);
                             deferredAction.Invoke(_deferredInternal);
                         }
@@ -989,7 +1016,7 @@ namespace Proto.Promises
                     {
                         // Deferred is never used, so just release.
                         Release();
-                        RejectInternal(feed._rejectedOrCanceledValue);
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
@@ -1024,15 +1051,13 @@ namespace Proto.Promises
                     rejectHandler = null;
                     if (feed._state == State.Rejected)
                     {
-                        _state = State.Rejected; // Set the state so a Cancel call won't do anything during invoke.
-                        _handling = true; // Set handling flag so a .Then/.Catch during invoke won't add to handle queue.
-                        if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue))
+                        if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious))
                         {
-                            ResolveWithStateCheck();
+                            ResolveInternalIfNotCanceled();
                         }
                         else
                         {
-                            RejectInternal(feed._rejectedOrCanceledValue);
+                            RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                         }
                     }
                     else
@@ -1044,9 +1069,12 @@ namespace Proto.Promises
 
                 protected override void OnCancel()
                 {
+                    if (rejectHandler != null)
+                    {
+                        rejectHandler.Dispose();
+                        rejectHandler = null;
+                    }
                     base.OnCancel();
-                    rejectHandler.Dispose();
-                    rejectHandler = null;
                 }
             }
 
@@ -1070,15 +1098,13 @@ namespace Proto.Promises
                     rejectHandler = null;
                     if (feed._state == State.Rejected)
                     {
-                        _state = State.Rejected; // Set the state so a Cancel call won't do anything during invoke.
-                        _handling = true; // Set handling flag so a .Then/.Catch during invoke won't add to handle queue.
-                        if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out _value))
+                        if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out _value))
                         {
-                            ResolveWithStateCheck();
+                            ResolveInternalIfNotCanceled();
                         }
                         else
                         {
-                            RejectInternal(feed._rejectedOrCanceledValue);
+                            RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                         }
                     }
                     else
@@ -1090,9 +1116,12 @@ namespace Proto.Promises
 
                 protected override void OnCancel()
                 {
+                    if (rejectHandler != null)
+                    {
+                        rejectHandler.Dispose();
+                        rejectHandler = null;
+                    }
                     base.OnCancel();
-                    rejectHandler.Dispose();
-                    rejectHandler = null;
                 }
             }
 
@@ -1115,14 +1144,7 @@ namespace Proto.Promises
                     if (rejectHandler == null)
                     {
                         // The returned promise is handling this.
-                        if (feed._state == State.Resolved)
-                        {
-                            ResolveInternal();
-                        }
-                        else
-                        {
-                            RejectInternal(feed._rejectedOrCanceledValue);
-                        }
+                        HandleSelf(feed);
                         return;
                     }
 
@@ -1131,13 +1153,13 @@ namespace Proto.Promises
                     if (feed._state == State.Rejected)
                     {
                         Promise promise;
-                        if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out promise))
+                        if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out promise))
                         {
                             WaitFor(promise);
                         }
                         else
                         {
-                            RejectInternal(feed._rejectedOrCanceledValue);
+                            RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                         }
                     }
                     else
@@ -1149,12 +1171,12 @@ namespace Proto.Promises
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     if (rejectHandler != null)
                     {
                         rejectHandler.Dispose();
                         rejectHandler = null;
                     }
+                    base.OnCancel();
                 }
             }
 
@@ -1177,14 +1199,7 @@ namespace Proto.Promises
                     if (rejectHandler == null)
                     {
                         // The returned promise is handling this.
-                        if (feed._state == State.Resolved)
-                        {
-                            ResolveInternal(((PromiseInternal<TPromise>) feed).Value);
-                        }
-                        else
-                        {
-                            RejectInternal(feed._rejectedOrCanceledValue);
-                        }
+                        HandleSelf(feed);
                         return;
                     }
 
@@ -1193,13 +1208,13 @@ namespace Proto.Promises
                     if (feed._state == State.Rejected)
                     {
                         Promise<TPromise> promise;
-                        if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out promise))
+                        if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out promise))
                         {
                             WaitFor(promise);
                         }
                         else
                         {
-                            RejectInternal(feed._rejectedOrCanceledValue);
+                            RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                         }
                     }
                     else
@@ -1211,12 +1226,12 @@ namespace Proto.Promises
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     if (rejectHandler != null)
                     {
                         rejectHandler.Dispose();
                         rejectHandler = null;
                     }
+                    base.OnCancel();
                 }
             }
 
@@ -1234,10 +1249,16 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
-                    HandleSelf();
-                    base.HandleBranches();
+                    if (rejectHandler == null)
+                    {
+                        HandleSelf();
+                    }
+                    else
+                    {
+                        base.Handle();
+                    }
                 }
 
                 protected override void Handle(Promise feed)
@@ -1249,7 +1270,7 @@ namespace Proto.Promises
                         try
                         {
                             Action<Deferred> deferredDelegate;
-                            if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out deferredDelegate))
+                            if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out deferredDelegate))
                             {
                                 ValidateReturn(deferredDelegate);
                                 deferredDelegate.Invoke(_deferredInternal);
@@ -1258,7 +1279,7 @@ namespace Proto.Promises
                             {
                                 // Deferred is never used, so just release.
                                 Release();
-                                RejectInternal(feed._rejectedOrCanceledValue);
+                                RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                             }
                         }
                         catch (Exception e)
@@ -1300,10 +1321,16 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
-                    HandleSelf();
-                    base.HandleBranches();
+                    if (rejectHandler == null)
+                    {
+                        HandleSelf();
+                    }
+                    else
+                    {
+                        base.Handle();
+                    }
                 }
 
                 protected override void Handle(Promise feed)
@@ -1315,7 +1342,7 @@ namespace Proto.Promises
                         try
                         {
                             Action<Deferred> deferredDelegate;
-                            if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out deferredDelegate))
+                            if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out deferredDelegate))
                             {
                                 ValidateReturn(deferredDelegate);
                                 deferredDelegate.Invoke(_deferredInternal);
@@ -1324,7 +1351,7 @@ namespace Proto.Promises
                             {
                                 // Deferred is never used, so just release.
                                 Release();
-                                RejectInternal(feed._rejectedOrCanceledValue);
+                                RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                             }
                         }
                         catch (Exception e)
@@ -1375,8 +1402,6 @@ namespace Proto.Promises
                     onResolved = null;
                     var rejectCallback = onRejected;
                     onRejected = null;
-                    _state = feed._state; // Set the state so a Cancel call won't do anything during invoke.
-                    _handling = true; // Set handling flag so a .Then/.Catch during invoke won't add to handle queue.
                     if (feed._state == State.Resolved)
                     {
                         rejectCallback.Dispose();
@@ -1385,22 +1410,25 @@ namespace Proto.Promises
                     else
                     {
                         resolveCallback.Dispose();
-                        if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue))
+                        if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious))
                         {
-                            RejectInternal(feed._rejectedOrCanceledValue);
+                            RejectInternalIfNotCanceled(feed._rejectedOrCanceledValueOrPrevious);
                             return;
                         }
                     }
-                    ResolveWithStateCheck();
+                    ResolveInternalIfNotCanceled();
                 }
 
                 protected override void OnCancel()
                 {
+                    if (onResolved != null)
+                    {
+                        onResolved.Dispose();
+                        onResolved = null;
+                        onRejected.Dispose();
+                        onRejected = null;
+                    }
                     base.OnCancel();
-                    onResolved.Dispose();
-                    onResolved = null;
-                    onRejected.Dispose();
-                    onRejected = null;
                 }
             }
 
@@ -1425,33 +1453,33 @@ namespace Proto.Promises
                     onResolved = null;
                     var rejectCallback = onRejected;
                     onRejected = null;
-                    _state = feed._state; // Set the state so a Cancel call won't do anything during invoke.
-                    _handling = true; // Set handling flag so a .Then/.Catch during invoke won't add to handle queue.
-                    T val;
                     if (feed._state == State.Resolved)
                     {
                         rejectCallback.Dispose();
-                        val = resolveCallback.DisposeAndInvoke(feed);
+                        _value = resolveCallback.DisposeAndInvoke(feed);
                     }
                     else
                     {
                         resolveCallback.Dispose();
-                        if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out val))
+                        if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out _value))
                         {
-                            RejectInternal(feed._rejectedOrCanceledValue);
+                            RejectInternalIfNotCanceled(feed._rejectedOrCanceledValueOrPrevious);
                             return;
                         }
                     }
-                    ResolveWithStateCheck(val);
+                    ResolveInternalIfNotCanceled();
                 }
 
                 protected override void OnCancel()
                 {
+                    if (onResolved != null)
+                    {
+                        onResolved.Dispose();
+                        onResolved = null;
+                        onRejected.Dispose();
+                        onRejected = null;
+                    }
                     base.OnCancel();
-                    onResolved.Dispose();
-                    onResolved = null;
-                    onRejected.Dispose();
-                    onRejected = null;
                 }
             }
 
@@ -1475,47 +1503,42 @@ namespace Proto.Promises
                     if (onResolved == null)
                     {
                         // The returned promise is handling this.
-                        if (feed._state == State.Resolved)
-                        {
-                            ResolveInternal();
-                        }
-                        else
-                        {
-                            RejectInternal(feed._rejectedOrCanceledValue);
-                        }
+                        HandleSelf(feed);
+                        return;
+                    }
+
+                    var resolveCallback = onResolved;
+                    onResolved = null;
+                    var rejectCallback = onRejected;
+                    onRejected = null;
+                    Promise promise;
+                    if (feed._state == State.Resolved)
+                    {
+                        rejectCallback.Dispose();
+                        promise = resolveCallback.DisposeAndInvoke(feed);
                     }
                     else
                     {
-                        var resolveCallback = onResolved;
-                        onResolved = null;
-                        var rejectCallback = onRejected;
-                        onRejected = null;
-                        Promise promise;
-                        if (feed._state == State.Resolved)
+                        resolveCallback.Dispose();
+                        if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out promise))
                         {
-                            rejectCallback.Dispose();
-                            promise = resolveCallback.DisposeAndInvoke(feed);
+                            RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                            return;
                         }
-                        else
-                        {
-                            resolveCallback.Dispose();
-                            if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out promise))
-                            {
-                                RejectInternal(feed._rejectedOrCanceledValue);
-                                return;
-                            }
-                        }
-                        WaitFor(promise);
                     }
+                    WaitFor(promise);
                 }
 
                 protected override void OnCancel()
                 {
+                    if (onResolved != null)
+                    {
+                        onResolved.Dispose();
+                        onResolved = null;
+                        onRejected.Dispose();
+                        onRejected = null;
+                    }
                     base.OnCancel();
-                    onResolved.Dispose();
-                    onResolved = null;
-                    onRejected.Dispose();
-                    onRejected = null;
                 }
             }
 
@@ -1539,47 +1562,42 @@ namespace Proto.Promises
                     if (onResolved == null)
                     {
                         // The returned promise is handling this.
-                        if (feed._state == State.Resolved)
-                        {
-                            ResolveInternal(((PromiseInternal<TPromise>) feed).Value);
-                        }
-                        else
-                        {
-                            RejectInternal(feed._rejectedOrCanceledValue);
-                        }
+                        HandleSelf(feed);
+                        return;
+                    }
+
+                    var resolveCallback = onResolved;
+                    onResolved = null;
+                    var rejectCallback = onRejected;
+                    onRejected = null;
+                    Promise<TPromise> promise;
+                    if (feed._state == State.Resolved)
+                    {
+                        rejectCallback.Dispose();
+                        promise = resolveCallback.DisposeAndInvoke(feed);
                     }
                     else
                     {
-                        var resolveCallback = onResolved;
-                        onResolved = null;
-                        var rejectCallback = onRejected;
-                        onRejected = null;
-                        Promise<TPromise> promise;
-                        if (feed._state == State.Resolved)
+                        resolveCallback.Dispose();
+                        if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out promise))
                         {
-                            rejectCallback.Dispose();
-                            promise = resolveCallback.DisposeAndInvoke(feed);
+                            RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                            return;
                         }
-                        else
-                        {
-                            resolveCallback.Dispose();
-                            if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out promise))
-                            {
-                                RejectInternal(feed._rejectedOrCanceledValue);
-                                return;
-                            }
-                        }
-                        WaitFor(promise);
                     }
+                    WaitFor(promise);
                 }
 
                 protected override void OnCancel()
                 {
+                    if (onResolved != null)
+                    {
+                        onResolved.Dispose();
+                        onResolved = null;
+                        onRejected.Dispose();
+                        onRejected = null;
+                    }
                     base.OnCancel();
-                    onResolved.Dispose();
-                    onResolved = null;
-                    onRejected.Dispose();
-                    onRejected = null;
                 }
             }
 
@@ -1598,10 +1616,16 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
-                    HandleSelf();
-                    base.HandleBranches();
+                    if (onResolved == null)
+                    {
+                        HandleSelf();
+                    }
+                    else
+                    {
+                        base.Handle();
+                    }
                 }
 
                 protected override void Handle(Promise feed)
@@ -1610,26 +1634,26 @@ namespace Proto.Promises
                     onResolved = null;
                     var rejectCallback = onRejected;
                     onRejected = null;
+                    Action<Deferred> deferredDelegate;
+                    if (feed._state == State.Resolved)
+                    {
+                        rejectCallback.Dispose();
+                        deferredDelegate = resolveCallback.DisposeAndInvoke(feed);
+                    }
+                    else
+                    {
+                        resolveCallback.Dispose();
+                        if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out deferredDelegate))
+                        {
+                            // Deferred is never used, so just release.
+                            Release();
+                            RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                            return;
+                        }
+                    }
+                    ValidateReturn(deferredDelegate);
                     try
                     {
-                        Action<Deferred> deferredDelegate;
-                        if (feed._state == State.Resolved)
-                        {
-                            rejectCallback.Dispose();
-                            deferredDelegate = resolveCallback.DisposeAndInvoke(feed);
-                        }
-                        else
-                        {
-                            resolveCallback.Dispose();
-                            if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out deferredDelegate))
-                            {
-                                // Deferred is never used, so just release.
-                                Release();
-                                RejectInternal(feed._rejectedOrCanceledValue);
-                                return;
-                            }
-                        }
-                        ValidateReturn(deferredDelegate);
                         deferredDelegate.Invoke(_deferredInternal);
                     }
                     catch (Exception e)
@@ -1640,10 +1664,13 @@ namespace Proto.Promises
 
                 protected override void OnCancel()
                 {
-                    onResolved.Dispose();
-                    onResolved = null;
-                    onRejected.Dispose();
-                    onRejected = null;
+                    if (onResolved != null)
+                    {
+                        onResolved.Dispose();
+                        onResolved = null;
+                        onRejected.Dispose();
+                        onRejected = null;
+                    }
                     base.OnCancel();
                 }
             }
@@ -1663,10 +1690,16 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
-                    HandleSelf();
-                    base.HandleBranches();
+                    if (onResolved == null)
+                    {
+                        HandleSelf();
+                    }
+                    else
+                    {
+                        base.Handle();
+                    }
                 }
 
                 protected override void Handle(Promise feed)
@@ -1675,26 +1708,26 @@ namespace Proto.Promises
                     onResolved = null;
                     var rejectCallback = onRejected;
                     onRejected = null;
+                    Action<Deferred> deferredDelegate;
+                    if (feed._state == State.Resolved)
+                    {
+                        rejectCallback.Dispose();
+                        deferredDelegate = resolveCallback.DisposeAndInvoke(feed);
+                    }
+                    else
+                    {
+                        resolveCallback.Dispose();
+                        if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out deferredDelegate))
+                        {
+                            // Deferred is never used, so just release.
+                            Release();
+                            RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                            return;
+                        }
+                    }
+                    ValidateReturn(deferredDelegate);
                     try
                     {
-                        Action<Deferred> deferredDelegate;
-                        if (feed._state == State.Resolved)
-                        {
-                            rejectCallback.Dispose();
-                            deferredDelegate = resolveCallback.DisposeAndInvoke(feed);
-                        }
-                        else
-                        {
-                            resolveCallback.Dispose();
-                            if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValue, out deferredDelegate))
-                            {
-                                // Deferred is never used, so just release.
-                                Release();
-                                RejectInternal(feed._rejectedOrCanceledValue);
-                                return;
-                            }
-                        }
-                        ValidateReturn(deferredDelegate);
                         deferredDelegate.Invoke(_deferredInternal);
                     }
                     catch (Exception e)
@@ -1705,10 +1738,13 @@ namespace Proto.Promises
 
                 protected override void OnCancel()
                 {
-                    onResolved.Dispose();
-                    onResolved = null;
-                    onRejected.Dispose();
-                    onRejected = null;
+                    if (onResolved != null)
+                    {
+                        onResolved.Dispose();
+                        onResolved = null;
+                        onRejected.Dispose();
+                        onRejected = null;
+                    }
                     base.OnCancel();
                 }
             }
@@ -1734,13 +1770,13 @@ namespace Proto.Promises
                     var callback = onComplete;
                     onComplete = null;
                     callback.Invoke();
-                    ResolveWithStateCheck();
+                    ResolveInternalIfNotCanceled();
                 }
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     onComplete = null;
+                    base.OnCancel();
                 }
             }
 
@@ -1763,13 +1799,13 @@ namespace Proto.Promises
                     var callback = onComplete;
                     onComplete = null;
                     _value = callback.Invoke();
-                    ResolveWithStateCheck();
+                    ResolveInternalIfNotCanceled();
                 }
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     onComplete = null;
+                    base.OnCancel();
                 }
             }
 
@@ -1792,27 +1828,19 @@ namespace Proto.Promises
                     if (onComplete == null)
                     {
                         // The returned promise is handling this.
-                        if (feed._state == State.Resolved)
-                        {
-                            ResolveInternal();
-                        }
-                        else
-                        {
-                            RejectInternal(feed._rejectedOrCanceledValue);
-                        }
+                        HandleSelf(feed);
+                        return;
                     }
-                    else
-                    {
-                        var callback = onComplete;
-                        onComplete = null;
-                        WaitFor(callback.Invoke());
-                    }
+
+                    var callback = onComplete;
+                    onComplete = null;
+                    WaitFor(callback.Invoke());
                 }
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     onComplete = null;
+                    base.OnCancel();
                 }
             }
 
@@ -1835,27 +1863,19 @@ namespace Proto.Promises
                     if (onComplete == null)
                     {
                         // The returned promise is handling this.
-                        if (feed._state == State.Resolved)
-                        {
-                            ResolveInternal(((PromiseInternal<T>) feed).Value);
-                        }
-                        else
-                        {
-                            RejectInternal(feed._rejectedOrCanceledValue);
-                        }
+                        HandleSelf(feed);
+                        return;
                     }
-                    else
-                    {
-                        var callback = onComplete;
-                        onComplete = null;
-                        WaitFor(callback.Invoke());
-                    }
+
+                    var callback = onComplete;
+                    onComplete = null;
+                    WaitFor(callback.Invoke());
                 }
 
                 protected override void OnCancel()
                 {
-                    base.OnCancel();
                     onComplete = null;
+                    base.OnCancel();
                 }
             }
 
@@ -1873,20 +1893,26 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
-                    HandleSelf();
-                    base.HandleBranches();
+                    if (onComplete == null)
+                    {
+                        HandleSelf();
+                    }
+                    else
+                    {
+                        base.Handle();
+                    }
                 }
 
                 protected override void Handle(Promise feed)
                 {
                     var callback = onComplete;
                     onComplete = null;
+                    var deferredDelegate = callback.Invoke();
+                    ValidateReturn(deferredDelegate);
                     try
                     {
-                        var deferredDelegate = callback.Invoke();
-                        ValidateReturn(deferredDelegate);
                         deferredDelegate.Invoke(_deferredInternal);
                     }
                     catch (Exception e)
@@ -1916,20 +1942,26 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void HandleBranches()
+                protected override void Handle()
                 {
-                    HandleSelf();
-                    base.HandleBranches();
+                    if (onComplete == null)
+                    {
+                        HandleSelf();
+                    }
+                    else
+                    {
+                        base.Handle();
+                    }
                 }
 
                 protected override void Handle(Promise feed)
                 {
                     var callback = onComplete;
                     onComplete = null;
+                    var deferredDelegate = callback.Invoke();
+                    ValidateReturn(deferredDelegate);
                     try
                     {
-                        var deferredDelegate = callback.Invoke();
-                        ValidateReturn(deferredDelegate);
                         deferredDelegate.Invoke(_deferredInternal);
                     }
                     catch (Exception e)
@@ -1995,7 +2027,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ITreeHandleable.Handle(Promise feed)
+                void ITreeHandleable.Handle()
                 {
                     InvokeAndCatchAndDispose();
                 }
@@ -2004,9 +2036,6 @@ namespace Proto.Promises
                 {
                     InvokeAndCatchAndDispose();
                 }
-
-                void ITreeHandleable.AssignCancelValue(IValueContainer cancelValue) { }
-                void ITreeHandleable.OnSubscribeToCanceled(IValueContainer cancelValue) { }
             }
 
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
@@ -2015,9 +2044,9 @@ namespace Proto.Promises
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
-                public virtual void AssignCancelValue(IValueContainer cancelValue) { }
+                public virtual void AssignPrevious(IValueContainerOrPreviousPromise cancelValue) { }
 
-                void ITreeHandleable.Handle(Promise feed)
+                void ITreeHandleable.Handle()
                 {
                     Dispose();
                     DisposeBranches();
@@ -2040,8 +2069,6 @@ namespace Proto.Promises
                         current.TakeBranches(ref branches);
                     }
                 }
-
-                void ITreeHandleable.OnSubscribeToCanceled(IValueContainer cancelValue) { throw new InvalidOperationException(); }
             }
 
             public sealed partial class CancelDelegateAny : PotentialCancelation
@@ -2098,7 +2125,7 @@ namespace Proto.Promises
 
                 private ValueLinkedQueue<ITreeHandleable> _nextBranches;
 
-                private IValueContainer _cancelValue;
+                private IValueContainerOrPreviousPromise _cancelValue;
 
                 private Action<T> _onCanceled;
 
@@ -2116,6 +2143,11 @@ namespace Proto.Promises
                     SetNotDisposed(ref del._cancelValue);
                     SetCreatedStacktrace(del, skipFrames + 1);
                     return del;
+                }
+
+                protected override void TakeBranches(ref ValueLinkedStack<ITreeHandleable> disposeStack)
+                {
+                    disposeStack.PushAndClear(ref _nextBranches);
                 }
 
                 protected override void Dispose()
@@ -2148,21 +2180,9 @@ namespace Proto.Promises
                             AddRejectionToUnhandledStack(unhandledException);
                         }
                     }
-                    else if (_nextBranches.IsNotEmpty)
+                    else
                     {
-                        // Add safe for first item.
-                        var next = _nextBranches.DequeueRisky();
-                        next.AssignCancelValue(nextValue);
-                        AddToCancelQueue(next);
-
-                        // Add risky for remaining items.
-                        while (_nextBranches.IsNotEmpty)
-                        {
-                            next = _nextBranches.DequeueRisky();
-                            next.AssignCancelValue(nextValue);
-                            AddToCancelQueueRisky(next);
-                        }
-                        _nextBranches.ClearLast();
+                        AddToCancelQueueFront(ref _nextBranches);
                     }
                 }
 
@@ -2224,7 +2244,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool DisposeAndTryInvoke(IValueContainer valueContainer)
+                public bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer)
                 {
                     DisposeAndInvoke();
                     return true;
@@ -2274,7 +2294,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool DisposeAndTryInvoke(IValueContainer valueContainer)
+                public bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer)
                 {
                     if (valueContainer.ContainsType<T>())
                     {
@@ -2329,7 +2349,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool DisposeAndTryInvoke(IValueContainer valueContainer)
+                public bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValueAs(out arg))
@@ -2385,7 +2405,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool DisposeAndTryInvoke(IValueContainer valueContainer, out TResult result)
+                public bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer, out TResult result)
                 {
                     result = DisposeAndInvoke();
                     return true;
@@ -2435,7 +2455,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool DisposeAndTryInvoke(IValueContainer valueContainer, out TResult result)
+                public bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer, out TResult result)
                 {
                     if (valueContainer.ContainsType<T>())
                     {
@@ -2491,7 +2511,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool DisposeAndTryInvoke(IValueContainer valueContainer, out TResult result)
+                public bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer, out TResult result)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValueAs(out arg))
@@ -2513,36 +2533,32 @@ namespace Proto.Promises
 
             public interface ITreeHandleable : ILinked<ITreeHandleable>
             {
-                void Handle(Promise feed);
+                void Handle();
                 void Cancel();
-                void OnSubscribeToCanceled(IValueContainer cancelValue);
-                void AssignCancelValue(IValueContainer cancelValue);
             }
 
-            public interface IValueContainer
+            public interface IValueContainerOrPreviousPromise : IRetainable
             {
                 bool TryGetValueAs<U>(out U value);
                 bool ContainsType<U>();
-                void Retain();
-                void Release();
             }
 
             public interface IDelegate
             {
-                bool DisposeAndTryInvoke(IValueContainer valueContainer);
+                bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer);
                 void DisposeAndInvoke(Promise feed);
                 void Dispose();
             }
 
             public interface IDelegate<TResult>
             {
-                bool DisposeAndTryInvoke(IValueContainer valueContainer, out TResult result);
+                bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer, out TResult result);
                 TResult DisposeAndInvoke(Promise feed);
                 void Dispose();
             }
 
 #region ValueWrappers
-            public abstract class UnhandledExceptionInternal : UnhandledException, IValueContainer, ILinked<UnhandledExceptionInternal>
+            public abstract class UnhandledExceptionInternal : UnhandledException, IValueContainerOrPreviousPromise, ILinked<UnhandledExceptionInternal>
             {
                 UnhandledExceptionInternal ILinked<UnhandledExceptionInternal>.Next { get; set; }
 
@@ -2728,7 +2744,7 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class CancelVoid : IValueContainer
+            public sealed class CancelVoid : IValueContainerOrPreviousPromise
             {
                 // We can reuse the same object.
                 private static readonly CancelVoid obj = new CancelVoid();
@@ -2758,7 +2774,7 @@ namespace Proto.Promises
                 public void Release() { }
             }
 
-            public sealed class CancelValue<T> : IValueContainer, IValueContainer<T>, ILinked<CancelValue<T>>
+            public sealed class CancelValue<T> : IValueContainerOrPreviousPromise, IValueContainer<T>, ILinked<CancelValue<T>>
             {
                 CancelValue<T> ILinked<CancelValue<T>>.Next { get; set; }
 
@@ -2809,9 +2825,11 @@ namespace Proto.Promises
 #endregion
 
 #region Multi Promises
+#pragma warning disable RECS0001 // Class is declared partial but has only one part
             public partial interface IMultiTreeHandleable : ITreeHandleable
             {
                 void Handle(Promise feed, int index);
+                void Cancel(IValueContainerOrPreviousPromise cancelValue);
                 void ReAdd(PromisePassThrough passThrough);
             }
             
@@ -2867,25 +2885,20 @@ namespace Proto.Promises
                     }
                 }
 
-                void ITreeHandleable.AssignCancelValue(IValueContainer cancelValue)
-                {
-                    target.AssignCancelValue(cancelValue);
-                }
                 void ITreeHandleable.Cancel()
                 {
                     var temp = target;
+                    var cancelValue = owner._rejectedOrCanceledValueOrPrevious;
                     Reset();
-                    temp.Cancel();
+                    temp.Cancel(cancelValue);
                 }
-                void ITreeHandleable.Handle(Promise feed)
+
+                void ITreeHandleable.Handle()
                 {
                     var temp = target;
+                    var feed = owner;
                     Reset();
                     temp.Handle(feed, _index);
-                }
-                void ITreeHandleable.OnSubscribeToCanceled(IValueContainer cancelValue)
-                {
-                    target.OnSubscribeToCanceled(cancelValue);
                 }
             }
 
@@ -2922,91 +2935,66 @@ namespace Proto.Promises
                     promise.passThroughs = passThroughs;
 
                     // Retain this until all promises resolve/reject/cancel
-                    promise._waitCount = (uint) promiseIndex + 1u;
-                    promise._retainCounter = promise._waitCount;
-
                     promise.Reset(skipFrames + 1);
+                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._retainCounter = promise._waitCount + 1u;
+
                     return promise;
                 }
 
-                protected override void _Cancel()
+                private bool ReleaseOne()
                 {
-                    --_waitCount;
-#if DEBUG
-                    checked
-#endif
-                    {
-                        --_retainCounter;
-                    }
+                    ReleaseWithoutDisposeCheck();
+                    return --_waitCount == 0;
+                }
 
-                    if (_waitCount == 0)
+                private void MaybeRelease(bool done)
+                {
+                    if (done)
                     {
                         PromisePassThrough.Repool(ref passThroughs);
+                        Release();
                     }
+                }
+
+                void IMultiTreeHandleable.Cancel(IValueContainerOrPreviousPromise cancelValue)
+                {
                     if (_state == State.Pending)
                     {
-                        base._Cancel();
+                        CancelInternal(cancelValue);
                     }
+
+                    MaybeRelease(ReleaseOne());
                 }
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
                 {
-                    --_waitCount;
-#if DEBUG
-                    checked
-#endif
+                    bool done = ReleaseOne();
+                    if (_state == State.Pending)
                     {
-                        --_retainCounter;
-                    }
-
-                    if (_state != State.Pending)
-                    {
-                        if (_waitCount == 0)
+                        feed._wasWaitedOn = true;
+                        if (feed._state == State.Rejected)
                         {
-                            PromisePassThrough.Repool(ref passThroughs);
+                            RejectInternalWithoutRelease(feed._rejectedOrCanceledValueOrPrevious);
                         }
-                        return;
-                    }
-
-                    feed._wasWaitedOn = true;
-                    if (feed._state == State.Rejected)
-                    {
-                        RejectInternal(feed._rejectedOrCanceledValue);
-                        if (_waitCount == 0)
+                        else if (done)
                         {
-                            PromisePassThrough.Repool(ref passThroughs);
+                            ResolveInternalWithoutRelease();
+                        }
+                        else
+                        {
+                            IncrementProgress(feed);
                         }
                     }
-                    else if (_waitCount == 0)
-                    {
-                        PromisePassThrough.Repool(ref passThroughs);
-                        ResolveInternal();
-                    }
-                    else
-                    {
-                        IncrementProgress(feed);
-                    }
+                    MaybeRelease(done);
                 }
 
                 partial void IncrementProgress(Promise feed);
-
-                protected override void AssignCancelValue(IValueContainer cancelValue)
-                {
-#if DEBUG
-                    checked
-#endif
-                    {
-                        --_retainCounter;
-                    }
-                    base.AssignCancelValue(cancelValue);
-                }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     passThroughs.Push(passThrough);
                 }
-
-                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
             }
 
             public sealed partial class AllPromise<T> : PoolablePromise<IList<T>, AllPromise<T>>, IMultiTreeHandleable
@@ -3046,95 +3034,67 @@ namespace Proto.Promises
                     promise.passThroughs = passThroughs;
 
                     // Retain this until all promises resolve/reject/cancel
-                    promise._waitCount = (uint) promiseIndex + 1u;
-                    promise._retainCounter = promise._waitCount;
-
                     promise.Reset(skipFrames + 1);
+                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._retainCounter = promise._waitCount + 1u;
+
                     return promise;
                 }
 
-                protected override void _Cancel()
+                private bool ReleaseOne()
                 {
-                    --_waitCount;
-#if DEBUG
-                    checked
-#endif
-                    {
-                        --_retainCounter;
-                    }
+                    ReleaseWithoutDisposeCheck();
+                    return --_waitCount == 0;
+                }
 
-                    if (_waitCount == 0)
+                private void MaybeRelease(bool done)
+                {
+                    if (done)
                     {
                         PromisePassThrough.Repool(ref passThroughs);
+                        Release();
                     }
+                }
+
+                void IMultiTreeHandleable.Cancel(IValueContainerOrPreviousPromise cancelValue)
+                {
                     if (_state == State.Pending)
                     {
-                        base._Cancel();
+                        CancelInternal(cancelValue);
                     }
+
+                    MaybeRelease(ReleaseOne());
                 }
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
                 {
-                    --_waitCount;
-#if DEBUG
-                    checked
-#endif
+                    bool done = ReleaseOne();
+                    if (_state == State.Pending)
                     {
-                        --_retainCounter;
-                    }
-
-                    if (_state != State.Pending)
-                    {
-                        if (_waitCount == 0)
+                        feed._wasWaitedOn = true;
+                        if (feed._state == State.Rejected)
                         {
-                            PromisePassThrough.Repool(ref passThroughs);
+                            RejectInternalWithoutRelease(feed._rejectedOrCanceledValueOrPrevious);
                         }
-                        return;
-                    }
-
-                    feed._wasWaitedOn = true;
-                    if (feed._state == State.Rejected)
-                    {
-                        RejectInternal(feed._rejectedOrCanceledValue);
-                        if (_waitCount == 0)
+                        else if (done)
                         {
-                            PromisePassThrough.Repool(ref passThroughs);
-                        }
-                    }
-                    else
-                    {
-                        _value[index] = ((PromiseInternal<T>) feed).Value;
-                        if (_waitCount == 0)
-                        {
-                            PromisePassThrough.Repool(ref passThroughs);
-                            ResolveInternal();
+                            _value[index] = ((PromiseInternal<T>) feed).Value;
+                            ResolveInternalWithoutRelease();
                         }
                         else
                         {
                             IncrementProgress(feed);
                         }
                     }
+                    MaybeRelease(done);
                 }
 
                 partial void IncrementProgress(Promise feed);
-
-                protected override void AssignCancelValue(IValueContainer cancelValue)
-                {
-#if DEBUG
-                    checked
-#endif
-                    {
-                        --_retainCounter;
-                    }
-                    base.AssignCancelValue(cancelValue);
-                }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     passThroughs.Push(passThrough);
                 }
-
-                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
             }
 
             public sealed partial class RacePromise0 : PoolablePromise<RacePromise0>, IMultiTreeHandleable
@@ -3169,81 +3129,53 @@ namespace Proto.Promises
                     promise.passThroughs = passThroughs;
 
                     // Retain this until all promises resolve/reject/cancel
-                    promise._waitCount = (uint) promiseIndex + 1u;
-                    promise._retainCounter = promise._waitCount;
-
                     promise.Reset(skipFrames + 1);
+                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._retainCounter = promise._waitCount + 1u;
+
                     return promise;
                 }
 
-                protected override void _Cancel()
+                private bool ReleaseOne()
                 {
-                    --_waitCount;
-#if DEBUG
-                    checked
-#endif
-                    {
-                        --_retainCounter;
-                    }
+                    ReleaseWithoutDisposeCheck();
+                    return --_waitCount == 0;
+                }
 
-                    if (_waitCount == 0)
+                private void MaybeRelease(bool done)
+                {
+                    if (done)
                     {
                         PromisePassThrough.Repool(ref passThroughs);
+                        Release();
                     }
+                }
+
+                void IMultiTreeHandleable.Cancel(IValueContainerOrPreviousPromise cancelValue)
+                {
                     if (_state == State.Pending)
                     {
-                        base._Cancel();
+                        CancelInternal(cancelValue);
                     }
+
+                    MaybeRelease(ReleaseOne());
                 }
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
                 {
-                    --_waitCount;
-#if DEBUG
-                    checked
-#endif
+                    bool done = ReleaseOne();
+                    if (_state == State.Pending)
                     {
-                        --_retainCounter;
+                        feed._wasWaitedOn = true;
+                        HandleSelfWithoutRelease(feed);
                     }
-
-                    if (_waitCount == 0)
-                    {
-                        PromisePassThrough.Repool(ref passThroughs);
-                    }
-
-                    if (_state != State.Pending)
-                    {
-                        return;
-                    }
-
-                    feed._wasWaitedOn = true;
-                    if (feed._state == State.Rejected)
-                    {
-                        RejectInternal(feed._rejectedOrCanceledValue);
-                    }
-                    else
-                    {
-                        ResolveInternal();
-                    }
-                }
-
-                protected override void AssignCancelValue(IValueContainer cancelValue)
-                {
-#if DEBUG
-                    checked
-#endif
-                    {
-                        --_retainCounter;
-                    }
-                    base.AssignCancelValue(cancelValue);
+                    MaybeRelease(done);
                 }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     passThroughs.Push(passThrough);
                 }
-
-                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
             }
 
             public sealed partial class RacePromise<T> : PoolablePromise<T, RacePromise<T>>, IMultiTreeHandleable
@@ -3278,81 +3210,53 @@ namespace Proto.Promises
                     promise.passThroughs = passThroughs;
 
                     // Retain this until all promises resolve/reject/cancel
-                    promise._waitCount = (uint) promiseIndex + 1u;
-                    promise._retainCounter = promise._waitCount;
-
                     promise.Reset(skipFrames + 1);
+                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._retainCounter = promise._waitCount + 1u;
+
                     return promise;
                 }
 
-                protected override void _Cancel()
+                private bool ReleaseOne()
                 {
-                    --_waitCount;
-#if DEBUG
-                    checked
-#endif
-                    {
-                        --_retainCounter;
-                    }
+                    ReleaseWithoutDisposeCheck();
+                    return --_waitCount == 0;
+                }
 
-                    if (_waitCount == 0)
+                private void MaybeRelease(bool done)
+                {
+                    if (done)
                     {
                         PromisePassThrough.Repool(ref passThroughs);
+                        Release();
                     }
+                }
+
+                void IMultiTreeHandleable.Cancel(IValueContainerOrPreviousPromise cancelValue)
+                {
                     if (_state == State.Pending)
                     {
-                        base._Cancel();
+                        CancelInternal(cancelValue);
                     }
+
+                    MaybeRelease(ReleaseOne());
                 }
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
                 {
-                    --_waitCount;
-#if DEBUG
-                    checked
-#endif
+                    bool done = ReleaseOne();
+                    if (_state == State.Pending)
                     {
-                        --_retainCounter;
+                        feed._wasWaitedOn = true;
+                        HandleSelfWithoutRelease(feed);
                     }
-
-                    if (_waitCount == 0)
-                    {
-                        PromisePassThrough.Repool(ref passThroughs);
-                    }
-
-                    if (_state != State.Pending)
-                    {
-                        return;
-                    }
-
-                    feed._wasWaitedOn = true;
-                    if (feed._state == State.Rejected)
-                    {
-                        RejectInternal(feed._rejectedOrCanceledValue);
-                    }
-                    else
-                    {
-                        ResolveInternal(((PromiseInternal<T>) feed).Value);
-                    }
-                }
-
-                protected override void AssignCancelValue(IValueContainer cancelValue)
-                {
-#if DEBUG
-                    checked
-#endif
-                    {
-                        --_retainCounter;
-                    }
-                    base.AssignCancelValue(cancelValue);
+                    MaybeRelease(done);
                 }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     passThroughs.Push(passThrough);
                 }
-
-                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
             }
 
             public sealed partial class SequencePromise0 : PromiseWaitPromise<SequencePromise0>
@@ -3379,14 +3283,7 @@ namespace Proto.Promises
 
                 protected override void Handle(Promise feed)
                 {
-                    if (feed._state == State.Resolved)
-                    {
-                        ResolveInternal();
-                    }
-                    else
-                    {
-                        RejectInternal(feed._rejectedOrCanceledValue);
-                    }
+                    HandleSelf(feed);
                 }
             }
 
@@ -3422,85 +3319,61 @@ namespace Proto.Promises
                     promise.passThroughs = passThroughs;
 
                     // Retain this until all promises resolve/reject/cancel
-                    promise._waitCount = (uint) promiseIndex + 1u;
-                    promise._retainCounter = promise._waitCount;
-
                     promise.Reset(skipFrames + 1);
+                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._retainCounter = promise._waitCount + 1u;
+
                     return promise;
                 }
 
-                protected override void _Cancel()
+                private bool ReleaseOne()
                 {
-                    --_waitCount;
-#if DEBUG
-                    checked
-#endif
-                    {
-                        --_retainCounter;
-                    }
+                    ReleaseWithoutDisposeCheck();
+                    return --_waitCount == 0;
+                }
 
-                    if (_waitCount == 0)
+                private void MaybeRelease(bool done)
+                {
+                    if (done)
                     {
                         PromisePassThrough.Repool(ref passThroughs);
-                        if (_state == State.Pending)
-                        {
-                            base._Cancel();
-                        }
+                        Release();
                     }
+                }
+
+                void IMultiTreeHandleable.Cancel(IValueContainerOrPreviousPromise cancelValue)
+                {
+                    if (_state == State.Pending)
+                    {
+                        CancelInternal(cancelValue);
+                    }
+
+                    MaybeRelease(ReleaseOne());
                 }
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
                 {
-                    --_waitCount;
-#if DEBUG
-                    checked
-#endif
+                    bool done = ReleaseOne();
+                    if (_state == State.Pending)
                     {
-                        --_retainCounter;
-                    }
-
-                    if (_waitCount == 0)
-                    {
-                        PromisePassThrough.Repool(ref passThroughs);
-                        if (_state == State.Pending)
+                        if (done)
                         {
                             feed._wasWaitedOn = true;
-                            if (feed._state == State.Resolved)
-                            {
-                                ResolveInternal();
-                            }
-                            else
-                            {
-                                RejectInternal(feed._rejectedOrCanceledValue);
-                            }
+                            HandleSelfWithoutRelease(feed);
                         }
-                        return;
+                        else if (feed._state == State.Resolved)
+                        {
+                            feed._wasWaitedOn = true;
+                            ResolveInternalWithoutRelease();
+                        }
                     }
-
-                    if (_state == State.Pending & feed._state == State.Resolved)
-                    {
-                        feed._wasWaitedOn = true;
-                        ResolveInternal();
-                    }
-                }
-
-                protected override void AssignCancelValue(IValueContainer cancelValue)
-                {
-#if DEBUG
-                    checked
-#endif
-                    {
-                        --_retainCounter;
-                    }
-                    base.AssignCancelValue(cancelValue);
+                    MaybeRelease(done);
                 }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     passThroughs.Push(passThrough);
                 }
-
-                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
             }
 
             public sealed partial class FirstPromise<T> : PoolablePromise<T, FirstPromise<T>>, IMultiTreeHandleable
@@ -3535,65 +3408,62 @@ namespace Proto.Promises
                     promise.passThroughs = passThroughs;
 
                     // Retain this until all promises resolve/reject/cancel
-                    promise._waitCount = (uint) promiseIndex + 1u;
-                    promise._retainCounter = promise._waitCount;
-
                     promise.Reset(skipFrames + 1);
+                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._retainCounter = promise._waitCount + 1u;
+
                     return promise;
+                }
+
+                private bool ReleaseOne()
+                {
+                    ReleaseWithoutDisposeCheck();
+                    return --_waitCount == 0;
+                }
+
+                private void MaybeRelease(bool done)
+                {
+                    if (done)
+                    {
+                        PromisePassThrough.Repool(ref passThroughs);
+                        Release();
+                    }
+                }
+
+                void IMultiTreeHandleable.Cancel(IValueContainerOrPreviousPromise cancelValue)
+                {
+                    if (_state == State.Pending)
+                    {
+                        CancelInternal(cancelValue);
+                    }
+
+                    MaybeRelease(ReleaseOne());
                 }
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
                 {
-                    --_waitCount;
-#if DEBUG
-                    checked
-#endif
+                    bool done = ReleaseOne();
+                    if (_state == State.Pending)
                     {
-                        --_retainCounter;
-                    }
-
-                    if (_waitCount == 0)
-                    {
-                        PromisePassThrough.Repool(ref passThroughs);
-                        if (_state == State.Pending)
+                        if (done)
                         {
                             feed._wasWaitedOn = true;
-                            if (feed._state == State.Resolved)
-                            {
-                                ResolveInternal();
-                            }
-                            else
-                            {
-                                RejectInternal(feed._rejectedOrCanceledValue);
-                            }
+                            HandleSelfWithoutRelease(feed);
                         }
-                        return;
+                        else if (feed._state == State.Resolved)
+                        {
+                            feed._wasWaitedOn = true;
+                            _value = ((PromiseInternal<T>) feed).Value;
+                            ResolveInternalWithoutRelease();
+                        }
                     }
-
-                    if (_state == State.Pending & feed._state == State.Resolved)
-                    {
-                        feed._wasWaitedOn = true;
-                        ResolveInternal();
-                    }
-                }
-
-                protected override void AssignCancelValue(IValueContainer cancelValue)
-                {
-#if DEBUG
-                    checked
-#endif
-                    {
-                        --_retainCounter;
-                    }
-                    base.AssignCancelValue(cancelValue);
+                    MaybeRelease(done);
                 }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     passThroughs.Push(passThrough);
                 }
-
-                protected override void Handle(Promise feed) { throw new InvalidOperationException(); }
             }
 #endregion
         }

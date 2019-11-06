@@ -464,7 +464,9 @@ namespace Proto.Promises
             Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
 
             private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
-            
+
+            private Promise _owner;
+
             static InternalYieldInstruction()
             {
                 Internal.OnClearPool += () => _pool.Clear();
@@ -472,9 +474,11 @@ namespace Proto.Promises
 
             private InternalYieldInstruction() { }
 
-            public static InternalYieldInstruction GetOrCreate()
+            public static InternalYieldInstruction GetOrCreate(Promise owner)
             {
-                return _pool.IsNotEmpty ? (InternalYieldInstruction) _pool.Pop() : new InternalYieldInstruction();
+                var yieldInstruction = _pool.IsNotEmpty ? (InternalYieldInstruction) _pool.Pop() : new InternalYieldInstruction();
+                yieldInstruction._owner = owner;
+                return yieldInstruction;
             }
 
             public override void Dispose()
@@ -487,15 +491,16 @@ namespace Proto.Promises
 #pragma warning disable CS0618 // Type or member is obsolete
                 State = State.Canceled;
 #pragma warning restore CS0618 // Type or member is obsolete
+                _owner.Release();
+                _owner = null;
             }
 
-            void Internal.ITreeHandleable.Handle(Promise feed)
+            void Internal.ITreeHandleable.Handle()
             {
-                State = feed._state;
+                State = _owner._state;
+                _owner.Release();
+                _owner = null;
             }
-
-            void Internal.ITreeHandleable.AssignCancelValue(Internal.IValueContainer cancelValue) { }
-            void Internal.ITreeHandleable.OnSubscribeToCanceled(Internal.IValueContainer cancelValue) { }
         }
 
 		public abstract class UnhandledException : Exception
@@ -699,6 +704,22 @@ namespace Proto.Promises
             item.Next = null;
             item.Next = _first;
             _first = item;
+        }
+
+
+        public void PushAndClear(ref ValueLinkedQueue<T> other)
+        {
+            if (IsEmpty)
+            {
+                this = other;
+                other.Clear();
+            }
+            else if (other.IsNotEmpty)
+            {
+                other._last.Next = _first;
+                _first = other._first;
+                other.Clear();
+            }
         }
 
         public T Dequeue()
