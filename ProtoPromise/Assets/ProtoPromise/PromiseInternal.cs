@@ -129,7 +129,6 @@ namespace Proto.Promises
         protected void HookupNewPromise(Promise newPromise)
         {
             newPromise._rejectedOrCanceledValueOrPrevious = this;
-            newPromise.Retain(); // newPromise will release itself when it is complete.
             SetDepth(newPromise);
             AddWaiter(newPromise);
         }
