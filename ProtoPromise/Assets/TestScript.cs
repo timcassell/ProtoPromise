@@ -42,6 +42,8 @@ public class TestScript : MonoBehaviour
 	}
 	public RunType runType = RunType.None;
 
+    public Promise.PoolType protoPoolType;
+
     //System.Text.StringBuilder sb = new System.Text.StringBuilder();
 
     //private void Awake()
@@ -84,7 +86,6 @@ public class TestScript : MonoBehaviour
 
     private IEnumerator Start()
 	{
-        Promise.Config.ObjectPooling = Promise.PoolType.All;
         //Promise.Config.DebugStacktraceGenerator = Promise.GeneratedStacktrace.All;
 
 		//Debug.LogWarning(System.Threading.Thread.CurrentThread.ManagedThreadId);
@@ -265,30 +266,31 @@ public class TestScript : MonoBehaviour
 
 	IEnumerator Log()
 	{
-		Reset:
+	Reset:
 		yield return waitForEndOfFrame;
 
+        var divisor = Mathf.Max(1, trials);
 		switch(runType)
 		{
 			case RunType.ProtoPromise:
 				{
-					protoCreation /= trials;
-					protoThen /= trials;
-					protoResolve /= trials;
+					protoCreation /= divisor;
+					protoThen /= divisor;
+					protoResolve /= divisor;
 					break;
 				}
 			case RunType.uPromise:
 				{
-					uCreation /= trials;
-					uThen /= trials;
-					uResolve /= trials;
+					uCreation /= divisor;
+					uThen /= divisor;
+					uResolve /= divisor;
 					break;
 				}
 			case RunType.Task:
 				{
-					taskCreation /= trials;
-					taskThen /= trials;
-					taskResolve /= trials;
+					taskCreation /= divisor;
+					taskThen /= divisor;
+					taskResolve /= divisor;
 					break;
 				}
 		}
@@ -306,15 +308,16 @@ public class TestScript : MonoBehaviour
 
 	private void Update()
 	{
-		GC.Collect();
+        Promise.Config.ObjectPooling = protoPoolType;
+        GC.Collect();
 
-        //int type = (int) runType;
-        //++type;
-        //if (type > 3)
-        //{
-        //    type = 0;
-        //}
-        //runType = (RunType) type;
+        int type = (int) runType;
+        ++type;
+        if (type > 3)
+        {
+            type = 0;
+        }
+        runType = (RunType) type;
 
         switch (runType)
 		{
@@ -411,19 +414,16 @@ public class TestScript : MonoBehaviour
 			case RunType.ProtoPromise:
 				{
 					var lolPromise = protoDeferreds[index].Promise;
-					var lolPromiseInt = lolPromise.Then(voidToInt);
-					var lolPromiseFloat = lolPromiseInt.Then(toFloat);
 
 					watch.Reset();
 					watch.Start();
 
 					for (int i = 0; i < thenCount; ++i)
 					{
-						//lolPromise = lolPromise.Then(voidToVoid);
-						//lolPromiseInt.Then(intToInt);
-						lolPromise = lolPromiseFloat.Then(toVoid);
-						lolPromiseInt = lolPromise.Then(voidToInt);
-						lolPromiseFloat = lolPromiseInt.Then(toFloat);
+						lolPromise = lolPromise
+                            .Then(voidToInt)
+                            .Then(toFloat)
+                            .Then(toVoid);
 					}
 
 					watch.Stop();
@@ -433,19 +433,16 @@ public class TestScript : MonoBehaviour
 			case RunType.uPromise:
 				{
 					var uPromise = uDeferreds[index].Promise;
-					var uPromiseInt = uPromise.Then(uToInt);
-					var uPromiseFloat = uPromiseInt.Then(toFloat);
 
 					watch.Reset();
 					watch.Start();
 
 					for (int i = 0; i < thenCount; ++i)
-					{
-						//uPromise = uPromise.Then(voidToVoid);
-						//uPromiseInt.Then(intToInt);
-						uPromise = uPromiseFloat.Then(toVoid);
-						uPromiseInt = uPromise.Then(uToInt);
-						uPromiseFloat = uPromiseInt.Then(toFloat);
+                    {
+                        uPromise = uPromise
+                            .Then(uToInt)
+                            .Then(toFloat)
+                            .Then(toVoid);
 					}
 
 					watch.Stop();
@@ -455,17 +452,16 @@ public class TestScript : MonoBehaviour
 			//case RunType.Task:
 				//{
 				//	var task = tasks[index];
-				//	var taskInt = task.ContinueWith(taskVoidToInt);
-				//	var taskFloat = taskInt.ContinueWith(taskIntToFloat);
 
 				//	watch.Reset();
 				//	watch.Start();
 
 				//	for (int i = 0; i < thenCount; ++i)
 				//	{
-				//		task = taskFloat.ContinueWith(taskFloatToVoid);
-				//		taskInt = task.ContinueWith(taskVoidToInt);
-				//		taskFloat = taskInt.ContinueWith(taskIntToFloat);
+				//		task = task
+    //                        .ContinueWith(taskVoidToInt)
+    //                        .ContinueWith(taskIntToFloat)
+    //                        .ContinueWith(taskFloatToVoid);
 				//	}
 
 				//	watch.Stop();

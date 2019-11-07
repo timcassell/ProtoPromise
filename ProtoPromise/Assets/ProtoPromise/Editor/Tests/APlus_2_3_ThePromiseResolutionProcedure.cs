@@ -1803,7 +1803,6 @@ namespace Proto.Promises.Tests
                     () => ++resolveCount,
                     o => Assert.Fail("Promise was rejected when it should have been resolved: " + o),
                     () => Assert.Fail("Promise was rejected when it should have been resolved"));
-                // Ignored exceptions get added to the unhandled exception queue instead of rejecting the promise.
                 Promise.Manager.HandleCompletes();
                 Assert.AreEqual(TestHelper.resolveVoidCallbacks, resolveCount);
             };
@@ -1878,9 +1877,8 @@ namespace Proto.Promises.Tests
                     v => { Assert.AreEqual(expected, v); ++resolveCount; },
                     o => Assert.Fail("Promise was rejected when it should have been resolved: " + o),
                     () => Assert.Fail("Promise was rejected when it should have been resolved"));
-                // Ignored exceptions get added to the unhandled exception queue instead of rejecting the promise.
                 Promise.Manager.HandleCompletes();
-                Assert.AreEqual(TestHelper.resolveVoidCallbacks, resolveCount);
+                Assert.AreEqual(TestHelper.resolveTCallbacks, resolveCount);
             };
 
             assertResolved.Invoke(resolveDeferred.Promise.Then<int>(() => expected));
