@@ -136,9 +136,7 @@ namespace Proto.Promises.Tests
                 deferred.Retain();
                 string rejection = null;
                 string expected = "Fail Value";
-                int counter = 0;
                 TestHelper.AddCallbacks(deferred.Promise, () => Assert.Fail("Promise was resolved when it should have been rejected."), failValue => {
-                    ++counter;
                     rejection = failValue;
 
                     Assert.AreEqual(expected, failValue);

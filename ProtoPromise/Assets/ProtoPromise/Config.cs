@@ -325,6 +325,7 @@ namespace Proto.Promises
             ValidateArgument(onCanceled, "onCanceled", 1);
 
             AddWaiter(Internal.CancelDelegateAny.GetOrCreate(onCanceled, 1));
+            ReleaseWithoutDisposeCheck(); // No need to keep this retained.
         }
 
         /// <summary>
@@ -342,7 +343,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
-            var cancelation = Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled, 1);
+            var cancelation = Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled, this, 1);
             AddWaiter(cancelation);
             return cancelation;
         }
@@ -415,14 +416,13 @@ namespace Proto.Promises
         static partial void ValidateArgument(Delegate del, string argName, int skipFrames);
         partial void ValidateReturn(Promise other);
         static partial void ValidateReturn(Delegate other);
-        static partial void ValidatePotentialOperation(Internal.IValueContainerOrPreviousPromise valueContainer, int skipFrames);
+        static partial void ValidatePotentialOperation(Internal.IValueContainerOrPrevious valueContainer, int skipFrames);
         static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames);
 
         static partial void SetCreatedStacktrace(Internal.IStacktraceable stacktraceable, int skipFrames);
         static partial void SetStacktraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException);
         static partial void SetRejectStacktrace(Internal.UnhandledExceptionInternal unhandledException, int skipFrames);
-        static partial void SetDisposed(ref Internal.IValueContainerOrPreviousPromise valueContainer);
-        static partial void SetNotDisposed(ref Internal.IValueContainerOrPreviousPromise valueContainer);
+        static partial void SetNotDisposed(ref Internal.IValueContainerOrPrevious valueContainer);
 #if DEBUG
         private string _createdStackTrace;
         string Internal.IStacktraceable.Stacktrace { get { return _createdStackTrace; } set { _createdStackTrace = value; } }
@@ -430,12 +430,12 @@ namespace Proto.Promises
         private static int idCounter;
         protected readonly int _id;
 
-        static partial void SetDisposed(ref Internal.IValueContainerOrPreviousPromise valueContainer)
+        private static void SetDisposed(ref Internal.IValueContainerOrPrevious valueContainer)
         {
             valueContainer = Internal.DisposedChecker.instance;
         }
 
-        static partial void SetNotDisposed(ref Internal.IValueContainerOrPreviousPromise valueContainer)
+        static partial void SetNotDisposed(ref Internal.IValueContainerOrPrevious valueContainer)
         {
             valueContainer = null;
         }
@@ -443,14 +443,14 @@ namespace Proto.Promises
         partial class Internal
         {
             // This allows us to re-use the reference field without having to add another bool field.
-            public sealed class DisposedChecker : IValueContainerOrPreviousPromise
+            public sealed class DisposedChecker : IValueContainerOrPrevious
             {
                 public static readonly DisposedChecker instance = new DisposedChecker();
 
                 private DisposedChecker() { }
 
-                bool IValueContainerOrPreviousPromise.ContainsType<U>() { throw new InvalidOperationException(); }
-                bool IValueContainerOrPreviousPromise.TryGetValueAs<U>(out U value) { throw new InvalidOperationException(); }
+                bool IValueContainerOrPrevious.ContainsType<U>() { throw new InvalidOperationException(); }
+                bool IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new InvalidOperationException(); }
                 void IRetainable.Release() { throw new InvalidOperationException(); }
                 void IRetainable.Retain() { throw new InvalidOperationException(); }
             }
@@ -566,28 +566,29 @@ namespace Proto.Promises
             }
         }
 
-        private static bool IsDisposed(Internal.IValueContainerOrPreviousPromise valueContainer)
+        private static bool IsDisposed(Internal.IValueContainerOrPrevious valueContainer)
         {
             return ReferenceEquals(valueContainer, Internal.DisposedChecker.instance);
         }
 
-        static protected void ValidateNotDisposed(Internal.IValueContainerOrPreviousPromise valueContainer, string message, int skipFrames)
+        static protected void ValidateNotDisposed(Internal.IValueContainerOrPrevious valueContainer, int skipFrames)
         {
             if (IsDisposed(valueContainer))
             {
-                throw new PromiseDisposedException(message, GetFormattedStacktrace(skipFrames + 1));
+                throw new PromiseDisposedException("Always nullify your references when you are finished with them!" +
+                	" Call Retain() if you want to perform operations after the object has finished. Remember to call Release() when you are finished with it!"
+                    , GetFormattedStacktrace(skipFrames + 1));
             }
         }
 
-        static partial void ValidatePotentialOperation(Internal.IValueContainerOrPreviousPromise valueContainer, int skipFrames)
+        static partial void ValidatePotentialOperation(Internal.IValueContainerOrPrevious valueContainer, int skipFrames)
         {
-            ValidateNotDisposed(valueContainer, "You should never store IPotentialCancelations.", skipFrames + 1);
+            ValidateNotDisposed(valueContainer, skipFrames + 1);
         }
 
         static partial void ValidateOperation(Promise promise, int skipFrames)
         {
-            ValidateNotDisposed(promise._rejectedOrCanceledValueOrPrevious, "Always nullify your references when you are finished with them!" +
-                    " Call Retain() if you want to perform operations after the promise has finished. Remember to call Release() when you are finished with it!", skipFrames + 1);
+            ValidateNotDisposed(promise._rejectedOrCanceledValueOrPrevious, skipFrames + 1);
         }
 
         static partial void ValidateProgress(float progress, int skipFrames)
@@ -626,10 +627,10 @@ namespace Proto.Promises
             return null;
         }
 
-        private void SetDisposed()
+        private static void SetDisposed(ref Internal.IValueContainerOrPreviousPromise valueContainer)
         {
             // Allow GC to clean up the object if necessary.
-            _rejectedOrCanceledValueOrPrevious = null;
+            valueContainer = null;
         }
 
         public override string ToString()
@@ -848,46 +849,6 @@ namespace Proto.Promises
                 string Stacktrace { get; set; }
 #endif
             }
-
-#pragma warning disable RECS0001 // Class is declared partial but has only one part
-            public abstract partial class PromiseWaitDeferred<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitDeferred<TPromise>
-            {
-                protected readonly DeferredInternal _deferredInternal;
-                public new Deferred Deferred { get { return _deferredInternal; } }
-
-                protected PromiseWaitDeferred()
-                {
-                    _deferredInternal = new DeferredInternal(this);
-                }
-
-                protected override void Reset(int skipFrames)
-                {
-                    base.Reset(skipFrames + 1);
-                    _deferredInternal.Reset();
-                    // Retain now, release when deferred resolves/rejects/cancels.
-                    Retain();
-                }
-            }
-
-            public abstract partial class PromiseWaitDeferred<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitDeferred<T, TPromise>
-            {
-                protected readonly Internal.DeferredInternal _deferredInternal;
-                public new Deferred Deferred { get { return _deferredInternal; } }
-
-                protected PromiseWaitDeferred()
-                {
-                    _deferredInternal = new Internal.DeferredInternal(this);
-                }
-
-                protected override void Reset(int skipFrames)
-                {
-                    base.Reset(skipFrames + 1);
-                    _deferredInternal.Reset();
-                    // Retain now, release when deferred resolves/rejects/cancels.
-                    Retain();
-                }
-            }
-#pragma warning restore RECS0001 // Class is declared partial but has only one part
 
 #if PROGRESS
             partial class SequencePromise0
@@ -2400,7 +2361,7 @@ namespace Proto.Promises
             }
         }
 
-        protected void RejectDirect(Internal.IValueContainerOrPreviousPromise rejectValue)
+        protected void RejectDirect(Internal.IValueContainerOrPrevious rejectValue)
         {
 #if CANCEL
             if (_state == State.Canceled)
@@ -2431,7 +2392,7 @@ namespace Proto.Promises
             }
         }
 
-        protected void RejectInternalIfNotCanceled(Internal.IValueContainerOrPreviousPromise rejectValue)
+        protected void RejectInternalIfNotCanceled(Internal.IValueContainerOrPrevious rejectValue)
         {
 #if CANCEL
             if (_state == State.Canceled)
@@ -2494,8 +2455,7 @@ namespace Proto.Promises
 
         static partial void ValidateOperation(Promise<T> promise, int skipFrames)
         {
-            ValidateNotDisposed(promise._rejectedOrCanceledValueOrPrevious, "Always nullify your references when you are finished with them!" +
-                    " Call Retain() if you want to perform operations after the promise has finished. Remember to call Release() when you are finished with it!", skipFrames + 1);
+            ValidateNotDisposed(promise._rejectedOrCanceledValueOrPrevious, skipFrames + 1);
         }
 
         static partial void ValidateArgument(Delegate del, string argName, int skipFrames)
@@ -2586,16 +2546,7 @@ namespace Proto.Promises
 #endif
             }
 
-            partial class CancelDelegateAny : IStacktraceable
-            {
-#if DEBUG
-                string IStacktraceable.Stacktrace { get; set; }
-#endif
-            }
-
-#pragma warning disable RECS0096 // Type parameter is never used
-            partial class CancelDelegate<T> : IStacktraceable
-#pragma warning restore RECS0096 // Type parameter is never used
+            partial class PotentialCancelation : IStacktraceable
             {
 #if DEBUG
                 string IStacktraceable.Stacktrace { get; set; }

@@ -405,9 +405,9 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// Potential cancelation interface used to subscribe multiple cancelation callbacks accepting different types. Instances of this interface should never be stored.
+    /// Potential cancelation interface used to subscribe multiple cancelation callbacks accepting different types.
     /// </summary>
-    public interface IPotentialCancelation
+    public interface IPotentialCancelation : IRetainable
     {
         /// <summary>
         /// Add a cancel callback.

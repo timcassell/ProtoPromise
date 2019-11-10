@@ -32,20 +32,18 @@ namespace Proto.Promises
 		public void Release()
         {
             ValidateOperation(this, 1);
-#if DEBUG
-            checked // If this fails, it means you called Release before Retain somewhere.
-#endif
+
+            ReleaseWithoutDisposeCheck();
+
+            if (_retainCounter == 0 & _state != State.Pending)
             {
-                if (--_retainCounter == 0 & _state != State.Pending)
+                if (_state == State.Rejected & !_wasWaitedOn)
                 {
-                    if (_state == State.Rejected & !_wasWaitedOn)
-                    {
-                        // Rejection wasn't caught.
-                        _wasWaitedOn = true;
-                        AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValueOrPrevious);
-                    }
-                    Dispose();
+                    // Rejection wasn't caught.
+                    _wasWaitedOn = true;
+                    AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValueOrPrevious);
                 }
+                Dispose();
             }
         }
 
@@ -69,6 +67,7 @@ namespace Proto.Promises
         {
             var yield = InternalYieldInstruction.GetOrCreate(this);
             AddWaiter(yield);
+            ReleaseWithoutDisposeCheck(); // No need to keep this retained.
             return yield;
         }
 

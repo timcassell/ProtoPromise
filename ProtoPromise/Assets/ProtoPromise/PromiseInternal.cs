@@ -2,25 +2,27 @@
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable RECS0001 // Class is declared partial but has only one part
 using System;
 using System.Collections.Generic;
 
 namespace Proto.Promises
 {
-    partial class Promise : Promise.Internal.ITreeHandleable, Promise.Internal.IStacktraceable, Promise.Internal.IValueContainerOrPreviousPromise
+    partial class Promise : Promise.Internal.ITreeHandleable, Promise.Internal.IStacktraceable, Promise.Internal.IValueContainerOrPrevious, Promise.Internal.IValueContainerContainer
     {
-        Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
-
         private ValueLinkedQueue<Internal.ITreeHandleable> _nextBranches;
-        protected Internal.IValueContainerOrPreviousPromise _rejectedOrCanceledValueOrPrevious;
+        protected Internal.IValueContainerOrPrevious _rejectedOrCanceledValueOrPrevious;
         private uint _retainCounter;
         protected State _state;
         private bool _wasWaitedOn;
         protected bool _dontPool;
+        
+        Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
+        Internal.IValueContainerOrPrevious Internal.IValueContainerContainer.ValueContainerOrPrevious { get { return _rejectedOrCanceledValueOrPrevious; } }
 
         // This breaks Interface Segregation Principle, but cuts down on memory.
-        bool Internal.IValueContainerOrPreviousPromise.TryGetValueAs<U>(out U value) { throw new InvalidOperationException(); }
-        bool Internal.IValueContainerOrPreviousPromise.ContainsType<U>() { throw new InvalidOperationException(); }
+        bool Internal.IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new InvalidOperationException(); }
+        bool Internal.IValueContainerOrPrevious.ContainsType<U>() { throw new InvalidOperationException(); }
 
         ~Promise()
         {
@@ -53,7 +55,7 @@ namespace Proto.Promises
         protected void ReleaseWithoutDisposeCheck()
         {
 #if DEBUG
-            checked
+            checked // If this fails, it means you called Release before Retain somewhere.
 #endif
             {
                 --_retainCounter;
@@ -65,7 +67,7 @@ namespace Proto.Promises
             return Internal.DuplicatePromise0.GetOrCreate(2);
         }
 
-        protected void CancelInternal(Internal.IValueContainerOrPreviousPromise cancelValue)
+        protected void CancelInternal(Internal.IValueContainerOrPrevious cancelValue)
         {
             _state = State.Canceled;
             CancelProgressListeners();
@@ -111,7 +113,7 @@ namespace Proto.Promises
             return rejectValue;
         }
 
-        protected void RejectInternalWithoutRelease(Internal.IValueContainerOrPreviousPromise rejectValue)
+        protected void RejectInternalWithoutRelease(Internal.IValueContainerOrPrevious rejectValue)
         {
             _state = State.Rejected;
             _rejectedOrCanceledValueOrPrevious = rejectValue;
@@ -120,7 +122,7 @@ namespace Proto.Promises
             AddToHandleQueueFront(ref _nextBranches);
         }
 
-        protected void RejectInternal(Internal.IValueContainerOrPreviousPromise rejectValue)
+        protected void RejectInternal(Internal.IValueContainerOrPrevious rejectValue)
         {
             RejectInternalWithoutRelease(rejectValue);
             Release();
@@ -206,6 +208,7 @@ namespace Proto.Promises
         protected virtual void OnCancel()
         {
             _rejectedOrCanceledValueOrPrevious.Release();
+            _rejectedOrCanceledValueOrPrevious = null;
             ClearProgressListeners();
             AddToCancelQueueFront(ref _nextBranches);
         }
@@ -252,16 +255,6 @@ namespace Proto.Promises
         protected override Promise GetDuplicate()
         {
             return Promise.Internal.DuplicatePromise<T>.GetOrCreate(2);
-        }
-
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-        protected void ResolveInternal(in T value)
-#else
-        protected void ResolveInternal(T value)
-#endif
-        {
-            _value = value;
-            ResolveInternal();
         }
 
         protected override void Dispose()
@@ -330,6 +323,44 @@ namespace Proto.Promises
                 }
             }
 
+            public abstract partial class PromiseWaitDeferred<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitDeferred<TPromise>
+            {
+                protected readonly DeferredInternal _deferredInternal;
+                public new Deferred Deferred { get { return _deferredInternal; } }
+
+                protected PromiseWaitDeferred()
+                {
+                    _deferredInternal = new DeferredInternal(this);
+                }
+
+                protected override void Reset(int skipFrames)
+                {
+                    base.Reset(skipFrames + 1);
+                    _deferredInternal.Reset();
+                    // Retain now, release when deferred resolves/rejects/cancels.
+                    Retain();
+                }
+            }
+
+            public abstract partial class PromiseWaitDeferred<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitDeferred<T, TPromise>
+            {
+                protected readonly Internal.DeferredInternal _deferredInternal;
+                public new Deferred Deferred { get { return _deferredInternal; } }
+
+                protected PromiseWaitDeferred()
+                {
+                    _deferredInternal = new Internal.DeferredInternal(this);
+                }
+
+                protected override void Reset(int skipFrames)
+                {
+                    base.Reset(skipFrames + 1);
+                    _deferredInternal.Reset();
+                    // Retain now, release when deferred resolves/rejects/cancels.
+                    Retain();
+                }
+            }
+
             public sealed class DeferredPromise0 : PromiseWaitDeferred<DeferredPromise0>
             {
                 private DeferredPromise0() { }
@@ -351,7 +382,7 @@ namespace Proto.Promises
                 {
                     ClearProgressListeners();
                     AddToCancelQueueFront(ref _nextBranches);
-                    Release();
+                    AddToHandleQueueBack(this);
                 }
             }
 
@@ -376,7 +407,7 @@ namespace Proto.Promises
                 {
                     ClearProgressListeners();
                     AddToCancelQueueFront(ref _nextBranches);
-                    Release();
+                    AddToHandleQueueBack(this);
                 }
             }
 
@@ -406,7 +437,7 @@ namespace Proto.Promises
                 {
                     ClearProgressListeners();
                     AddToCancelQueueFront(ref _nextBranches);
-                    Release();
+                    AddToHandleQueueBack(this);
                 }
             }
 
@@ -441,7 +472,7 @@ namespace Proto.Promises
                 {
                     ClearProgressListeners();
                     AddToCancelQueueFront(ref _nextBranches);
-                    Release();
+                    AddToHandleQueueBack(this);
                 }
             }
 
@@ -1109,7 +1140,8 @@ namespace Proto.Promises
                     else
                     {
                         callback.Dispose();
-                        ResolveInternal(((PromiseInternal<T>) feed).Value);
+                        _value = ((PromiseInternal<T>) feed).Value;
+                        ResolveInternal();
                     }
                 }
 
@@ -1219,7 +1251,8 @@ namespace Proto.Promises
                     else
                     {
                         callback.Dispose();
-                        ResolveInternal(((PromiseInternal<TPromise>) feed).Value);
+                        _value = ((PromiseInternal<TPromise>) feed).Value;
+                        ResolveInternal();
                     }
                 }
 
@@ -1363,7 +1396,8 @@ namespace Proto.Promises
                         // Deferred is never used, so just release.
                         Release();
                         callback.Dispose();
-                        ResolveInternal(((PromiseInternal<TDeferred>) feed).Value);
+                        _value = ((PromiseInternal<TDeferred>) feed).Value;
+                        ResolveInternal();
                     }
                 }
 
@@ -2037,13 +2071,11 @@ namespace Proto.Promises
                 }
             }
 
-#pragma warning disable RECS0001 // Class is declared partial but has only one part
-            public abstract class PotentialCancelation : ITreeHandleable
-#pragma warning restore RECS0001 // Class is declared partial but has only one part
+            public abstract partial class PotentialCancelation : ITreeHandleable
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
-                public virtual void AssignPrevious(IValueContainerOrPreviousPromise cancelValue) { }
+                public virtual void AssignPrevious(IValueContainerOrPrevious cancelValue) { }
 
                 void ITreeHandleable.Handle()
                 {
@@ -2070,7 +2102,7 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed partial class CancelDelegateAny : PotentialCancelation
+            public sealed class CancelDelegateAny : PotentialCancelation
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
@@ -2118,15 +2150,16 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed partial class CancelDelegate<T> : PotentialCancelation, IPotentialCancelation
+            public sealed class CancelDelegate<T> : PotentialCancelation, IPotentialCancelation, IValueContainerOrPrevious, IValueContainerContainer
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
                 private ValueLinkedQueue<ITreeHandleable> _nextBranches;
-
-                private IValueContainerOrPreviousPromise _cancelValue;
-
+                private IValueContainerOrPrevious _valueContainerOrPrevious;
                 private Action<T> _onCanceled;
+                private uint _retainCounter;
+
+                IValueContainerOrPrevious IValueContainerContainer.ValueContainerOrPrevious { get { return _valueContainerOrPrevious; } }
 
                 private CancelDelegate() { }
 
@@ -2135,12 +2168,13 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                public static CancelDelegate<T> GetOrCreate(Action<T> onCanceled, int skipFrames)
+                public static CancelDelegate<T> GetOrCreate(Action<T> onCanceled, IValueContainerOrPrevious previous, int skipFrames)
                 {
                     var del = _pool.IsNotEmpty ? (CancelDelegate<T>)_pool.Pop() : new CancelDelegate<T>();
                     del._onCanceled = onCanceled;
-                    SetNotDisposed(ref del._cancelValue);
+                    del._valueContainerOrPrevious = previous;
                     SetCreatedStacktrace(del, skipFrames + 1);
+                    del.Retain();
                     return del;
                 }
 
@@ -2151,21 +2185,20 @@ namespace Proto.Promises
 
                 protected override void Dispose()
                 {
-                    SetDisposed(ref _cancelValue);
                     _onCanceled = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    Release();
                 }
 
                 public override void Cancel()
                 {
                     var callback = _onCanceled;
-                    var nextValue = _cancelValue;
-                    Dispose();
+                    _onCanceled = null;
+                    var cancelValue = ((IValueContainerContainer) _valueContainerOrPrevious).ValueContainerOrPrevious;
+                    cancelValue.Retain();
+                    _valueContainerOrPrevious.Release();
+                    _valueContainerOrPrevious = cancelValue;
                     T arg;
-                    if (_cancelValue.TryGetValueAs(out arg))
+                    if (cancelValue.TryGetValueAs(out arg))
                     {
                         DisposeBranches();
                         try
@@ -2183,11 +2216,12 @@ namespace Proto.Promises
                     {
                         AddToCancelQueueFront(ref _nextBranches);
                     }
+                    Release();
                 }
 
                 void IPotentialCancelation.CatchCancelation(Action onCanceled)
                 {
-                    ValidatePotentialOperation(_cancelValue, 1);
+                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
                     ValidateArgument(onCanceled, "onCanceled", 1);
 
                     _nextBranches.Enqueue(CancelDelegateAny.GetOrCreate(onCanceled, 1));
@@ -2195,14 +2229,46 @@ namespace Proto.Promises
 
                 IPotentialCancelation IPotentialCancelation.CatchCancelation<TCancel>(Action<TCancel> onCanceled)
                 {
-                    ValidatePotentialOperation(_cancelValue, 1);
+                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
                     ValidateArgument(onCanceled, "onCanceled", 1);
 
-                    var cancelation = CancelDelegate<TCancel>.GetOrCreate(onCanceled, 1);
+                    var cancelation = CancelDelegate<TCancel>.GetOrCreate(onCanceled, this, 1);
                     _nextBranches.Enqueue(cancelation);
+                    Retain();
                     return cancelation;
                 }
 
+                public void Retain()
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        ++_retainCounter;
+                    }
+                }
+
+                public void Release()
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        if (--_retainCounter == 0)
+                        {
+                            _valueContainerOrPrevious.Release();
+                            SetDisposed(ref _valueContainerOrPrevious);
+                            if (Config.ObjectPooling == PoolType.All)
+                            {
+                                _pool.Push(this);
+                            }
+                        }
+                    }
+                }
+
+                // This breaks Interface Segregation Principle, but cuts down on memory.
+                bool IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new InvalidOperationException(); }
+                bool IValueContainerOrPrevious.ContainsType<U>() { throw new InvalidOperationException(); }
             }
 
             public sealed class DelegateVoidVoid0 : IDelegate, ILinked<DelegateVoidVoid0>
@@ -2243,7 +2309,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer)
+                public bool DisposeAndTryInvoke(IValueContainerOrPrevious valueContainer)
                 {
                     DisposeAndInvoke();
                     return true;
@@ -2293,7 +2359,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer)
+                public bool DisposeAndTryInvoke(IValueContainerOrPrevious valueContainer)
                 {
                     if (valueContainer.ContainsType<T>())
                     {
@@ -2348,7 +2414,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer)
+                public bool DisposeAndTryInvoke(IValueContainerOrPrevious valueContainer)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValueAs(out arg))
@@ -2404,7 +2470,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer, out TResult result)
+                public bool DisposeAndTryInvoke(IValueContainerOrPrevious valueContainer, out TResult result)
                 {
                     result = DisposeAndInvoke();
                     return true;
@@ -2454,7 +2520,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer, out TResult result)
+                public bool DisposeAndTryInvoke(IValueContainerOrPrevious valueContainer, out TResult result)
                 {
                     if (valueContainer.ContainsType<T>())
                     {
@@ -2510,7 +2576,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer, out TResult result)
+                public bool DisposeAndTryInvoke(IValueContainerOrPrevious valueContainer, out TResult result)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValueAs(out arg))
@@ -2536,28 +2602,33 @@ namespace Proto.Promises
                 void Cancel();
             }
 
-            public interface IValueContainerOrPreviousPromise : IRetainable
+            public interface IValueContainerOrPrevious : IRetainable
             {
                 bool TryGetValueAs<U>(out U value);
                 bool ContainsType<U>();
             }
 
+            public interface IValueContainerContainer : IValueContainerOrPrevious
+            {
+                IValueContainerOrPrevious ValueContainerOrPrevious { get; }
+            }
+
             public interface IDelegate
             {
-                bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer);
+                bool DisposeAndTryInvoke(IValueContainerOrPrevious valueContainer);
                 void DisposeAndInvoke(Promise feed);
                 void Dispose();
             }
 
             public interface IDelegate<TResult>
             {
-                bool DisposeAndTryInvoke(IValueContainerOrPreviousPromise valueContainer, out TResult result);
+                bool DisposeAndTryInvoke(IValueContainerOrPrevious valueContainer, out TResult result);
                 TResult DisposeAndInvoke(Promise feed);
                 void Dispose();
             }
 
 #region ValueWrappers
-            public abstract class UnhandledExceptionInternal : UnhandledException, IValueContainerOrPreviousPromise, ILinked<UnhandledExceptionInternal>
+            public abstract class UnhandledExceptionInternal : UnhandledException, IValueContainerOrPrevious, ILinked<UnhandledExceptionInternal>
             {
                 UnhandledExceptionInternal ILinked<UnhandledExceptionInternal>.Next { get; set; }
 
@@ -2743,7 +2814,7 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class CancelVoid : IValueContainerOrPreviousPromise
+            public sealed class CancelVoid : IValueContainerOrPrevious
             {
                 // We can reuse the same object.
                 private static readonly CancelVoid obj = new CancelVoid();
@@ -2773,7 +2844,7 @@ namespace Proto.Promises
                 public void Release() { }
             }
 
-            public sealed class CancelValue<T> : IValueContainerOrPreviousPromise, IValueContainer<T>, ILinked<CancelValue<T>>
+            public sealed class CancelValue<T> : IValueContainerOrPrevious, IValueContainer<T>, ILinked<CancelValue<T>>
             {
                 CancelValue<T> ILinked<CancelValue<T>>.Next { get; set; }
 
@@ -2781,7 +2852,7 @@ namespace Proto.Promises
 
                 private static ValueLinkedStack<CancelValue<T>> _pool;
 
-                private uint retainCounter;
+                private uint _retainCounter;
 
                 static CancelValue()
                 {
@@ -2809,12 +2880,12 @@ namespace Proto.Promises
 
                 public void Retain()
                 {
-                    ++retainCounter;
+                    ++_retainCounter;
                 }
 
                 public void Release()
                 {
-                    if (--retainCounter == 0 & Config.ObjectPooling != PoolType.None)
+                    if (--_retainCounter == 0 & Config.ObjectPooling != PoolType.None)
                     {
                         Value = default(T);
                         _pool.Push(this);
@@ -2824,11 +2895,10 @@ namespace Proto.Promises
 #endregion
 
 #region Multi Promises
-#pragma warning disable RECS0001 // Class is declared partial but has only one part
             public partial interface IMultiTreeHandleable : ITreeHandleable
             {
                 void Handle(Promise feed, int index);
-                void Cancel(IValueContainerOrPreviousPromise cancelValue);
+                void Cancel(IValueContainerOrPrevious cancelValue);
                 void ReAdd(PromisePassThrough passThrough);
             }
             
@@ -2956,7 +3026,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IMultiTreeHandleable.Cancel(IValueContainerOrPreviousPromise cancelValue)
+                void IMultiTreeHandleable.Cancel(IValueContainerOrPrevious cancelValue)
                 {
                     if (_state == State.Pending)
                     {
@@ -3055,7 +3125,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IMultiTreeHandleable.Cancel(IValueContainerOrPreviousPromise cancelValue)
+                void IMultiTreeHandleable.Cancel(IValueContainerOrPrevious cancelValue)
                 {
                     if (_state == State.Pending)
                     {
@@ -3150,7 +3220,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IMultiTreeHandleable.Cancel(IValueContainerOrPreviousPromise cancelValue)
+                void IMultiTreeHandleable.Cancel(IValueContainerOrPrevious cancelValue)
                 {
                     if (_state == State.Pending)
                     {
@@ -3231,7 +3301,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IMultiTreeHandleable.Cancel(IValueContainerOrPreviousPromise cancelValue)
+                void IMultiTreeHandleable.Cancel(IValueContainerOrPrevious cancelValue)
                 {
                     if (_state == State.Pending)
                     {
@@ -3340,7 +3410,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IMultiTreeHandleable.Cancel(IValueContainerOrPreviousPromise cancelValue)
+                void IMultiTreeHandleable.Cancel(IValueContainerOrPrevious cancelValue)
                 {
                     if (_state == State.Pending)
                     {
@@ -3429,7 +3499,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IMultiTreeHandleable.Cancel(IValueContainerOrPreviousPromise cancelValue)
+                void IMultiTreeHandleable.Cancel(IValueContainerOrPrevious cancelValue)
                 {
                     if (_state == State.Pending)
                     {
