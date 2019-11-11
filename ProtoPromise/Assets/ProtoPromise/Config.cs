@@ -324,8 +324,11 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
-            AddWaiter(Internal.CancelDelegateAny.GetOrCreate(onCanceled, 1));
-            ReleaseWithoutDisposeCheck(); // No need to keep this retained.
+            if (_state == State.Pending | _state == State.Canceled)
+            {
+                AddWaiter(Internal.CancelDelegateAny.GetOrCreate(onCanceled, 1));
+                ReleaseWithoutDisposeCheck(); // No need to keep this retained.
+            }
         }
 
         /// <summary>
@@ -343,9 +346,13 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
-            var cancelation = Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled, this, 1);
-            AddWaiter(cancelation);
-            return cancelation;
+            if (_state == State.Pending | _state == State.Canceled)
+            {
+                var cancelation = Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled, this, 1);
+                AddWaiter(cancelation);
+                return cancelation;
+            }
+            return this;
         }
 
         /// <summary>

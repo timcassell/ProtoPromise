@@ -342,6 +342,22 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace; } }
     }
 
+    public class UnhandledDeferredException : Exception
+    {
+        public static readonly UnhandledDeferredException instance =
+            new UnhandledDeferredException("A Deferred object was garbage collected that was not handled. You must Resolve, Reject, or Cancel all Deferred objects.");
+
+        private UnhandledDeferredException(string message) : base(message) { }
+    }
+
+    public class UnreleasedObjectException : Exception
+    {
+        public static readonly UnreleasedObjectException instance =
+            new UnreleasedObjectException("An IRetainable object was garbage collected that was not released. You must release all IRetainable objects that you have retained.");
+
+        private UnreleasedObjectException(string message) : base(message) { }
+    }
+
     public interface IPromiseYielder
     {
         /// <summary>
@@ -415,10 +431,9 @@ namespace Proto.Promises
         /// </summary>
         void CatchCancelation(Action onCanceled);
         /// <summary>
-        /// Add a cancel callback. Returns a new <see cref="IPotentialCancelation"/> object.
+        /// Add a cancel callback. Returns a <see cref="IPotentialCancelation"/> object.
         /// <para/>If this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with that reason.
-        /// <para/>If this is canceled for any other reason or no reason, the new <see cref="IPotentialCancelation"/> will be canceled with the same reason.
-        /// <para/>NOTE: <see cref="IPotentialCancelation"/> objects should never be cached, they should only be used to add onCanceled callbacks.
+        /// <para/>If this is canceled for any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
         /// </summary>
         IPotentialCancelation CatchCancelation<TCancel>(Action<TCancel> onCanceled);
     }

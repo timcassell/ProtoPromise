@@ -41,10 +41,10 @@ namespace Proto.Promises.Tests
             promise.Then(() => { onResolve(); return Promise.Resolved(0); })
                 .Catch(onError)
                 .Catch((string s) => { });
-            promise.Then(() => { onResolve(); return resolveDeferredAction; })
+            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; })
                 .Catch(onError)
                 .Catch((string s) => { });
-            promise.Then(() => { onResolve(); return resolveDeferredActionInt; })
+            promise.ThenDefer<int>(() => { onResolve(); return resolveDeferredActionInt; })
                 .Catch(onError)
                 .Catch((string s) => { });
 
@@ -76,16 +76,16 @@ namespace Proto.Promises.Tests
             promise.Then<int, string>(() => { onResolve(); return Promise.Resolved(0); }, () => { onReject(unknownRejectValue); return Promise.Resolved(0); })
                 .Catch(onError);
 
-            promise.Then(() => { onResolve(); return resolveDeferredAction; }, () => { onReject(unknownRejectValue); return resolveDeferredAction; })
+            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, () => { onReject(unknownRejectValue); return resolveDeferredAction; })
                 .Catch(onError);
-            promise.Then(() => { onResolve(); return resolveDeferredAction; }, (string failValue) => { onReject(failValue); return resolveDeferredAction; })
+            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, (string failValue) => { onReject(failValue); return resolveDeferredAction; })
                 .Catch(onError);
             promise.ThenDefer<string>(() => { onResolve(); return resolveDeferredAction; }, () => { onReject(unknownRejectValue); return resolveDeferredAction; })
                 .Catch(onError);
 
-            promise.Then(() => { onResolve(); return resolveDeferredActionInt; }, () => { onReject(unknownRejectValue); return resolveDeferredActionInt; })
+            promise.ThenDefer<int>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onReject(unknownRejectValue); return resolveDeferredActionInt; })
                 .Catch(onError);
-            promise.Then(() => { onResolve(); return resolveDeferredActionInt; }, (string failValue) => { onReject(failValue); return resolveDeferredActionInt; })
+            promise.ThenDefer<int, string>(() => { onResolve(); return resolveDeferredActionInt; }, (string failValue) => { onReject(failValue); return resolveDeferredActionInt; })
                 .Catch(onError);
             promise.ThenDefer<int, string>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onReject(unknownRejectValue); return resolveDeferredActionInt; })
                 .Catch(onError);
@@ -134,10 +134,10 @@ namespace Proto.Promises.Tests
             promise.Then(x => { onResolve(x); return Promise.Resolved(0); })
                 .Catch(onError)
                 .Catch((string s) => { });
-            promise.Then(x => { onResolve(x); return resolveDeferredAction; })
+            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; })
                 .Catch(onError)
                 .Catch((string s) => { });
-            promise.Then(x => { onResolve(x); return resolveDeferredActionInt; })
+            promise.ThenDefer<int>(x => { onResolve(x); return resolveDeferredActionInt; })
                 .Catch(onError)
                 .Catch((string s) => { });
 
@@ -169,16 +169,16 @@ namespace Proto.Promises.Tests
             promise.Then<int, string>(x => { onResolve(x); return Promise.Resolved(0); }, () => { onReject(unknownRejectValue); return Promise.Resolved(0); })
                 .Catch(onError);
 
-            promise.Then(x => { onResolve(x); return resolveDeferredAction; }, () => { onReject(unknownRejectValue); return resolveDeferredAction; })
+            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, () => { onReject(unknownRejectValue); return resolveDeferredAction; })
                 .Catch(onError);
-            promise.Then(x => { onResolve(x); return resolveDeferredAction; }, (string failValue) => { onReject(failValue); return resolveDeferredAction; })
+            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, (string failValue) => { onReject(failValue); return resolveDeferredAction; })
                 .Catch(onError);
             promise.ThenDefer<string>(x => { onResolve(x); return resolveDeferredAction; }, () => { onReject(unknownRejectValue); return resolveDeferredAction; })
                 .Catch(onError);
 
-            promise.Then(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onReject(unknownRejectValue); return resolveDeferredActionInt; })
+            promise.ThenDefer<int>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onReject(unknownRejectValue); return resolveDeferredActionInt; })
                 .Catch(onError);
-            promise.Then(x => { onResolve(x); return resolveDeferredActionInt; }, (string failValue) => { onReject(failValue); return resolveDeferredActionInt; })
+            promise.ThenDefer<int, string>(x => { onResolve(x); return resolveDeferredActionInt; }, (string failValue) => { onReject(failValue); return resolveDeferredActionInt; })
                 .Catch(onError);
             promise.ThenDefer<int, string>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onReject(unknownRejectValue); return resolveDeferredActionInt; })
                 .Catch(onError);
@@ -226,9 +226,9 @@ namespace Proto.Promises.Tests
                 .Catch(onError);
             promise.Then(() => { onResolve(); return Promise.Resolved(0); })
                 .Catch(onError);
-            promise.Then(() => { onResolve(); return resolveDeferredAction; })
+            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; })
                 .Catch(onError);
-            promise.Then(() => { onResolve(); return resolveDeferredActionInt; })
+            promise.ThenDefer<int>(() => { onResolve(); return resolveDeferredActionInt; })
                 .Catch(onError);
 
             promise.Then(() => onResolve(), () => onUnknownRejection())
@@ -259,16 +259,16 @@ namespace Proto.Promises.Tests
             promise.Then<int, TReject>(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
                 .Catch(onError);
 
-            promise.Then(() => { onResolve(); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
+            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
                 .Catch(onError);
-            promise.Then(() => { onResolve(); return resolveDeferredAction; }, (TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
+            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, (TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
                 .Catch(onError);
             promise.ThenDefer<TReject>(() => { onResolve(); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
                 .Catch(onError);
 
-            promise.Then(() => { onResolve(); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
+            promise.ThenDefer<int>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
                 .Catch(onError);
-            promise.Then(() => { onResolve(); return resolveDeferredActionInt; }, (TReject failValue) => { onReject(failValue); return resolveDeferredActionInt; })
+            promise.ThenDefer<int, TReject>(() => { onResolve(); return resolveDeferredActionInt; }, (TReject failValue) => { onReject(failValue); return resolveDeferredActionInt; })
                 .Catch(onError);
             promise.ThenDefer<int, TReject>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
                 .Catch(onError);
@@ -314,9 +314,9 @@ namespace Proto.Promises.Tests
                 .Catch(onError);
             promise.Then(x => { onResolve(x); return Promise.Resolved(0); })
                 .Catch(onError);
-            promise.Then(x => { onResolve(x); return resolveDeferredAction; })
+            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; })
                 .Catch(onError);
-            promise.Then(x => { onResolve(x); return resolveDeferredActionInt; })
+            promise.ThenDefer<int>(x => { onResolve(x); return resolveDeferredActionInt; })
                 .Catch(onError);
 
             promise.Then(x => onResolve(x), () => onUnknownRejection())
@@ -347,16 +347,16 @@ namespace Proto.Promises.Tests
             promise.Then<int, TReject>(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
                 .Catch(onError);
 
-            promise.Then(x => { onResolve(x); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
+            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
                 .Catch(onError);
-            promise.Then(x => { onResolve(x); return resolveDeferredAction; }, (TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
+            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, (TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
                 .Catch(onError);
             promise.ThenDefer<TReject>(x => { onResolve(x); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
                 .Catch(onError);
 
-            promise.Then(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
+            promise.ThenDefer<int>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
                 .Catch(onError);
-            promise.Then(x => { onResolve(x); return resolveDeferredActionInt; }, (TReject failValue) => { onReject(failValue); return resolveDeferredActionInt; })
+            promise.ThenDefer<int, TReject>(x => { onResolve(x); return resolveDeferredActionInt; }, (TReject failValue) => { onReject(failValue); return resolveDeferredActionInt; })
                 .Catch(onError);
             promise.ThenDefer<int, TReject>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
                 .Catch(onError);

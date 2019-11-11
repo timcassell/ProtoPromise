@@ -34,8 +34,11 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(Promise.State.Canceled, deferred.State);
 
-                // Clean up.
                 Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletes();
                 LogAssert.NoUnexpectedReceived();
             }
         }
@@ -67,8 +70,11 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(Promise.State.Resolved, deferred.State);
                 Assert.AreEqual(Promise.State.Resolved, deferredInt.State);
 
-                // Clean up.
                 Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletes();
                 LogAssert.NoUnexpectedReceived();
             }
         }
@@ -100,8 +106,11 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(Promise.State.Rejected, deferred.State);
                 Assert.AreEqual(Promise.State.Rejected, deferredInt.State);
 
-                // Clean up.
                 Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletes();
                 LogAssert.NoUnexpectedReceived();
             }
         }
@@ -133,8 +142,11 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(Promise.State.Canceled, deferred.State);
                 Assert.AreEqual(Promise.State.Canceled, deferredInt.State);
 
-                // Clean up.
                 Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletes();
                 LogAssert.NoUnexpectedReceived();
             }
 
@@ -171,6 +183,7 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(expected, cancelation);
 
                 // Clean up.
+                GC.Collect();
                 Promise.Manager.HandleCompletes();
                 LogAssert.NoUnexpectedReceived();
             }
@@ -208,6 +221,7 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(expected, cancelation);
 
                 // Clean up.
+                GC.Collect();
                 Promise.Manager.HandleCompletes();
                 LogAssert.NoUnexpectedReceived();
             }

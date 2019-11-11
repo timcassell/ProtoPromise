@@ -26,10 +26,17 @@ namespace Proto.Promises
 
         ~Promise()
         {
-            if (_state == State.Rejected & !_wasWaitedOn)
+            if (_retainCounter > 0)
             {
-                // Rejection wasn't caught.
-                AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValueOrPrevious);
+                if (_state == State.Rejected & !_wasWaitedOn)
+                {
+                    // Rejection wasn't caught.
+                    AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValueOrPrevious);
+                }
+                // Promise wasn't released.
+                var exception = Internal.UnhandledExceptionException.GetOrCreate(UnreleasedObjectException.instance);
+                SetStacktraceFromCreated(this, exception);
+                AddRejectionToUnhandledStack(exception);
             }
         }
 
@@ -149,12 +156,15 @@ namespace Proto.Promises
                 var ex = Internal.UnhandledExceptionException.GetOrCreate(e);
                 SetStacktraceFromCreated(this, ex);
                 RejectInternalIfNotCanceled(ex);
+                OnHandleCatch(e);
             }
             finally
             {
                 feed.Release();
             }
         }
+
+        protected virtual void OnHandleCatch(Exception e) { }
 
         private void HandleSelf()
         {
@@ -340,6 +350,11 @@ namespace Proto.Promises
                     // Retain now, release when deferred resolves/rejects/cancels.
                     Retain();
                 }
+
+                protected override void OnHandleCatch(Exception e)
+                {
+                    _deferredInternal.ReleaseDirect();
+                }
             }
 
             public abstract partial class PromiseWaitDeferred<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitDeferred<T, TPromise>
@@ -358,6 +373,11 @@ namespace Proto.Promises
                     _deferredInternal.Reset();
                     // Retain now, release when deferred resolves/rejects/cancels.
                     Retain();
+                }
+
+                protected override void OnHandleCatch(Exception e)
+                {
+                    _deferredInternal.ReleaseDirect();
                 }
             }
 
@@ -871,13 +891,18 @@ namespace Proto.Promises
                     else
                     {
                         // Deferred is never used, so just release.
-                        Release();
+                        _deferredInternal.ReleaseDirect();
                         RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
                 protected override void OnCancel()
                 {
+                    if (resolveHandler != null)
+                    {
+                        // Deferred is never used, so just release.
+                        _deferredInternal.ReleaseDirect();
+                    }
                     resolveHandler = null;
                     base.OnCancel();
                 }
@@ -929,13 +954,18 @@ namespace Proto.Promises
                     else
                     {
                         // Deferred is never used, so just release.
-                        Release();
+                        _deferredInternal.ReleaseDirect();
                         RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
                 protected override void OnCancel()
                 {
+                    if (resolveHandler != null)
+                    {
+                        // Deferred is never used, so just release.
+                        _deferredInternal.ReleaseDirect();
+                    }
                     resolveHandler = null;
                     base.OnCancel();
                 }
@@ -987,13 +1017,18 @@ namespace Proto.Promises
                     else
                     {
                         // Deferred is never used, so just release.
-                        Release();
+                        _deferredInternal.ReleaseDirect();
                         RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
                 protected override void OnCancel()
                 {
+                    if (resolveHandler != null)
+                    {
+                        // Deferred is never used, so just release.
+                        _deferredInternal.ReleaseDirect();
+                    }
                     resolveHandler = null;
                     base.OnCancel();
                 }
@@ -1045,13 +1080,18 @@ namespace Proto.Promises
                     else
                     {
                         // Deferred is never used, so just release.
-                        Release();
+                        _deferredInternal.ReleaseDirect();
                         RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                     }
                 }
 
                 protected override void OnCancel()
                 {
+                    if (resolveHandler != null)
+                    {
+                        // Deferred is never used, so just release.
+                        _deferredInternal.ReleaseDirect();
+                    }
                     resolveHandler = null;
                     base.OnCancel();
                 }
@@ -1310,7 +1350,7 @@ namespace Proto.Promises
                             else
                             {
                                 // Deferred is never used, so just release.
-                                Release();
+                                _deferredInternal.ReleaseDirect();
                                 RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                             }
                         }
@@ -1322,7 +1362,7 @@ namespace Proto.Promises
                     else
                     {
                         // Deferred is never used, so just release.
-                        Release();
+                        _deferredInternal.ReleaseDirect();
                         callback.Dispose();
                         ResolveInternal();
                     }
@@ -1332,6 +1372,8 @@ namespace Proto.Promises
                 {
                     if (rejectHandler != null)
                     {
+                        // Deferred is never used, so just release.
+                        _deferredInternal.ReleaseDirect();
                         rejectHandler.Dispose();
                         rejectHandler = null;
                     }
@@ -1382,7 +1424,7 @@ namespace Proto.Promises
                             else
                             {
                                 // Deferred is never used, so just release.
-                                Release();
+                                _deferredInternal.ReleaseDirect();
                                 RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                             }
                         }
@@ -1394,7 +1436,7 @@ namespace Proto.Promises
                     else
                     {
                         // Deferred is never used, so just release.
-                        Release();
+                        _deferredInternal.ReleaseDirect();
                         callback.Dispose();
                         _value = ((PromiseInternal<TDeferred>) feed).Value;
                         ResolveInternal();
@@ -1405,6 +1447,8 @@ namespace Proto.Promises
                 {
                     if (rejectHandler != null)
                     {
+                        // Deferred is never used, so just release.
+                        _deferredInternal.ReleaseDirect();
                         rejectHandler.Dispose();
                         rejectHandler = null;
                     }
@@ -1679,7 +1723,7 @@ namespace Proto.Promises
                         if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out deferredDelegate))
                         {
                             // Deferred is never used, so just release.
-                            Release();
+                            _deferredInternal.ReleaseDirect();
                             RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                             return;
                         }
@@ -1699,6 +1743,8 @@ namespace Proto.Promises
                 {
                     if (onResolved != null)
                     {
+                        // Deferred is never used, so just release.
+                        _deferredInternal.ReleaseDirect();
                         onResolved.Dispose();
                         onResolved = null;
                         onRejected.Dispose();
@@ -1753,7 +1799,7 @@ namespace Proto.Promises
                         if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out deferredDelegate))
                         {
                             // Deferred is never used, so just release.
-                            Release();
+                            _deferredInternal.ReleaseDirect();
                             RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                             return;
                         }
@@ -1773,6 +1819,8 @@ namespace Proto.Promises
                 {
                     if (onResolved != null)
                     {
+                        // Deferred is never used, so just release.
+                        _deferredInternal.ReleaseDirect();
                         onResolved.Dispose();
                         onResolved = null;
                         onRejected.Dispose();
@@ -1956,6 +2004,11 @@ namespace Proto.Promises
 
                 protected override void OnCancel()
                 {
+                    if (onComplete != null)
+                    {
+                        // Deferred is never used, so just release.
+                        _deferredInternal.ReleaseDirect();
+                    }
                     onComplete = null;
                     base.OnCancel();
                 }
@@ -2005,6 +2058,11 @@ namespace Proto.Promises
 
                 protected override void OnCancel()
                 {
+                    if (onComplete != null)
+                    {
+                        // Deferred is never used, so just release.
+                        _deferredInternal.ReleaseDirect();
+                    }
                     onComplete = null;
                     base.OnCancel();
                 }
@@ -2136,7 +2194,6 @@ namespace Proto.Promises
                 {
                     var callback = _onCanceled;
                     Dispose();
-                    DisposeBranches();
                     try
                     {
                         callback.Invoke();
@@ -2168,6 +2225,17 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
+                ~CancelDelegate()
+                {
+                    if (_retainCounter > 0)
+                    {
+                        // Delegate wasn't released.
+                        var exception = UnhandledExceptionException.GetOrCreate(UnreleasedObjectException.instance);
+                        SetStacktraceFromCreated(this, exception);
+                        AddRejectionToUnhandledStack(exception);
+                    }
+                }
+
                 public static CancelDelegate<T> GetOrCreate(Action<T> onCanceled, IValueContainerOrPrevious previous, int skipFrames)
                 {
                     var del = _pool.IsNotEmpty ? (CancelDelegate<T>)_pool.Pop() : new CancelDelegate<T>();
@@ -2196,10 +2264,10 @@ namespace Proto.Promises
                     var cancelValue = ((IValueContainerContainer) _valueContainerOrPrevious).ValueContainerOrPrevious;
                     cancelValue.Retain();
                     _valueContainerOrPrevious.Release();
-                    _valueContainerOrPrevious = cancelValue;
                     T arg;
                     if (cancelValue.TryGetValueAs(out arg))
                     {
+                        _valueContainerOrPrevious = null;
                         DisposeBranches();
                         try
                         {
@@ -2214,8 +2282,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        AddToCancelQueueFront(ref _nextBranches);
+                        _valueContainerOrPrevious = cancelValue;
                     }
+                    AddToCancelQueueFront(ref _nextBranches);
                     Release();
                 }
 
@@ -2224,7 +2293,10 @@ namespace Proto.Promises
                     ValidatePotentialOperation(_valueContainerOrPrevious, 1);
                     ValidateArgument(onCanceled, "onCanceled", 1);
 
-                    _nextBranches.Enqueue(CancelDelegateAny.GetOrCreate(onCanceled, 1));
+                    if (_valueContainerOrPrevious != null)
+                    {
+                        _nextBranches.Enqueue(CancelDelegateAny.GetOrCreate(onCanceled, 1));
+                    }
                 }
 
                 IPotentialCancelation IPotentialCancelation.CatchCancelation<TCancel>(Action<TCancel> onCanceled)
@@ -2232,6 +2304,10 @@ namespace Proto.Promises
                     ValidatePotentialOperation(_valueContainerOrPrevious, 1);
                     ValidateArgument(onCanceled, "onCanceled", 1);
 
+                    if (_valueContainerOrPrevious == null)
+                    {
+                        return this;
+                    }
                     var cancelation = CancelDelegate<TCancel>.GetOrCreate(onCanceled, this, 1);
                     _nextBranches.Enqueue(cancelation);
                     Retain();
@@ -2256,7 +2332,10 @@ namespace Proto.Promises
                     {
                         if (--_retainCounter == 0)
                         {
-                            _valueContainerOrPrevious.Release();
+                            if (_valueContainerOrPrevious != null)
+                            {
+                                _valueContainerOrPrevious.Release();
+                            }
                             SetDisposed(ref _valueContainerOrPrevious);
                             if (Config.ObjectPooling == PoolType.All)
                             {

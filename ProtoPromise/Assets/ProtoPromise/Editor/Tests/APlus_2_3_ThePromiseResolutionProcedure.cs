@@ -119,6 +119,7 @@ namespace Proto.Promises.Tests
             deferredInt.Release();
 
             // Clean up.
+            GC.Collect();
             Promise.Manager.HandleCompletes();
             LogAssert.NoUnexpectedReceived();
         }
@@ -456,6 +457,7 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                 // Clean up.
+                GC.Collect();
                 Promise.Manager.HandleCompletes();
                 LogAssert.NoUnexpectedReceived();
             }
@@ -607,6 +609,7 @@ namespace Proto.Promises.Tests
                 resolveWaitDeferredInt.Release();
 
                 // Clean up.
+                GC.Collect();
                 Promise.Manager.HandleCompletes();
                 LogAssert.NoUnexpectedReceived();
             }
@@ -759,6 +762,7 @@ namespace Proto.Promises.Tests
                 rejectWaitDeferredInt.Release();
 
                 // Clean up.
+                GC.Collect();
                 Promise.Manager.HandleCompletes();
                 LogAssert.NoUnexpectedReceived();
             }
@@ -874,6 +878,7 @@ namespace Proto.Promises.Tests
                     rejectDeferredInt.Release();
 
                     // Clean up.
+                    GC.Collect();
                     Promise.Manager.HandleCompletes();
                     LogAssert.NoUnexpectedReceived();
                 }
@@ -995,6 +1000,7 @@ namespace Proto.Promises.Tests
                     rejectDeferredInt.Release();
 
                     // Clean up.
+                    GC.Collect();
                     Promise.Manager.HandleCompletes();
                     LogAssert.NoUnexpectedReceived();
                 }
@@ -1158,6 +1164,7 @@ namespace Proto.Promises.Tests
                     rejectDeferredInt.Release();
 
                     // Clean up.
+                    GC.Collect();
                     Promise.Manager.HandleCompletes();
                     LogAssert.NoUnexpectedReceived();
                 }
@@ -1296,6 +1303,7 @@ namespace Proto.Promises.Tests
                     rejectDeferredInt.Release();
 
                     // Clean up.
+                    GC.Collect();
                     Promise.Manager.HandleCompletes();
                     LogAssert.NoUnexpectedReceived();
                 }
@@ -1434,6 +1442,7 @@ namespace Proto.Promises.Tests
                     rejectDeferredInt.Release();
 
                     // Clean up.
+                    GC.Collect();
                     Promise.Manager.HandleCompletes();
                     LogAssert.NoUnexpectedReceived();
                 }
@@ -1545,6 +1554,7 @@ namespace Proto.Promises.Tests
                         rejectDeferredInt.Release();
 
                         // Clean up.
+                        GC.Collect();
                         Promise.Manager.HandleCompletes();
                         LogAssert.NoUnexpectedReceived();
                     }
@@ -1654,6 +1664,7 @@ namespace Proto.Promises.Tests
                         rejectDeferredInt.Release();
 
                         // Clean up.
+                        GC.Collect();
                         Promise.Manager.HandleCompletes();
                         LogAssert.NoUnexpectedReceived();
                     }
@@ -1763,6 +1774,7 @@ namespace Proto.Promises.Tests
                         rejectDeferredInt.Release();
 
                         // Clean up.
+                        GC.Collect();
                         Promise.Manager.HandleCompletes();
                         LogAssert.NoUnexpectedReceived();
                     }
@@ -1838,6 +1850,7 @@ namespace Proto.Promises.Tests
             rejectDeferredInt.Release();
 
             // Clean up.
+            GC.Collect();
             Promise.Manager.HandleCompletes();
             LogAssert.NoUnexpectedReceived();
         }
@@ -1909,6 +1922,7 @@ namespace Proto.Promises.Tests
             rejectDeferredInt.Release();
 
             // Clean up.
+            GC.Collect();
             Promise.Manager.HandleCompletes();
             LogAssert.NoUnexpectedReceived();
         }
@@ -2030,6 +2044,7 @@ namespace Proto.Promises.Tests
             deferredInt.Release();
 
             // Clean up.
+            GC.Collect();
             Promise.Manager.HandleCompletes();
             LogAssert.NoUnexpectedReceived();
         }

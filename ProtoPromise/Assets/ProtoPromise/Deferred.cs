@@ -6,7 +6,7 @@ namespace Proto.Promises
 	partial class Promise
     {
         /// <summary>
-        /// Deferred base. An instance of this can be used to handle the state of the attached <see cref="Promise"/>. except resolve. You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to handle resolve.
+        /// Deferred base. An instance of this can be used to handle the state of the attached <see cref="Promise"/>, except resolve. You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to handle resolve.
         /// </summary>
         public abstract partial class DeferredBase : ICancelableAny, IRetainable
         {
@@ -21,6 +21,17 @@ namespace Proto.Promises
             private
 #endif
             protected DeferredBase() { }
+
+            ~DeferredBase()
+            {
+                if (State == State.Pending)
+                {
+                    // Deferred wasn't handled.
+                    var exception = Internal.UnhandledExceptionException.GetOrCreate(UnhandledDeferredException.instance);
+                    SetStacktraceFromCreated(Promise, exception);
+                    AddRejectionToUnhandledStack(exception);
+                }
+            }
 
             /// <summary>
             /// Retain this instance and the linked <see cref="Promise"/>.
@@ -111,6 +122,12 @@ namespace Proto.Promises
                 public void Reset()
                 {
                     State = State.Pending;
+                }
+
+                public void ReleaseDirect()
+                {
+                    State = State.Canceled; // Stop the finalizer from thinking this was not handled.
+                    Promise.Release();
                 }
 
                 public override void ReportProgress(float progress)
@@ -222,6 +239,12 @@ namespace Proto.Promises
                 public void Reset()
                 {
                     State = State.Pending;
+                }
+
+                public void ReleaseDirect()
+                {
+                    State = State.Canceled; // Stop the finalizer from thinking this was not handled.
+                    Promise.Release();
                 }
 
                 public override void ReportProgress(float progress)
