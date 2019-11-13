@@ -431,7 +431,7 @@ namespace Proto.Promises
         /// </summary>
         void CatchCancelation(Action onCanceled);
         /// <summary>
-        /// Add a cancel callback. Returns a <see cref="IPotentialCancelation"/> object.
+        /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
         /// <para/>If this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with that reason.
         /// <para/>If this is canceled for any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
         /// </summary>

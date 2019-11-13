@@ -834,7 +834,7 @@ namespace Proto.Promises.Tests
                 // Clean up.
                 GC.Collect();
                 Promise.Manager.HandleCompletes();
-                //LogAssert.NoUnexpectedReceived();
+                LogAssert.NoUnexpectedReceived();
             }
 
             [Test]
@@ -876,15 +876,74 @@ namespace Proto.Promises.Tests
 
                 string expected = "Fail value";
 
-                var promise1Void = deferred.Promise.Then(() => { Assert.Fail("Promise was rejected when it should have been resolved."); return; });
-                var promise1Int = deferredInt.Promise.Then(() => { Assert.Fail("Promise was rejected when it should have been resolved."); return 50; });
+                var promise1Void = deferred.Promise.Then(() => { Assert.Fail("Promise was resolved when it should have been rejected."); return; });
+                var promise1Int = deferredInt.Promise.Then(() => { Assert.Fail("Promise was resolved when it should have been rejected."); return 50; });
 
-                TestHelper.AddCallbacks(promise1Void, () => Assert.Fail("Promise was rejected when it should have been resolved."), e => Assert.AreEqual(expected, e), expected);
-                TestHelper.AddCallbacks(promise1Int, v => Assert.Fail("Promise was rejected when it should have been resolved."), e => Assert.AreEqual(expected, e), expected);
+                TestHelper.AddCallbacks(promise1Void, () => Assert.Fail("Promise was resolved when it should have been rejected."), e => Assert.AreEqual(expected, e), expected);
+                TestHelper.AddCallbacks(promise1Int, v => Assert.Fail("Promise was resolved when it should have been rejected."), e => Assert.AreEqual(expected, e), expected);
 
                 deferred.Reject(expected);
                 deferredInt.Reject(expected);
                 Promise.Manager.HandleCompletes();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletes();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void IfPromiseIsRejectedAndItsReasonIsNotCompatibleWithOnRejectedItMustNotBeInvoked()
+            {
+                var deferred = Promise.NewDeferred();
+                var deferredInt = Promise.NewDeferred<int>();
+                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+
+                var promise1Void = deferred.Promise.Then(() => { Assert.Fail("Promise was rejected when it should have been resolved."); return; });
+                var promise1Int = deferredInt.Promise.Then(() => { Assert.Fail("Promise was resolved when it should have been rejected."); return 50; });
+
+                TestHelper.AddCallbacks(promise1Void, () => Assert.Fail("Promise was rejected when it should have been resolved."),
+                    e => Assert.Fail("OnRejected was invoked with a string when the promise was rejected with an integer."));
+                TestHelper.AddCallbacks(promise1Int, v => Assert.Fail("Promise was rejected when it should have been resolved."),
+                    e => Assert.Fail("OnRejected was invoked with a string when the promise was rejected with an integer."));
+
+                deferred.Reject(100);
+                deferredInt.Reject(100);
+                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletes();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void IfPromiseIsRejectedAndItsReasonIsNotCompatibleWithOnRejectedPromise2MustBeRejectedWithTheSameReasonAsPromise1()
+            {
+                var deferred = Promise.NewDeferred();
+                var deferredInt = Promise.NewDeferred<int>();
+                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+
+                var promise1Void = deferred.Promise.Then(() => { Assert.Fail("Promise was rejected when it should have been resolved."); return; });
+                var promise1Int = deferredInt.Promise.Then(() => { Assert.Fail("Promise was resolved when it should have been rejected."); return 50; });
+
+                int expected = 100;
+                int counterVoid = 0;
+                int counterT = 0;
+
+                TestHelper.AddCatchCallbacks(promise1Void, (string cancelString) => Assert.Fail("OnRejected was invoked with a string when the promise was rejected with an integer."),
+                    (int cancelInt) => { Assert.AreEqual(expected, cancelInt); ++counterVoid; });
+                TestHelper.AddCatchCallbacks(promise1Int, (string cancelString) => Assert.Fail("OnRejected was invoked with a string when the promise was rejected with an integer."),
+                    (int cancelInt) => { Assert.AreEqual(expected, cancelInt); ++counterT; });
+
+                deferred.Reject(expected);
+                deferredInt.Reject(expected);
+                Promise.Manager.HandleCompletes();
+
+                Assert.AreEqual(TestHelper.SecondCatchVoidCallbacks, counterVoid);
+                Assert.AreEqual(TestHelper.SecondCatchVoidCallbacks, counterT);
 
                 // Clean up.
                 GC.Collect();

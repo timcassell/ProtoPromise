@@ -332,10 +332,9 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a cancel callback. Returns a new <see cref="IPotentialCancelation"/> object.
+        /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
         /// <para/>If this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with that reason.
-        /// <para/>If this is canceled for any other reason or no reason, the new <see cref="IPotentialCancelation"/> will be canceled with the same reason.
-        /// <para/>NOTE: <see cref="IPotentialCancelation"/> objects should never be cached, they should only be used to add onCanceled callbacks.
+        /// <para/>If this is canceled for any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
         /// </summary>
 #if !CANCEL
         [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
@@ -219,6 +220,165 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(expected, cancelation);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletes();
+                LogAssert.NoUnexpectedReceived();
+            }
+        }
+
+        [Test]
+        public void IfOnCanceledIsNullThrow()
+        {
+            var deferred = Promise.NewDeferred();
+
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+
+            Assert.Throws<ArgumentNullException>(() => {
+                deferred.Promise.CatchCancelation(default(Action));
+            });
+            Assert.Throws<ArgumentNullException>(() => {
+                deferred.Promise.CatchCancelation(default(Action<int>));
+            });
+
+            deferred.Cancel();
+
+            var deferredInt = Promise.NewDeferred<int>();
+
+            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+
+            Assert.Throws<ArgumentNullException>(() => {
+                deferredInt.Promise.CatchCancelation(default(Action));
+            });
+            Assert.Throws<ArgumentNullException>(() => {
+                deferredInt.Promise.CatchCancelation(default(Action<Exception>));
+            });
+
+            deferredInt.Cancel(0);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        public class IfOnCanceledIsAFunction
+        {
+            [Test]
+            public void ItMustBeCalledAfterPromiseIsCanceledWithPromisesReasonAsItsFirstArgument()
+            {
+                string cancelReason = "Cancel value";
+                var canceled = false;
+                var deferred = Promise.NewDeferred();
+                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                deferred.Promise.CatchCancelation<string>(r => {
+                    Assert.AreEqual(cancelReason, r);
+                    canceled = true;
+                });
+                deferred.Cancel(cancelReason);
+                Promise.Manager.HandleCompletes();
+
+                Assert.True(canceled);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletes();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void ItMustNotBeCalledBeforePromiseIsCanceled()
+            {
+                string cancelReason = "Cancel value";
+                var canceled = false;
+                var deferred = Promise.NewDeferred();
+                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                deferred.Promise.CatchCancelation(() => {
+                    canceled = true;
+                });
+                deferred.Promise.CatchCancelation<string>(r => {
+                    Assert.AreEqual(cancelReason, r);
+                    canceled = true;
+                });
+                Promise.Manager.HandleCompletes();
+
+                Assert.False(canceled);
+
+                deferred.Cancel(cancelReason);
+                Promise.Manager.HandleCompletes();
+
+                Assert.True(canceled);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletes();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void ItMustNotBeCalledMoreThanOnce()
+            {
+                var deferred = Promise.NewDeferred();
+                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                deferred.Retain();
+                var cancelCount = 0;
+                deferred.Promise.CatchCancelation(() => ++cancelCount);
+                deferred.Promise.CatchCancelation<string>(r => ++cancelCount);
+                deferred.Cancel("Cancel value");
+                Promise.Manager.HandleCompletes();
+                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
+                deferred.Cancel("Cancel value");
+                deferred.Release();
+                Promise.Manager.HandleCompletes();
+
+                Assert.AreEqual(2, cancelCount);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletes();
+                LogAssert.NoUnexpectedReceived();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator OnCanceledMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode()
+        {
+            var deferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+
+            bool canceled = false;
+            deferred.Promise.CatchCancelation(() => canceled = true);
+            deferred.Cancel("Cancel value");
+            Assert.False(canceled);
+            yield return null;
+            Promise.Manager.HandleCompletes();
+            Assert.True(canceled);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        public class CatchCancelationMayBeCalledMultipleTimesOnTheSameIPotentialCancelation
+        {
+            [Test]
+            public void IfWhenIPotentialCancelationIsCanceledAllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation()
+            {
+                var deferred = Promise.NewDeferred();
+                Assert.AreEqual(Promise.State.Pending, deferred.State);
+
+                int counter = 0;
+
+                deferred.Promise.CatchCancelation(() => Assert.AreEqual(0, counter++));
+                deferred.Promise.CatchCancelation(() => Assert.AreEqual(1, counter++));
+                deferred.Promise.CatchCancelation(() => Assert.AreEqual(2, counter++));
+
+                deferred.Cancel();
+                Promise.Manager.HandleCompletes();
+
+                Assert.AreEqual(3, counter);
 
                 // Clean up.
                 GC.Collect();
