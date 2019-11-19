@@ -245,7 +245,6 @@ namespace Proto.Promises.Tests
             deferred.Cancel();
 
             var deferredInt = Promise.NewDeferred<int>();
-
             Assert.AreEqual(Promise.State.Pending, deferredInt.State);
 
             Assert.Throws<ArgumentNullException>(() => {
@@ -385,6 +384,120 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
                 LogAssert.NoUnexpectedReceived();
             }
+        }
+
+        public class CatchCancelationMayReturnAnIPotentialCancelation
+        {
+            [Test]
+            public void IfIPotentialCancelationIsCanceledAndItsReasonIsNotCompatibleWithOnCanceledItMustNotBeInvoked()
+            {
+                var deferred = Promise.NewDeferred();
+                Assert.AreEqual(Promise.State.Pending, deferred.State);
+
+                Exception expected = new Exception("Fail value");
+
+                deferred.Promise.CatchCancelation((string v) => Assert.Fail("onCanceled was invoked with a string when the promise was canceled with an integer"));
+
+                deferred.Cancel(100);
+                Promise.Manager.HandleCompletes();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletes();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void IfIPotentialCancelationIsCanceledAndItsReasonIsNotCompatibleWithOnCanceledTheReturnedIPotentialCancelationMustBeCanceledWithTheSameReason()
+            {
+                var deferred = Promise.NewDeferred();
+                Assert.AreEqual(Promise.State.Pending, deferred.State);
+
+                int expected = 100;
+
+                deferred.Promise
+                    .CatchCancelation((string v) => Assert.Fail("onCanceled was invoked with a string when the promise was canceled with an integer"))
+                    .CatchCancelation((int v) => Assert.AreEqual(expected, v));
+
+                deferred.Cancel(expected);
+                Promise.Manager.HandleCompletes();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletes();
+                LogAssert.NoUnexpectedReceived();
+            }
+        }
+
+        [Test]
+        public void IfPromiseIsCanceledOnResolveAndOnRejectedMustNotBeInvoked()
+        {
+            var deferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+            var deferredInt = Promise.NewDeferred<int>();
+            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+
+            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been canceled.");
+            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been canceled.");
+
+            TestHelper.AddCallbacks(deferred.Promise, resolveAssert, (object o) => rejectAssert(), rejectAssert);
+            TestHelper.AddCallbacks(deferredInt.Promise, v => resolveAssert(), (object o) => rejectAssert(), rejectAssert);
+
+            deferred.Cancel();
+            deferredInt.Cancel();
+            Promise.Manager.HandleCompletes();
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void CancelationsDoNotPropagateToRoot()
+        {
+            var deferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+
+            bool resolved = false;
+
+            ICancelableAny cancelable = deferred.Promise
+                .Then(() => resolved = true)
+                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."));
+
+            cancelable.Cancel();
+            deferred.Resolve();
+            Promise.Manager.HandleCompletes();
+
+            Assert.AreEqual(true, resolved);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void CancelationsPropagateToBranches()
+        {
+            var deferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+
+            bool invoked = false;
+
+            deferred.Promise
+                .Then(() => { })
+                .CatchCancelation(() => invoked = true);
+
+            deferred.Cancel();
+            Promise.Manager.HandleCompletes();
+
+            Assert.AreEqual(true, invoked);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
         }
     }
 }
