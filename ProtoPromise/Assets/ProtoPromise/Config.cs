@@ -566,7 +566,7 @@ namespace Proto.Promises
         protected static void ValidateProgressValue(float value, int skipFrames)
         {
             const string argName = "progress";
-            if (value < 0f || value > 1f)
+            if (value < 0f || value > 1f || float.IsNaN(value))
             {
                 throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1.");
             }
@@ -1008,11 +1008,6 @@ namespace Proto.Promises
             return (previous = _rejectedOrCanceledValueOrPrevious as Promise) != null;
         }
 
-        protected virtual void SubscribeProgressRoot(Internal.IProgressListener progressListener)
-        {
-            progressListener.SetInitialAmount(_waitDepthAndProgress);
-        }
-
         protected void ProgressInternal(Action<float> onProgress, int skipFrames)
         {
             ValidateOperation(this, skipFrames + 1);
@@ -1078,7 +1073,7 @@ namespace Proto.Promises
             {
                 case State.Pending:
                 {
-                    promise.SubscribeProgressRoot(progressListener);
+                    progressListener.SetInitialAmount(promise._waitDepthAndProgress);
                     break;
                 }
                 case State.Resolved:
@@ -1430,12 +1425,6 @@ namespace Proto.Promises
                     _secondPrevious = false;
                 }
 
-                protected override void SubscribeProgressRoot(IProgressListener progressListener)
-                {
-                    _progressListeners.Push(progressListener);
-                    progressListener.SetInitialAmount(_waitDepthAndProgress);
-                }
-
                 protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
                 {
                     // This is guaranteed to be pending.
@@ -1537,12 +1526,6 @@ namespace Proto.Promises
                     _invokingProgress = false;
                 }
 
-                protected override void SubscribeProgressRoot(IProgressListener progressListener)
-                {
-                    _progressListeners.Push(progressListener);
-                    progressListener.SetInitialAmount(_waitDepthAndProgress);
-                }
-
                 protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
                 {
                     // This is guaranteed to be pending.
@@ -1633,12 +1616,6 @@ namespace Proto.Promises
 
             partial class PromiseWaitDeferred<TPromise>
             {
-                protected override void SubscribeProgressRoot(IProgressListener progressListener)
-                {
-                    _progressListeners.Push(progressListener);
-                    progressListener.SetInitialAmount(_waitDepthAndProgress);
-                }
-
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
                     if (_state != State.Pending)
@@ -1657,12 +1634,6 @@ namespace Proto.Promises
 
             partial class PromiseWaitDeferred<T, TPromise>
             {
-                protected override void SubscribeProgressRoot(IProgressListener progressListener)
-                {
-                    _progressListeners.Push(progressListener);
-                    progressListener.SetInitialAmount(_waitDepthAndProgress);
-                }
-
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
                     if (_state != State.Pending)
@@ -1744,6 +1715,7 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
+                    _progressListeners.Push(progressListener);
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     if (firstSubscribe & _state == State.Pending)
                     {
@@ -1752,11 +1724,6 @@ namespace Proto.Promises
 
                     previous = null;
                     return false;
-                }
-
-                protected override void SubscribeProgressRoot(IProgressListener progressListener)
-                {
-                    _progressListeners.Push(progressListener);
                 }
 
                 void IMultiTreeHandleable.SetInitialAmount(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
@@ -1859,6 +1826,7 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
+                    _progressListeners.Push(progressListener);
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     if (firstSubscribe & _state == State.Pending)
                     {
@@ -1867,11 +1835,6 @@ namespace Proto.Promises
 
                     previous = null;
                     return false;
-                }
-
-                protected override void SubscribeProgressRoot(IProgressListener progressListener)
-                {
-                    _progressListeners.Push(progressListener);
                 }
 
                 void IMultiTreeHandleable.SetInitialAmount(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
@@ -1961,6 +1924,7 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
+                    _progressListeners.Push(progressListener);
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     if (firstSubscribe & _state == State.Pending)
                     {
@@ -1969,11 +1933,6 @@ namespace Proto.Promises
 
                     previous = null;
                     return false;
-                }
-
-                protected override void SubscribeProgressRoot(IProgressListener progressListener)
-                {
-                    _progressListeners.Push(progressListener);
                 }
 
                 private void SetAmount(UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
@@ -2067,6 +2026,7 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
+                    _progressListeners.Push(progressListener);
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     if (firstSubscribe & _state == State.Pending)
                     {
@@ -2075,11 +2035,6 @@ namespace Proto.Promises
 
                     previous = null;
                     return false;
-                }
-
-                protected override void SubscribeProgressRoot(IProgressListener progressListener)
-                {
-                    _progressListeners.Push(progressListener);
                 }
 
                 private void SetAmount(UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
@@ -2173,6 +2128,7 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
+                    _progressListeners.Push(progressListener);
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     if (firstSubscribe & _state == State.Pending)
                     {
@@ -2181,11 +2137,6 @@ namespace Proto.Promises
 
                     previous = null;
                     return false;
-                }
-
-                protected override void SubscribeProgressRoot(IProgressListener progressListener)
-                {
-                    _progressListeners.Push(progressListener);
                 }
 
                 private void SetAmount(UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
@@ -2279,6 +2230,7 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
+                    _progressListeners.Push(progressListener);
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     if (firstSubscribe & _state == State.Pending)
                     {
@@ -2287,11 +2239,6 @@ namespace Proto.Promises
 
                     previous = null;
                     return false;
-                }
-
-                protected override void SubscribeProgressRoot(IProgressListener progressListener)
-                {
-                    _progressListeners.Push(progressListener);
                 }
 
                 private void SetAmount(UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
