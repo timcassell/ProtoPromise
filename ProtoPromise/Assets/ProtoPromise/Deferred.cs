@@ -98,7 +98,7 @@ namespace Proto.Promises
             protected Deferred() { }
 
             /// <summary>
-            /// Resolve the linked <see cref="Promise"/> with <paramref name="value"/>.
+            /// Resolve the linked <see cref="Promise{T}"/> with <paramref name="value"/>.
             /// </summary>
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
             public abstract void Resolve(in T value);

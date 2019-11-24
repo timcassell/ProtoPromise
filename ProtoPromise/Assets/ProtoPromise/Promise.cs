@@ -47,19 +47,6 @@ namespace Proto.Promises
             }
         }
 
-        private void Repool()
-        {
-            if (_retainCounter == 0)
-            {
-                if (!_wasWaitedOn & _state == State.Rejected)
-                {
-                    // Rejection wasn't caught.
-                    _wasWaitedOn = true;
-                    AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValueOrPrevious);
-                }
-            }
-        }
-
         /// <summary>
         /// Returns a new <see cref="YieldInstruction"/> that can be yielded in a coroutine to wait until this is complete.
         /// </summary>

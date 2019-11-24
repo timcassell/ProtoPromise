@@ -3037,6 +3037,7 @@ namespace Proto.Promises
                 {
                     var temp = target;
                     var cancelValue = owner._rejectedOrCanceledValueOrPrevious;
+                    owner.Release();
                     Reset();
                     temp.Cancel(cancelValue);
                 }
@@ -3047,6 +3048,7 @@ namespace Proto.Promises
                     var feed = owner;
                     Reset();
                     temp.Handle(feed, _index);
+                    feed.Release();
                 }
             }
 
@@ -3082,9 +3084,9 @@ namespace Proto.Promises
                     }
                     promise.passThroughs = passThroughs;
 
+                    promise._waitCount = (uint) promiseIndex + 1u;
                     // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
-                    promise._waitCount = (uint) promiseIndex + 1u;
                     promise._retainCounter = promise._waitCount + 1u;
 
                     return promise;
@@ -3124,17 +3126,22 @@ namespace Proto.Promises
                         if (feed._state == State.Rejected)
                         {
                             RejectInternalWithoutRelease(feed._rejectedOrCanceledValueOrPrevious);
+                            MaybeRelease(done);
                         }
                         else if (done)
                         {
                             ResolveInternalWithoutRelease();
+                            Release();
                         }
                         else
                         {
                             IncrementProgress(feed);
                         }
                     }
-                    MaybeRelease(done);
+                    else
+                    {
+                        MaybeRelease(done);
+                    }
                 }
 
                 partial void IncrementProgress(Promise feed);
@@ -3181,9 +3188,9 @@ namespace Proto.Promises
                     }
                     promise.passThroughs = passThroughs;
 
+                    promise._waitCount = (uint) promiseIndex + 1u;
                     // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
-                    promise._waitCount = (uint) promiseIndex + 1u;
                     promise._retainCounter = promise._waitCount + 1u;
 
                     return promise;
@@ -3223,18 +3230,26 @@ namespace Proto.Promises
                         if (feed._state == State.Rejected)
                         {
                             RejectInternalWithoutRelease(feed._rejectedOrCanceledValueOrPrevious);
-                        }
-                        else if (done)
-                        {
-                            _value[index] = ((PromiseInternal<T>) feed).Value;
-                            ResolveInternalWithoutRelease();
+                            MaybeRelease(done);
                         }
                         else
                         {
-                            IncrementProgress(feed);
+                            _value[index] = ((PromiseInternal<T>) feed).Value;
+                            if (done)
+                            {
+                                ResolveInternalWithoutRelease();
+                                Release();
+                            }
+                            else
+                            {
+                                IncrementProgress(feed);
+                            }
                         }
                     }
-                    MaybeRelease(done);
+                    else
+                    {
+                        MaybeRelease(done);
+                    }
                 }
 
                 partial void IncrementProgress(Promise feed);
@@ -3276,9 +3291,9 @@ namespace Proto.Promises
                     }
                     promise.passThroughs = passThroughs;
 
+                    promise._waitCount = (uint) promiseIndex + 1u;
                     // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
-                    promise._waitCount = (uint) promiseIndex + 1u;
                     promise._retainCounter = promise._waitCount + 1u;
 
                     return promise;
@@ -3311,13 +3326,12 @@ namespace Proto.Promises
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
                 {
-                    bool done = ReleaseOne();
                     if (_state == State.Pending)
                     {
                         feed._wasWaitedOn = true;
                         HandleSelfWithoutRelease(feed);
                     }
-                    MaybeRelease(done);
+                    MaybeRelease(ReleaseOne());
                 }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
@@ -3357,9 +3371,9 @@ namespace Proto.Promises
                     }
                     promise.passThroughs = passThroughs;
 
+                    promise._waitCount = (uint) promiseIndex + 1u;
                     // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
-                    promise._waitCount = (uint) promiseIndex + 1u;
                     promise._retainCounter = promise._waitCount + 1u;
 
                     return promise;
@@ -3392,13 +3406,12 @@ namespace Proto.Promises
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
                 {
-                    bool done = ReleaseOne();
                     if (_state == State.Pending)
                     {
                         feed._wasWaitedOn = true;
                         HandleSelfWithoutRelease(feed);
                     }
-                    MaybeRelease(done);
+                    MaybeRelease(ReleaseOne());
                 }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
@@ -3466,9 +3479,9 @@ namespace Proto.Promises
                     }
                     promise.passThroughs = passThroughs;
 
+                    promise._waitCount = (uint) promiseIndex + 1u;
                     // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
-                    promise._waitCount = (uint) promiseIndex + 1u;
                     promise._retainCounter = promise._waitCount + 1u;
 
                     return promise;
@@ -3508,6 +3521,7 @@ namespace Proto.Promises
                         {
                             feed._wasWaitedOn = true;
                             HandleSelfWithoutRelease(feed);
+                            Release();
                         }
                         else if (feed._state == State.Resolved)
                         {
@@ -3515,7 +3529,10 @@ namespace Proto.Promises
                             ResolveInternalWithoutRelease();
                         }
                     }
-                    MaybeRelease(done);
+                    else
+                    {
+                        MaybeRelease(done);
+                    }
                 }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
@@ -3555,9 +3572,9 @@ namespace Proto.Promises
                     }
                     promise.passThroughs = passThroughs;
 
+                    promise._waitCount = (uint) promiseIndex + 1u;
                     // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
-                    promise._waitCount = (uint) promiseIndex + 1u;
                     promise._retainCounter = promise._waitCount + 1u;
 
                     return promise;
@@ -3597,6 +3614,7 @@ namespace Proto.Promises
                         {
                             feed._wasWaitedOn = true;
                             HandleSelfWithoutRelease(feed);
+                            Release();
                         }
                         else if (feed._state == State.Resolved)
                         {
@@ -3605,7 +3623,10 @@ namespace Proto.Promises
                             ResolveInternalWithoutRelease();
                         }
                     }
-                    MaybeRelease(done);
+                    else
+                    {
+                        MaybeRelease(done);
+                    }
                 }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)

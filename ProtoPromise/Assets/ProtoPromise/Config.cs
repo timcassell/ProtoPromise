@@ -78,7 +78,7 @@ namespace Proto.Promises
             /// If you need to support longer promise chains, decrease decimalBits. If you need higher precision, increase decimalBits.
             /// <para/>
             /// Promise chain limit: 2^(32-<see cref="ProgressDecimalBits"/>),
-            /// Precision: 1/(2^<see cref="ProgressDecimalBits"/>)
+            /// Precision: 1/(N*2^<see cref="ProgressDecimalBits"/>) where N is the number of wait promises in the chain where Progress is subscribed.
             /// <para/>
             /// NOTE: promises that don't wait (.Then with an onResolved that simply returns a value or void) don't count towards the promise chain limit.
             /// </summary>
@@ -1715,8 +1715,8 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
-                    _progressListeners.Push(progressListener);
                     bool firstSubscribe = _progressListeners.IsEmpty;
+                    _progressListeners.Push(progressListener);
                     if (firstSubscribe & _state == State.Pending)
                     {
                         BorrowPassthroughs(ref passThroughs);
@@ -1826,8 +1826,8 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
-                    _progressListeners.Push(progressListener);
                     bool firstSubscribe = _progressListeners.IsEmpty;
+                    _progressListeners.Push(progressListener);
                     if (firstSubscribe & _state == State.Pending)
                     {
                         BorrowPassthroughs(ref passThroughs);
@@ -1924,8 +1924,8 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
-                    _progressListeners.Push(progressListener);
                     bool firstSubscribe = _progressListeners.IsEmpty;
+                    _progressListeners.Push(progressListener);
                     if (firstSubscribe & _state == State.Pending)
                     {
                         BorrowPassthroughs(ref passThroughs);
@@ -2026,8 +2026,8 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
-                    _progressListeners.Push(progressListener);
                     bool firstSubscribe = _progressListeners.IsEmpty;
+                    _progressListeners.Push(progressListener);
                     if (firstSubscribe & _state == State.Pending)
                     {
                         BorrowPassthroughs(ref passThroughs);
@@ -2128,8 +2128,8 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
-                    _progressListeners.Push(progressListener);
                     bool firstSubscribe = _progressListeners.IsEmpty;
+                    _progressListeners.Push(progressListener);
                     if (firstSubscribe & _state == State.Pending)
                     {
                         BorrowPassthroughs(ref passThroughs);
@@ -2230,8 +2230,8 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
-                    _progressListeners.Push(progressListener);
                     bool firstSubscribe = _progressListeners.IsEmpty;
+                    _progressListeners.Push(progressListener);
                     if (firstSubscribe & _state == State.Pending)
                     {
                         BorrowPassthroughs(ref passThroughs);

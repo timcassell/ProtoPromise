@@ -6,6 +6,8 @@ namespace Proto.Promises.Tests
     // These help test all Then/Catch functions at once.
     public class TestHelper
     {
+        public static readonly double progressEpsilon = 1d / Math.Pow(2d, Promise.Config.ProgressDecimalBits);
+
         public const int resolveVoidCallbacks = 24;
         public const int resolveTCallbacks = 24;
         public const int rejectVoidCallbacks = 27;

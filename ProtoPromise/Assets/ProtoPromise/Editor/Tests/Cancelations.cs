@@ -42,7 +42,7 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
                 LogAssert.NoUnexpectedReceived();
             }
-        }
+        } 
 
         public class WhenFulfilledAPromise
         {
@@ -393,8 +393,6 @@ namespace Proto.Promises.Tests
             {
                 var deferred = Promise.NewDeferred();
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-                Exception expected = new Exception("Fail value");
 
                 deferred.Promise.CatchCancelation((string v) => Assert.Fail("onCanceled was invoked with a string when the promise was canceled with an integer"));
 
