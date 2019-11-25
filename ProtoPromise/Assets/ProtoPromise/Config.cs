@@ -419,7 +419,7 @@ namespace Proto.Promises
         // Calls to these get compiled away in RELEASE mode
         static partial void ValidateOperation(Promise promise, int skipFrames);
         static partial void ValidateProgress(float progress, int skipFrames);
-        static partial void ValidateArgument(Delegate del, string argName, int skipFrames);
+        static partial void ValidateArgument(object arg, string argName, int skipFrames);
         partial void ValidateReturn(Promise other);
         static partial void ValidateReturn(Delegate other);
         static partial void ValidatePotentialOperation(Internal.IValueContainerOrPrevious valueContainer, int skipFrames);
@@ -602,7 +602,7 @@ namespace Proto.Promises
             ValidateProgressValue(progress, skipFrames + 1);
         }
 
-        static protected void ValidateArg(Delegate del, string argName, int skipFrames)
+        static protected void ValidateArg(object del, string argName, int skipFrames)
         {
             if (del == null)
             {
@@ -610,9 +610,9 @@ namespace Proto.Promises
             }
         }
 
-        static partial void ValidateArgument(Delegate del, string argName, int skipFrames)
+        static partial void ValidateArgument(object arg, string argName, int skipFrames)
         {
-            ValidateArg(del, argName, skipFrames + 1);
+            ValidateArg(arg, argName, skipFrames + 1);
         }
 
         static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames)
@@ -830,22 +830,6 @@ namespace Proto.Promises
         }
 #endif
 
-        private void WaitFor(Promise other)
-        {
-            ValidateReturn(other);
-#if CANCEL
-            if (_state == State.Canceled)
-            {
-                Release();
-            }
-            else
-#endif
-            {
-                SetPreviousTo(other);
-                other.AddWaiter(this);
-            }
-        }
-
 
         partial class Internal
         {
@@ -862,7 +846,7 @@ namespace Proto.Promises
                 // Only wrap the promise to normalize its progress. If we're not using progress, we can just use the promise as-is.
                 static partial void GetFirstPromise(ref Promise promise, int skipFrames)
                 {
-                    var newPromise = _pool.IsNotEmpty ? (Promise) _pool.Pop() : new SequencePromise0();
+                    var newPromise = _pool.IsNotEmpty ? (SequencePromise0) _pool.Pop() : new SequencePromise0();
                     newPromise.Reset(skipFrames + 1);
                     newPromise.ResetDepth();
                     newPromise.WaitFor(promise);
@@ -870,6 +854,44 @@ namespace Proto.Promises
                 }
             }
 #endif
+
+            public abstract partial class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitPromise<TPromise>
+            {
+                protected void WaitFor(Promise other)
+                {
+                    ValidateReturn(other);
+#if CANCEL
+                    if (_state == State.Canceled)
+                    {
+                        Release();
+                    }
+                    else
+#endif
+                    {
+                        SetPreviousTo(other);
+                        other.AddWaiter(this);
+                    }
+                }
+            }
+
+            public abstract partial class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitPromise<T, TPromise>
+            {
+                protected void WaitFor(Promise other)
+                {
+                    ValidateReturn(other);
+#if CANCEL
+                    if (_state == State.Canceled)
+                    {
+                        Release();
+                    }
+                    else
+#endif
+                    {
+                        SetPreviousTo(other);
+                        other.AddWaiter(this);
+                    }
+                }
+            }
         }
 
         // Calls to these get compiled away when PROGRESS is undefined.
@@ -884,20 +906,8 @@ namespace Proto.Promises
         static partial void ValidateProgress();
         static partial void HandleProgress();
         static partial void ClearPooledProgress();
+
 #if !PROGRESS
-        partial class Internal
-        {
-            public abstract class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitPromise<TPromise>
-            {
-                protected void ClearCachedPromise() { }
-            }
-
-            public abstract class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitPromise<T, TPromise>
-            {
-                protected void ClearCachedPromise() { }
-            }
-        }
-
         protected void ReportProgress(float progress) { }
 
         static protected void ThrowProgressException()
@@ -1411,7 +1421,7 @@ namespace Proto.Promises
                 }
             }
 
-            public abstract class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise>, IProgressListener, IInvokable where TPromise : PromiseWaitPromise<TPromise>
+            partial class PromiseWaitPromise<TPromise> : IProgressListener, IInvokable
             {
                 // This is used to avoid rounding errors when normalizing the progress.
                 private UnsignedFixed32 _currentAmount;
@@ -1428,11 +1438,11 @@ namespace Proto.Promises
                 protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
                 {
                     // This is guaranteed to be pending.
+                    bool firstSubscribe = _progressListeners.IsEmpty;
                     _progressListeners.Push(progressListener);
                     previous = _rejectedOrCanceledValueOrPrevious as Promise;
                     if (_secondPrevious)
                     {
-                        bool firstSubscribe = _progressListeners.IsEmpty;
                         if (firstSubscribe)
                         {
                             // Subscribe this to the returned promise.
@@ -1458,7 +1468,7 @@ namespace Proto.Promises
                     _waitDepthAndProgress = previousDepth.GetIncrementedWholeTruncated();
                 }
 
-                protected override void SetPreviousTo(Promise other)
+                protected override sealed void SetPreviousTo(Promise other)
                 {
                     base.SetPreviousTo(other);
                     _secondPrevious = true;
@@ -1513,7 +1523,7 @@ namespace Proto.Promises
                 void IProgressListener.CancelProgress() { }
             }
 
-            public abstract class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise>, IProgressListener, IInvokable where TPromise : PromiseWaitPromise<T, TPromise>
+            partial class PromiseWaitPromise<T, TPromise> : IProgressListener, IInvokable
             {
                 // This is used to avoid rounding errors when normalizing the progress.
                 private UnsignedFixed32 _currentAmount;
@@ -1529,11 +1539,11 @@ namespace Proto.Promises
                 protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
                 {
                     // This is guaranteed to be pending.
+                    bool firstSubscribe = _progressListeners.IsEmpty;
                     _progressListeners.Push(progressListener);
                     previous = _rejectedOrCanceledValueOrPrevious as Promise;
                     if (_secondPrevious)
                     {
-                        bool firstSubscribe = _progressListeners.IsEmpty;
                         if (firstSubscribe)
                         {
                             // Subscribe this to the returned promise.
@@ -1559,7 +1569,7 @@ namespace Proto.Promises
                     _waitDepthAndProgress = previousDepth.GetIncrementedWholeTruncated();
                 }
 
-                protected override void SetPreviousTo(Promise other)
+                protected override sealed void SetPreviousTo(Promise other)
                 {
                     base.SetPreviousTo(other);
                     _secondPrevious = true;
@@ -2398,7 +2408,7 @@ namespace Proto.Promises
     {
         // Calls to these get compiled away in RELEASE mode
         static partial void ValidateOperation(Promise<T> promise, int skipFrames);
-        static partial void ValidateArgument(Delegate del, string argName, int skipFrames);
+        static partial void ValidateArgument(object arg, string argName, int skipFrames);
         static partial void ValidateProgress(float progress, int skipFrames);
 #if DEBUG
         static partial void ValidateProgress(float progress, int skipFrames)
@@ -2411,9 +2421,9 @@ namespace Proto.Promises
             ValidateNotDisposed(promise._rejectedOrCanceledValueOrPrevious, skipFrames + 1);
         }
 
-        static partial void ValidateArgument(Delegate del, string argName, int skipFrames)
+        static partial void ValidateArgument(object arg, string argName, int skipFrames)
         {
-            ValidateArg(del, argName, skipFrames + 1);
+            ValidateArg(arg, argName, skipFrames + 1);
         }
 
         public override string ToString()

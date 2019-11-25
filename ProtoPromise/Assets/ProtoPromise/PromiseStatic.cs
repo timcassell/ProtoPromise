@@ -11,6 +11,7 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise All(params Promise[] promises)
 		{
+            ValidateArgument(promises, "promises", 1);
             return Internal.AllPromise0.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
 		}
 
@@ -20,6 +21,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(IEnumerable<Promise> promises)
 		{
+            ValidateArgument(promises, "promises", 1);
             return Internal.AllPromise0.GetOrCreate(promises.GetEnumerator(), 1);
         }
 
@@ -29,6 +31,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise AllNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.AllPromise0.GetOrCreate(promises, 1);
         }
 
@@ -38,6 +41,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<IList<T>> All<T>(params Promise<T>[] promises)
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.AllPromise<T>.GetOrCreate(new ArrayEnumerator<Promise<T>>(promises), new List<T>(promises.Length), 1);
         }
 
@@ -47,6 +51,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<IList<T>> All<T>(IEnumerable<Promise<T>> promises)
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.AllPromise<T>.GetOrCreate(promises.GetEnumerator(), new List<T>(), 1);
         }
 
@@ -56,6 +61,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<IList<T>> AllNonAlloc<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer) where TEnumerator : IEnumerator<Promise<T>>
         {
+            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(valueContainer, "valueContainer", 1);
             return Internal.AllPromise<T>.GetOrCreate(promises, valueContainer, 1);
         }
 
@@ -65,6 +72,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(params Promise[] promises)
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.RacePromise0.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
         }
 
@@ -74,6 +82,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(IEnumerable<Promise> promises)
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.RacePromise0.GetOrCreate(promises.GetEnumerator(), 1);
         }
 
@@ -83,6 +92,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise RaceNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.RacePromise0.GetOrCreate(promises, 1);
         }
 
@@ -92,6 +102,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race<T>(params Promise<T>[] promises)
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.RacePromise<T>.GetOrCreate(new ArrayEnumerator<Promise<T>>(promises), 1);
         }
 
@@ -101,6 +112,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.RacePromise<T>.GetOrCreate(promises.GetEnumerator(), 1);
         }
 
@@ -110,6 +122,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> RaceNonAlloc<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.RacePromise<T>.GetOrCreate(promises, 1);
         }
 
@@ -119,6 +132,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Sequence(params Func<Promise>[] funcs)
 		{
+            ValidateArgument(funcs, "funcs", 1);
             return Internal.SequencePromise0.GetOrCreate(new ArrayEnumerator<Func<Promise>>(funcs), 1);
 		}
 
@@ -128,6 +142,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Sequence(IEnumerable<Func<Promise>> funcs)
 		{
+            ValidateArgument(funcs, "funcs", 1);
             return Internal.SequencePromise0.GetOrCreate(funcs.GetEnumerator(), 1);
 		}
 
@@ -137,6 +152,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise SequenceNonAlloc<TEnumerator>(TEnumerator funcs) where TEnumerator : IEnumerator<Func<Promise>>
         {
+            ValidateArgument(funcs, "funcs", 1);
             return Internal.SequencePromise0.GetOrCreate(funcs, 1);
         }
 
@@ -146,6 +162,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(params Promise[] promises)
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.FirstPromise0.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
         }
 
@@ -155,6 +172,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(IEnumerable<Promise> promises)
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.FirstPromise0.GetOrCreate(promises.GetEnumerator(), 1);
         }
 
@@ -164,6 +182,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise FirstNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.FirstPromise0.GetOrCreate(promises, 1);
         }
 
@@ -173,6 +192,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First<T>(params Promise<T>[] promises)
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.FirstPromise<T>.GetOrCreate(new ArrayEnumerator<Promise<T>>(promises), 1);
         }
 
@@ -182,6 +202,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First<T>(IEnumerable<Promise<T>> promises)
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.FirstPromise<T>.GetOrCreate(promises.GetEnumerator(), 1);
         }
 
@@ -191,6 +212,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> FirstNonAlloc<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
+            ValidateArgument(promises, "promises", 1);
             return Internal.FirstPromise<T>.GetOrCreate(promises, 1);
         }
 
@@ -290,7 +312,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise{Type}"/> that will be resolved with <paramref name="value"/>.
+        /// Returns a new <see cref="Promise{T}"/> that will be resolved with <paramref name="value"/>.
         /// </summary>
 		public static Promise<T> Resolved<T>(T value)
 		{

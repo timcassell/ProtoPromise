@@ -5,34 +5,25 @@ using UnityEngine.TestTools;
 
 namespace Proto.Promises.Tests
 {
-    public class All
+    public class Sequence
     {
         [Test]
-        public void AllPromiseIsResolvedWhenAllPromisesAreResolved()
+        public void SequencePromiseIsResolvedWhenAllPromisesAreResolved()
         {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
 
             var completed = 0;
 
-            Promise.All(deferred1.Promise, deferred2.Promise)
-                .Then(values => {
-                    ++completed;
-
-                    Assert.AreEqual(2, values.Count);
-                    Assert.AreEqual(1, values[0]);
-                    Assert.AreEqual(2, values[1]);
-                });
-
-            Promise.All((Promise) deferred1.Promise, deferred2.Promise)
+            Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
                 .Then(() => ++completed);
 
-            deferred1.Resolve(1);
-            deferred2.Resolve(2);
+            deferred1.Resolve();
+            deferred2.Resolve();
 
             Promise.Manager.HandleCompletes();
 
-            Assert.AreEqual(2, completed);
+            Assert.AreEqual(1, completed);
 
             // Clean up.
             GC.Collect();
@@ -41,27 +32,23 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void AllPromiseIsRejectedWhenFirstPromiseIsRejected()
+        public void SequencePromiseIsRejectedWhenFirstPromiseIsRejected()
         {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
 
             var errors = 0;
 
-            Promise.All(deferred1.Promise, deferred2.Promise)
-                .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(e => { ++errors; });
-
-            Promise.All((Promise) deferred1.Promise, deferred2.Promise)
+            Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(e => { ++errors; });
+                .Catch<string>(e => ++errors);
 
             deferred1.Reject("Error!");
-            deferred2.Resolve(2);
+            deferred2.Resolve();
 
             Promise.Manager.HandleCompletes();
 
-            Assert.AreEqual(2, errors);
+            Assert.AreEqual(1, errors);
 
             // Clean up.
             GC.Collect();
@@ -70,27 +57,23 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void AllPromiseIsRejectedWhenSecondPromiseIsRejected()
+        public void SequencePromiseIsRejectedWhenSecondPromiseIsRejected()
         {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
 
             var errors = 0;
 
-            Promise.All(deferred1.Promise, deferred2.Promise)
-                .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(e => { ++errors; });
-
-            Promise.All((Promise) deferred1.Promise, deferred2.Promise)
+            Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(e => { ++errors; });
+                .Catch<string>(e => ++errors);
 
-            deferred1.Resolve(2);
+            deferred1.Resolve();
             deferred2.Reject("Error!");
 
             Promise.Manager.HandleCompletes();
 
-            Assert.AreEqual(2, errors);
+            Assert.AreEqual(1, errors);
 
             // Clean up.
             GC.Collect();
@@ -99,28 +82,23 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void AllPromiseIsRejectedWhenBothPromisesAreRejected()
+        public void SequenceDelegatesStopGettingInvokedWhenAPromiseIsRejected()
         {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
 
-            var errors = 0;
+            int invokes = 0;
 
-            Promise.All(deferred1.Promise, deferred2.Promise)
-                .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(e => { ++errors; });
-
-            Promise.All((Promise) deferred1.Promise, deferred2.Promise)
+            Promise.Sequence(() => { ++invokes; return deferred1.Promise; }, () => { ++invokes; return deferred2.Promise; })
                 .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(e => { ++errors; });
+                .Catch(() => { });
 
             deferred1.Reject("Error!");
-            deferred2.Reject("Error!");
+            deferred2.Resolve();
 
-            // Only 1 rejection is caught, so expect an unhandled throw.
-            Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+            Promise.Manager.HandleCompletes();
 
-            Assert.AreEqual(2, errors);
+            Assert.AreEqual(1, invokes);
 
             // Clean up.
             GC.Collect();
@@ -129,23 +107,16 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void AllPromiseIsResolvedIfThereAreNoPromises()
+        public void SequencePromiseIsResolvedIfThereAreNoDelegates()
         {
             var completed = 0;
 
-            Promise.All(Enumerable.Empty<Promise<int>>())
-                .Then(v => {
-                    ++completed;
-
-                    Assert.IsEmpty(v);
-                });
-
-            Promise.All(Enumerable.Empty<Promise>())
+            Promise.Sequence(Enumerable.Empty<Func<Promise>>())
                 .Then(() => ++completed);
 
             Promise.Manager.HandleCompletes();
 
-            Assert.AreEqual(2, completed);
+            Assert.AreEqual(1, completed);
 
             // Clean up.
             GC.Collect();
@@ -154,10 +125,10 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void AllPromiseIsResolvedWhenAllPromisesAreAlreadyResolved()
+        public void SequencePromiseIsResolvedWhenAllPromisesAreAlreadyResolved()
         {
-            var promise1 = Promise.Resolved(1);
-            var promise2 = Promise.Resolved(1);
+            var promise1 = Promise.Resolved();
+            var promise2 = Promise.Resolved();
 
             promise1.Retain();
             promise2.Retain();
@@ -165,17 +136,14 @@ namespace Proto.Promises.Tests
 
             var completed = 0;
 
-            Promise.All(promise1, promise2)
-                .Then(v => ++completed);
-
-            Promise.All((Promise) promise1, promise2)
+            Promise.Sequence(() => promise1, () => promise2)
                 .Then(() => ++completed);
 
+            Promise.Manager.HandleCompletes();
             promise1.Release();
             promise2.Release();
-            Promise.Manager.HandleCompletes();
 
-            Assert.AreEqual(2, completed);
+            Assert.AreEqual(1, completed);
 
             // Clean up.
             GC.Collect();
@@ -184,7 +152,7 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void AllPromiseIsRejectedWhenAnyPromiseIsAlreadyRejected()
+        public void SequencePromiseIsRejectedWhenAnyPromiseIsAlreadyRejected()
         {
             int rejected = 0;
             string rejection = "Error!";
@@ -195,14 +163,7 @@ namespace Proto.Promises.Tests
             promise.Retain();
             Promise.Manager.HandleCompletes();
 
-            Promise.All(deferred.Promise, promise)
-                .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(ex => {
-                    Assert.AreEqual(rejection, ex);
-                    ++rejected;
-                });
-
-            Promise.All((Promise) deferred.Promise, promise)
+            Promise.Sequence(() => deferred.Promise, () => promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
                 .Catch<string>(ex => {
                     Assert.AreEqual(rejection, ex);
@@ -210,11 +171,11 @@ namespace Proto.Promises.Tests
                 });
 
             deferred.Resolve(0);
-            promise.Release();
 
             Promise.Manager.HandleCompletes();
+            promise.Release();
 
-            Assert.AreEqual(2, rejected);
+            Assert.AreEqual(1, rejected);
 
             // Clean up.
             GC.Collect();
@@ -223,7 +184,7 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void AllProgressIsNormalized()
+        public void SequenceProgressIsNormalized()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -232,7 +193,7 @@ namespace Proto.Promises.Tests
 
             float progress = float.NaN;
 
-            Promise.All(deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise)
+            Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise, () => deferred3.Promise, () => deferred4.Promise)
                 .Progress(p => progress = p);
 
             Promise.Manager.HandleCompletesAndProgress();
