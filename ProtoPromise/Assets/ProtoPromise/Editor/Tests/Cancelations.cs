@@ -340,8 +340,8 @@ namespace Proto.Promises.Tests
             }
         }
 
-        [UnityTest]
-        public IEnumerator OnCanceledMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode()
+        [Test]
+        public void OnCanceledMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode()
         {
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
@@ -350,7 +350,8 @@ namespace Proto.Promises.Tests
             deferred.Promise.CatchCancelation(() => canceled = true);
             deferred.Cancel("Cancel value");
             Assert.False(canceled);
-            yield return null;
+
+
             Promise.Manager.HandleCompletes();
             Assert.True(canceled);
 

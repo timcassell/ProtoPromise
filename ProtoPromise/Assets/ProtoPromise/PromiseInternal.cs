@@ -77,7 +77,6 @@ namespace Proto.Promises
         protected void CancelInternal(Internal.IValueContainerOrPrevious cancelValue)
         {
             _state = State.Canceled;
-            CancelProgressListeners();
             OnCancel();
             _rejectedOrCanceledValueOrPrevious = cancelValue;
             _rejectedOrCanceledValueOrPrevious.Retain();
@@ -125,7 +124,7 @@ namespace Proto.Promises
             _state = State.Rejected;
             _rejectedOrCanceledValueOrPrevious = rejectValue;
             _rejectedOrCanceledValueOrPrevious.Retain();
-            RejectProgressListeners();
+            CancelProgressListeners();
             AddToHandleQueueFront(ref _nextBranches);
         }
 
@@ -176,7 +175,7 @@ namespace Proto.Promises
             else
             {
                 _state = State.Rejected;
-                RejectProgressListeners();
+                CancelProgressListeners();
             }
             AddToHandleQueueFront(ref _nextBranches);
             Release();
@@ -211,7 +210,7 @@ namespace Proto.Promises
         void Internal.ITreeHandleable.Cancel()
         {
             _state = State.Canceled;
-            OnCancel();
+            CancelInternal(((Promise) _rejectedOrCanceledValueOrPrevious)._rejectedOrCanceledValueOrPrevious);
             Release();
         }
 
@@ -219,7 +218,7 @@ namespace Proto.Promises
         {
             _rejectedOrCanceledValueOrPrevious.Release();
             _rejectedOrCanceledValueOrPrevious = null;
-            ClearProgressListeners();
+            CancelProgressListeners();
             AddToCancelQueueFront(ref _nextBranches);
         }
 
@@ -395,12 +394,12 @@ namespace Proto.Promises
 
                 protected override void Handle()
                 {
-                    HandleSelf();
+                    HandleSelfIfNotCanceled();
                 }
 
                 protected override void OnCancel()
                 {
-                    ClearProgressListeners();
+                    CancelProgressListeners();
                     AddToCancelQueueFront(ref _nextBranches);
                     AddToHandleQueueBack(this);
                 }
@@ -420,12 +419,12 @@ namespace Proto.Promises
 
                 protected override void Handle()
                 {
-                    HandleSelf();
+                    HandleSelfIfNotCanceled();
                 }
 
                 protected override void OnCancel()
                 {
-                    ClearProgressListeners();
+                    CancelProgressListeners();
                     AddToCancelQueueFront(ref _nextBranches);
                     AddToHandleQueueBack(this);
                 }
@@ -450,12 +449,12 @@ namespace Proto.Promises
 
                 protected override void Handle()
                 {
-                    HandleSelf();
+                    HandleSelfIfNotCanceled();
                 }
 
                 protected override void OnCancel()
                 {
-                    ClearProgressListeners();
+                    CancelProgressListeners();
                     AddToCancelQueueFront(ref _nextBranches);
                     AddToHandleQueueBack(this);
                 }
@@ -485,12 +484,12 @@ namespace Proto.Promises
 
                 protected override void Handle()
                 {
-                    HandleSelf();
+                    HandleSelfIfNotCanceled();
                 }
 
                 protected override void OnCancel()
                 {
-                    ClearProgressListeners();
+                    CancelProgressListeners();
                     AddToCancelQueueFront(ref _nextBranches);
                     AddToHandleQueueBack(this);
                 }
@@ -3022,9 +3021,7 @@ namespace Proto.Promises
                     {
                         while (passThroughs.IsNotEmpty)
                         {
-                            var passThrough = passThroughs.Pop();
-                            passThrough.Reset();
-                            _pool.Push(passThrough);
+                            _pool.Push(passThroughs.Pop());
                         }
                     }
                     else
@@ -3150,6 +3147,12 @@ namespace Proto.Promises
                 {
                     passThroughs.Push(passThrough);
                 }
+
+                protected override void OnCancel()
+                {
+                    CancelProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
+                }
             }
 
             public sealed partial class AllPromise<T> : PoolablePromise<IList<T>, AllPromise<T>>, IMultiTreeHandleable
@@ -3258,6 +3261,12 @@ namespace Proto.Promises
                 {
                     passThroughs.Push(passThrough);
                 }
+
+                protected override void OnCancel()
+                {
+                    CancelProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
+                }
             }
 
             public sealed partial class RacePromise0 : PoolablePromise<RacePromise0>, IMultiTreeHandleable
@@ -3338,6 +3347,12 @@ namespace Proto.Promises
                 {
                     passThroughs.Push(passThrough);
                 }
+
+                protected override void OnCancel()
+                {
+                    CancelProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
+                }
             }
 
             public sealed partial class RacePromise<T> : PoolablePromise<T, RacePromise<T>>, IMultiTreeHandleable
@@ -3409,6 +3424,7 @@ namespace Proto.Promises
                     if (_state == State.Pending)
                     {
                         feed._wasWaitedOn = true;
+                        _value = ((PromiseInternal<T>) feed).Value;
                         HandleSelfWithoutRelease(feed);
                     }
                     MaybeRelease(ReleaseOne());
@@ -3417,6 +3433,12 @@ namespace Proto.Promises
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     passThroughs.Push(passThrough);
+                }
+
+                protected override void OnCancel()
+                {
+                    CancelProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
                 }
             }
 
@@ -3445,6 +3467,12 @@ namespace Proto.Promises
                 protected override void Handle(Promise feed)
                 {
                     HandleSelf(feed);
+                }
+
+                protected override void OnCancel()
+                {
+                    CancelProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
                 }
             }
 
@@ -3539,6 +3567,12 @@ namespace Proto.Promises
                 {
                     passThroughs.Push(passThrough);
                 }
+
+                protected override void OnCancel()
+                {
+                    CancelProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
+                }
             }
 
             public sealed partial class FirstPromise<T> : PoolablePromise<T, FirstPromise<T>>, IMultiTreeHandleable
@@ -3632,6 +3666,12 @@ namespace Proto.Promises
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     passThroughs.Push(passThrough);
+                }
+
+                protected override void OnCancel()
+                {
+                    CancelProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
                 }
             }
 #endregion

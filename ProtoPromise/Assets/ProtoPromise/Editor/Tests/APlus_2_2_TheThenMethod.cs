@@ -572,9 +572,9 @@ namespace Proto.Promises.Tests
 
         // I interpret this to mean it's the last thing that is ran in the frame.
         // That is implemented during runtime by using Unity's execution order on a Monobehaviour to call Promise.Manager.HandleCompletes().
-        // Since this is an editor test, I call it directly after waiting 1 frame.
-        [UnityTest]
-        public IEnumerator _2_2_4_OnFulfilledMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode()
+        // Since this is a test, I call it directly.
+        [Test]
+        public void _2_2_4_OnFulfilledMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode()
         {
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
@@ -587,7 +587,7 @@ namespace Proto.Promises.Tests
             deferred.Resolve();
             deferredInt.Resolve(0);
             Assert.False(resolved);
-            yield return null;
+
             Promise.Manager.HandleCompletes();
             Assert.True(resolved);
 
@@ -597,8 +597,8 @@ namespace Proto.Promises.Tests
             LogAssert.NoUnexpectedReceived();
         }
 
-        [UnityTest]
-        public IEnumerator _2_2_4_OnRejectedMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode()
+        [Test]
+        public void _2_2_4_OnRejectedMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode()
         {
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
@@ -611,7 +611,7 @@ namespace Proto.Promises.Tests
             deferred.Reject("Fail value");
             deferredInt.Reject("Fail value");
             Assert.False(errored);
-            yield return null;
+
             Promise.Manager.HandleCompletes();
             Assert.True(errored);
 

@@ -43,7 +43,7 @@ namespace Proto.Promises
                 _willThrow = true;
 
                 HandleComplete();
-                Promise.HandleProgress();
+                InvokeProgressListeners();
 
                 if (!willThrow)
                 {
@@ -57,14 +57,12 @@ namespace Proto.Promises
             /// then throws all unhandled rejections as <see cref="AggregateException"/>.
             /// <para/>Does nothing if progress is already being handled or if progress is disabled.
             /// </summary>
-#pragma warning disable RECS0146 // Member hides static member from outer class
             public static void HandleProgress()
-#pragma warning restore RECS0146 // Member hides static member from outer class
             {
                 bool willThrow = _willThrow;
                 _willThrow = true;
 
-                Promise.HandleProgress();
+                InvokeProgressListeners();
 
                 if (!willThrow)
                 {

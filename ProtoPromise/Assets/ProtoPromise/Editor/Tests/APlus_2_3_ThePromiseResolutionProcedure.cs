@@ -126,8 +126,8 @@ namespace Proto.Promises.Tests
 
         public class _2_3_2_IfXIsAPromiseAdoptItsState
         {
-            [UnityTest]
-            public IEnumerator _2_3_2_1_IfXIsPendingPromiseMustRemainPendingUntilXIsFulfilledOrRejected()
+            [Test]
+            public void _2_3_2_1_IfXIsPendingPromiseMustRemainPendingUntilXIsFulfilledOrRejected()
             {
                 Promise promise;
                 Promise<int> promiseInt;
@@ -424,33 +424,25 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
-                yield return null;
 
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
                 resolveWaitDeferred.Resolve();
                 Promise.Manager.HandleCompletes();
                 expectedCompleteCount += (TestHelper.resolveVoidCallbacks + TestHelper.completeCallbacks) * 17;
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
-                yield return null;
 
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
                 resolveWaitDeferredInt.Resolve(0);
                 Promise.Manager.HandleCompletes();
                 expectedCompleteCount += (TestHelper.resolveTCallbacks + TestHelper.completeCallbacks) * 20;
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
-                yield return null;
 
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
                 rejectWaitDeferred.Reject("Fail value");
                 Promise.Manager.HandleCompletes();
                 expectedCompleteCount += (TestHelper.rejectVoidCallbacks + TestHelper.completeCallbacks) * 17;
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
-                yield return null;
 
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
                 rejectWaitDeferredInt.Reject("Fail value");
                 Promise.Manager.HandleCompletes();
                 expectedCompleteCount += (TestHelper.rejectTCallbacks + TestHelper.completeCallbacks) * 20;
@@ -462,8 +454,8 @@ namespace Proto.Promises.Tests
                 LogAssert.NoUnexpectedReceived();
             }
 
-            [UnityTest]
-            public IEnumerator _2_3_2_2_IfWhenXIsFulfilledFulfillPromiseWithTheSameValue()
+            [Test]
+            public void _2_3_2_2_IfWhenXIsFulfilledFulfillPromiseWithTheSameValue()
             {
                 Promise promise;
                 Promise<int> promiseInt;
@@ -583,7 +575,6 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(0, resolveCounter);
 
-                yield return null;
 
                 if (firstRun)
                 {
@@ -614,8 +605,8 @@ namespace Proto.Promises.Tests
                 LogAssert.NoUnexpectedReceived();
             }
 
-            [UnityTest]
-            public IEnumerator _2_3_2_3_IfWhenXIsRejectedRejectPromiseWithTheSameReason()
+            [Test]
+            public void _2_3_2_3_IfWhenXIsRejectedRejectPromiseWithTheSameReason()
             {
                 Promise promise;
                 Promise<int> promiseInt;
@@ -736,7 +727,6 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(0, rejectCounter);
 
-                yield return null;
 
                 if (firstRun)
                 {
@@ -772,8 +762,8 @@ namespace Proto.Promises.Tests
         {
             public class _2_3_3_3_IfXIsAFunctionCallItWithADeferred
             {
-                [UnityTest]
-                public IEnumerator _2_3_3_3_1_IfWhenDeferredIsResolvedResolvePromise()
+                [Test]
+                public void _2_3_3_3_1_IfWhenDeferredIsResolvedResolvePromise()
                 {
                     Promise promise;
 
@@ -855,7 +845,6 @@ namespace Proto.Promises.Tests
 
                     Assert.AreEqual(0, resolveCounter);
 
-                    yield return null;
 
                     int expectedCount = TestHelper.resolveVoidCallbacks * 17;
 
@@ -883,8 +872,8 @@ namespace Proto.Promises.Tests
                     LogAssert.NoUnexpectedReceived();
                 }
 
-                [UnityTest]
-                public IEnumerator _2_3_3_3_1_IfWhenDeferredIsResolvedWithAValueResolvePromiseWithThatValue()
+                [Test]
+                public void _2_3_3_3_1_IfWhenDeferredIsResolvedWithAValueResolvePromiseWithThatValue()
                 {
                     Promise promise;
                     Promise<int> promiseInt;
@@ -977,7 +966,6 @@ namespace Proto.Promises.Tests
 
                     Assert.AreEqual(0, resolveCounter);
 
-                    yield return null;
 
                     int expectedCount = TestHelper.resolveVoidCallbacks * 3 + TestHelper.resolveTCallbacks * 17;
 
@@ -1005,8 +993,8 @@ namespace Proto.Promises.Tests
                     LogAssert.NoUnexpectedReceived();
                 }
 
-                [UnityTest]
-                public IEnumerator _2_3_3_3_2_IfWhenDeferredIsRejectedWithAReasonRejectPromiseWithThatReason()
+                [Test]
+                public void _2_3_3_3_2_IfWhenDeferredIsRejectedWithAReasonRejectPromiseWithThatReason()
                 {
                     Promise promise;
                     Promise<int> promiseInt;
@@ -1141,7 +1129,6 @@ namespace Proto.Promises.Tests
 
                     Assert.AreEqual(0, rejectCounter);
 
-                    yield return null;
 
                     int expectedCount = TestHelper.rejectVoidCallbacks * 17 + TestHelper.rejectTCallbacks * 20;
 

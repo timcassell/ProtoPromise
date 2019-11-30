@@ -646,145 +646,75 @@ namespace Proto.Promises
 #endif
 
 #if DEBUG || PROGRESS
-        protected virtual void BorrowPassthroughs(ref ValueLinkedStack<Internal.PromisePassThrough> passThroughs) { }
+        protected virtual void BorrowPassthroughs(ref ValueLinkedStack<Internal.PromisePassThrough> borrower) { }
+
+        protected static void ExchangePassthroughs(ref ValueLinkedStack<Internal.PromisePassThrough> from, ref ValueLinkedStack<Internal.PromisePassThrough> to)
+        {
+            // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
+            var tempPassThroughs = from;
+            from.Clear();
+            while (tempPassThroughs.IsNotEmpty)
+            {
+                var passThrough = tempPassThroughs.Pop();
+                if (passThrough.owner == null)
+                {
+                    // The owner already completed.
+                    from.Push(passThrough);
+                }
+                else
+                {
+                    to.Push(passThrough);
+                }
+            }
+        }
 
         partial class Internal
         {
             partial class AllPromise0
             {
-                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
-                    // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
-                    var tempPassThroughs = this.passThroughs;
-                    this.passThroughs.Clear();
-                    while (tempPassThroughs.IsNotEmpty)
-                    {
-                        var passThrough = tempPassThroughs.Pop();
-                        if (passThrough.owner == null)
-                        {
-                            // The owner already completed.
-                            this.passThroughs.Push(passThrough);
-                        }
-                        else
-                        {
-                            passThroughs.Push(passThrough);
-                        }
-                    }
+                    ExchangePassthroughs(ref passThroughs, ref borrower);
                 }
             }
 
             partial class AllPromise<T>
             {
-                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
-                    // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
-                    var tempPassThroughs = this.passThroughs;
-                    this.passThroughs.Clear();
-                    while (tempPassThroughs.IsNotEmpty)
-                    {
-                        var passThrough = tempPassThroughs.Pop();
-                        if (passThrough.owner == null)
-                        {
-                            // The owner already completed.
-                            this.passThroughs.Push(passThrough);
-                        }
-                        else
-                        {
-                            passThroughs.Push(passThrough);
-                        }
-                    }
+                    ExchangePassthroughs(ref passThroughs, ref borrower);
                 }
             }
 
             partial class RacePromise0
             {
-                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
-                    // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
-                    var tempPassThroughs = this.passThroughs;
-                    this.passThroughs.Clear();
-                    while (tempPassThroughs.IsNotEmpty)
-                    {
-                        var passThrough = tempPassThroughs.Pop();
-                        if (passThrough.owner == null)
-                        {
-                            // The owner already completed.
-                            this.passThroughs.Push(passThrough);
-                        }
-                        else
-                        {
-                            passThroughs.Push(passThrough);
-                        }
-                    }
+                    ExchangePassthroughs(ref passThroughs, ref borrower);
                 }
             }
 
             partial class RacePromise<T>
             {
-                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
-                    // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
-                    var tempPassThroughs = this.passThroughs;
-                    this.passThroughs.Clear();
-                    while (tempPassThroughs.IsNotEmpty)
-                    {
-                        var passThrough = tempPassThroughs.Pop();
-                        if (passThrough.owner == null)
-                        {
-                            // The owner already completed.
-                            this.passThroughs.Push(passThrough);
-                        }
-                        else
-                        {
-                            passThroughs.Push(passThrough);
-                        }
-                    }
+                    ExchangePassthroughs(ref passThroughs, ref borrower);
                 }
             }
 
             partial class FirstPromise0
             {
-                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
-                    // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
-                    var tempPassThroughs = this.passThroughs;
-                    this.passThroughs.Clear();
-                    while (tempPassThroughs.IsNotEmpty)
-                    {
-                        var passThrough = tempPassThroughs.Pop();
-                        if (passThrough.owner == null)
-                        {
-                            // The owner already completed.
-                            this.passThroughs.Push(passThrough);
-                        }
-                        else
-                        {
-                            passThroughs.Push(passThrough);
-                        }
-                    }
+                    ExchangePassthroughs(ref passThroughs, ref borrower);
                 }
             }
 
             partial class FirstPromise<T>
             {
-                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
-                    // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
-                    var tempPassThroughs = this.passThroughs;
-                    this.passThroughs.Clear();
-                    while (tempPassThroughs.IsNotEmpty)
-                    {
-                        var passThrough = tempPassThroughs.Pop();
-                        if (passThrough.owner == null)
-                        {
-                            // The owner already completed.
-                            this.passThroughs.Push(passThrough);
-                        }
-                        else
-                        {
-                            passThroughs.Push(passThrough);
-                        }
-                    }
+                    ExchangePassthroughs(ref passThroughs, ref borrower);
                 }
             }
         }
@@ -898,13 +828,11 @@ namespace Proto.Promises
         partial void SetDepth(Promise next);
         partial void ResetDepth();
 
-        partial void ClearProgressListeners();
         partial void ResolveProgressListeners();
-        partial void RejectProgressListeners();
         partial void CancelProgressListeners();
 
         static partial void ValidateProgress();
-        static partial void HandleProgress();
+        static partial void InvokeProgressListeners();
         static partial void ClearPooledProgress();
 
 #if !PROGRESS
@@ -929,11 +857,6 @@ namespace Proto.Promises
             ValueLinkedStackZeroGC<Internal.IInvokable>.ClearPooledNodes();
         }
 
-        partial void ClearProgressListeners()
-        {
-            _progressListeners.Clear();
-        }
-
         protected virtual uint GetIncrementMultiplier()
         {
             return 1u;
@@ -941,31 +864,11 @@ namespace Proto.Promises
 
         partial void ResolveProgressListeners()
         {
-            if (_progressListeners.IsEmpty)
-            {
-                return;
-            }
-
-            // Reverse the order while removing the progress listeners. Back to FIFO.
-            var forwardListeners = new ValueLinkedStackZeroGC<Internal.IProgressListener>();
-            do
-            {
-                forwardListeners.Push(_progressListeners.Pop());
-            } while (_progressListeners.IsNotEmpty);
-
             // All and Race promises return a value depending on the promises they are waiting on. Other promises return 1.
             uint increment = _waitDepthAndProgress.GetDifferenceToNextWholeAsUInt32() * GetIncrementMultiplier();
-            do
-            {
-                forwardListeners.Pop().ResolveProgress(this, increment);
-            } while (forwardListeners.IsNotEmpty);
-        }
-
-        partial void RejectProgressListeners()
-        {
             while (_progressListeners.IsNotEmpty)
             {
-                _progressListeners.Pop().CancelProgressIfOwner(this);
+                _progressListeners.Pop().ResolveOrIncrementProgress(this, increment);
             }
         }
 
@@ -973,7 +876,7 @@ namespace Proto.Promises
         {
             while (_progressListeners.IsNotEmpty)
             {
-                _progressListeners.Pop().CancelProgress();
+                _progressListeners.Pop().CancelIfOwner(this);
             }
         }
 
@@ -1025,8 +928,7 @@ namespace Proto.Promises
 
             if (_state == State.Pending)
             {
-                var progressDelegate = Internal.ProgressDelegate.GetOrCreate(onProgress, this, skipFrames + 1);
-                Internal.IProgressListener progressListener = progressDelegate;
+                Internal.IProgressListener progressListener = Internal.ProgressDelegate.GetOrCreate(onProgress, this, skipFrames + 1);
 
                 // Directly add to listeners for this promise.
                 // Sets promise to the one this is waiting on. Returns false if not waiting on another promise.
@@ -1042,7 +944,7 @@ namespace Proto.Promises
             }
             else if (_state == State.Resolved)
             {
-                AddToHandleQueueBack(Internal.ResolvedProgressHandler.GetOrCreate(onProgress, skipFrames + 1));
+                AddToHandleQueueBack(Internal.ProgressDelegate.GetOrCreate(onProgress, this, skipFrames + 1));
             }
 
             // Don't report progress if the promise is canceled or rejected.
@@ -1091,14 +993,9 @@ namespace Proto.Promises
                     progressListener.SetInitialAmount(promise._waitDepthAndProgress.GetIncrementedWholeTruncated());
                     break;
                 }
-                case State.Rejected:
+                default: // Rejected or Canceled:
                 {
-                    progressListener.CancelProgressIfOwner(promise);
-                    break;
-                }
-                default: // case State.Canceled:
-                {
-                    progressListener.CancelProgress();
+                    progressListener.CancelIfOwner(promise);
                     break;
                 }
             }
@@ -1118,7 +1015,7 @@ namespace Proto.Promises
             _progressQueue.Enqueue(progressListener);
         }
 
-        static partial void HandleProgress()
+        static partial void InvokeProgressListeners()
         {
             if (_runningProgress)
             {
@@ -1128,9 +1025,14 @@ namespace Proto.Promises
 
             _runningProgress = true;
 
+            // Cancels are high priority, make sure those delegates are invoked before anything else.
+            HandleCanceled();
+
             while (_progressQueue.IsNotEmpty)
             {
                 _progressQueue.DequeueRisky().Invoke();
+
+                HandleCanceled();
             }
 
             _progressQueue.ClearLast();
@@ -1219,55 +1121,6 @@ namespace Proto.Promises
                 }
             }
 
-            // For the special case of adding a progress listener to an already resolved promise.
-            public sealed class ResolvedProgressHandler : ITreeHandleable, IStacktraceable
-            {
-                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
-#if DEBUG
-                string IStacktraceable.Stacktrace { get; set; }
-#endif
-                private Action<float> _onProgress;
-
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static ResolvedProgressHandler()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                private ResolvedProgressHandler() { }
-
-                public static ResolvedProgressHandler GetOrCreate(Action<float> onProgress, int skipFrames)
-                {
-                    var handler = _pool.IsNotEmpty ? (ResolvedProgressHandler) _pool.Pop() : new ResolvedProgressHandler();
-                    handler._onProgress = onProgress;
-                    SetCreatedStacktrace(handler, skipFrames + 1);
-                    return handler;
-                }
-
-                void ITreeHandleable.Handle()
-                {
-                    var temp = _onProgress;
-                    _onProgress = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                    try
-                    {
-                        temp.Invoke(1f);
-                    }
-                    catch (Exception e)
-                    {
-                        UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                        SetStacktraceFromCreated(this, unhandledException);
-                        AddRejectionToUnhandledStack(unhandledException);
-                    }
-                }
-
-                void ITreeHandleable.Cancel() { throw new InvalidOperationException(); }
-            }
-
             public interface IInvokable
             {
                 void Invoke();
@@ -1277,9 +1130,8 @@ namespace Proto.Promises
             {
                 void SetInitialAmount(UnsignedFixed32 amount);
                 void IncrementProgress(Promise sender, uint amount);
-                void ResolveProgress(Promise sender, uint increment);
-                void CancelProgressIfOwner(Promise sender);
-                void CancelProgress();
+                void ResolveOrIncrementProgress(Promise sender, uint amount);
+                void CancelIfOwner(Promise owner);
             }
 
             partial interface IMultiTreeHandleable
@@ -1288,11 +1140,12 @@ namespace Proto.Promises
                 void SetInitialAmount(uint increment, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount);
             }
 
-            public sealed class ProgressDelegate : IProgressListener, IInvokable, IStacktraceable
+            public sealed class ProgressDelegate : IProgressListener, IInvokable, ITreeHandleable, IStacktraceable
             {
 #if DEBUG
                 string IStacktraceable.Stacktrace { get; set; }
 #endif
+                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
                 private Action<float> _onProgress;
                 private Promise _owner;
@@ -1314,6 +1167,8 @@ namespace Proto.Promises
                     var progress = _pool.IsNotEmpty ? (ProgressDelegate) _pool.Pop() : new ProgressDelegate();
                     progress._onProgress = onProgress;
                     progress._owner = owner;
+                    progress._handling = false;
+                    progress._done = false;
                     progress._current = default(UnsignedFixed32);
                     SetCreatedStacktrace(progress, skipFrames + 1);
                     return progress;
@@ -1336,7 +1191,6 @@ namespace Proto.Promises
                 void IInvokable.Invoke()
                 {
                     _handling = false;
-
                     if (_done)
                     {
                         Dispose();
@@ -1349,30 +1203,24 @@ namespace Proto.Promises
                     InvokeAndCatch(_onProgress, (float) (_current.ToDouble() / expected));
                 }
 
-                // This is called by the promise in forward order that listeners were added.
-                void IProgressListener.ResolveProgress(Promise sender, uint increment)
+                void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount)
                 {
                     if (sender == _owner)
                     {
-                        var temp = _onProgress;
-                        CancelProgress();
-                        InvokeAndCatch(temp, 1f);
+                        // Add to the owner's branches to invoke this with a value of 1.
+                        _owner._nextBranches.Push(this);
+                        _done = true;
                     }
                     else
                     {
-                        _current.Increment(increment);
-                        if (!_handling)
-                        {
-                            _handling = true;
-                            AddToBackOfProgressQueue(this);
-                        }
+                        IncrementProgress(sender, amount);
                     }
                 }
 
-                void IProgressListener.IncrementProgress(Promise sender, uint amount)
+                public void IncrementProgress(Promise sender, uint amount)
                 {
                     _current.Increment(amount);
-                    if (!_handling)
+                    if (!_done & !_handling)
                     {
                         _handling = true;
                         // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
@@ -1388,15 +1236,15 @@ namespace Proto.Promises
                     AddToBackOfProgressQueue(this);
                 }
 
-                void IProgressListener.CancelProgressIfOwner(Promise sender)
+                void IProgressListener.CancelIfOwner(Promise owner)
                 {
-                    if (sender == _owner)
+                    if (owner == _owner)
                     {
-                        CancelProgress();
+                        MarkOrDispose();
                     }
                 }
 
-                public void CancelProgress()
+                private void MarkOrDispose()
                 {
                     if (_handling)
                     {
@@ -1413,12 +1261,20 @@ namespace Proto.Promises
                 private void Dispose()
                 {
                     _onProgress = null;
-                    _done = false;
+                    _owner = null;
                     if (Config.ObjectPooling != PoolType.None)
                     {
                         _pool.Push(this);
                     }
                 }
+
+                void ITreeHandleable.Handle()
+                {
+                    InvokeAndCatch(_onProgress, 1f);
+                    MarkOrDispose();
+                }
+
+                void ITreeHandleable.Cancel() { throw new InvalidOperationException(); }
             }
 
             partial class PromiseWaitPromise<TPromise> : IProgressListener, IInvokable
@@ -1518,9 +1374,8 @@ namespace Proto.Promises
                 }
 
                 // Not used. The promise handles resolve and cancel.
-                void IProgressListener.ResolveProgress(Promise sender, uint increment) { }
-                void IProgressListener.CancelProgressIfOwner(Promise sender) { }
-                void IProgressListener.CancelProgress() { }
+                void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount) { }
+                void IProgressListener.CancelIfOwner(Promise owner) { }
             }
 
             partial class PromiseWaitPromise<T, TPromise> : IProgressListener, IInvokable
@@ -1619,9 +1474,8 @@ namespace Proto.Promises
                 }
 
                 // Not used. The promise handles resolve and cancel.
-                void IProgressListener.ResolveProgress(Promise sender, uint increment) { }
-                void IProgressListener.CancelProgressIfOwner(Promise sender) { }
-                void IProgressListener.CancelProgress() { }
+                void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount) { }
+                void IProgressListener.CancelIfOwner(Promise owner) { }
             }
 
             partial class PromiseWaitDeferred<TPromise>
@@ -1673,9 +1527,8 @@ namespace Proto.Promises
                 }
 
                 // Not used. The promise handles resolve and cancel.
-                void IProgressListener.ResolveProgress(Promise sender, uint increment) { }
-                void IProgressListener.CancelProgressIfOwner(Promise sender) { }
-                void IProgressListener.CancelProgress() { }
+                void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount) { }
+                void IProgressListener.CancelIfOwner(Promise owner) { }
             }
 
             partial class AllPromise0 : IInvokable
@@ -2367,6 +2220,20 @@ namespace Proto.Promises
 #endif
             {
                 RejectInternal(rejectValue);
+            }
+        }
+
+        protected void HandleSelfIfNotCanceled()
+        {
+#if CANCEL
+            if (_state == State.Canceled)
+            {
+                Release();
+            }
+            else
+#endif
+            {
+                HandleSelf();
             }
         }
 
