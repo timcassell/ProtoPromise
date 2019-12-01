@@ -995,6 +995,7 @@ namespace Proto.Promises
                 }
                 default: // Rejected or Canceled:
                 {
+                    progressListener.Retain();
                     progressListener.CancelOrIncrementProgress(promise, promise._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32());
                     break;
                 }
@@ -1151,6 +1152,7 @@ namespace Proto.Promises
                 private Action<float> _onProgress;
                 private Promise _owner;
                 private UnsignedFixed32 _current;
+                uint _retainCounter;
                 private bool _handling;
                 private bool _done;
                 private bool _suspended;
@@ -1215,7 +1217,23 @@ namespace Proto.Promises
                 private void IncrementProgress(Promise sender, uint amount)
                 {
                     _current.Increment(amount);
-                    if (_current.WholePart == _owner._waitDepthAndProgress.WholePart + 1u)
+                    _suspended = false;
+                    if (!_handling & !_canceled)
+                    {
+                        _handling = true;
+                        // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
+                        AddToFrontOfProgressQueue(this);
+                    }
+                }
+
+                void IProgressListener.IncrementProgress(Promise sender, uint amount)
+                {
+                    IncrementProgress(sender, amount);
+                }
+
+                void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount)
+                {
+                    if (sender == _owner)
                     {
                         if (_canceled)
                         {
@@ -1230,24 +1248,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _suspended = false;
-                        if (!_handling & !_canceled)
-                        {
-                            _handling = true;
-                            // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
-                            AddToFrontOfProgressQueue(this);
-                        }
+                        IncrementProgress(sender, amount);
+                        Release();
                     }
-                }
-
-                void IProgressListener.IncrementProgress(Promise sender, uint amount)
-                {
-                    IncrementProgress(sender, amount);
-                }
-
-                void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount)
-                {
-                    IncrementProgress(sender, amount);
                 }
 
                 void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
@@ -1260,22 +1263,22 @@ namespace Proto.Promises
 
                 void IProgressListener.CancelOrIncrementProgress(Promise sender, uint amount)
                 {
-                    _current.Increment(amount);
-                    if (_current.WholePart == _owner._waitDepthAndProgress.WholePart + 1u)
-                    {
-                        MarkOrDispose();
-                    }
-                    else if (sender == _owner)
+                    if (sender == _owner)
                     {
                         _canceled = true;
+                        Release();
                     }
                     else
                     {
                         _suspended = true;
+                        _current.Increment(amount);
                     }
                 }
 
-                void IProgressListener.Retain() { }
+                void IProgressListener.Retain()
+                {
+                    ++_retainCounter;
+                }
 
                 private void MarkOrDispose()
                 {
@@ -1288,6 +1291,14 @@ namespace Proto.Promises
                     {
                         // Dispose only if it's not in the progress queue.
                         Dispose();
+                    }
+                }
+
+                private void Release()
+                {
+                    if (--_retainCounter == 0)
+                    {
+                        MarkOrDispose();
                     }
                 }
 
@@ -1304,6 +1315,7 @@ namespace Proto.Promises
                 void ITreeHandleable.Handle()
                 {
                     InvokeAndCatch(_onProgress, 1f);
+                    _retainCounter = 0;
                     MarkOrDispose();
                 }
 
