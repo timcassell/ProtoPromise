@@ -161,6 +161,78 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled2()
+        {
+            var deferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+            var deferred2 = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, deferred2.State);
+
+            float progress = float.NaN;
+
+            var cancelable = deferred.Promise
+                .ThenDuplicate()
+                .Then(() => deferred2.Promise)
+                .Progress(p => progress = p);
+
+            deferred.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+
+            deferred.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
+
+            deferred2.ReportProgress(0.5f);
+            cancelable.Cancel();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
+
+            deferred2.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled3()
+        {
+            var deferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+            var deferred2 = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, deferred2.State);
+
+            float progress = float.NaN;
+
+            deferred.Promise
+                .ThenDuplicate()
+                .Then(() => deferred2.Promise)
+                .Progress(p => progress = p);
+
+            deferred.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+
+            deferred.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
+
+            deferred2.ReportProgress(0.5f);
+            deferred2.Cancel();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
         public void OnProgressWillNotBeInvokedWith1UntilPromiseIsResolved()
         {
             var deferred = Promise.NewDeferred();
