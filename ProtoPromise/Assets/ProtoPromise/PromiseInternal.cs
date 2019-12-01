@@ -2980,7 +2980,7 @@ namespace Proto.Promises
                 void ReAdd(PromisePassThrough passThrough);
             }
             
-            public sealed partial class PromisePassThrough : ITreeHandleable, ILinked<PromisePassThrough>
+            public sealed partial class PromisePassThrough : ITreeHandleable, IRetainable, ILinked<PromisePassThrough>
             {
                 private static ValueLinkedStack<PromisePassThrough> _pool;
 
@@ -2992,60 +2992,56 @@ namespace Proto.Promises
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
 
-                public Promise owner;
-                public IMultiTreeHandleable target;
+                public Promise Owner { get; private set; }
+                public IMultiTreeHandleable Target { get; private set; }
 
+                private uint _retainCounter;
                 private int _index;
 
                 public static PromisePassThrough GetOrCreate(Promise owner, IMultiTreeHandleable target, int index)
                 {
                     var passThrough = _pool.IsNotEmpty ? _pool.Pop() : new PromisePassThrough();
-                    passThrough.owner = owner;
-                    passThrough.target = target;
+                    passThrough.Owner = owner;
+                    passThrough.Target = target;
                     passThrough._index = index;
+                    passThrough._retainCounter = 2u;
                     owner.AddWaiter(passThrough);
                     return passThrough;
                 }
 
                 private PromisePassThrough() { }
 
-                public void Reset()
-                {
-                    owner = null;
-                    target = null;
-                }
-
-                public static void Repool(ref ValueLinkedStack<PromisePassThrough> passThroughs)
-                {
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        while (passThroughs.IsNotEmpty)
-                        {
-                            _pool.Push(passThroughs.Pop());
-                        }
-                    }
-                    else
-                    {
-                        passThroughs.Clear();
-                    }
-                }
-
                 void ITreeHandleable.Cancel()
                 {
-                    var temp = target;
-                    var cancelValue = owner._rejectedOrCanceledValueOrPrevious;
-                    owner.Release();
-                    Reset();
+                    var temp = Target;
+                    var cancelValue = Owner._rejectedOrCanceledValueOrPrevious;
                     temp.Cancel(cancelValue);
+                    Release();
                 }
 
                 void ITreeHandleable.Handle()
                 {
-                    var temp = target;
-                    var feed = owner;
-                    Reset();
+                    var temp = Target;
+                    var feed = Owner;
                     temp.Handle(feed, _index);
-                    feed.Release();
+                    Release();
+                }
+
+                public void Retain()
+                {
+                    ++_retainCounter;
+                }
+
+                public void Release()
+                {
+                    if (--_retainCounter == 0)
+                    {
+                        var temp = Owner;
+                        Owner = null;
+                        Target = null;
+                        _pool.Push(this);
+                        temp.Release();
+                    }
                 }
             }
 
@@ -3099,7 +3095,10 @@ namespace Proto.Promises
                 {
                     if (done)
                     {
-                        PromisePassThrough.Repool(ref passThroughs);
+                        while (passThroughs.IsNotEmpty)
+                        {
+                            passThroughs.Pop().Release();
+                        }
                         Release();
                     }
                 }
@@ -3110,7 +3109,6 @@ namespace Proto.Promises
                     {
                         CancelInternal(cancelValue);
                     }
-
                     MaybeRelease(ReleaseOne());
                 }
 
@@ -3123,22 +3121,17 @@ namespace Proto.Promises
                         if (feed._state == State.Rejected)
                         {
                             RejectInternalWithoutRelease(feed._rejectedOrCanceledValueOrPrevious);
-                            MaybeRelease(done);
                         }
                         else if (done)
                         {
                             ResolveInternalWithoutRelease();
-                            Release();
                         }
                         else
                         {
                             IncrementProgress(feed);
                         }
                     }
-                    else
-                    {
-                        MaybeRelease(done);
-                    }
+                    MaybeRelease(done);
                 }
 
                 partial void IncrementProgress(Promise feed);
@@ -3209,7 +3202,10 @@ namespace Proto.Promises
                 {
                     if (done)
                     {
-                        PromisePassThrough.Repool(ref passThroughs);
+                        while (passThroughs.IsNotEmpty)
+                        {
+                            passThroughs.Pop().Release();
+                        }
                         Release();
                     }
                 }
@@ -3220,7 +3216,6 @@ namespace Proto.Promises
                     {
                         CancelInternal(cancelValue);
                     }
-
                     MaybeRelease(ReleaseOne());
                 }
 
@@ -3233,7 +3228,6 @@ namespace Proto.Promises
                         if (feed._state == State.Rejected)
                         {
                             RejectInternalWithoutRelease(feed._rejectedOrCanceledValueOrPrevious);
-                            MaybeRelease(done);
                         }
                         else
                         {
@@ -3241,7 +3235,6 @@ namespace Proto.Promises
                             if (done)
                             {
                                 ResolveInternalWithoutRelease();
-                                Release();
                             }
                             else
                             {
@@ -3249,10 +3242,7 @@ namespace Proto.Promises
                             }
                         }
                     }
-                    else
-                    {
-                        MaybeRelease(done);
-                    }
+                    MaybeRelease(done);
                 }
 
                 partial void IncrementProgress(Promise feed);
@@ -3318,7 +3308,10 @@ namespace Proto.Promises
                 {
                     if (done)
                     {
-                        PromisePassThrough.Repool(ref passThroughs);
+                        while (passThroughs.IsNotEmpty)
+                        {
+                            passThroughs.Pop().Release();
+                        }
                         Release();
                     }
                 }
@@ -3329,7 +3322,6 @@ namespace Proto.Promises
                     {
                         CancelInternal(cancelValue);
                     }
-
                     MaybeRelease(ReleaseOne());
                 }
 
@@ -3404,7 +3396,10 @@ namespace Proto.Promises
                 {
                     if (done)
                     {
-                        PromisePassThrough.Repool(ref passThroughs);
+                        while (passThroughs.IsNotEmpty)
+                        {
+                            passThroughs.Pop().Release();
+                        }
                         Release();
                     }
                 }
@@ -3415,7 +3410,6 @@ namespace Proto.Promises
                     {
                         CancelInternal(cancelValue);
                     }
-
                     MaybeRelease(ReleaseOne());
                 }
 
@@ -3525,7 +3519,10 @@ namespace Proto.Promises
                 {
                     if (done)
                     {
-                        PromisePassThrough.Repool(ref passThroughs);
+                        while (passThroughs.IsNotEmpty)
+                        {
+                            passThroughs.Pop().Release();
+                        }
                         Release();
                     }
                 }
@@ -3536,7 +3533,6 @@ namespace Proto.Promises
                     {
                         CancelInternal(cancelValue);
                     }
-
                     MaybeRelease(ReleaseOne());
                 }
 
@@ -3624,7 +3620,10 @@ namespace Proto.Promises
                 {
                     if (done)
                     {
-                        PromisePassThrough.Repool(ref passThroughs);
+                        while (passThroughs.IsNotEmpty)
+                        {
+                            passThroughs.Pop().Release();
+                        }
                         Release();
                     }
                 }
@@ -3635,7 +3634,6 @@ namespace Proto.Promises
                     {
                         CancelInternal(cancelValue);
                     }
-
                     MaybeRelease(ReleaseOne());
                 }
 

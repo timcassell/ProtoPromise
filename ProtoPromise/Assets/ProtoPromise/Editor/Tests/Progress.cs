@@ -78,6 +78,37 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenAPromiseIsRejectedAndContinueBeingInvokedWhenAChainedPromisesProgressIsUpdated()
+        {
+            var deferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+
+            float progress = float.NaN;
+
+            deferred.Promise
+                .CatchDefer(() => d => deferred = d)
+                .Progress(p => progress = p);
+
+            deferred.ReportProgress(0.5f);
+            deferred.Reject();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.IsNaN(progress);
+
+            deferred.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.75f, progress, TestHelper.progressEpsilon);
+
+            deferred.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
         public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled()
         {
             var deferred = Promise.NewDeferred();
