@@ -32,6 +32,51 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
+        public void SequencePromiseIsResolvedIfThereAreNoDelegates()
+        {
+            var completed = 0;
+
+            Promise.Sequence(Enumerable.Empty<Func<Promise>>())
+                .Then(() => ++completed);
+
+            Promise.Manager.HandleCompletes();
+
+            Assert.AreEqual(1, completed);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void SequencePromiseIsResolvedWhenAllPromisesAreAlreadyResolved()
+        {
+            var promise1 = Promise.Resolved();
+            var promise2 = Promise.Resolved();
+
+            promise1.Retain();
+            promise2.Retain();
+            Promise.Manager.HandleCompletes();
+
+            var completed = 0;
+
+            Promise.Sequence(() => promise1, () => promise2)
+                .Then(() => ++completed);
+
+            Promise.Manager.HandleCompletes();
+            promise1.Release();
+            promise2.Release();
+
+            Assert.AreEqual(1, completed);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
         public void SequencePromiseIsRejectedWhenFirstPromiseIsRejected()
         {
             var deferred1 = Promise.NewDeferred();
@@ -91,7 +136,7 @@ namespace Proto.Promises.Tests
 
             Promise.Sequence(() => { ++invokes; return deferred1.Promise; }, () => { ++invokes; return deferred2.Promise; })
                 .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch(() => { });
+                .Catch((object e) => { if (e is AssertionException) throw (AssertionException) e; });
 
             deferred1.Reject("Error!");
             deferred2.Resolve();
@@ -99,51 +144,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(1, invokes);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletes();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void SequencePromiseIsResolvedIfThereAreNoDelegates()
-        {
-            var completed = 0;
-
-            Promise.Sequence(Enumerable.Empty<Func<Promise>>())
-                .Then(() => ++completed);
-
-            Promise.Manager.HandleCompletes();
-
-            Assert.AreEqual(1, completed);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletes();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void SequencePromiseIsResolvedWhenAllPromisesAreAlreadyResolved()
-        {
-            var promise1 = Promise.Resolved();
-            var promise2 = Promise.Resolved();
-
-            promise1.Retain();
-            promise2.Retain();
-            Promise.Manager.HandleCompletes();
-
-            var completed = 0;
-
-            Promise.Sequence(() => promise1, () => promise2)
-                .Then(() => ++completed);
-
-            Promise.Manager.HandleCompletes();
-            promise1.Release();
-            promise2.Release();
-
-            Assert.AreEqual(1, completed);
 
             // Clean up.
             GC.Collect();
@@ -176,6 +176,112 @@ namespace Proto.Promises.Tests
             promise.Release();
 
             Assert.AreEqual(1, rejected);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void SequencePromiseIsCanceledWhenFirstPromiseIsCanceled()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            var cancelations = 0;
+
+            Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
+                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
+                .CatchCancelation<string>(e => ++cancelations);
+
+            deferred1.Cancel("Cancel!");
+            deferred2.Resolve();
+
+            Promise.Manager.HandleCompletes();
+
+            Assert.AreEqual(1, cancelations);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void SequencePromiseIsCanceledWhenSecondPromiseIsCanceled()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            var cancelations = 0;
+
+            Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
+                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
+                .CatchCancelation<string>(e => ++cancelations);
+
+            deferred1.Resolve();
+            deferred2.Cancel("Cancel!");
+
+            Promise.Manager.HandleCompletes();
+
+            Assert.AreEqual(1, cancelations);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void SequenceDelegatesStopGettingInvokedWhenAPromiseIsCanceled()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            int invokes = 0;
+
+            Promise.Sequence(() => { ++invokes; return deferred1.Promise; }, () => { ++invokes; return deferred2.Promise; })
+                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."));
+
+            deferred1.Cancel("Cancel!");
+            deferred2.Resolve();
+
+            Promise.Manager.HandleCompletes();
+
+            Assert.AreEqual(1, invokes);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void SequencePromiseIsCanceledWhenAnyPromiseIsAlreadyCanceled()
+        {
+            int canceled = 0;
+            string cancelation = "Cancel!";
+
+            var deferred = Promise.NewDeferred<int>();
+            var promise = Promise.Canceled<int, string>(cancelation);
+
+            promise.Retain();
+            Promise.Manager.HandleCompletes();
+
+            Promise.Sequence(() => deferred.Promise, () => promise)
+                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
+                .CatchCancelation<string>(ex => {
+                    Assert.AreEqual(cancelation, ex);
+                    ++canceled;
+                });
+
+            deferred.Resolve(0);
+
+            Promise.Manager.HandleCompletes();
+            promise.Release();
+
+            Assert.AreEqual(1, canceled);
 
             // Clean up.
             GC.Collect();

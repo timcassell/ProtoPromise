@@ -3023,8 +3023,16 @@ namespace Proto.Promises
                 {
                     var temp = Target;
                     var feed = Owner;
+                    Reset();
                     temp.Handle(feed, _index);
+                    feed.Release();
                     Release();
+                }
+
+                private void Reset()
+                {
+                    Owner = null;
+                    Target = null;
                 }
 
                 public void Retain()
@@ -3036,11 +3044,12 @@ namespace Proto.Promises
                 {
                     if (--_retainCounter == 0)
                     {
-                        var temp = Owner;
-                        Owner = null;
-                        Target = null;
+                        if (Owner != null)
+                        {
+                            Owner.Release();
+                        }
+                        Reset();
                         _pool.Push(this);
-                        temp.Release();
                     }
                 }
             }
@@ -3462,12 +3471,6 @@ namespace Proto.Promises
                 {
                     HandleSelf(feed);
                 }
-
-                protected override void OnCancel()
-                {
-                    CancelProgressListeners();
-                    AddToCancelQueueFront(ref _nextBranches);
-                }
             }
 
             public sealed partial class FirstPromise0 : PoolablePromise<FirstPromise0>, IMultiTreeHandleable
@@ -3529,11 +3532,12 @@ namespace Proto.Promises
 
                 void IMultiTreeHandleable.Cancel(IValueContainerOrPrevious cancelValue)
                 {
-                    if (_state == State.Pending)
+                    bool done = ReleaseOne();
+                    if (_state == State.Pending & done)
                     {
                         CancelInternal(cancelValue);
                     }
-                    MaybeRelease(ReleaseOne());
+                    MaybeRelease(done);
                 }
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
@@ -3541,22 +3545,18 @@ namespace Proto.Promises
                     bool done = ReleaseOne();
                     if (_state == State.Pending)
                     {
-                        if (done)
-                        {
-                            feed._wasWaitedOn = true;
-                            HandleSelfWithoutRelease(feed);
-                            Release();
-                        }
-                        else if (feed._state == State.Resolved)
+                        if (feed._state == State.Resolved)
                         {
                             feed._wasWaitedOn = true;
                             ResolveInternalWithoutRelease();
                         }
+                        else if (done)
+                        {
+                            feed._wasWaitedOn = true;
+                            HandleSelfWithoutRelease(feed);
+                        }
                     }
-                    else
-                    {
-                        MaybeRelease(done);
-                    }
+                    MaybeRelease(done);
                 }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
@@ -3630,11 +3630,12 @@ namespace Proto.Promises
 
                 void IMultiTreeHandleable.Cancel(IValueContainerOrPrevious cancelValue)
                 {
-                    if (_state == State.Pending)
+                    bool done = ReleaseOne();
+                    if (_state == State.Pending & done)
                     {
                         CancelInternal(cancelValue);
                     }
-                    MaybeRelease(ReleaseOne());
+                    MaybeRelease(done);
                 }
 
                 void IMultiTreeHandleable.Handle(Promise feed, int index)
@@ -3642,23 +3643,19 @@ namespace Proto.Promises
                     bool done = ReleaseOne();
                     if (_state == State.Pending)
                     {
-                        if (done)
-                        {
-                            feed._wasWaitedOn = true;
-                            HandleSelfWithoutRelease(feed);
-                            Release();
-                        }
-                        else if (feed._state == State.Resolved)
+                        if (feed._state == State.Resolved)
                         {
                             feed._wasWaitedOn = true;
                             _value = ((PromiseInternal<T>) feed).Value;
                             ResolveInternalWithoutRelease();
                         }
+                        else if (done)
+                        {
+                            feed._wasWaitedOn = true;
+                            HandleSelfWithoutRelease(feed);
+                        }
                     }
-                    else
-                    {
-                        MaybeRelease(done);
-                    }
+                    MaybeRelease(done);
                 }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)

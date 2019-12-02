@@ -654,7 +654,7 @@ namespace Proto.Promises
             while (from.IsNotEmpty)
             {
                 var passThrough = from.Pop();
-                if (passThrough.Owner._state != State.Pending)
+                if (passThrough.Owner != null && passThrough.Owner._state != State.Pending)
                 {
                     // The owner already completed.
                     passThrough.Release();
