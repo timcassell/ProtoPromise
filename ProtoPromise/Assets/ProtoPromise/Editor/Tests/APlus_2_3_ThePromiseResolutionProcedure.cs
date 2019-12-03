@@ -1350,13 +1350,13 @@ namespace Proto.Promises.Tests
                     Action ignoreResolveIntAction = () => {
                         LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
                         waitDeferredInt.Resolve(0);
-                        Assert.AreEqual(expectedState, waitDeferred.State);
+                        Assert.AreEqual(expectedState, waitDeferredInt.State);
                         Promise.Manager.HandleCompletes();
                     };
                     Action ignoreRejectIntAction = () => {
                         LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
                         waitDeferredInt.Reject("Fail value");
-                        Assert.AreEqual(expectedState, waitDeferred.State);
+                        Assert.AreEqual(expectedState, waitDeferredInt.State);
                         Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
                     };
 
