@@ -4,23 +4,23 @@ using System.Collections.Generic;
 namespace Proto.Promises
 {
     public partial class Promise
-	{
+    {
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
 		public static Promise All(params Promise[] promises)
-		{
+        {
             ValidateArgument(promises, "promises", 1);
             return Internal.AllPromise0.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
-		}
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
         public static Promise All(IEnumerable<Promise> promises)
-		{
+        {
             ValidateArgument(promises, "promises", 1);
             return Internal.AllPromise0.GetOrCreate(promises.GetEnumerator(), 1);
         }
@@ -131,20 +131,20 @@ namespace Proto.Promises
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
         public static Promise Sequence(params Func<Promise>[] funcs)
-		{
+        {
             ValidateArgument(funcs, "funcs", 1);
             return Internal.SequencePromise0.GetOrCreate(new ArrayEnumerator<Func<Promise>>(funcs), 1);
-		}
+        }
 
         /// <summary>
         /// Runs <paramref name="funcs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
         public static Promise Sequence(IEnumerable<Func<Promise>> funcs)
-		{
+        {
             ValidateArgument(funcs, "funcs", 1);
             return Internal.SequencePromise0.GetOrCreate(funcs.GetEnumerator(), 1);
-		}
+        }
 
         /// <summary>
         /// Runs <paramref name="funcs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
@@ -233,17 +233,17 @@ namespace Proto.Promises
         /// <param name="yieldInstruction">Yield instruction.</param>
         /// <typeparam name="TYieldInstruction">The type of yieldInstruction.</typeparam>
         public static Promise<TYieldInstruction> Yield<TYieldInstruction>(TYieldInstruction yieldInstruction)
-		{
+        {
             return Config.Yielder.Yield(yieldInstruction);
-		}
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that resolves after 1 frame.
         /// </summary>
         public static Promise Yield()
-		{
+        {
             return Config.Yielder.Yield();
-		}
+        }
 
         /// <summary>
         /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Deferred"/> that controls the state of the promise.
@@ -302,27 +302,26 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise"/> that will be resolved.
+        /// Returns a <see cref="Promise"/> that is already resolved.
         /// </summary>
 		public static Promise Resolved()
-		{
-			var promise = Internal.LitePromise0.GetOrCreate(1);
-			promise.ResolveDirect();
-			return promise;
+        {
+            // Reuse a single resolved instance.
+            return Internal.ResolvedPromise.instance;
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise{T}"/> that will be resolved with <paramref name="value"/>.
+        /// Returns a <see cref="Promise{T}"/> that is already resolved with <paramref name="value"/>.
         /// </summary>
 		public static Promise<T> Resolved<T>(T value)
-		{
-			var promise = Internal.LitePromise<T>.GetOrCreate(1);
-			promise.ResolveDirect(value);
-			return promise;
+        {
+            var promise = Internal.LitePromise<T>.GetOrCreate(1);
+            promise.ResolveDirect(value);
+            return promise;
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise"/> that will be rejected without a reason.
+        /// Returns a <see cref="Promise"/> that is already rejected without a reason.
         /// </summary>
         public static Promise Rejected()
         {
@@ -333,7 +332,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise"/> that will be rejected with <paramref name="reason"/>.
+        /// Returns a <see cref="Promise"/> that is already rejected with <paramref name="reason"/>.
         /// </summary>
         public static Promise Rejected<TReject>(TReject reason)
         {
@@ -344,7 +343,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise{T}"/> that will be rejected without a reason.
+        /// Returns a <see cref="Promise{T}"/> that is already rejected without a reason.
         /// </summary>
         public static Promise<T> Rejected<T>()
         {
@@ -355,30 +354,30 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise{T}"/> that will be rejected with <paramref name="reason"/>.
+        /// Returns a <see cref="Promise{T}"/> that is already rejected with <paramref name="reason"/>.
         /// </summary>
         public static Promise<T> Rejected<T, TReject>(TReject reason)
-		{
-			var promise = Internal.LitePromise<T>.GetOrCreate(1);
+        {
+            var promise = Internal.LitePromise<T>.GetOrCreate(1);
             var rejection = CreateRejection(reason, 1);
             promise.RejectDirect(rejection);
             return promise;
-		}
+        }
 
         /// <summary>
         /// Returns a <see cref="Deferred"/> object that is linked to and controls the state of a new <see cref="Promise"/>.
         /// </summary>
 		public static Deferred NewDeferred()
-		{
+        {
             return Internal.DeferredPromise0.GetOrCreate(1).Deferred;
-		}
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
         /// </summary>
         public static Promise<T>.Deferred NewDeferred<T>()
-		{
+        {
             return Internal.DeferredPromise<T>.GetOrCreate(1).Deferred;
-		}
-	}
+        }
+    }
 }

@@ -221,7 +221,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise"/> that will be canceled without a reason.
+        /// Returns a <see cref="Promise"/> that is already canceled without a reason.
         /// </summary>
 #if !CANCEL
         [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
@@ -236,7 +236,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise"/> that will be canceled with <paramref name="reason"/>.
+        /// Returns a <see cref="Promise"/> that is already canceled with <paramref name="reason"/>.
         /// </summary>
 #if !CANCEL
         [Obsolete("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", true)]
@@ -582,7 +582,7 @@ namespace Proto.Promises
             if (IsDisposed(valueContainer))
             {
                 throw new PromiseDisposedException("Always nullify your references when you are finished with them!" +
-                	" Call Retain() if you want to perform operations after the object has finished. Remember to call Release() when you are finished with it!"
+                    " Call Retain() if you want to perform operations after the object has finished. Remember to call Release() when you are finished with it!"
                     , GetFormattedStacktrace(skipFrames + 1));
             }
         }
@@ -984,21 +984,21 @@ namespace Proto.Promises
             switch (promise._state)
             {
                 case State.Pending:
-                {
-                    progressListener.SetInitialAmount(promise._waitDepthAndProgress);
-                    break;
-                }
+                    {
+                        progressListener.SetInitialAmount(promise._waitDepthAndProgress);
+                        break;
+                    }
                 case State.Resolved:
-                {
-                    progressListener.SetInitialAmount(promise._waitDepthAndProgress.GetIncrementedWholeTruncated());
-                    break;
-                }
+                    {
+                        progressListener.SetInitialAmount(promise._waitDepthAndProgress.GetIncrementedWholeTruncated());
+                        break;
+                    }
                 default: // Rejected or Canceled:
-                {
-                    progressListener.Retain();
-                    progressListener.CancelOrIncrementProgress(promise, promise._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32());
-                    break;
-                }
+                    {
+                        progressListener.Retain();
+                        progressListener.CancelOrIncrementProgress(promise, promise._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32());
+                        break;
+                    }
             }
         }
 
@@ -1826,9 +1826,9 @@ namespace Proto.Promises
                     {
                         return;
                     }
-                    
+
                     _invokingProgress = false;
-                    
+
                     // Calculate the normalized progress for all the awaited promises.
                     // Use double for better precision.
                     float progress = (float) (_currentAmount.ToDouble() / _expected);
@@ -1933,7 +1933,7 @@ namespace Proto.Promises
                     }
 
                     _invokingProgress = false;
-                    
+
                     uint multiplier = GetIncrementMultiplier();
 
                     // Calculate the normalized progress.
@@ -2040,7 +2040,7 @@ namespace Proto.Promises
                     }
 
                     _invokingProgress = false;
-                    
+
                     uint multiplier = GetIncrementMultiplier();
 
                     // Calculate the normalized progress.
@@ -2147,7 +2147,7 @@ namespace Proto.Promises
                     }
 
                     _invokingProgress = false;
-                    
+
                     uint multiplier = GetIncrementMultiplier();
 
                     // Calculate the normalized progress.
@@ -2254,7 +2254,7 @@ namespace Proto.Promises
                     }
 
                     _invokingProgress = false;
-                    
+
                     uint multiplier = GetIncrementMultiplier();
 
                     // Calculate the normalized progress.
@@ -2282,11 +2282,12 @@ namespace Proto.Promises
             else
 #endif
             {
+                _state = State.Resolved;
                 AddToHandleQueueBack(this);
             }
         }
 
-        protected void RejectDirect(Internal.IValueContainerOrPrevious rejectValue)
+        protected void RejectDirectIfNotCanceled(Internal.IValueContainerOrPrevious rejectValue)
         {
 #if CANCEL
             if (_state == State.Canceled)
@@ -2297,9 +2298,7 @@ namespace Proto.Promises
             else
 #endif
             {
-                _rejectedOrCanceledValueOrPrevious = rejectValue;
-                _rejectedOrCanceledValueOrPrevious.Retain();
-                AddToHandleQueueBack(this);
+                RejectDirect(rejectValue);
             }
         }
 
@@ -2329,20 +2328,6 @@ namespace Proto.Promises
 #endif
             {
                 RejectInternal(rejectValue);
-            }
-        }
-
-        protected void HandleSelfIfNotCanceled()
-        {
-#if CANCEL
-            if (_state == State.Canceled)
-            {
-                Release();
-            }
-            else
-#endif
-            {
-                HandleSelf();
             }
         }
 
@@ -2468,6 +2453,7 @@ namespace Proto.Promises
             else
 #endif
             {
+                _state = State.Resolved;
                 _value = value;
                 AddToHandleQueueBack(this);
             }
