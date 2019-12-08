@@ -1,4 +1,7 @@
-﻿#if !PROTO_PROMISE_CANCEL_DISABLE
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#endif
+#if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
 #endif
 
@@ -292,8 +295,15 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise Resolved()
         {
+#if PROMISE_DEBUG
+            // Create new because stack trace can be different.
+            var promise = Internal.LitePromise0.GetOrCreate(1);
+            promise.ResolveDirect();
+            return promise;
+#else
             // Reuse a single resolved instance.
             return Internal.ResolvedPromise.instance;
+#endif
         }
 
         /// <summary>
@@ -424,6 +434,110 @@ namespace Proto.Promises
         public static Promise<T>.Deferred NewDeferred<T>()
         {
             return Internal.DeferredPromise<T>.GetOrCreate(1).Deferred;
+        }
+
+        /// <summary>
+        /// Get a <see cref="RethrowException"/> that can be thrown inside an onRejected callback to rethrow the caught rejection, preserving the stacktrace.
+        /// This should be used as "throw Promise.Rethrow;"
+        /// This is similar to "throw;" in a synchronous catch clause.
+        /// </summary>
+        /// <value>The rethrow.</value>
+        public static RethrowException Rethrow
+        {
+            get
+            {
+                if (Internal._invokingRejected)
+                {
+                    // Ensure _rethrow is set by the static constructor.
+                    System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(RethrowException).TypeHandle);
+                    return _rethrow;
+                }
+                throw new InvalidOperationException("Rethrow can only be accessed inside an onRejected callback.", GetFormattedStacktrace(1));
+            }
+        }
+
+        /// <summary>
+        /// Get a <see cref="CanceledException"/> that can be thrown to cancel the promise without a reason from an onResolved or onRejected callback.
+        /// This should be used as "throw Promise.CancelException();"
+        /// <para/>
+        /// If this is called while not inside an onResolved or onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"/>
+#if !PROMISE_CANCEL
+        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", false)]
+#endif
+        public static CanceledException CancelException()
+        {
+#if !PROMISE_CANCEL
+            ThrowCancelException(1);
+#else
+            if (Internal._invokingResolved | Internal._invokingRejected)
+            {
+                return Internal.CancelVoid.GetOrCreate();
+            }
+            throw new InvalidOperationException("CancelationException can only be accessed inside an onResolved or onRejected callback.", GetFormattedStacktrace(1));
+#endif
+        }
+
+        /// <summary>
+        /// Get a <see cref="CanceledException"/> that can be thrown to cancel the promise with the provided reason from an onResolved or onRejected callback.
+        /// This should be used as "throw Promise.CancelException(value);"
+        /// <para/>
+        /// If this is called while not inside an onResolved or onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"/>
+#if !PROMISE_CANCEL
+        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", false)]
+#endif
+        public static CanceledException CancelException<T>(T value)
+        {
+#if !PROMISE_CANCEL
+            ThrowCancelException(1);
+#else
+            if (Internal._invokingResolved | Internal._invokingRejected)
+            {
+                return Internal.CancelValue<T>.GetOrCreate(value);
+            }
+            throw new InvalidOperationException("CancelationException can only be accessed inside an onResolved or onRejected callback.", GetFormattedStacktrace(1));
+#endif
+        }
+
+        /// <summary>
+        /// Get an <see cref="Exception"/> that can be thrown to cancel the promise from an onResolved or onRejected callback.
+        /// This should be used as "throw Promise.RejectException();"
+        /// <para/>
+        /// If this is called while not inside an onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"/>
+        public static Exception RejectException()
+        {
+            if (Internal._invokingResolved | Internal._invokingRejected)
+            {
+                return Internal.UnhandledExceptionVoid.GetOrCreate();
+            }
+            throw new InvalidOperationException("RejectedException can only be accessed inside an onResolved or onRejected callback.", GetFormattedStacktrace(1));
+        }
+
+        /// <summary>
+        /// Get an <see cref="Exception"/> that can be thrown to cancel the promise from an onResolved or onRejected callback.
+        /// This should be used as "throw Promise.RejectException(value);"
+        /// <para/>
+        /// If this is called while not inside an onResolved or onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"/>
+        public static Exception RejectException<T>(T value)
+        {
+            if (Internal._invokingResolved | Internal._invokingRejected)
+            {
+                if (typeof(Exception).IsAssignableFrom(typeof(T)))
+                {
+                    // No need to wrap the exception, just return it as-is.
+                    Logger.LogWarning("An exception was passed to RejectedException, returning that exception as-is.");
+                    return value as Exception;
+                }
+                return Internal.UnhandledException<T>.GetOrCreate(value);
+            }
+            throw new InvalidOperationException("RejectedException can only be accessed inside an onResolved or onRejected callback.", GetFormattedStacktrace(1));
         }
     }
 }

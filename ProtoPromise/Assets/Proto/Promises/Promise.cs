@@ -114,7 +114,7 @@ namespace Proto.Promises
         /// Returns this.
         /// </summary>
 #if !PROMISE_PROGRESS
-        [Obsolete("Progress is disabled. Remove PROMISE_PROGRESS from your compiler symbols to enable progress reports.", true)]
+        [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
         public Promise Progress(Action<float> onProgress)
         {

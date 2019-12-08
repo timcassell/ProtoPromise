@@ -122,9 +122,9 @@ namespace Proto.Promises
         protected void CancelInternal(Internal.IValueContainerOrPrevious cancelValue)
         {
             _state = State.Canceled;
+            cancelValue.Retain();
             OnCancel();
             _rejectedOrCanceledValueOrPrevious = cancelValue;
-            _rejectedOrCanceledValueOrPrevious.Retain();
         }
 
         protected void ResolveInternalWithoutRelease()
@@ -195,20 +195,45 @@ namespace Proto.Promises
             {
                 Handle(feed);
             }
+            catch (RethrowException)
+            {
+                RejectInternalIfNotCanceled(feed._rejectedOrCanceledValueOrPrevious);
+                OnHandleCatch();
+            }
+            catch (Internal.CanceledExceptionInternal e)
+            {
+                if (_state == State.Pending)
+                {
+                    _state = State.Canceled;
+                    _rejectedOrCanceledValueOrPrevious = e;
+                    e.Retain();
+                    CancelProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
+                }
+                ReleaseInternal();
+                OnHandleCatch();
+            }
+            catch (Internal.UnhandledExceptionInternal e)
+            {
+                RejectInternalIfNotCanceled(e);
+                OnHandleCatch();
+            }
             catch (Exception e)
             {
                 var ex = Internal.UnhandledExceptionException.GetOrCreate(e);
                 SetStacktraceFromCreated(this, ex);
                 RejectInternalIfNotCanceled(ex);
-                OnHandleCatch(e);
+                OnHandleCatch();
             }
             finally
             {
+                Internal._invokingResolved = false;
+                Internal._invokingRejected = false;
                 feed.ReleaseInternal();
             }
         }
 
-        protected virtual void OnHandleCatch(Exception e) { }
+        protected virtual void OnHandleCatch() { }
 
         private void HandleSelf()
         {
@@ -332,6 +357,8 @@ namespace Proto.Promises
     {
         protected static partial class Internal
         {
+            internal static bool _invokingResolved, _invokingRejected;
+
             internal static Action OnClearPool;
 
             public abstract class PromiseInternal<T> : Promise<T>
@@ -399,7 +426,7 @@ namespace Proto.Promises
                     RetainInternal();
                 }
 
-                protected override void OnHandleCatch(Exception e)
+                protected override void OnHandleCatch()
                 {
                     _deferredInternal.ReleaseDirect();
                 }
@@ -423,7 +450,7 @@ namespace Proto.Promises
                     RetainInternal();
                 }
 
-                protected override void OnHandleCatch(Exception e)
+                protected override void OnHandleCatch()
                 {
                     _deferredInternal.ReleaseDirect();
                 }
@@ -505,6 +532,14 @@ namespace Proto.Promises
                     HandleSelf();
                 }
 
+#if PROMISE_DEBUG
+                public void ResolveDirect()
+                {
+                    _state = State.Resolved;
+                    AddToHandleQueueBack(this);
+                }
+#endif
+
                 protected override void OnCancel()
                 {
                     CancelProgressListeners();
@@ -526,9 +561,9 @@ namespace Proto.Promises
                 }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-                public new void ResolveDirect(in T value)
+                public void ResolveDirect(in T value)
 #else
-                public new void ResolveDirect(T value)
+                public void ResolveDirect(T value)
 #endif
                 {
                     _state = State.Resolved;
@@ -606,6 +641,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        _invokingResolved = true;
                         callback.Invoke();
                         ResolveInternalIfNotCanceled();
                     }
@@ -642,6 +678,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        _invokingResolved = true;
                         callback.Invoke(((PromiseInternal<TArg>) feed).Value);
                         ResolveInternalIfNotCanceled();
                     }
@@ -678,6 +715,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        _invokingResolved = true;
                         _value = callback.Invoke();
                         ResolveInternalIfNotCanceled();
                     }
@@ -714,6 +752,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        _invokingResolved = true;
                         _value = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
                         ResolveInternalIfNotCanceled();
                     }
@@ -757,6 +796,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        _invokingResolved = true;
                         WaitFor(callback.Invoke());
                     }
                     else
@@ -799,6 +839,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        _invokingResolved = true;
                         WaitFor(callback.Invoke(((PromiseInternal<TArg>) feed).Value));
                     }
                     else
@@ -841,6 +882,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        _invokingResolved = true;
                         WaitFor(callback.Invoke());
                     }
                     else
@@ -883,6 +925,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        _invokingResolved = true;
                         WaitFor(callback.Invoke(((PromiseInternal<TArg>) feed).Value));
                     }
                     else
@@ -930,6 +973,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        _invokingResolved = true;
                         var deferredAction = callback.Invoke();
                         try
                         {
@@ -993,6 +1037,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        _invokingResolved = true;
                         var deferredAction = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
                         try
                         {
@@ -1056,6 +1101,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        _invokingResolved = true;
                         var deferredAction = callback.Invoke();
                         try
                         {
@@ -1119,6 +1165,7 @@ namespace Proto.Promises
                     resolveHandler = null;
                     if (feed._state == State.Resolved)
                     {
+                        _invokingResolved = true;
                         var deferredAction = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
                         try
                         {
@@ -1174,6 +1221,7 @@ namespace Proto.Promises
                     rejectHandler = null;
                     if (feed._state == State.Rejected)
                     {
+                        _invokingRejected = true;
                         if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious))
                         {
                             ResolveInternalIfNotCanceled();
@@ -1221,6 +1269,7 @@ namespace Proto.Promises
                     rejectHandler = null;
                     if (feed._state == State.Rejected)
                     {
+                        _invokingRejected = true;
                         if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out _value))
                         {
                             ResolveInternalIfNotCanceled();
@@ -1277,6 +1326,7 @@ namespace Proto.Promises
                     if (feed._state == State.Rejected)
                     {
                         Promise promise;
+                        _invokingRejected = true;
                         if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out promise))
                         {
                             WaitFor(promise);
@@ -1332,6 +1382,7 @@ namespace Proto.Promises
                     if (feed._state == State.Rejected)
                     {
                         Promise<TPromise> promise;
+                        _invokingRejected = true;
                         if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out promise))
                         {
                             WaitFor(promise);
@@ -1392,24 +1443,25 @@ namespace Proto.Promises
                     rejectHandler = null;
                     if (feed._state == State.Rejected)
                     {
-                        try
+                        Action<Deferred> deferredDelegate;
+                        _invokingRejected = true;
+                        if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out deferredDelegate))
                         {
-                            Action<Deferred> deferredDelegate;
-                            if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out deferredDelegate))
+                            ValidateReturn(deferredDelegate);
+                            try
                             {
-                                ValidateReturn(deferredDelegate);
                                 deferredDelegate.Invoke(_deferredInternal);
                             }
-                            else
+                            catch (Exception e)
                             {
-                                // Deferred is never used, so just release.
-                                _deferredInternal.ReleaseDirect();
-                                RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                                _deferredInternal.RejectWithPromiseStacktrace(e);
                             }
                         }
-                        catch (Exception e)
+                        else
                         {
-                            _deferredInternal.RejectWithPromiseStacktrace(e);
+                            // Deferred is never used, so just release.
+                            _deferredInternal.ReleaseDirect();
+                            RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                         }
                     }
                     else
@@ -1466,24 +1518,25 @@ namespace Proto.Promises
                     rejectHandler = null;
                     if (feed._state == State.Rejected)
                     {
-                        try
+                        Action<Deferred> deferredDelegate;
+                        _invokingRejected = true;
+                        if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out deferredDelegate))
                         {
-                            Action<Deferred> deferredDelegate;
-                            if (callback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out deferredDelegate))
+                            ValidateReturn(deferredDelegate);
+                            try
                             {
-                                ValidateReturn(deferredDelegate);
                                 deferredDelegate.Invoke(_deferredInternal);
                             }
-                            else
+                            catch (Exception e)
                             {
-                                // Deferred is never used, so just release.
-                                _deferredInternal.ReleaseDirect();
-                                RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                                _deferredInternal.RejectWithPromiseStacktrace(e);
                             }
                         }
-                        catch (Exception e)
+                        else
                         {
-                            _deferredInternal.RejectWithPromiseStacktrace(e);
+                            // Deferred is never used, so just release.
+                            _deferredInternal.ReleaseDirect();
+                            RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                         }
                     }
                     else
@@ -1535,11 +1588,13 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         rejectCallback.Dispose();
+                        _invokingResolved = true;
                         resolveCallback.DisposeAndInvoke(feed);
                     }
                     else
                     {
                         resolveCallback.Dispose();
+                        _invokingRejected = true;
                         if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious))
                         {
                             RejectInternalIfNotCanceled(feed._rejectedOrCanceledValueOrPrevious);
@@ -1586,11 +1641,13 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         rejectCallback.Dispose();
+                        _invokingResolved = true;
                         _value = resolveCallback.DisposeAndInvoke(feed);
                     }
                     else
                     {
                         resolveCallback.Dispose();
+                        _invokingRejected = true;
                         if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out _value))
                         {
                             RejectInternalIfNotCanceled(feed._rejectedOrCanceledValueOrPrevious);
@@ -1645,11 +1702,13 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         rejectCallback.Dispose();
+                        _invokingResolved = true;
                         promise = resolveCallback.DisposeAndInvoke(feed);
                     }
                     else
                     {
                         resolveCallback.Dispose();
+                        _invokingRejected = true;
                         if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out promise))
                         {
                             RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
@@ -1704,11 +1763,13 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         rejectCallback.Dispose();
+                        _invokingResolved = true;
                         promise = resolveCallback.DisposeAndInvoke(feed);
                     }
                     else
                     {
                         resolveCallback.Dispose();
+                        _invokingRejected = true;
                         if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out promise))
                         {
                             RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
@@ -1768,11 +1829,13 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         rejectCallback.Dispose();
+                        _invokingResolved = true;
                         deferredDelegate = resolveCallback.DisposeAndInvoke(feed);
                     }
                     else
                     {
                         resolveCallback.Dispose();
+                        _invokingRejected = true;
                         if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out deferredDelegate))
                         {
                             // Deferred is never used, so just release.
@@ -1844,11 +1907,13 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         rejectCallback.Dispose();
+                        _invokingResolved = true;
                         deferredDelegate = resolveCallback.DisposeAndInvoke(feed);
                     }
                     else
                     {
                         resolveCallback.Dispose();
+                        _invokingRejected = true;
                         if (!rejectCallback.DisposeAndTryInvoke(feed._rejectedOrCanceledValueOrPrevious, out deferredDelegate))
                         {
                             // Deferred is never used, so just release.
@@ -1903,6 +1968,7 @@ namespace Proto.Promises
                 {
                     var callback = onComplete;
                     onComplete = null;
+                    _invokingResolved = true;
                     callback.Invoke();
                     ResolveInternalIfNotCanceled();
                 }
@@ -1932,6 +1998,7 @@ namespace Proto.Promises
                 {
                     var callback = onComplete;
                     onComplete = null;
+                    _invokingResolved = true;
                     _value = callback.Invoke();
                     ResolveInternalIfNotCanceled();
                 }
@@ -1968,6 +2035,7 @@ namespace Proto.Promises
 
                     var callback = onComplete;
                     onComplete = null;
+                    _invokingResolved = true;
                     WaitFor(callback.Invoke());
                 }
 
@@ -2003,6 +2071,7 @@ namespace Proto.Promises
 
                     var callback = onComplete;
                     onComplete = null;
+                    _invokingResolved = true;
                     WaitFor(callback.Invoke());
                 }
 
@@ -2043,6 +2112,7 @@ namespace Proto.Promises
                 {
                     var callback = onComplete;
                     onComplete = null;
+                    _invokingResolved = true;
                     var deferredDelegate = callback.Invoke();
                     ValidateReturn(deferredDelegate);
                     try
@@ -2097,6 +2167,7 @@ namespace Proto.Promises
                 {
                     var callback = onComplete;
                     onComplete = null;
+                    _invokingResolved = true;
                     var deferredDelegate = callback.Invoke();
                     ValidateReturn(deferredDelegate);
                     try
@@ -2760,273 +2831,6 @@ namespace Proto.Promises
                 TResult DisposeAndInvoke(Promise feed);
                 void Dispose();
             }
-
-            #region ValueWrappers
-            public abstract class UnhandledExceptionInternal : UnhandledException, IValueContainerOrPrevious, ILinked<UnhandledExceptionInternal>
-            {
-                UnhandledExceptionInternal ILinked<UnhandledExceptionInternal>.Next { get; set; }
-
-                public bool handled;
-
-                protected UnhandledExceptionInternal() { }
-                protected UnhandledExceptionInternal(Exception innerException) : base(innerException) { }
-
-                public void SetStackTrace(string stackTrace)
-                {
-                    _stackTrace = stackTrace;
-                }
-
-                public virtual void Release() { }
-
-                public virtual void Retain() { }
-
-                public virtual bool TryGetValueAs<U>(out U value)
-                {
-                    value = default(U);
-                    return false;
-                }
-
-                public abstract bool ContainsType<U>();
-            }
-
-            public sealed class UnhandledExceptionVoid : UnhandledExceptionInternal
-            {
-                private static ValueLinkedStack<UnhandledExceptionInternal> _pool;
-
-                private uint retainCounter;
-
-                static UnhandledExceptionVoid()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                private UnhandledExceptionVoid() { }
-
-                public static UnhandledExceptionVoid GetOrCreate()
-                {
-                    // Have to create new because stack trace can be different.
-                    return _pool.IsNotEmpty ? (UnhandledExceptionVoid) _pool.Pop() : new UnhandledExceptionVoid();
-                }
-
-                public new UnhandledExceptionVoid SetStackTrace(string stackTrace)
-                {
-                    base.SetStackTrace(stackTrace);
-                    return this;
-                }
-
-                public override object GetValue()
-                {
-                    return null;
-                }
-
-                public override string Message
-                {
-                    get
-                    {
-                        return "A non-value rejection was not handled.";
-                    }
-                }
-
-                public override void Retain()
-                {
-                    ++retainCounter;
-                }
-
-                public override void Release()
-                {
-                    if (--retainCounter == 0 & Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                public override bool ContainsType<U>()
-                {
-                    return false;
-                }
-            }
-
-            public sealed class UnhandledException<T> : UnhandledExceptionInternal, IValueContainer<T>
-            {
-                public T Value { get; private set; }
-
-                private static ValueLinkedStack<UnhandledExceptionInternal> _pool;
-
-                private uint retainCounter;
-
-                static UnhandledException()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                private UnhandledException() { }
-
-                public static UnhandledException<T> GetOrCreate(T value)
-                {
-                    UnhandledException<T> ex = _pool.IsNotEmpty ? (UnhandledException<T>) _pool.Pop() : new UnhandledException<T>();
-                    ex.Value = value;
-#pragma warning disable RECS0017 // Possible compare of value type with 'null'
-                    ex._message = "A rejected value was not handled: " + (value == null ? "null" : value.ToString());
-#pragma warning restore RECS0017 // Possible compare of value type with 'null'
-                    return ex;
-                }
-
-                public override object GetValue()
-                {
-                    return Value;
-                }
-
-                public override bool TryGetValueAs<U>(out U value)
-                {
-                    return Config.ValueConverter.TryConvert(this, out value);
-                }
-
-                private string _message;
-                public override string Message
-                {
-                    get
-                    {
-                        return _message;
-                    }
-                }
-
-                public override void Retain()
-                {
-                    ++retainCounter;
-                }
-
-                public override void Release()
-                {
-                    if (--retainCounter == 0 & Config.ObjectPooling != PoolType.None)
-                    {
-                        Value = default(T);
-                        _pool.Push(this);
-                    }
-                }
-
-                public override bool ContainsType<U>()
-                {
-                    return Config.ValueConverter.CanConvert<T, U>(this);
-                }
-            }
-
-            public sealed class UnhandledExceptionException : UnhandledExceptionInternal, IValueContainer<Exception>
-            {
-                private UnhandledExceptionException(Exception innerException) : base(innerException) { }
-
-                // Don't care about re-using this exception for 2 reasons:
-                // exceptions create garbage themselves, creating a little more with this one is negligible,
-                // and it's too difficult to try to replicate the formatting for Unity to pick it up by using a cached local variable like in UnhandledException<T>, and prefer not to use reflection to assign innerException
-                public static UnhandledExceptionException GetOrCreate(Exception innerException)
-                {
-                    return new UnhandledExceptionException(innerException);
-                }
-
-                public override string Message
-                {
-                    get
-                    {
-                        return "An exception was encountered that was not handled.";
-                    }
-                }
-
-                Exception IValueContainer<Exception>.Value { get { return InnerException; } }
-
-                public override object GetValue()
-                {
-                    return InnerException;
-                }
-
-                public override bool TryGetValueAs<U>(out U value)
-                {
-                    return Config.ValueConverter.TryConvert(this, out value);
-                }
-
-                public override bool ContainsType<U>()
-                {
-                    return Config.ValueConverter.CanConvert<Exception, U>(this);
-                }
-            }
-
-            public sealed class CancelVoid : IValueContainerOrPrevious
-            {
-                // We can reuse the same object.
-                private static readonly CancelVoid obj = new CancelVoid();
-
-                private CancelVoid() { }
-
-                public static CancelVoid GetOrCreate()
-                {
-                    return obj;
-                }
-
-                public bool TryGetValueAs<U>(out U value)
-                {
-                    value = default(U);
-                    return false;
-                }
-
-#pragma warning disable RECS0096 // Type parameter is never used
-                public bool ContainsType<U>()
-#pragma warning restore RECS0096 // Type parameter is never used
-                {
-                    return false;
-                }
-
-                public void Retain() { }
-
-                public void Release() { }
-            }
-
-            public sealed class CancelValue<T> : IValueContainerOrPrevious, IValueContainer<T>, ILinked<CancelValue<T>>
-            {
-                CancelValue<T> ILinked<CancelValue<T>>.Next { get; set; }
-
-                public T Value { get; private set; }
-
-                private static ValueLinkedStack<CancelValue<T>> _pool;
-
-                private uint _retainCounter;
-
-                static CancelValue()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                private CancelValue() { }
-
-                public static CancelValue<T> GetOrCreate(T value)
-                {
-                    CancelValue<T> cv = _pool.IsNotEmpty ? _pool.Pop() : new CancelValue<T>();
-                    cv.Value = value;
-                    return cv;
-                }
-
-                public bool TryGetValueAs<U>(out U value)
-                {
-                    return Config.ValueConverter.TryConvert(this, out value);
-                }
-
-                public bool ContainsType<U>()
-                {
-                    return Config.ValueConverter.CanConvert<T, U>(this);
-                }
-
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
-
-                public void Release()
-                {
-                    if (--_retainCounter == 0 & Config.ObjectPooling != PoolType.None)
-                    {
-                        Value = default(T);
-                        _pool.Push(this);
-                    }
-                }
-            }
-            #endregion
 
             #region Multi Promises
             public partial interface IMultiTreeHandleable : ITreeHandleable

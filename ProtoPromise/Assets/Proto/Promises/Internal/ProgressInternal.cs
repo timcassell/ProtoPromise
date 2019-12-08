@@ -110,7 +110,7 @@ namespace Proto.Promises
 
         static protected void ThrowProgressException(int skipFrames)
         {
-            throw new InvalidOperationException("Define PROGRESS in ProtoPromise/Config.cs to enable progress reports.", GetFormattedStacktrace(skipFrames + 1));
+            throw new InvalidOperationException("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", GetFormattedStacktrace(skipFrames + 1));
         }
 
         static partial void ValidateProgress(int skipFrames)

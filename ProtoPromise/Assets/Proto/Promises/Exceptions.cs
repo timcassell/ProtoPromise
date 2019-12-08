@@ -1,10 +1,17 @@
-﻿#pragma warning disable IDE0034 // Simplify 'default' expression
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#endif
+
+#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable RECS0096 // Type parameter is never used
+#pragma warning disable RECS0108 // Warns about static fields in generic types
 
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
+using Proto.Utils;
 
 #if !CSHARP_7_OR_LATER
 namespace System
@@ -255,26 +262,11 @@ namespace System
             }
         }
     }
-
 }
 #endif
 
 namespace Proto.Promises
 {
-    partial class Promise
-    {
-        public abstract class UnhandledException : Exception
-        {
-            protected UnhandledException() { }
-            protected UnhandledException(Exception innerException) : base(null, innerException) { }
-
-            public abstract object GetValue();
-
-            protected string _stackTrace;
-            public override string StackTrace { get { return _stackTrace; } }
-        }
-    }
-
     public class InvalidOperationException : System.InvalidOperationException
     {
         public InvalidOperationException(string message, string stackTrace = null) : base(message)
@@ -355,5 +347,378 @@ namespace Proto.Promises
             new UnreleasedObjectException("An IRetainable object was garbage collected that was not released. You must release all IRetainable objects that you have retained.");
 
         private UnreleasedObjectException(string message) : base(message) { }
+    }
+
+    partial class Promise
+    {
+        public abstract class UnhandledException : Exception, IRetainable
+        {
+            protected UnhandledException() { }
+            protected UnhandledException(Exception innerException) : base(null, innerException) { }
+
+            public abstract object GetValue();
+            public abstract Type GetValueType();
+            public abstract bool TryGetValueAs<U>(out U value);
+            public abstract bool ContainsType<U>();
+            public abstract void Retain();
+            public abstract void Release();
+
+            protected string _stackTrace;
+            public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        }
+
+        private static RethrowException _rethrow;
+
+        /// <summary>
+        /// Used to rethrow a rejection from a Promise onRejected callback.
+        /// </summary>
+        public sealed class RethrowException : Exception
+        {
+            private RethrowException() { }
+
+            static RethrowException() { _rethrow = new RethrowException(); }
+        }
+
+        /// <summary>
+        /// Used to cancel a Promise from an onResolved or onRejected callback.
+        /// </summary>
+        public abstract class CanceledException : OperationCanceledException, IRetainable
+        {
+            protected CanceledException() { }
+
+            public abstract object GetValue();
+            public abstract Type GetValueType();
+            public abstract bool TryGetValueAs<U>(out U value);
+            public abstract bool ContainsType<U>();
+            public abstract void Retain();
+            public abstract void Release();
+
+            public override string StackTrace { get { return null; } }
+            public override string Message
+            {
+                get
+                {
+                    return "This is used to cancel a Promise from an onResolved or onRejected handler.";
+                }
+            }
+        }
+
+        partial class Internal
+        {
+            public abstract class UnhandledExceptionInternal : UnhandledException, IValueContainerOrPrevious, ILinked<UnhandledExceptionInternal>
+            {
+                UnhandledExceptionInternal ILinked<UnhandledExceptionInternal>.Next { get; set; }
+
+                public bool handled;
+
+                protected UnhandledExceptionInternal() { }
+                protected UnhandledExceptionInternal(Exception innerException) : base(innerException) { }
+
+                public void SetStackTrace(string stackTrace)
+                {
+                    _stackTrace = stackTrace;
+                }
+            }
+
+            public sealed class UnhandledExceptionVoid : UnhandledExceptionInternal
+            {
+                private UnhandledExceptionVoid() { }
+
+#if PROMISE_DEBUG
+                private static ValueLinkedStack<UnhandledExceptionInternal> _pool;
+
+                private uint _retainCounter;
+
+                static UnhandledExceptionVoid()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                public static UnhandledExceptionVoid GetOrCreate()
+                {
+                    // Create new because stack trace can be different.
+                    return _pool.IsNotEmpty ? (UnhandledExceptionVoid) _pool.Pop() : new UnhandledExceptionVoid();
+                }
+
+                public override void Retain()
+                {
+                    ++_retainCounter;
+                }
+
+                public override void Release()
+                {
+                    if (--_retainCounter == 0 & Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+#else
+                // We can reuse the same object.
+                private static readonly UnhandledExceptionVoid _instance = new UnhandledExceptionVoid();
+
+                public static UnhandledExceptionVoid GetOrCreate()
+                {
+                    return _instance;
+                }
+#endif
+
+                public override object GetValue()
+                {
+                    return null;
+                }
+
+                public override Type GetValueType()
+                {
+                    return null;
+                }
+
+                public override bool TryGetValueAs<U>(out U value)
+                {
+                    value = default(U);
+                    return false;
+                }
+
+                public override bool ContainsType<U>()
+                {
+                    return false;
+                }
+
+                public override string Message
+                {
+                    get
+                    {
+                        return "A non-value rejection was not handled.";
+                    }
+                }
+            }
+
+            public sealed class UnhandledException<T> : UnhandledExceptionInternal, IValueContainer<T>
+            {
+                public T Value { get; private set; }
+
+                private static ValueLinkedStack<UnhandledExceptionInternal> _pool;
+
+                private uint _retainCounter;
+
+                static UnhandledException()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                private UnhandledException() { }
+
+                public static UnhandledException<T> GetOrCreate(T value)
+                {
+                    UnhandledException<T> ex = _pool.IsNotEmpty ? (UnhandledException<T>) _pool.Pop() : new UnhandledException<T>();
+                    ex.Value = value;
+                    ex._message = "A rejected value was not handled: " + (typeof(T).IsClass && ReferenceEquals(value, null) ? "null" : value.ToString());
+                    return ex;
+                }
+
+                public override object GetValue()
+                {
+                    return Value;
+                }
+
+                public override bool TryGetValueAs<U>(out U value)
+                {
+                    return Config.ValueConverter.TryConvert(this, out value);
+                }
+
+                public override Type GetValueType()
+                {
+                    Type type = typeof(T);
+                    if (type.IsValueType)
+                    {
+                        return type;
+                    }
+                    return ReferenceEquals(Value, null) ? type : Value.GetType();
+                }
+
+                private string _message;
+                public override string Message
+                {
+                    get
+                    {
+                        return _message;
+                    }
+                }
+
+                public override void Retain()
+                {
+                    ++_retainCounter;
+                }
+
+                public override void Release()
+                {
+                    if (--_retainCounter == 0 & Config.ObjectPooling != PoolType.None)
+                    {
+                        Value = default(T);
+                        _pool.Push(this);
+                    }
+                }
+
+                public override bool ContainsType<U>()
+                {
+                    return Config.ValueConverter.CanConvert<T, U>(this);
+                }
+            }
+
+            public sealed class UnhandledExceptionException : UnhandledExceptionInternal, IValueContainer<Exception>
+            {
+                private UnhandledExceptionException(Exception innerException) : base(innerException) { }
+
+                // Don't care about re-using this exception for 2 reasons:
+                // exceptions create garbage themselves, creating a little more with this one is negligible,
+                // and it's too difficult to try to replicate the formatting for Unity to pick it up by using a cached local variable like in UnhandledException<T>, and prefer not to use reflection to assign innerException
+                public static UnhandledExceptionException GetOrCreate(Exception innerException)
+                {
+                    return new UnhandledExceptionException(innerException);
+                }
+
+                public override string Message
+                {
+                    get
+                    {
+                        return "An exception was encountered that was not handled.";
+                    }
+                }
+
+                Exception IValueContainer<Exception>.Value { get { return InnerException; } }
+
+                public override object GetValue()
+                {
+                    return InnerException;
+                }
+
+                public override void Release() { }
+
+                public override void Retain() { }
+
+                public override Type GetValueType()
+                {
+                    return InnerException.GetType();
+                }
+
+                public override bool TryGetValueAs<U>(out U value)
+                {
+                    return Config.ValueConverter.TryConvert(this, out value);
+                }
+
+                public override bool ContainsType<U>()
+                {
+                    return Config.ValueConverter.CanConvert<Exception, U>(this);
+                }
+            }
+
+            public abstract class CanceledExceptionInternal : CanceledException, IValueContainerOrPrevious, ILinked<UnhandledExceptionInternal>
+            {
+                UnhandledExceptionInternal ILinked<UnhandledExceptionInternal>.Next { get; set; }
+
+                protected CanceledExceptionInternal() { }
+            }
+
+            public sealed class CancelVoid : CanceledExceptionInternal
+            {
+                // We can reuse the same object.
+                private static readonly CancelVoid obj = new CancelVoid();
+
+                private CancelVoid() { }
+
+                public static CancelVoid GetOrCreate()
+                {
+                    return obj;
+                }
+
+                public override bool TryGetValueAs<U>(out U value)
+                {
+                    value = default(U);
+                    return false;
+                }
+
+                public override bool ContainsType<U>()
+                {
+                    return false;
+                }
+
+                public override void Retain() { }
+
+                public override void Release() { }
+
+                public override object GetValue()
+                {
+                    return null;
+                }
+
+                public override Type GetValueType()
+                {
+                    return null;
+                }
+            }
+
+            public sealed class CancelValue<T> : CanceledExceptionInternal, IValueContainer<T>, ILinked<CancelValue<T>>
+            {
+                CancelValue<T> ILinked<CancelValue<T>>.Next { get; set; }
+
+                public T Value { get; private set; }
+
+                private static ValueLinkedStack<CancelValue<T>> _pool;
+
+                private uint _retainCounter;
+
+                static CancelValue()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                private CancelValue() { }
+
+                public static CancelValue<T> GetOrCreate(T value)
+                {
+                    CancelValue<T> cv = _pool.IsNotEmpty ? _pool.Pop() : new CancelValue<T>();
+                    cv.Value = value;
+                    return cv;
+                }
+
+                public override bool TryGetValueAs<U>(out U value)
+                {
+                    return Config.ValueConverter.TryConvert(this, out value);
+                }
+
+                public override bool ContainsType<U>()
+                {
+                    return Config.ValueConverter.CanConvert<T, U>(this);
+                }
+
+                public override object GetValue()
+                {
+                    return Value;
+                }
+
+                public override Type GetValueType()
+                {
+                    Type type = typeof(T);
+                    if (type.IsValueType)
+                    {
+                        return type;
+                    }
+                    return ReferenceEquals(Value, null) ? type : Value.GetType();
+                }
+
+                public override void Retain()
+                {
+                    ++_retainCounter;
+                }
+
+                public override void Release()
+                {
+                    if (--_retainCounter == 0 & Config.ObjectPooling != PoolType.None)
+                    {
+                        Value = default(T);
+                        _pool.Push(this);
+                    }
+                }
+            }
+        }
     }
 }

@@ -14,7 +14,6 @@
 #pragma warning disable CS0618 // Type or member is obsolete
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
-using System;
 using Proto.Utils;
 
 namespace Proto.Promises
@@ -52,7 +51,7 @@ namespace Proto.Promises
 #else
         static protected void ThrowCancelException(int skipFrames)
         {
-            throw new InvalidOperationException("Define CANCEL in ProtoPromise/Config.cs to enable cancelations.", GetFormattedStacktrace(skipFrames + 1));
+            throw new InvalidOperationException("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", GetFormattedStacktrace(skipFrames + 1));
         }
 
         static partial void ValidateCancel(int skipFrames)

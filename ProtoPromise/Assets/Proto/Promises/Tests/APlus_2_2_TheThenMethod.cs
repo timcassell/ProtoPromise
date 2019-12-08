@@ -961,8 +961,8 @@ namespace Proto.Promises.Tests
                 deferredInt.Reject(expected);
                 Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(TestHelper.SecondCatchVoidCallbacks, counterVoid);
-                Assert.AreEqual(TestHelper.SecondCatchVoidCallbacks, counterT);
+                Assert.AreEqual(TestHelper.secondCatchVoidCallbacks, counterVoid);
+                Assert.AreEqual(TestHelper.secondCatchVoidCallbacks, counterT);
 
                 // Clean up.
                 GC.Collect();
