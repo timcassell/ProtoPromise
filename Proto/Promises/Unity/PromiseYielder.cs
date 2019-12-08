@@ -93,7 +93,7 @@ namespace Proto.Promises
     /// </summary>
     public sealed class PromiseYielder : MonoBehaviour
     {
-        static System.Action _onClearObjects;
+        static Action _onClearObjects;
         static PromiseYielder _instance;
 
         static PromiseYielder Instance
@@ -261,7 +261,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="yieldInstruction">Yield instruction.</param>
         /// <typeparam name="TYieldInstruction">The type of yieldInstruction.</typeparam>
-        public Promise<TYieldInstruction> WaitFor<TYieldInstruction>(TYieldInstruction yieldInstruction) where TYieldInstruction : class // Class constraint to prevent boxing.
+        public static Promise<TYieldInstruction> WaitFor<TYieldInstruction>(TYieldInstruction yieldInstruction) where TYieldInstruction : class // Class constraint to prevent boxing.
         {
             Routine<TYieldInstruction> routine = Routine<TYieldInstruction>.GetOrCreate();
             routine.Current = yieldInstruction;
@@ -274,7 +274,7 @@ namespace Proto.Promises
             }
             else
             {
-                StartCoroutine(routine);
+                Instance.StartCoroutine(routine);
             }
 
             return routine.onComplete.Promise;
@@ -283,7 +283,7 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise"/> that resolves after 1 frame.
         /// </summary>
-        public Promise WaitOneFrame()
+        public static Promise WaitOneFrame()
         {
             Routine routine = Routine.GetOrCreate();
             routine.onComplete = Promise.NewDeferred();
@@ -295,7 +295,7 @@ namespace Proto.Promises
             }
             else
             {
-                StartCoroutine(routine);
+                Instance.StartCoroutine(routine);
             }
 
             return routine.onComplete.Promise;
