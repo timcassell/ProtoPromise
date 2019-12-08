@@ -31,7 +31,8 @@ namespace Proto.Promises
                 Destroy(this);
                 return;
             }
-            hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
+            DontDestroyOnLoad(gameObject);
+            gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
             _instance = this;
             StartCoroutine(_Enumerator());
         }

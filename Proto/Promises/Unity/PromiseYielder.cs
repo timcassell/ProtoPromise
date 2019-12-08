@@ -100,11 +100,12 @@ namespace Proto.Promises
         {
             get
             {
-                if (_instance == null)
+                PromiseYielder temp = _instance;
+                if (temp == null)
                 {
-                    _instance = new GameObject("Proto.Promises.PromiseYielder").AddComponent<PromiseYielder>();
+                    temp = new GameObject("Proto.Promises.PromiseYielder").AddComponent<PromiseYielder>();
                 }
-                return _instance;
+                return temp;
             }
         }
 
@@ -118,7 +119,8 @@ namespace Proto.Promises
                 Destroy(this);
                 return;
             }
-            hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
+            DontDestroyOnLoad(gameObject);
+            gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
             _instance = this;
         }
 
