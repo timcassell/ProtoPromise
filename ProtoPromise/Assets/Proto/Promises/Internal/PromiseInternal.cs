@@ -1,6 +1,12 @@
 ﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #endif
+#if !PROTO_PROMISE_CANCEL_DISABLE
+#define PROMISE_CANCEL
+#endif
+#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#endif
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
 #pragma warning disable IDE0018 // Inline variable declaration
@@ -3340,7 +3346,11 @@ namespace Proto.Promises
                     {
                         promise = promise.Then(promiseFuncs.Current);
                     }
+#if PROMISE_CANCEL
+                    return promise.ThenDuplicate(); // Prevents canceling only the very last callback.
+#else
                     return promise;
+#endif
                 }
 
                 protected override void Handle(Promise feed)
