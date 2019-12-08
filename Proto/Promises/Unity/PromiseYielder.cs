@@ -130,8 +130,11 @@ namespace Proto.Promises
             if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
 #endif
             {
-                Logger.LogWarning("PromiseYielder destroyed! Any pending yield promises will not be resolved!");
-                _instance = null;
+                if (_instance == this)
+                {
+                    Logger.LogWarning("PromiseYielder destroyed! Any pending yield promises will not be resolved!");
+                    _instance = null;
+                }
             }
         }
 

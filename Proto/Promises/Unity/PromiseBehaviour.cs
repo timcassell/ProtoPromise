@@ -43,8 +43,11 @@ namespace Proto.Promises
             if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
 #endif
             {
-                Logger.LogWarning("PromiseBehaviour destroyed! Promise callbacks will no longer be automatically invoked!");
-                _instance = null;
+                if (_instance == this)
+                {
+                    Logger.LogWarning("PromiseBehaviour destroyed! Promise callbacks will no longer be automatically invoked!");
+                    _instance = null;
+                }
             }
         }
 
