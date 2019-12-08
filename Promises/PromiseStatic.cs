@@ -391,7 +391,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise{T}"/> that will be canceled without a reason.
+        /// Returns a <see cref="Promise{T}"/> that is already canceled without a reason.
         /// </summary>
 #if !PROMISE_CANCEL
         [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
@@ -406,7 +406,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise{T}"/> that will be canceled with <paramref name="reason"/>.
+        /// Returns a <see cref="Promise{T}"/> that is already canceled with <paramref name="reason"/>.
         /// </summary>
 #if !PROMISE_CANCEL
         [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
