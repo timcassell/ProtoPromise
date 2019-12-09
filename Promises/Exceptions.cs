@@ -360,8 +360,8 @@ namespace Proto.Promises
             public abstract Type GetValueType();
             public abstract bool TryGetValueAs<U>(out U value);
             public abstract bool ContainsType<U>();
-            public abstract void Retain();
-            public abstract void Release();
+            public virtual void Retain() { }
+            public virtual void Release() { }
 
             protected string _stackTrace;
             public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
@@ -390,8 +390,8 @@ namespace Proto.Promises
             public abstract Type GetValueType();
             public abstract bool TryGetValueAs<U>(out U value);
             public abstract bool ContainsType<U>();
-            public abstract void Retain();
-            public abstract void Release();
+            public virtual void Retain() { }
+            public virtual void Release() { }
 
             public override string StackTrace { get { return null; } }
             public override string Message
@@ -591,10 +591,6 @@ namespace Proto.Promises
                     return InnerException;
                 }
 
-                public override void Release() { }
-
-                public override void Retain() { }
-
                 public override Type GetValueType()
                 {
                     return InnerException.GetType();
@@ -640,10 +636,6 @@ namespace Proto.Promises
                 {
                     return false;
                 }
-
-                public override void Retain() { }
-
-                public override void Release() { }
 
                 public override object GetValue()
                 {
