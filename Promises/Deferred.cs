@@ -35,12 +35,17 @@ namespace Proto.Promises
 
             ~DeferredBase()
             {
-                if (State == State.Pending)
+#if UNITY_EDITOR
+                if (UnityEditor.EditorApplication.isPlaying) // Don't check if we're not in play mode.
+#endif
                 {
-                    // Deferred wasn't handled.
-                    var exception = Internal.UnhandledExceptionException.GetOrCreate(UnhandledDeferredException.instance);
-                    SetStacktraceFromCreated(Promise, exception);
-                    AddRejectionToUnhandledStack(exception);
+                    if (State == State.Pending)
+                    {
+                        // Deferred wasn't handled.
+                        var exception = Internal.UnhandledExceptionException.GetOrCreate(UnhandledDeferredException.instance);
+                        SetStacktraceFromCreated(Promise, exception);
+                        AddRejectionToUnhandledStack(exception);
+                    }
                 }
             }
 

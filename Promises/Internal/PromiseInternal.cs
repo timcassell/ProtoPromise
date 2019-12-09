@@ -48,17 +48,22 @@ namespace Proto.Promises
 
         ~Promise()
         {
-            if (_retainCounter > 0 & _state != State.Pending)
+#if UNITY_EDITOR
+            if (UnityEditor.EditorApplication.isPlaying) // Don't check if we're not in play mode.
+#endif
             {
-                if (_state == State.Rejected & !_wasWaitedOn)
+                if (_retainCounter > 0 & _state != State.Pending)
                 {
-                    // Rejection wasn't caught.
-                    AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValueOrPrevious);
+                    if (_state == State.Rejected & !_wasWaitedOn)
+                    {
+                        // Rejection wasn't caught.
+                        AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) _rejectedOrCanceledValueOrPrevious);
+                    }
+                    // Promise wasn't released.
+                    var exception = Internal.UnhandledExceptionException.GetOrCreate(UnreleasedObjectException.instance);
+                    SetStacktraceFromCreated(this, exception);
+                    AddRejectionToUnhandledStack(exception);
                 }
-                // Promise wasn't released.
-                var exception = Internal.UnhandledExceptionException.GetOrCreate(UnreleasedObjectException.instance);
-                SetStacktraceFromCreated(this, exception);
-                AddRejectionToUnhandledStack(exception);
             }
         }
 
