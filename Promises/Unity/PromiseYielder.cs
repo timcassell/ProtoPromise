@@ -100,12 +100,11 @@ namespace Proto.Promises
         {
             get
             {
-                PromiseYielder temp = _instance;
-                if (temp == null)
+                if (_instance == null)
                 {
-                    temp = new GameObject("Proto.Promises.PromiseYielder").AddComponent<PromiseYielder>();
+                    _instance = new GameObject("Proto.Promises.PromiseYielder").AddComponent<PromiseYielder>();
                 }
-                return temp;
+                return _instance;
             }
         }
 
@@ -113,7 +112,7 @@ namespace Proto.Promises
 
         private void Start()
         {
-            if (_instance != null)
+            if (_instance != this)
             {
                 Logger.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
                 Destroy(this);
@@ -121,7 +120,6 @@ namespace Proto.Promises
             }
             DontDestroyOnLoad(gameObject);
             gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
-            _instance = this;
         }
 
         private void OnDestroy()
