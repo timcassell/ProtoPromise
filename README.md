@@ -37,6 +37,7 @@ This library took inspiration from <a href="https://developer.mozilla.org/en-US/
     - [Promise Retention](#promise-retention)
 - [Configuration](#configuration)
 - [Additional Information](#additional-information)
+    - [Unity Yield Instructions and Coroutines](#unity-yield-instructions-and-coroutines)
 
 ## Promises/A+ Spec
 This promise library conforms to the <a href="https://promisesaplus.com/">Promises/A+ Spec</a> as far as is possible with C#, and further extends it to support Cancelations and Progress.
@@ -461,3 +462,25 @@ If for some reason you wish to hold onto a promise reference and re-use it even 
 
 Almost all calls are asynchronous. This means that calling `promise.Then` will never call the delegate before the method returns, even if the promise is already settled. The same goes for `deferred.Resolve/Reject/Cancel/Progress`. Invoking those methods will not call attached progress or resolve/reject/cancel listeners before the method returns. Callbacks will be invoked later, the next time `Promise.Manager.HandleCompletes(AndProgress)` is called, which happens automatically every frame if you're in Unity.
 The exception to this rule is `Retain/Release`. If you release the promise and it is already settled, then it will be put back in the pool (if pooling is enabled) and will no longer be in a usable state. That's why you must always clear your references.
+
+### Unity Yield Instructions and Coroutines
+
+If you are using coroutines, you can easily convert a promise to a yield instruction via `promise.ToYieldInstruction()` which you can yield return to wait until the promise has settled. You can also convert any yield instruction (including coroutines themselves) to a promise via `PromiseYielder.WaitFor(yieldInstruction)`. This will wait until the yieldInstruction has completed and yield the same instruction to a resolve handler.
+```cs
+public Promise<Texture2D> DownloadTexture(string url)
+{
+    var www = UnityWebRequestTexture.GetTexture(url);
+    return PromiseYielder.WaitFor(www.SendWebRequest())
+        .Then(asyncOperation =>
+        {
+            if (asyncOperation.webRequest.isHttpError || asyncOperation.webRequest.isNetworkError)
+            {
+                throw Promise.RejectException(asyncOperation.webRequest.error);
+            }
+            return ((DownloadHandlerTexture) asyncOperation.webRequest.downloadHandler).texture;
+        })
+        .Finally(www.Dispose);
+}
+```
+
+In this example, we use the `Finally` method to clean up resources. Finally handlers will be called when the promise is resolved, rejected, or canceled.
