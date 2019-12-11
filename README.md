@@ -1,7 +1,7 @@
 # ProtoPromise
 <a href="https://promisesaplus.com/">
     <img src="https://promisesaplus.com/assets/logo-small.png" alt="Promises/A+ logo"
-         title="Promises/A+ 1.0 compliant" align="right" />
+         title="Promises/A+ 1.1 compliant" align="right" />
 </a>
 Promise library for C# for management of asynchronous operations.
 
