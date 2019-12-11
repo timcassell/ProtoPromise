@@ -252,7 +252,7 @@ Promises can be canceled 2 ways: `deferred.Cancel(reason)` or `promise.Cancel(re
 cancelable = Download("http://www.google.com");     // <---- This will be canceled before the download completes.
 cancelable
     .Then(html => Console.Log(html))                // <----
-    .Then(() => Download("http://www.bing.com))     // <---- These will also be canceled and will not run.
+    .Then(() => Download("http://www.bing.com"))    // <---- These will also be canceled and will not run.
     .Then(html => Console.Log(html));               // <----
     
 // ... later, before the first download is complete
@@ -288,7 +288,7 @@ Cancelations always propagate downwards, and never upwards:
 cancelable =
     Download("http://www.google.com")               // <---- This will *not* be canceled and will run to completion
     .Then(html => Console.Log(html))                // <---- This will also *not* be canceled and will run
-    .Then(() => Download("http://www.bing.com));    // <---- This will be canceled before the download starts and will not run.
+    .Then(() => Download("http://www.bing.com"));    // <---- This will be canceled before the download starts and will not run.
 cancelable
     .Then(html => Console.Log(html));               // <----This will also be canceled and will not run.
     
