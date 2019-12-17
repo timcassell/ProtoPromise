@@ -34,6 +34,7 @@ This library took inspiration from <a href="https://developer.mozilla.org/en-US/
 - [Configuration](#configuration)
 - [Advanced](#advanced)
     - [Error Retries](#error-retries)
+    - [Multiple Callbacks](#multiple-callbacks)
     - [Promise Retention](#promise-retention)
 - [Configuration](#configuration)
 - [Additional Information](#additional-information)
