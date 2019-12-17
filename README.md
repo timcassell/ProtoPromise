@@ -452,6 +452,10 @@ public Promise<string> Download(string url, int maxRetries = 0)
 Async recursion is just as powerful as regular recursion, but it is also just as dangerous, if not more. If you mess up on regular recursion, your program will immediately crash from a `StackOverflowException`. Async recursion with this library will never crash from a stack overflow due to the iterative implementation, however if you don't do it right, it will eventually crash from an `OutOfMemoryException` due to each call waiting for the next and creating a new promise each time, consuming your heap space.
 Because promises can remain pending for an indeterminate amount of time, this error can potentially take a long time to show itself and be difficult to track down. So be very careful when implementing async recursion, and remember to always have a base case!
 
+### Multiple Callbacks
+
+Multiple callbacks can be added to a single promise object which will be invoked in the order that they are added. Adding multiple resolve or reject callbacks creates promise branches. Sometimes you might want to use a single promise for multiple consumers. One or more of those consumers might want to cancel the promise, and if one consumer cancels the base promise, all branches will be canceled. In order to solve this issue, you can use `promise.ThenDuplicate()` to get a new promise that will adopt the state of the base promise which can be canceled without canceling all the other branches.
+
 ### Promise Retention
 
 *This is not recommended. See [Promises that are already settled](#promises-that-are-already-settled) for a safer option.*
