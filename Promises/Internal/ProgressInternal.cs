@@ -48,7 +48,7 @@ namespace Proto.Promises
             {
                 protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
-                    ExchangePassthroughs(ref passThroughs, ref borrower);
+                    ExchangePassthroughs(ref _passThroughs, ref borrower);
                 }
             }
 
@@ -56,7 +56,7 @@ namespace Proto.Promises
             {
                 protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
-                    ExchangePassthroughs(ref passThroughs, ref borrower);
+                    ExchangePassthroughs(ref _passThroughs, ref borrower);
                 }
             }
 
@@ -64,7 +64,7 @@ namespace Proto.Promises
             {
                 protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
-                    ExchangePassthroughs(ref passThroughs, ref borrower);
+                    ExchangePassthroughs(ref _passThroughs, ref borrower);
                 }
             }
 
@@ -72,7 +72,7 @@ namespace Proto.Promises
             {
                 protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
-                    ExchangePassthroughs(ref passThroughs, ref borrower);
+                    ExchangePassthroughs(ref _passThroughs, ref borrower);
                 }
             }
 
@@ -80,7 +80,7 @@ namespace Proto.Promises
             {
                 protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
-                    ExchangePassthroughs(ref passThroughs, ref borrower);
+                    ExchangePassthroughs(ref _passThroughs, ref borrower);
                 }
             }
 
@@ -88,7 +88,7 @@ namespace Proto.Promises
             {
                 protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
-                    ExchangePassthroughs(ref passThroughs, ref borrower);
+                    ExchangePassthroughs(ref _passThroughs, ref borrower);
                 }
             }
         }
@@ -241,7 +241,7 @@ namespace Proto.Promises
                 var passThrough = passThroughs.Pop();
                 promise = passThrough.Owner;
                 progressListener = passThrough;
-                passThrough.Target.ReAdd(passThrough);
+                passThrough.target.ReAdd(passThrough);
                 goto Repeat;
             }
         }
@@ -857,12 +857,12 @@ namespace Proto.Promises
             {
                 void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
                 {
-                    Target.IncrementProgress(amount.ToUInt32(), amount, Owner._waitDepthAndProgress);
+                    target.IncrementProgress(amount.ToUInt32(), amount, Owner._waitDepthAndProgress);
                 }
 
                 void IProgressListener.IncrementProgress(Promise sender, uint amount)
                 {
-                    Target.IncrementProgress(amount, sender._waitDepthAndProgress, Owner._waitDepthAndProgress);
+                    target.IncrementProgress(amount, sender._waitDepthAndProgress, Owner._waitDepthAndProgress);
                 }
 
                 void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount)
@@ -872,7 +872,7 @@ namespace Proto.Promises
 
                 void IProgressListener.CancelOrIncrementProgress(Promise sender, uint amount)
                 {
-                    Target.CancelOrIncrementProgress(amount, sender._waitDepthAndProgress, Owner._waitDepthAndProgress);
+                    target.CancelOrIncrementProgress(amount, sender._waitDepthAndProgress, Owner._waitDepthAndProgress);
                     Release();
                 }
             }

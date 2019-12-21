@@ -24,39 +24,70 @@ namespace Proto.Promises
     {
         partial class Internal
         {
+            public static Promise _All<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
+            {
+                ValidateArgument(promises, "promises", skipFrames + 1);
+                if (!promises.MoveNext())
+                {
+                    // If promises is empty, just return a resolved promise.
+                    return Resolved();
+                }
+                int count;
+                var passThroughs = WrapInPassThroughs(promises, out count, skipFrames + 1);
+                return AllPromise0.GetOrCreate(passThroughs, count, skipFrames + 1);
+            }
+
+            public static Promise<IList<T>> _All<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer, int skipFrames) where TEnumerator : IEnumerator<Promise<T>>
+            {
+                ValidateArgument(promises, "promises", skipFrames + 1);
+                if (!promises.MoveNext())
+                {
+                    // If promises is empty, just return a resolved promise.
+                    if (valueContainer.Count > 0) // Count check in case valueContainer is an array .
+                    {
+                        valueContainer.Clear();
+                    }
+                    return Resolved(valueContainer);
+                }
+                int count;
+                var passThroughs = WrapInPassThroughs<T, TEnumerator>(promises, out count, skipFrames + 1);
+
+                // Only change the count of the valueContainer if it's greater or less than the promises count. This allows arrays to be used if they are the proper length.
+                int i = valueContainer.Count;
+                if (i < count)
+                {
+                    do
+                    {
+                        valueContainer.Add(default(T));
+                    }
+                    while (++i < count);
+                }
+                else while (i > count)
+                    {
+                        valueContainer.RemoveAt(--i);
+                    }
+
+                return AllPromise<T>.GetOrCreate(passThroughs, valueContainer, count, skipFrames + 1);
+            }
+
             public sealed partial class AllPromise0 : PoolablePromise<AllPromise0>, IMultiTreeHandleable
             {
-                private ValueLinkedStack<PromisePassThrough> passThroughs;
+                private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 private uint _waitCount;
 
                 private AllPromise0() { }
 
-                public static Promise GetOrCreate<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
+                public static Promise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count, int skipFrames)
                 {
-                    if (!promises.MoveNext())
-                    {
-                        // If promises is empty, just return a resolved promise.
-                        return Resolved();
-                    }
-
                     var promise = _pool.IsNotEmpty ? (AllPromise0) _pool.Pop() : new AllPromise0();
 
-                    var target = promises.Current;
-                    ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
-                    ValidateOperation(target, skipFrames + 1);
-                    int promiseIndex = 0;
-                    // Hook up pass throughs
-                    var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
-                    while (promises.MoveNext())
+                    foreach (var passThrough in promisePassThroughs)
                     {
-                        target = promises.Current;
-                        ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
-                        ValidateOperation(target, skipFrames + 1);
-                        passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
+                        passThrough.target = promise;
                     }
-                    promise.passThroughs = passThroughs;
+                    promise._passThroughs = promisePassThroughs;
 
-                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._waitCount = (uint) count;
                     // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
                     promise._retainCounter = promise._waitCount + 1u;
@@ -74,9 +105,9 @@ namespace Proto.Promises
                 {
                     if (done)
                     {
-                        while (passThroughs.IsNotEmpty)
+                        while (_passThroughs.IsNotEmpty)
                         {
-                            passThroughs.Pop().Release();
+                            _passThroughs.Pop().Release();
                         }
                         ReleaseInternal();
                     }
@@ -117,7 +148,7 @@ namespace Proto.Promises
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
-                    passThroughs.Push(passThrough);
+                    _passThroughs.Push(passThrough);
                 }
 
                 protected override void OnCancel()
@@ -129,57 +160,23 @@ namespace Proto.Promises
 
             public sealed partial class AllPromise<T> : PoolablePromise<IList<T>, AllPromise<T>>, IMultiTreeHandleable
             {
-                private ValueLinkedStack<PromisePassThrough> passThroughs;
+                private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 private uint _waitCount;
 
                 private AllPromise() { }
 
-                public static Promise<IList<T>> GetOrCreate<TEnumerator>(TEnumerator promises, IList<T> valueContainer, int skipFrames) where TEnumerator : IEnumerator<Promise<T>>
+                public static Promise<IList<T>> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, IList<T> valueContainer, int count, int skipFrames)
                 {
-                    if (!promises.MoveNext())
-                    {
-                        // If promises is empty, just return a resolved promise.
-                        if (valueContainer.Count > 0) // Count check in case valueContainer is an array .
-                        {
-                            valueContainer.Clear();
-                        }
-                        return Resolved(valueContainer);
-                    }
-
                     var promise = _pool.IsNotEmpty ? (AllPromise<T>) _pool.Pop() : new AllPromise<T>();
+
                     promise._value = valueContainer;
-
-                    var target = promises.Current;
-                    ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
-                    ValidateOperation(target, skipFrames + 1);
-                    int promiseIndex = 0;
-                    // Hook up pass throughs and make sure the list has space for the values.
-                    var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
-                    while (promises.MoveNext())
+                    foreach (var passThrough in promisePassThroughs)
                     {
-                        target = promises.Current;
-                        ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
-                        ValidateOperation(target, skipFrames + 1);
-                        passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
+                        passThrough.target = promise;
                     }
-                    int length = promiseIndex + 1;
-                    promise.passThroughs = passThroughs;
+                    promise._passThroughs = promisePassThroughs;
 
-                    // Only change the count of the valueContainer if it's greater or less than the promises count. This allows arrays to be used if they are the proper length.
-                    int i = valueContainer.Count;
-                    if (i < length)
-                    {
-                        do
-                        {
-                            valueContainer.Add(default(T));
-                        } while (++i < length);
-                    }
-                    else while (i > length)
-                        {
-                            valueContainer.RemoveAt(--i);
-                        }
-
-                    promise._waitCount = (uint) length;
+                    promise._waitCount = (uint) count;
                     // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
                     promise._retainCounter = promise._waitCount + 1u;
@@ -197,9 +194,9 @@ namespace Proto.Promises
                 {
                     if (done)
                     {
-                        while (passThroughs.IsNotEmpty)
+                        while (_passThroughs.IsNotEmpty)
                         {
-                            passThroughs.Pop().Release();
+                            _passThroughs.Pop().Release();
                         }
                         ReleaseInternal();
                     }
@@ -226,7 +223,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            _value[index] = ((PromiseInternal<T>) feed).Value;
+                            _value[index] = ((PromiseInternal<T>) feed)._value;
                             if (done)
                             {
                                 ResolveInternalWithoutRelease();
@@ -244,7 +241,7 @@ namespace Proto.Promises
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
-                    passThroughs.Push(passThrough);
+                    _passThroughs.Push(passThrough);
                 }
 
                 protected override void OnCancel()
@@ -276,7 +273,7 @@ namespace Proto.Promises
 
                         uint expectedProgressCounter = 0;
                         uint maxWaitDepth = 0;
-                        foreach (var passThrough in passThroughs)
+                        foreach (var passThrough in _passThroughs)
                         {
                             uint waitDepth = passThrough.Owner._waitDepthAndProgress.WholePart;
                             expectedProgressCounter += waitDepth;
@@ -387,7 +384,7 @@ namespace Proto.Promises
 
                         uint expectedProgressCounter = 0;
                         uint maxWaitDepth = 0;
-                        foreach (var passThrough in passThroughs)
+                        foreach (var passThrough in _passThroughs)
                         {
                             uint waitDepth = passThrough.Owner._waitDepthAndProgress.WholePart;
                             expectedProgressCounter += waitDepth;

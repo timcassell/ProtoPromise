@@ -339,8 +339,6 @@ namespace Proto.Promises
 
     partial class Promise<T>
     {
-        protected T _value;
-
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
         private
 #endif
@@ -349,18 +347,6 @@ namespace Proto.Promises
         protected override Promise GetDuplicate()
         {
             return Promise.Internal.DuplicatePromise<T>.GetOrCreate(2);
-        }
-
-        protected override void Dispose()
-        {
-            _value = default(T);
-            base.Dispose();
-        }
-
-        new protected void HandleSelf(Promise feed)
-        {
-            _value = ((Promise<T>) feed)._value;
-            base.HandleSelf(feed);
         }
     }
 
@@ -374,11 +360,19 @@ namespace Proto.Promises
 
             public abstract class PromiseInternal<T> : Promise<T>
             {
-#if CSHARP_7_OR_LATER
-                public ref T Value { get { return ref _value; } }
-#else
-                public T Value { get { return _value; } }
-#endif
+                public T _value;
+
+                protected override void Dispose()
+                {
+                    _value = default(T);
+                    base.Dispose();
+                }
+
+                new protected void HandleSelf(Promise feed)
+                {
+                    _value = ((PromiseInternal<T>) feed)._value;
+                    base.HandleSelf(feed);
+                }
             }
 
             public abstract class PoolablePromise<TPromise> : Promise where TPromise : PoolablePromise<TPromise>
@@ -690,7 +684,7 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         _invokingResolved = true;
-                        callback.Invoke(((PromiseInternal<TArg>) feed).Value);
+                        callback.Invoke(((PromiseInternal<TArg>) feed)._value);
                         ResolveInternalIfNotCanceled();
                     }
                     else
@@ -764,7 +758,7 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         _invokingResolved = true;
-                        _value = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
+                        _value = callback.Invoke(((PromiseInternal<TArg>) feed)._value);
                         ResolveInternalIfNotCanceled();
                     }
                     else
@@ -851,7 +845,7 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         _invokingResolved = true;
-                        WaitFor(callback.Invoke(((PromiseInternal<TArg>) feed).Value));
+                        WaitFor(callback.Invoke(((PromiseInternal<TArg>) feed)._value));
                     }
                     else
                     {
@@ -937,7 +931,7 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         _invokingResolved = true;
-                        WaitFor(callback.Invoke(((PromiseInternal<TArg>) feed).Value));
+                        WaitFor(callback.Invoke(((PromiseInternal<TArg>) feed)._value));
                     }
                     else
                     {
@@ -1049,7 +1043,7 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         _invokingResolved = true;
-                        var deferredAction = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
+                        var deferredAction = callback.Invoke(((PromiseInternal<TArg>) feed)._value);
                         try
                         {
                             ValidateReturn(deferredAction);
@@ -1177,7 +1171,7 @@ namespace Proto.Promises
                     if (feed._state == State.Resolved)
                     {
                         _invokingResolved = true;
-                        var deferredAction = callback.Invoke(((PromiseInternal<TArg>) feed).Value);
+                        var deferredAction = callback.Invoke(((PromiseInternal<TArg>) feed)._value);
                         try
                         {
                             ValidateReturn(deferredAction);
@@ -1293,7 +1287,7 @@ namespace Proto.Promises
                     else
                     {
                         callback.Dispose();
-                        _value = ((PromiseInternal<T>) feed).Value;
+                        _value = ((PromiseInternal<T>) feed)._value;
                         ResolveInternal();
                     }
                 }
@@ -1406,7 +1400,7 @@ namespace Proto.Promises
                     else
                     {
                         callback.Dispose();
-                        _value = ((PromiseInternal<TPromise>) feed).Value;
+                        _value = ((PromiseInternal<TPromise>) feed)._value;
                         ResolveInternal();
                     }
                 }
@@ -1555,7 +1549,7 @@ namespace Proto.Promises
                         // Deferred is never used, so just release.
                         _deferredInternal.ReleaseDirect();
                         callback.Dispose();
-                        _value = ((PromiseInternal<TDeferred>) feed).Value;
+                        _value = ((PromiseInternal<TDeferred>) feed)._value;
                         ResolveInternal();
                     }
                 }
@@ -2642,7 +2636,7 @@ namespace Proto.Promises
 
                 public void DisposeAndInvoke(Promise feed)
                 {
-                    DisposeAndInvoke(((PromiseInternal<TArg>) feed).Value);
+                    DisposeAndInvoke(((PromiseInternal<TArg>) feed)._value);
                 }
             }
 
@@ -2805,7 +2799,7 @@ namespace Proto.Promises
 
                 public TResult DisposeAndInvoke(Promise feed)
                 {
-                    return DisposeAndInvoke(((PromiseInternal<TArg>) feed).Value);
+                    return DisposeAndInvoke(((PromiseInternal<TArg>) feed)._value);
                 }
             }
             #endregion
@@ -2863,16 +2857,18 @@ namespace Proto.Promises
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
 
                 public Promise Owner { get; private set; }
-                public IMultiTreeHandleable Target { get; private set; }
+                public IMultiTreeHandleable target;
 
                 private uint _retainCounter;
                 private int _index;
 
-                public static PromisePassThrough GetOrCreate(Promise owner, IMultiTreeHandleable target, int index)
+                public static PromisePassThrough GetOrCreate(Promise owner, int index, int skipFrames)
                 {
+                    ValidateElementNotNull(owner, "promises", "A promise was null", skipFrames + 1);
+                    ValidateOperation(owner, skipFrames + 1);
+
                     var passThrough = _pool.IsNotEmpty ? _pool.Pop() : new PromisePassThrough();
                     passThrough.Owner = owner;
-                    passThrough.Target = target;
                     passThrough._index = index;
                     passThrough._retainCounter = 2u;
                     owner.AddWaiter(passThrough);
@@ -2883,7 +2879,7 @@ namespace Proto.Promises
 
                 void ITreeHandleable.Cancel()
                 {
-                    var temp = Target;
+                    var temp = target;
                     var cancelValue = Owner._rejectedOrCanceledValueOrPrevious;
                     temp.Cancel(cancelValue);
                     Release();
@@ -2891,7 +2887,7 @@ namespace Proto.Promises
 
                 void ITreeHandleable.Handle()
                 {
-                    var temp = Target;
+                    var temp = target;
                     var feed = Owner;
                     Reset();
                     temp.Handle(feed, _index);
@@ -2902,7 +2898,7 @@ namespace Proto.Promises
                 private void Reset()
                 {
                     Owner = null;
-                    Target = null;
+                    target = null;
                 }
 
                 public void Retain()
@@ -2922,6 +2918,34 @@ namespace Proto.Promises
                         _pool.Push(this);
                     }
                 }
+            }
+
+            public static ValueLinkedStack<PromisePassThrough> WrapInPassThroughs<TEnumerator>(TEnumerator promises, out int count, int skipFrames) where TEnumerator : IEnumerator<Promise>
+            {
+                // Assumes promises.MoveNext() was already called once before this.
+                int index = 0;
+                var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(promises.Current, index, skipFrames + 1));
+                while (promises.MoveNext())
+                {
+                    passThroughs.Push(PromisePassThrough.GetOrCreate(promises.Current, ++index, skipFrames + 1));
+                }
+                count = index + 1;
+                return passThroughs;
+            }
+
+#pragma warning disable RECS0096 // Type parameter is never used
+            public static ValueLinkedStack<PromisePassThrough> WrapInPassThroughs<T, TEnumerator>(TEnumerator promises, out int count, int skipFrames) where TEnumerator : IEnumerator<Promise<T>>
+#pragma warning restore RECS0096 // Type parameter is never used
+            {
+                // Assumes promises.MoveNext() was already called once before this.
+                int index = 0;
+                var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(promises.Current, index, skipFrames + 1));
+                while (promises.MoveNext())
+                {
+                    passThroughs.Push(PromisePassThrough.GetOrCreate(promises.Current, ++index, skipFrames + 1));
+                }
+                count = index + 1;
+                return passThroughs;
             }
         }
     }

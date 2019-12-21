@@ -160,7 +160,7 @@ namespace Proto.Promises
                 // passThroughs are removed from their targets before adding to passThroughs. Add them back here.
                 var passThrough = passThroughs.Pop();
                 prev = passThrough.Owner;
-                passThrough.Target.ReAdd(passThrough);
+                passThrough.target.ReAdd(passThrough);
                 goto Repeat;
             }
         }

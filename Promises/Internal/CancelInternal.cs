@@ -234,7 +234,7 @@ namespace Proto.Promises
 #endif
             {
                 _state = State.Resolved;
-                _value = value;
+                ((Promise.Internal.PromiseInternal<T>) this)._value = value;
                 AddToHandleQueueBack(this);
             }
         }

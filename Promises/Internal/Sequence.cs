@@ -23,49 +23,50 @@ namespace Proto.Promises
     {
         partial class Internal
         {
-            public sealed partial class SequencePromise0 : PromiseWaitPromise<SequencePromise0>
+            public static Promise _Sequence<TEnumerator>(TEnumerator promiseFuncs, int skipFrames) where TEnumerator : IEnumerator<Func<Promise>>
             {
-                static partial void GetFirstPromise(ref Promise promise, int skipFrames);
-
-                public static Promise GetOrCreate<TEnumerator>(TEnumerator promiseFuncs, int skipFrames) where TEnumerator : IEnumerator<Func<Promise>>
+                ValidateArgument(promiseFuncs, "promiseFuncs", skipFrames + 1);
+                if (!promiseFuncs.MoveNext())
                 {
-                    if (!promiseFuncs.MoveNext())
-                    {
-                        // If promiseFuncs is empty, just return a resolved promise.
-                        return Resolved();
-                    }
+                    // If promiseFuncs is empty, just return a resolved promise.
+                    return Resolved();
+                }
 
-                    Promise promise = promiseFuncs.Current.Invoke();
-                    GetFirstPromise(ref promise, skipFrames + 1);
-
-                    while (promiseFuncs.MoveNext())
-                    {
-                        promise = promise.Then(promiseFuncs.Current);
-                    }
-#if PROMISE_CANCEL
-                    return promise.ThenDuplicate(); // Prevents canceling only the very last callback.
-#else
-                    return promise;
+                Promise promise = promiseFuncs.Current.Invoke();
+#if PROMISE_PROGRESS
+                // Only wrap the promise to normalize its progress. If we're not using progress, we can just use the promise as-is.
+                promise = SequencePromise0.GetOrCreate(promise, skipFrames + 1);
 #endif
+
+                while (promiseFuncs.MoveNext())
+                {
+                    promise = promise.Then(promiseFuncs.Current);
+                }
+#if PROMISE_CANCEL
+                return promise.ThenDuplicate(); // Prevents canceling only the very last callback.
+#else
+                return promise;
+#endif
+            }
+
+#if PROMISE_PROGRESS
+            public sealed class SequencePromise0 : PromiseWaitPromise<SequencePromise0>
+            {
+                public static Promise GetOrCreate(Promise promise, int skipFrames)
+                {
+                    var newPromise = _pool.IsNotEmpty ? (SequencePromise0) _pool.Pop() : new SequencePromise0();
+                    newPromise.Reset(skipFrames + 1);
+                    newPromise.ResetDepth();
+                    newPromise.WaitFor(promise);
+                    return newPromise;
                 }
 
                 protected override void Handle(Promise feed)
                 {
                     HandleSelf(feed);
                 }
-
-#if PROMISE_PROGRESS
-                // Only wrap the promise to normalize its progress. If we're not using progress, we can just use the promise as-is.
-                static partial void GetFirstPromise(ref Promise promise, int skipFrames)
-                {
-                    var newPromise = _pool.IsNotEmpty ? (SequencePromise0) _pool.Pop() : new SequencePromise0();
-                    newPromise.Reset(skipFrames + 1);
-                    newPromise.ResetDepth();
-                    newPromise.WaitFor(promise);
-                    promise = newPromise;
-                }
-#endif
             }
+#endif
         }
     }
 }

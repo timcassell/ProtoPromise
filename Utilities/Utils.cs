@@ -5,31 +5,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-#if !UNITY_5_3_OR_NEWER
-namespace UnityEngine
-{
-    /// <summary>
-    /// Custom yield instruction. Use yield return StartCoroutine(customYieldInstruction)
-    /// </summary>
-    public abstract class CustomYieldInstruction : IEnumerator
-    {
-        public abstract bool keepWaiting { get; }
-
-        public object Current { get { return null; } }
-
-        public bool MoveNext()
-        {
-            return keepWaiting;
-        }
-
-        public void Reset()
-        {
-            throw new NotImplementedException();
-        }
-    }
-}
-#endif
-
 namespace Proto.Utils
 {
     public interface IValueContainer<T>
@@ -618,3 +593,28 @@ namespace Proto.Utils
         }
     }
 }
+
+#if !UNITY_5_3_OR_NEWER
+namespace UnityEngine
+{
+    /// <summary>
+    /// Custom yield instruction. Use yield return StartCoroutine(customYieldInstruction)
+    /// </summary>
+    public abstract class CustomYieldInstruction : IEnumerator
+    {
+        public abstract bool keepWaiting { get; }
+
+        public object Current { get { return null; } }
+
+        public bool MoveNext()
+        {
+            return keepWaiting;
+        }
+
+        public void Reset()
+        {
+            throw new NotImplementedException();
+        }
+    }
+}
+#endif
