@@ -52,7 +52,7 @@ namespace Proto.Promises
                 }
             }
 
-            partial class AllPromise<T>
+            partial class MergePromise<T>
             {
                 protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {

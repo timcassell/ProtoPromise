@@ -15,7 +15,6 @@
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
 using System;
-using System.Collections.Generic;
 using Proto.Utils;
 
 namespace Proto.Promises
@@ -28,11 +27,11 @@ namespace Proto.Promises
             {
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 private uint _waitCount;
-                Action<Promise, PromiseInternal<T>, int> _onPromiseResolved;
+                Action<Promise, MergePromise<T>, int> _onPromiseResolved;
 
                 private MergePromise() { }
 
-                public static MergePromise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, Action<Promise, PromiseInternal<T>, int> onPromiseResolved, int count, int skipFrames)
+                public static MergePromise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, Action<Promise, MergePromise<T>, int> onPromiseResolved, int count, int skipFrames)
                 {
                     var promise = _pool.IsNotEmpty ? (MergePromise<T>) _pool.Pop() : new MergePromise<T>();
 
