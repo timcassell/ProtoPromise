@@ -367,7 +367,7 @@ Download("google.com")                      // <---- This will report 0.0f - 0.2
     .Then(() => Download("bing.com"))       // <---- This will report 0.5f - 0.75f
     .Then(() => WaitForSeconds(1f))         // <---- This will report 0.75f - 1.0f
     .Progress(progressBar.SetProgress);
-    .Then(() => Console.Log("Waited 4 seconds"));
+    .Then(() => Console.Log("Downloads and extra waits complete."));
 ```
 
 ## Combining Multiple Async Operations
