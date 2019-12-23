@@ -28,6 +28,7 @@ This library took inspiration from <a href="https://developer.mozilla.org/en-US/
 - [Progress reporting](#progress-reporting)
 - [Combining Multiple Async Operations](#combining-multiple-async-operations)
     - [All Parallel](#all-parallel)
+    - [Merge Parallel](#merge-parallel)
     - [Race Parallel](#race-parallel)
     - [First Parallel](#first-parallel)
     - [Sequence](#sequence)
@@ -394,6 +395,17 @@ Promise.All(Download("http://www.google.com"), Download("http://www.bing.com")) 
 ```
 
 Progress from an All promise will be normalized from all of the input promises.
+
+### Merge Parallel
+
+The `Merge` function behaves just like the `All` function, except that it can be used to combine multiple types, and instead of yielding an `IList<T>`, it yields a `ValueTuple<>` that contains the types of the promises provided to the function.
+```cs
+Promise.Merge(Download("http://www.google.com"), DownloadImage("http://www.example.com/image.jpg"))  // Download HTML and image.
+    .Then(values =>                         // Receives ValueTuple<string, Texture>.
+        Console.WriteLine(values.Item1);    // Print the HTML.
+        image.SetTexture(values.Item2);     // Assign the texture to an image object.
+    );
+```
 
 ### Race Parallel
 
