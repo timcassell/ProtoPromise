@@ -461,7 +461,9 @@ public Promise<string> Download(string url, int maxRetries = 0)
     return Download(url)
         .Catch(() =>
         {
-            if (maxRetries == 0)
+            //if (maxRetries == 0)  // If maxRetries is negative and we only check if it equals zero,
+                                    // this will potentially keep retrying 4 billion times and take up all the heap space.
+            if (maxRetries <= 0)
             {
                 throw Promise.Rethrow; // Rethrow the rejection without processing it so that the caller can catch it.
             }
