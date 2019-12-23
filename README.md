@@ -33,6 +33,7 @@ This library took inspiration from <a href="https://developer.mozilla.org/en-US/
     - [First Parallel](#first-parallel)
     - [Sequence](#sequence)
 - [Configuration](#configuration)
+    - [Compiler Options](#compiler-options)
 - [Advanced](#advanced)
     - [Error Retries](#error-retries)
     - [Multiple Callbacks](#multiple-callbacks)
@@ -440,6 +441,14 @@ var sequence = Promise.Sequence(
 You can change whether or not objects will be pooled via `Promise.Config.ObjectPooling`. Enabling pooling reduces GC pressure.
 
 If you are in DEBUG mode, you can configure when additional stacktraces will be generated via `Promise.Config.DebugStacktraceGenerator`.
+
+### Compiler Options
+
+Cancelations and Progress can be disabled if you don't intend to use them and want to save a little memory/cpu cycles.
+You can disable cancelations by adding `PROTO_PROMISE_CANCEL_DISABLE` to your compiler symbols.
+Similarly, you can disable progress by adding `PROTO_PROMISE_PROGRESS_DISABLE` to your compiler symbols.
+
+By default, debug options are tied to the `DEBUG` compiler symbol, which is defined by default in the Unity Editor and not defined in release builds. You can override that by defining `PROTO_PROMISE_DEBUG_ENABLE` to force debugging on in release builds, or `PROTO_PROMISE_DEBUG_DISABLE` to force debugging off in debug builds (or in the Unity Editor). If both symbols are defined, `ENABLE` takes precedence.
 
 ## Advanced
 
