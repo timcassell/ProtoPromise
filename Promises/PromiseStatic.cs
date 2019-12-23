@@ -1054,7 +1054,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that is already canceled without a reason.
         /// </summary>
 #if !PROMISE_CANCEL
-            [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
+        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
         public static Promise Canceled()
         {
@@ -1160,6 +1160,7 @@ namespace Proto.Promises
         {
 #if !PROMISE_CANCEL
             ThrowCancelException(1);
+            return null;
 #else
             if (Internal._invokingResolved | Internal._invokingRejected)
             {
@@ -1183,6 +1184,7 @@ namespace Proto.Promises
         {
 #if !PROMISE_CANCEL
             ThrowCancelException(1);
+            return null;
 #else
             if (Internal._invokingResolved | Internal._invokingRejected)
             {

@@ -8,6 +8,7 @@
 #define PROMISE_PROGRESS
 #endif
 
+#pragma warning disable RECS0001 // Class is declared partial but has only one part
 #pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
