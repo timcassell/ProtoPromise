@@ -1154,7 +1154,7 @@ namespace Proto.Promises
         /// </summary>
         /// <exception cref="InvalidOperationException"/>
 #if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", false)]
+        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
         public static CanceledException CancelException()
         {
@@ -1178,7 +1178,7 @@ namespace Proto.Promises
         /// </summary>
         /// <exception cref="InvalidOperationException"/>
 #if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", false)]
+        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
         public static CanceledException CancelException<T>(T value)
         {
