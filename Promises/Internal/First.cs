@@ -8,6 +8,7 @@
 #define PROMISE_PROGRESS
 #endif
 
+#pragma warning disable RECS0001 // Class is declared partial but has only one part
 #pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
@@ -24,38 +25,48 @@ namespace Proto.Promises
     {
         partial class Internal
         {
+            public static Promise _First<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
+            {
+                ValidateArgument(promises, "promises", skipFrames + 1);
+                if (!promises.MoveNext())
+                {
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to First.", GetFormattedStacktrace(skipFrames + 1));
+                }
+                int count;
+                var passThroughs = WrapInPassThroughs(promises, out count, skipFrames + 1);
+                return FirstPromise0.GetOrCreate(passThroughs, count, skipFrames + 1);
+            }
+
+            public static Promise<T> _First<T, TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise<T>>
+            {
+                ValidateArgument(promises, "promises", skipFrames + 1);
+                if (!promises.MoveNext())
+                {
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to First.", GetFormattedStacktrace(skipFrames + 1));
+                }
+                int count;
+                var passThroughs = WrapInPassThroughs<T, TEnumerator>(promises, out count, skipFrames + 1);
+                return FirstPromise<T>.GetOrCreate(passThroughs, count, skipFrames + 1);
+            }
+
             public sealed partial class FirstPromise0 : PoolablePromise<FirstPromise0>, IMultiTreeHandleable
             {
-                private ValueLinkedStack<PromisePassThrough> passThroughs;
+                private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 private uint _waitCount;
 
                 private FirstPromise0() { }
 
-                public static Promise GetOrCreate<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
+                public static Promise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count, int skipFrames)
                 {
-                    if (!promises.MoveNext())
-                    {
-                        throw new EmptyArgumentException("promises", "You must provide at least one element to First.", GetFormattedStacktrace(skipFrames + 1));
-                    }
-
                     var promise = _pool.IsNotEmpty ? (FirstPromise0) _pool.Pop() : new FirstPromise0();
 
-                    var target = promises.Current;
-                    ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
-                    ValidateOperation(target, skipFrames + 1);
-                    int promiseIndex = 0;
-                    // Hook up pass throughs
-                    var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
-                    while (promises.MoveNext())
+                    foreach (var passThrough in promisePassThroughs)
                     {
-                        target = promises.Current;
-                        ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
-                        ValidateOperation(target, skipFrames + 1);
-                        passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
+                        passThrough.target = promise;
                     }
-                    promise.passThroughs = passThroughs;
+                    promise._passThroughs = promisePassThroughs;
 
-                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._waitCount = (uint) count;
                     // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
                     promise._retainCounter = promise._waitCount + 1u;
@@ -73,9 +84,9 @@ namespace Proto.Promises
                 {
                     if (done)
                     {
-                        while (passThroughs.IsNotEmpty)
+                        while (_passThroughs.IsNotEmpty)
                         {
-                            passThroughs.Pop().Release();
+                            _passThroughs.Pop().Release();
                         }
                         ReleaseInternal();
                     }
@@ -112,7 +123,7 @@ namespace Proto.Promises
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
-                    passThroughs.Push(passThrough);
+                    _passThroughs.Push(passThrough);
                 }
 
                 protected override void OnCancel()
@@ -124,36 +135,22 @@ namespace Proto.Promises
 
             public sealed partial class FirstPromise<T> : PoolablePromise<T, FirstPromise<T>>, IMultiTreeHandleable
             {
-                private ValueLinkedStack<PromisePassThrough> passThroughs;
+                private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 private uint _waitCount;
 
                 private FirstPromise() { }
 
-                public static Promise<T> GetOrCreate<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise<T>>
+                public static Promise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count, int skipFrames)
                 {
-                    if (!promises.MoveNext())
-                    {
-                        throw new EmptyArgumentException("promises", "You must provide at least one element to First.", GetFormattedStacktrace(skipFrames + 1));
-                    }
-
                     var promise = _pool.IsNotEmpty ? (FirstPromise<T>) _pool.Pop() : new FirstPromise<T>();
 
-                    var target = promises.Current;
-                    ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
-                    ValidateOperation(target, skipFrames + 1);
-                    int promiseIndex = 0;
-                    // Hook up pass throughs
-                    var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(target, promise, promiseIndex));
-                    while (promises.MoveNext())
+                    foreach (var passThrough in promisePassThroughs)
                     {
-                        target = promises.Current;
-                        ValidateElementNotNull(target, "promises", "A promise was null", skipFrames + 1);
-                        ValidateOperation(target, skipFrames + 1);
-                        passThroughs.Push(PromisePassThrough.GetOrCreate(target, promise, ++promiseIndex));
+                        passThrough.target = promise;
                     }
-                    promise.passThroughs = passThroughs;
+                    promise._passThroughs = promisePassThroughs;
 
-                    promise._waitCount = (uint) promiseIndex + 1u;
+                    promise._waitCount = (uint) count;
                     // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
                     promise._retainCounter = promise._waitCount + 1u;
@@ -171,9 +168,9 @@ namespace Proto.Promises
                 {
                     if (done)
                     {
-                        while (passThroughs.IsNotEmpty)
+                        while (_passThroughs.IsNotEmpty)
                         {
-                            passThroughs.Pop().Release();
+                            _passThroughs.Pop().Release();
                         }
                         ReleaseInternal();
                     }
@@ -197,7 +194,7 @@ namespace Proto.Promises
                         if (feed._state == State.Resolved)
                         {
                             feed._wasWaitedOn = true;
-                            _value = ((PromiseInternal<T>) feed).Value;
+                            _value = ((PromiseInternal<T>) feed)._value;
                             ResolveInternalWithoutRelease();
                         }
                         else if (done)
@@ -211,7 +208,7 @@ namespace Proto.Promises
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
-                    passThroughs.Push(passThrough);
+                    _passThroughs.Push(passThrough);
                 }
 
                 protected override void OnCancel()
@@ -236,7 +233,7 @@ namespace Proto.Promises
                     _suspended = false;
 
                     uint minWaitDepth = uint.MaxValue;
-                    foreach (var passThrough in passThroughs)
+                    foreach (var passThrough in _passThroughs)
                     {
                         minWaitDepth = Math.Min(minWaitDepth, passThrough.Owner._waitDepthAndProgress.WholePart);
                     }
@@ -338,7 +335,7 @@ namespace Proto.Promises
                     _suspended = false;
 
                     uint minWaitDepth = uint.MaxValue;
-                    foreach (var passThrough in passThroughs)
+                    foreach (var passThrough in _passThroughs)
                     {
                         minWaitDepth = Math.Min(minWaitDepth, passThrough.Owner._waitDepthAndProgress.WholePart);
                     }

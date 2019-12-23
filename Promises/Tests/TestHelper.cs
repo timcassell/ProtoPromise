@@ -1,4 +1,7 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿#if !PROTO_PROMISE_CANCEL_DISABLE
+#define PROMISE_CANCEL
+#endif
+#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 # endif
 
@@ -594,6 +597,7 @@ namespace Proto.Promises.Tests
             }
         }
 
+#if PROMISE_CANCEL
         public static void AddCatchCancelCallbacks<TReject, TCancel>(Promise promise, Action onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<TCancel> onCancel)
         {
             // Add empty delegates so no need for null check.
@@ -832,6 +836,7 @@ namespace Proto.Promises.Tests
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
         }
+#endif
 
         public static void AddCatchRejectCallbacks<TReject, TThrown>(Promise promise, Action onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<TThrown> onThrown)
         {

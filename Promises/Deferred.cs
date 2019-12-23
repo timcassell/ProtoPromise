@@ -9,6 +9,7 @@
 #endif
 
 #pragma warning disable CS0672 // Member overrides obsolete member
+#pragma warning disable CS0618 // Type or member is obsolete
 
 using System;
 
@@ -35,17 +36,12 @@ namespace Proto.Promises
 
             ~DeferredBase()
             {
-#if UNITY_EDITOR
-                if (UnityEditor.EditorApplication.isPlaying) // Don't check if we're not in play mode.
-#endif
+                if (State == State.Pending)
                 {
-                    if (State == State.Pending)
-                    {
-                        // Deferred wasn't handled.
-                        var exception = Internal.UnhandledExceptionException.GetOrCreate(UnhandledDeferredException.instance);
-                        SetStacktraceFromCreated(Promise, exception);
-                        AddRejectionToUnhandledStack(exception);
-                    }
+                    // Deferred wasn't handled.
+                    var exception = Internal.UnhandledExceptionException.GetOrCreate(UnhandledDeferredException.instance);
+                    SetStacktraceFromCreated(Promise, exception);
+                    AddRejectionToUnhandledStack(exception);
                 }
             }
 
@@ -173,10 +169,14 @@ namespace Proto.Promises
             /// <summary>
             /// Resolve the linked <see cref="Promise{T}"/> with <paramref name="value"/>.
             /// </summary>
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-            public abstract void Resolve(in T value);
-#else
             public abstract void Resolve(T value);
+
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
+            /// <summary>
+            /// Resolve the linked <see cref="Promise{T}"/> with <paramref name="value"/>.
+            /// Use this method to resolve a large struct.
+            /// </summary>
+            public abstract void Resolve(in T value);
 #endif
         }
     }
@@ -336,11 +336,7 @@ namespace Proto.Promises
                     promise.ReportProgress(progress);
                 }
 
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-                public override void Resolve(in T value)
-#else
                 public override void Resolve(T value)
-#endif
                 {
                     var promise = Promise;
                     ValidateOperation(promise, 1);
@@ -357,6 +353,26 @@ namespace Proto.Promises
                         return;
                     }
                 }
+
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
+                public override void Resolve(in T value)
+                {
+                    var promise = Promise;
+                    ValidateOperation(promise, 1);
+
+                    if (State == State.Pending)
+                    {
+                        State = State.Resolved;
+                        promise.ResolveDirectIfNotCanceled(value);
+                        promise.ReleaseInternal();
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+                        return;
+                    }
+                }
+#endif
 
                 public override void Reject()
                 {

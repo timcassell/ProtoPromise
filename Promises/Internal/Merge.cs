@@ -16,7 +16,6 @@
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
 using System;
-using System.Collections.Generic;
 using Proto.Utils;
 
 namespace Proto.Promises
@@ -25,73 +24,25 @@ namespace Proto.Promises
     {
         partial class Internal
         {
-            public static Promise _All<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
-            {
-                ValidateArgument(promises, "promises", skipFrames + 1);
-                if (!promises.MoveNext())
-                {
-                    // If promises is empty, just return a resolved promise.
-                    return Resolved();
-                }
-                int count;
-                var passThroughs = WrapInPassThroughs(promises, out count, skipFrames + 1);
-                return AllPromise0.GetOrCreate(passThroughs, count, skipFrames + 1);
-            }
-
-            public static Promise<IList<T>> _All<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer, int skipFrames) where TEnumerator : IEnumerator<Promise<T>>
-            {
-                ValidateArgument(promises, "promises", skipFrames + 1);
-                if (!promises.MoveNext())
-                {
-                    // If promises is empty, just return a resolved promise.
-                    if (valueContainer.Count > 0) // Count check in case valueContainer is an array .
-                    {
-                        valueContainer.Clear();
-                    }
-                    return Resolved(valueContainer);
-                }
-                int count;
-                var passThroughs = WrapInPassThroughs<T, TEnumerator>(promises, out count, skipFrames + 1);
-
-                // Only change the count of the valueContainer if it's greater or less than the promises count. This allows arrays to be used if they are the proper length.
-                int i = valueContainer.Count;
-                if (i < count)
-                {
-                    do
-                    {
-                        valueContainer.Add(default(T));
-                    }
-                    while (++i < count);
-                }
-                else while (i > count)
-                    {
-                        valueContainer.RemoveAt(--i);
-                    }
-
-                var promise = MergePromise<IList<T>>.GetOrCreate(passThroughs, (feed, target, index) =>
-                {
-                    target._value[index] = ((PromiseInternal<T>) feed)._value;
-                }, count, skipFrames + 1);
-                promise._value = valueContainer;
-                return promise;
-            }
-
-            public sealed partial class AllPromise0 : PoolablePromise<AllPromise0>, IMultiTreeHandleable
+            public sealed partial class MergePromise<T> : PoolablePromise<T, MergePromise<T>>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 private uint _waitCount;
+                Action<Promise, MergePromise<T>, int> _onPromiseResolved;
 
-                private AllPromise0() { }
+                private MergePromise() { }
 
-                public static Promise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count, int skipFrames)
+                public static MergePromise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, Action<Promise, MergePromise<T>, int> onPromiseResolved, int count, int skipFrames)
                 {
-                    var promise = _pool.IsNotEmpty ? (AllPromise0) _pool.Pop() : new AllPromise0();
+                    var promise = _pool.IsNotEmpty ? (MergePromise<T>) _pool.Pop() : new MergePromise<T>();
 
                     foreach (var passThrough in promisePassThroughs)
                     {
                         passThrough.target = promise;
                     }
                     promise._passThroughs = promisePassThroughs;
+
+                    promise._onPromiseResolved = onPromiseResolved;
 
                     promise._waitCount = (uint) count;
                     // Retain this until all promises resolve/reject/cancel
@@ -138,13 +89,17 @@ namespace Proto.Promises
                         {
                             RejectInternalWithoutRelease(feed._rejectedOrCanceledValueOrPrevious);
                         }
-                        else if (done)
-                        {
-                            ResolveInternalWithoutRelease();
-                        }
                         else
                         {
-                            IncrementProgress(feed);
+                            _onPromiseResolved.Invoke(feed, this, index);
+                            if (done)
+                            {
+                                ResolveInternalWithoutRelease();
+                            }
+                            else
+                            {
+                                IncrementProgress(feed);
+                            }
                         }
                     }
                     MaybeRelease(done);
@@ -165,7 +120,7 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class AllPromise0 : IInvokable
+            partial class MergePromise<T> : IInvokable
             {
                 // These are used to avoid rounding errors when normalizing the progress.
                 private float _expected;

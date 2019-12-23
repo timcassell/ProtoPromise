@@ -17,10 +17,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-		public static Promise All(params Promise[] promises)
+        public static Promise All(params Promise[] promises)
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.AllPromise0.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
+            return Internal._All(new ArrayEnumerator<Promise>(promises), 1);
         }
 
         /// <summary>
@@ -29,8 +28,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(IEnumerable<Promise> promises)
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.AllPromise0.GetOrCreate(promises.GetEnumerator(), 1);
+            return Internal._All(promises.GetEnumerator(), 1);
         }
 
         /// <summary>
@@ -39,8 +37,55 @@ namespace Proto.Promises
         /// </summary>
         public static Promise AllNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.AllPromise0.GetOrCreate(promises, 1);
+            return Internal._All(promises, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise AllNonAlloc(Promise promise1, Promise promise2)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+
+            return Internal.AllPromise0.GetOrCreate(passThroughs, 2, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise AllNonAlloc(Promise promise1, Promise promise2, Promise promise3)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+
+            return Internal.AllPromise0.GetOrCreate(passThroughs, 3, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise AllNonAlloc(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
+
+            return Internal.AllPromise0.GetOrCreate(passThroughs, 4, 1);
         }
 
         /// <summary>
@@ -49,8 +94,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<IList<T>> All<T>(params Promise<T>[] promises)
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.AllPromise<T>.GetOrCreate(new ArrayEnumerator<Promise<T>>(promises), new List<T>(promises.Length), 1);
+            return Internal._All(new ArrayEnumerator<Promise<T>>(promises), new List<T>(promises.Length), 1);
         }
 
         /// <summary>
@@ -59,8 +103,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<IList<T>> All<T>(IEnumerable<Promise<T>> promises)
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.AllPromise<T>.GetOrCreate(promises.GetEnumerator(), new List<T>(), 1);
+            return Internal._All(promises.GetEnumerator(), new List<T>(), 1);
         }
 
         /// <summary>
@@ -69,9 +112,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<IList<T>> AllNonAlloc<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, "promises", 1);
             ValidateArgument(valueContainer, "valueContainer", 1);
-            return Internal.AllPromise<T>.GetOrCreate(promises, valueContainer, 1);
+            return Internal._All(promises, valueContainer, 1);
         }
 
         /// <summary>
@@ -80,8 +122,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(params Promise[] promises)
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.RacePromise0.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
+            return Internal._Race(new ArrayEnumerator<Promise>(promises), 1);
         }
 
         /// <summary>
@@ -90,8 +131,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(IEnumerable<Promise> promises)
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.RacePromise0.GetOrCreate(promises.GetEnumerator(), 1);
+            return Internal._Race(promises.GetEnumerator(), 1);
         }
 
         /// <summary>
@@ -100,8 +140,55 @@ namespace Proto.Promises
         /// </summary>
         public static Promise RaceNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.RacePromise0.GetOrCreate(promises, 1);
+            return Internal._Race(promises, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise RaceNonAlloc(Promise promise1, Promise promise2)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+
+            return Internal.RacePromise0.GetOrCreate(passThroughs, 2, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise RaceNonAlloc(Promise promise1, Promise promise2, Promise promise3)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
+
+            return Internal.RacePromise0.GetOrCreate(passThroughs, 3, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise RaceNonAlloc(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 0, 1));
+
+            return Internal.RacePromise0.GetOrCreate(passThroughs, 4, 1);
         }
 
         /// <summary>
@@ -110,8 +197,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race<T>(params Promise<T>[] promises)
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.RacePromise<T>.GetOrCreate(new ArrayEnumerator<Promise<T>>(promises), 1);
+            return Internal._Race<T, ArrayEnumerator<Promise<T>>>(new ArrayEnumerator<Promise<T>>(promises), 1);
         }
 
         /// <summary>
@@ -120,8 +206,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.RacePromise<T>.GetOrCreate(promises.GetEnumerator(), 1);
+            return Internal._Race<T, IEnumerator<Promise<T>>>(promises.GetEnumerator(), 1);
         }
 
         /// <summary>
@@ -130,38 +215,82 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> RaceNonAlloc<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.RacePromise<T>.GetOrCreate(promises, 1);
+            return Internal._Race<T, IEnumerator<Promise<T>>>(promises, 1);
         }
 
         /// <summary>
-        /// Runs <paramref name="funcs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
-        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise Sequence(params Func<Promise>[] funcs)
+        public static Promise RaceNonAlloc<T>(Promise<T> promise1, Promise<T> promise2)
         {
-            ValidateArgument(funcs, "funcs", 1);
-            return Internal.SequencePromise0.GetOrCreate(new ArrayEnumerator<Func<Promise>>(funcs), 1);
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+
+            return Internal.RacePromise<T>.GetOrCreate(passThroughs, 2, 1);
         }
 
         /// <summary>
-        /// Runs <paramref name="funcs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
-        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise Sequence(IEnumerable<Func<Promise>> funcs)
+        public static Promise RaceNonAlloc<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            ValidateArgument(funcs, "funcs", 1);
-            return Internal.SequencePromise0.GetOrCreate(funcs.GetEnumerator(), 1);
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
+
+            return Internal.RacePromise<T>.GetOrCreate(passThroughs, 3, 1);
         }
 
         /// <summary>
-        /// Runs <paramref name="funcs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise RaceNonAlloc<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 0, 1));
+
+            return Internal.RacePromise<T>.GetOrCreate(passThroughs, 4, 1);
+        }
+
+        /// <summary>
+        /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise SequenceNonAlloc<TEnumerator>(TEnumerator funcs) where TEnumerator : IEnumerator<Func<Promise>>
+        public static Promise Sequence(params Func<Promise>[] promiseFuncs)
         {
-            ValidateArgument(funcs, "funcs", 1);
-            return Internal.SequencePromise0.GetOrCreate(funcs, 1);
+            return Internal._Sequence(new ArrayEnumerator<Func<Promise>>(promiseFuncs), 1);
+        }
+
+        /// <summary>
+        /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise Sequence(IEnumerable<Func<Promise>> promiseFuncs)
+        {
+            return Internal._Sequence(promiseFuncs.GetEnumerator(), 1);
+        }
+
+        /// <summary>
+        /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise SequenceNonAlloc<TEnumerator>(TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
+        {
+            return Internal._Sequence(promiseFuncs, 1);
         }
 
         /// <summary>
@@ -170,8 +299,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(params Promise[] promises)
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.FirstPromise0.GetOrCreate(new ArrayEnumerator<Promise>(promises), 1);
+            return Internal._First(new ArrayEnumerator<Promise>(promises), 1);
         }
 
         /// <summary>
@@ -180,8 +308,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(IEnumerable<Promise> promises)
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.FirstPromise0.GetOrCreate(promises.GetEnumerator(), 1);
+            return Internal._First(promises.GetEnumerator(), 1);
         }
 
         /// <summary>
@@ -190,8 +317,55 @@ namespace Proto.Promises
         /// </summary>
         public static Promise FirstNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.FirstPromise0.GetOrCreate(promises, 1);
+            return Internal._First(promises, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise FirstNonAlloc(Promise promise1, Promise promise2)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+
+            return Internal.FirstPromise0.GetOrCreate(passThroughs, 2, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise FirstNonAlloc(Promise promise1, Promise promise2, Promise promise3)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
+
+            return Internal.FirstPromise0.GetOrCreate(passThroughs, 3, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise FirstNonAlloc(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 0, 1));
+
+            return Internal.FirstPromise0.GetOrCreate(passThroughs, 4, 1);
         }
 
         /// <summary>
@@ -200,8 +374,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First<T>(params Promise<T>[] promises)
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.FirstPromise<T>.GetOrCreate(new ArrayEnumerator<Promise<T>>(promises), 1);
+            return Internal._First<T, ArrayEnumerator<Promise<T>>>(new ArrayEnumerator<Promise<T>>(promises), 1);
         }
 
         /// <summary>
@@ -210,8 +383,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First<T>(IEnumerable<Promise<T>> promises)
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.FirstPromise<T>.GetOrCreate(promises.GetEnumerator(), 1);
+            return Internal._First<T, IEnumerator<Promise<T>>>(promises.GetEnumerator(), 1);
         }
 
         /// <summary>
@@ -220,19 +392,537 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> FirstNonAlloc<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, "promises", 1);
-            return Internal.FirstPromise<T>.GetOrCreate(promises, 1);
+            return Internal._First<T, TEnumerator>(promises, 1);
         }
 
-        // TODO
-        //public static Promise<T1> Merge<T1>(Promise<T1> promise1, Promise promise2)
-        //{
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise FirstNonAlloc<T>(Promise<T> promise1, Promise<T> promise2)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
 
-        //}
-        //public static Promise<ValueTuple<T1, T2>> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
-        //{
+            return Internal.FirstPromise<T>.GetOrCreate(passThroughs, 2, 1);
+        }
 
-        //}
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise FirstNonAlloc<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
+
+            return Internal.FirstPromise<T>.GetOrCreate(passThroughs, 3, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise FirstNonAlloc<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 0, 1));
+
+            return Internal.FirstPromise<T>.GetOrCreate(passThroughs, 4, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with the value of <paramref name="promise1"/> when both promises have resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<T1> Merge<T1>(Promise<T1> promise1, Promise promise2)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+
+            return Internal.MergePromise<T1>.GetOrCreate(passThroughs, (feed, target, index) =>
+                {
+                    if (index == 0)
+                    {
+                        target._value = ((Internal.PromiseInternal<T1>) feed)._value;
+                    }
+                }, 2, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve with the values of the promises when they have all resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<T1, T2>> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+
+            return Internal.MergePromise<ValueTuple<T1, T2>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            {
+                if (index == 0)
+                {
+                    target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                }
+                else
+                {
+                    target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                }
+            }, 2, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve with the values of the promises when they have all resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<T1, T2>> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2, Promise promise3)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+
+            return Internal.MergePromise<ValueTuple<T1, T2>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            {
+                switch (index)
+                {
+                    case 0:
+                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        break;
+                    case 1:
+                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        break;
+                }
+            }, 3, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3}"/> that will resolve with the values of the promises when they have all resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<T1, T2, T3>> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+
+            return Internal.MergePromise<ValueTuple<T1, T2, T3>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            {
+                switch (index)
+                {
+                    case 0:
+                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        break;
+                    case 1:
+                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        break;
+                    case 2:
+                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        break;
+                }
+            }, 3, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3}"/> that will resolve with the values of the promises when they have all resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<T1, T2, T3>> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
+
+            return Internal.MergePromise<ValueTuple<T1, T2, T3>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            {
+                switch (index)
+                {
+                    case 0:
+                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        break;
+                    case 1:
+                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        break;
+                    case 2:
+                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        break;
+                }
+            }, 4, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4}"/> that will resolve with the values of the promises when they have all resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<T1, T2, T3, T4>> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
+
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            {
+                switch (index)
+                {
+                    case 0:
+                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        break;
+                    case 1:
+                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        break;
+                    case 2:
+                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        break;
+                    case 3:
+                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        break;
+                }
+            }, 4, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4}"/> that will resolve with the values of the promises when they have all resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<T1, T2, T3, T4>> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise5, "promise5", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise5, 4, 1));
+
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            {
+                switch (index)
+                {
+                    case 0:
+                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        break;
+                    case 1:
+                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        break;
+                    case 2:
+                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        break;
+                    case 3:
+                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        break;
+                }
+            }, 5, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5}"/> that will resolve with the values of the promises when they have all resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<T1, T2, T3, T4, T5>> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise5, "promise5", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise5, 4, 1));
+
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            {
+                switch (index)
+                {
+                    case 0:
+                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        break;
+                    case 1:
+                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        break;
+                    case 2:
+                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        break;
+                    case 3:
+                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        break;
+                    case 4:
+                        target._value.Item5 = ((Internal.PromiseInternal<T5>) feed)._value;
+                        break;
+                }
+            }, 5, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5}"/> that will resolve with the values of the promises when they have all resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<T1, T2, T3, T4, T5>> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise5, "promise5", 1);
+            ValidateArgument(promise6, "promise6", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise5, 4, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise6, 5, 1));
+
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            {
+                switch (index)
+                {
+                    case 0:
+                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        break;
+                    case 1:
+                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        break;
+                    case 2:
+                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        break;
+                    case 3:
+                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        break;
+                    case 4:
+                        target._value.Item5 = ((Internal.PromiseInternal<T5>) feed)._value;
+                        break;
+                }
+            }, 6, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5, T6}"/> that will resolve with the values of the promises when they have all resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6>> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise5, "promise5", 1);
+            ValidateArgument(promise6, "promise6", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise5, 4, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise6, 5, 1));
+
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            {
+                switch (index)
+                {
+                    case 0:
+                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        break;
+                    case 1:
+                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        break;
+                    case 2:
+                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        break;
+                    case 3:
+                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        break;
+                    case 4:
+                        target._value.Item5 = ((Internal.PromiseInternal<T5>) feed)._value;
+                        break;
+                    case 5:
+                        target._value.Item6 = ((Internal.PromiseInternal<T6>) feed)._value;
+                        break;
+                }
+            }, 6, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5, T6}"/> that will resolve with the values of the promises when they have all resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6>> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise promise7)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise5, "promise5", 1);
+            ValidateArgument(promise6, "promise6", 1);
+            ValidateArgument(promise7, "promise7", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise5, 4, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise6, 5, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise7, 6, 1));
+
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            {
+                switch (index)
+                {
+                    case 0:
+                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        break;
+                    case 1:
+                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        break;
+                    case 2:
+                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        break;
+                    case 3:
+                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        break;
+                    case 4:
+                        target._value.Item5 = ((Internal.PromiseInternal<T5>) feed)._value;
+                        break;
+                    case 5:
+                        target._value.Item6 = ((Internal.PromiseInternal<T6>) feed)._value;
+                        break;
+                }
+            }, 7, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5, T6, T7}"/> that will resolve with the values of the promises when they have all resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise5, "promise5", 1);
+            ValidateArgument(promise6, "promise6", 1);
+            ValidateArgument(promise7, "promise7", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise5, 4, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise6, 5, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise7, 6, 1));
+
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            {
+                switch (index)
+                {
+                    case 0:
+                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        break;
+                    case 1:
+                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        break;
+                    case 2:
+                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        break;
+                    case 3:
+                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        break;
+                    case 4:
+                        target._value.Item5 = ((Internal.PromiseInternal<T5>) feed)._value;
+                        break;
+                    case 5:
+                        target._value.Item6 = ((Internal.PromiseInternal<T6>) feed)._value;
+                        break;
+                    case 6:
+                        target._value.Item7 = ((Internal.PromiseInternal<T7>) feed)._value;
+                        break;
+                }
+            }, 7, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5, T6, T7}"/> that will resolve with the values of the promises when they have all resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7, Promise promise8)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise5, "promise5", 1);
+            ValidateArgument(promise6, "promise6", 1);
+            ValidateArgument(promise7, "promise7", 1);
+            ValidateArgument(promise8, "promise8", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise5, 4, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise6, 5, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise7, 6, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise8, 7, 1));
+
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            {
+                switch (index)
+                {
+                    case 0:
+                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        break;
+                    case 1:
+                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        break;
+                    case 2:
+                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        break;
+                    case 3:
+                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        break;
+                    case 4:
+                        target._value.Item5 = ((Internal.PromiseInternal<T5>) feed)._value;
+                        break;
+                    case 5:
+                        target._value.Item6 = ((Internal.PromiseInternal<T6>) feed)._value;
+                        break;
+                    case 6:
+                        target._value.Item7 = ((Internal.PromiseInternal<T7>) feed)._value;
+                        break;
+                }
+            }, 8, 1);
+        }
 
         /// <summary>
         /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Deferred"/> that controls the state of the promise.
@@ -364,7 +1054,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that is already canceled without a reason.
         /// </summary>
 #if !PROMISE_CANCEL
-            [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
+        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
         public static Promise Canceled()
         {
@@ -470,6 +1160,7 @@ namespace Proto.Promises
         {
 #if !PROMISE_CANCEL
             ThrowCancelException(1);
+            return null;
 #else
             if (Internal._invokingResolved | Internal._invokingRejected)
             {
@@ -493,6 +1184,7 @@ namespace Proto.Promises
         {
 #if !PROMISE_CANCEL
             ThrowCancelException(1);
+            return null;
 #else
             if (Internal._invokingResolved | Internal._invokingRejected)
             {
