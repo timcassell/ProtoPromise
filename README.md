@@ -126,6 +126,8 @@ public Promise<string> Download(string url)
 }
 ```
 
+With this method, if the function throws an exception before the deferred is settled, the deferred/promise will be rejected with that exception.
+
 ## Waiting for an Async Operation to Complete ##
 
 The simplest and most common usage is to register a resolve handler to be invoked on completion of the async op:
