@@ -1,16 +1,22 @@
 // define PROTO_PROMISE_DEBUG_ENABLE to enable debugging options in RELEASE mode. define PROTO_PROMISE_DEBUG_DISABLE to disable debugging options in DEBUG mode.
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
 #endif
 // define PROTO_PROMISE_CANCEL_DISABLE to disable cancelations on promises.
 // If Cancelations are enabled, it breaks the Promises/A+ spec "2.1. Promise States", but allows breaking promise chains. Execution is also a little slower.
 #if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
+#else
+#undef PROMISE_CANCEL
 #endif
 // define PROTO_PROMISE_PROGRESS_DISABLE to disable progress reports on promises.
 // If Progress is enabled, promises use more memory, and it creates an upper bound to the depth of a promise chain (see Config for details).
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
 #endif
 
 using System;
@@ -282,40 +288,6 @@ namespace Proto.Promises
             HookupNewPromise(promise);
             return promise;
         }
-
-        /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked.
-        /// If it returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise"/> will be rejected or canceled with the same reason.
-        /// </summary>
-        public Promise ThenDefer(Func<Action<Deferred>> onResolved)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-
-            var promise = Internal.PromiseVoidResolveDeferred0.GetOrCreate(onResolved, 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked.
-        /// If it returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise{T}"/> will be controlled by the <see cref="Promise{T}.Deferred"/> that is passed in.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise{T}"/> will be rejected or canceled with the same reason.
-        /// </summary>
-        public Promise<T> ThenDefer<T>(Func<Action<Promise<T>.Deferred>> onResolved)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-
-            var promise = Internal.PromiseVoidResolveDeferred<T>.GetOrCreate(onResolved, 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
         #endregion
 
         #region Reject Callbacks
@@ -331,7 +303,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Internal.PromiseReject0.GetOrCreate(Internal.DelegateVoidVoid0.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(Internal.DelegateHandleSelf0.instance, Internal.DelegateVoidVoid0.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -348,7 +320,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Internal.PromiseReject0.GetOrCreate(Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(Internal.DelegateHandleSelf0.instance, Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -365,7 +337,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Internal.PromiseReject0.GetOrCreate(Internal.DelegateVoidVoid<TReject>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(Internal.DelegateHandleSelf0.instance, Internal.DelegateVoidVoid<TReject>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -382,7 +354,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Internal.PromiseRejectPromise0.GetOrCreate(Internal.DelegateVoidResult<Promise>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(Internal.DelegateHandleSelf0.instance, Internal.DelegateVoidPromise0.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -399,7 +371,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Internal.PromiseRejectPromise0.GetOrCreate(Internal.DelegateArgResult<TReject, Promise>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(Internal.DelegateHandleSelf0.instance, Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -416,61 +388,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Internal.PromiseRejectPromise0.GetOrCreate(Internal.DelegateVoidResult<TReject, Promise>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is rejected with any reason or no reason, <paramref name="onRejected"/> will be invoked.
-        /// If it returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise CatchDefer(Func<Action<Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Internal.PromiseRejectDeferred0.GetOrCreate(Internal.DelegateVoidResult<Action<Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason.
-        /// If it returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved.
-        /// <para/>If this is canceled or rejected for any other reason or no reason, the new <see cref="Promise"/> will be canceled or rejected with the same reason.
-        /// </summary>
-        public Promise CatchDefer<TReject>(Func<TReject, Action<Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Internal.PromiseRejectDeferred0.GetOrCreate(Internal.DelegateArgResult<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked.
-        /// If it returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved.
-        /// <para/>If this is canceled or rejected for any other reason or no reason, the new <see cref="Promise"/> will be canceled or rejected with the same reason.
-        /// </summary>
-        public Promise CatchDefer<TReject>(Func<Action<Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Internal.PromiseRejectDeferred0.GetOrCreate(Internal.DelegateVoidResult<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(Internal.DelegateHandleSelf0.instance, Internal.DelegateVoidPromise<TReject>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -598,7 +516,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(Internal.DelegateVoidResult<Promise>.GetOrCreate(onResolved), Internal.DelegateVoidResult<Promise>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(Internal.DelegateVoidPromise0.GetOrCreate(onResolved), Internal.DelegateVoidPromise0.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -616,7 +534,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(Internal.DelegateVoidResult<Promise>.GetOrCreate(onResolved), Internal.DelegateArgResult<TReject, Promise>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(Internal.DelegateVoidPromise0.GetOrCreate(onResolved), Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -634,7 +552,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(Internal.DelegateVoidResult<Promise>.GetOrCreate(onResolved), Internal.DelegateVoidResult<TReject, Promise>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(Internal.DelegateVoidPromise0.GetOrCreate(onResolved), Internal.DelegateVoidPromise<TReject>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -652,7 +570,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoidResult<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateVoidResult<Promise<T>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoidPromiseT<T>.GetOrCreate(onResolved), Internal.DelegateVoidPromiseT<T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -670,7 +588,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoidResult<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateArgResult<TReject, Promise<T>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoidPromiseT<T>.GetOrCreate(onResolved), Internal.DelegateArgPromiseT<TReject, T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -688,121 +606,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoidResult<Promise<T>>.GetOrCreate(onResolved), Internal.DelegateVoidResult<TReject, Promise<T>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked.
-        /// If this is rejected with any reason or no reason, <paramref name="onRejected"/> will be invoked.
-        /// If either returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise ThenDefer(Func<Action<Deferred>> onResolved, Func<Action<Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Internal.PromiseResolveRejectDeferred0.GetOrCreate(Internal.DelegateVoidResult<Action<Deferred>>.GetOrCreate(onResolved), Internal.DelegateVoidResult<Action<Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason.
-        /// If either returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise ThenDefer<TReject>(Func<Action<Deferred>> onResolved, Func<TReject, Action<Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Internal.PromiseResolveRejectDeferred0.GetOrCreate(Internal.DelegateVoidResult<Action<Deferred>>.GetOrCreate(onResolved), Internal.DelegateArgResult<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked.
-        /// If either returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise ThenDefer<TReject>(Func<Action<Deferred>> onResolved, Func<Action<Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Internal.PromiseResolveRejectDeferred0.GetOrCreate(Internal.DelegateVoidResult<Action<Deferred>>.GetOrCreate(onResolved), Internal.DelegateVoidResult<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked.
-        /// If this is rejected with any reason or no reason, <paramref name="onRejected"/> will be invoked.
-        /// If either returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise{T}"/> will be controlled by the <see cref="Promise{T}.Deferred"/> that is passed in.
-        /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise<T> ThenDefer<T>(Func<Action<Promise<T>.Deferred>> onResolved, Func<Action<Promise<T>.Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Internal.PromiseResolveRejectDeferred<T>.GetOrCreate(Internal.DelegateVoidResult<Action<Promise<T>.Deferred>>.GetOrCreate(onResolved), Internal.DelegateVoidResult<Action<Promise<T>.Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason.
-        /// If either returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise{T}"/> will be controlled by the <see cref="Promise{T}.Deferred"/> that is passed in.
-        /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise<T> ThenDefer<T, TReject>(Func<Action<Promise<T>.Deferred>> onResolved, Func<TReject, Action<Promise<T>.Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Internal.PromiseResolveRejectDeferred<T>.GetOrCreate(Internal.DelegateVoidResult<Action<Promise<T>.Deferred>>.GetOrCreate(onResolved), Internal.DelegateArgResult<TReject, Action<Promise<T>.Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked.
-        /// If either returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise{T}"/> will be controlled by the <see cref="Promise{T}.Deferred"/> that is passed in.
-        /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise<T> ThenDefer<T, TReject>(Func<Action<Promise<T>.Deferred>> onResolved, Func<Action<Promise<T>.Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Internal.PromiseResolveRejectDeferred<T>.GetOrCreate(Internal.DelegateVoidResult<Action<Promise<T>.Deferred>>.GetOrCreate(onResolved), Internal.DelegateVoidResult<TReject, Action<Promise<T>.Deferred>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateVoidPromiseT<T>.GetOrCreate(onResolved), Internal.DelegateVoidPromiseT<TReject, T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -821,7 +625,8 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
 
-            var promise = Internal.PromiseComplete0.GetOrCreate(onResolvedOrRejected, 1);
+            var del = Internal.DelegateVoidVoid0.GetOrCreate(onResolvedOrRejected);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(del, del, 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -838,7 +643,8 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
 
-            var promise = Internal.PromiseComplete<T>.GetOrCreate(onResolvedOrRejected, 1);
+            var del = Internal.DelegateVoidResult<T>.GetOrCreate(onResolvedOrRejected);
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(del, del, 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -855,7 +661,8 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
 
-            var promise = Internal.PromiseCompletePromise0.GetOrCreate(onResolvedOrRejected, 1);
+            var del = Internal.DelegateVoidPromise0.GetOrCreate(onResolvedOrRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(del, del, 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -872,43 +679,8 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
 
-            var promise = Internal.PromiseCompletePromise<T>.GetOrCreate(onResolvedOrRejected, 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve-or-reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved or rejected with any reason or no reason, <paramref name="onResolvedOrRejected"/> will be invoked.
-        /// If it returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// <para/>Note: Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
-        /// </summary>
-        public Promise CompleteDefer(Func<Action<Deferred>> onResolvedOrRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
-
-            var promise = Internal.PromiseCompleteDeferred0.GetOrCreate(onResolvedOrRejected, 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve-or-reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved or rejected with any reason or no reason, <paramref name="onResolvedOrRejected"/> will be invoked.
-        /// If it returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise{T}"/> will be controlled by the <see cref="Promise{T}.Deferred"/> that is passed in.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
-        /// <para/>Note: Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
-        /// </summary>
-		public Promise<T> CompleteDefer<T>(Func<Action<Promise<T>.Deferred>> onResolvedOrRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
-
-            var promise = Internal.PromiseCompleteDeferred<T>.GetOrCreate(onResolvedOrRejected, 1);
+            var del = Internal.DelegateVoidPromiseT<T>.GetOrCreate(onResolvedOrRejected);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(del, del, 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1027,40 +799,6 @@ namespace Proto.Promises
             HookupNewPromise(promise);
             return promise;
         }
-
-        /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value.
-        /// If it returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise"/> will be rejected or canceled with the same reason.
-        /// </summary>
-        public Promise ThenDefer(Func<T, Action<Promise.Deferred>> onResolved)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-
-            var promise = Promise.Internal.PromiseArgResolveDeferred<T>.GetOrCreate(onResolved, 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value.
-        /// If it returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise{T}"/> will be controlled by the <see cref="Promise{T}.Deferred"/> that is passed in.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise{T}"/> will be rejected or canceled with the same reason.
-        /// </summary>
-        public Promise<TResult> ThenDefer<TResult>(Func<T, Action<Promise<TResult>.Deferred>> onResolved)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-
-            var promise = Promise.Internal.PromiseArgResolveDeferred<T, TResult>.GetOrCreate(onResolved, 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
         #endregion
 
         #region Reject Callbacks
@@ -1076,7 +814,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Promise.Internal.PromiseReject<T>.GetOrCreate(Promise.Internal.DelegateVoidResult<T>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateHandleSelf<T>.instance, Internal.DelegateVoidResult<T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1093,7 +831,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Promise.Internal.PromiseReject<T>.GetOrCreate(Promise.Internal.DelegateArgResult<TReject, T>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateHandleSelf<T>.instance, Internal.DelegateArgResult<TReject, T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1110,7 +848,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Promise.Internal.PromiseReject<T>.GetOrCreate(Promise.Internal.DelegateVoidResult<TReject, T>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(Internal.DelegateHandleSelf<T>.instance, Internal.DelegateVoidResult<TReject, T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1127,7 +865,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Promise.Internal.PromiseRejectPromise<T>.GetOrCreate(Promise.Internal.DelegateVoidResult<Promise<T>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateHandleSelf<T>.instance, Internal.DelegateVoidPromiseT<T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1144,7 +882,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Promise.Internal.PromiseRejectPromise<T>.GetOrCreate(Promise.Internal.DelegateArgResult<TReject, Promise<T>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateHandleSelf<T>.instance, Internal.DelegateArgPromiseT<TReject, T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1161,61 +899,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Promise.Internal.PromiseRejectPromise<T>.GetOrCreate(Promise.Internal.DelegateVoidResult<TReject, Promise<T>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is rejected with any reason or no reason, <paramref name="onRejected"/> will be invoked.
-        /// If it returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved with the resolve value.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise<T> CatchDefer(Func<Action<Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Promise.Internal.PromiseRejectDeferred<T>.GetOrCreate(Promise.Internal.DelegateVoidResult<Action<Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason.
-        /// If it returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved with the resolve value.
-        /// <para/>If this is canceled or rejected for any other reason or no reason, the new <see cref="Promise"/> will be canceled or rejected with the same reason.
-        /// </summary>
-        public Promise<T> CatchDefer<TReject>(Func<TReject, Action<Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Promise.Internal.PromiseRejectDeferred<T>.GetOrCreate(Promise.Internal.DelegateArgResult<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked.
-        /// If it returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved with the resolve value.
-        /// <para/>If this is canceled or rejected for any other reason or no reason, the new <see cref="Promise"/> will be canceled or rejected with the same reason.
-        /// </summary>
-        public Promise<T> CatchDefer<TReject>(Func<Action<Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Promise.Internal.PromiseRejectDeferred<T>.GetOrCreate(Promise.Internal.DelegateVoidResult<TReject, Action<Deferred>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(Internal.DelegateHandleSelf<T>.instance, Internal.DelegateVoidPromiseT<TReject, T>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1343,7 +1027,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise0.GetOrCreate(Promise.Internal.DelegateArgResult<T, Promise>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<Promise>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(Internal.DelegateArgPromise<T>.GetOrCreate(onResolved), Internal.DelegateVoidPromise0.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1361,7 +1045,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise0.GetOrCreate(Promise.Internal.DelegateArgResult<T, Promise>.GetOrCreate(onResolved), Promise.Internal.DelegateArgResult<TReject, Promise>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(Internal.DelegateArgPromise<T>.GetOrCreate(onResolved), Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1379,7 +1063,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise0.GetOrCreate(Promise.Internal.DelegateArgResult<T, Promise>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<TReject, Promise>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(Internal.DelegateArgPromise<T>.GetOrCreate(onResolved), Internal.DelegateVoidPromise<TReject>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1397,7 +1081,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Promise.Internal.DelegateArgResult<T, Promise<TResult>>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<Promise<TResult>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved), Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1415,7 +1099,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Promise.Internal.DelegateArgResult<T, Promise<TResult>>.GetOrCreate(onResolved), Promise.Internal.DelegateArgResult<TReject, Promise<TResult>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved), Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1433,121 +1117,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var promise = Promise.Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Promise.Internal.DelegateArgResult<T, Promise<TResult>>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<TReject, Promise<TResult>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value.
-        /// If this is rejected with any reason or no reason, <paramref name="onRejected"/> will be invoked.
-        /// If either returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise ThenDefer(Func<T, Action<Promise.Deferred>> onResolved, Func<Action<Promise.Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Promise.Internal.PromiseResolveRejectDeferred0.GetOrCreate(Promise.Internal.DelegateArgResult<T, Action<Promise.Deferred>>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<Action<Promise.Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason.
-        /// If either returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise ThenDefer<TReject>(Func<T, Action<Promise.Deferred>> onResolved, Func<TReject, Action<Promise.Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Promise.Internal.PromiseResolveRejectDeferred0.GetOrCreate(Promise.Internal.DelegateArgResult<T, Action<Promise.Deferred>>.GetOrCreate(onResolved), Promise.Internal.DelegateArgResult<TReject, Action<Promise.Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked.
-        /// If either returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise"/> will be controlled by the <see cref="Deferred"/> that is passed in.
-        /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise ThenDefer<TReject>(Func<T, Action<Promise.Deferred>> onResolved, Func<Action<Promise.Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Promise.Internal.PromiseResolveRejectDeferred0.GetOrCreate(Promise.Internal.DelegateArgResult<T, Action<Promise.Deferred>>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<TReject, Action<Promise.Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value.
-        /// If this is rejected with any reason or no reason, <paramref name="onRejected"/> will be invoked.
-        /// If either returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise{T}"/> will be controlled by the <see cref="Promise{T}.Deferred"/> that is passed in.
-        /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise<TResult> ThenDefer<TResult>(Func<T, Action<Promise<TResult>.Deferred>> onResolved, Func<Action<Promise<TResult>.Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Promise.Internal.PromiseResolveRejectDeferred<TResult>.GetOrCreate(Promise.Internal.DelegateArgResult<T, Action<Promise<TResult>.Deferred>>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<Action<Promise<TResult>.Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason.
-        /// If either returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise{T}"/> will be controlled by the <see cref="Promise{T}.Deferred"/> that is passed in.
-        /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise<TResult> ThenDefer<TResult, TReject>(Func<T, Action<Promise<TResult>.Deferred>> onResolved, Func<TReject, Action<Promise<TResult>.Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Promise.Internal.PromiseResolveRejectDeferred<TResult>.GetOrCreate(Promise.Internal.DelegateArgResult<T, Action<Promise<TResult>.Deferred>>.GetOrCreate(onResolved), Promise.Internal.DelegateArgResult<TReject, Action<Promise<TResult>.Deferred>>.GetOrCreate(onRejected), 1);
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked.
-        /// If either returns successfully, the returned action will be invoked immediately, and the new <see cref="Promise{T}"/> will be controlled by the <see cref="Promise{T}.Deferred"/> that is passed in.
-        /// If any delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
-        /// </summary>
-        public Promise<TResult> ThenDefer<TResult, TReject>(Func<T, Action<Promise<TResult>.Deferred>> onResolved, Func<Action<Promise<TResult>.Deferred>> onRejected)
-        {
-            ValidateOperation(this, 1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
-
-            var promise = Promise.Internal.PromiseResolveRejectDeferred<TResult>.GetOrCreate(Promise.Internal.DelegateArgResult<T, Action<Promise<TResult>.Deferred>>.GetOrCreate(onResolved), Promise.Internal.DelegateVoidResult<TReject, Action<Promise<TResult>.Deferred>>.GetOrCreate(onRejected), 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved), Internal.DelegateVoidPromiseT<TReject, TResult>.GetOrCreate(onRejected), 1);
             HookupNewPromise(promise);
             return promise;
         }

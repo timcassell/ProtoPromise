@@ -1,11 +1,17 @@
 ﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
 #endif
 #if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
+#else
+#undef PROMISE_CANCEL
 #endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
 #endif
 
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
@@ -65,7 +71,7 @@ namespace Proto.Promises
         {
             public abstract partial class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitPromise<TPromise>
             {
-                protected void WaitFor(Promise other)
+                public void WaitFor(Promise other)
                 {
                     ValidateReturn(other);
 #if PROMISE_CANCEL
@@ -91,7 +97,7 @@ namespace Proto.Promises
 
             public abstract partial class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitPromise<T, TPromise>
             {
-                protected void WaitFor(Promise other)
+                public void WaitFor(Promise other)
                 {
                     ValidateReturn(other);
 #if PROMISE_CANCEL
@@ -219,25 +225,5 @@ namespace Proto.Promises
             ThrowCancelException(skipFrames + 1);
         }
 #endif
-
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-        protected void ResolveDirectIfNotCanceled(in T value)
-#else
-        protected void ResolveDirectIfNotCanceled(T value)
-#endif
-        {
-#if PROMISE_CANCEL
-            if (_state == State.Canceled)
-            {
-                ReleaseInternal();
-            }
-            else
-#endif
-            {
-                _state = State.Resolved;
-                ((Promise.Internal.PromiseInternal<T>) this)._value = value;
-                AddToHandleQueueBack(this);
-            }
-        }
     }
 }

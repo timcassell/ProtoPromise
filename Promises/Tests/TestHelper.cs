@@ -1,9 +1,13 @@
 ﻿#if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
+#else
+#undef PROMISE_CANCEL
 #endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
-# endif
+#else
+#undef PROMISE_PROGRESS
+#endif
 
 using System;
 using NUnit.Framework;

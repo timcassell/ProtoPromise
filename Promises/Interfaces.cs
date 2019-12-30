@@ -62,4 +62,76 @@ namespace Proto.Promises
         /// </summary>
         IPotentialCancelation CatchCancelation<TCancel>(Action<TCancel> onCanceled);
     }
+
+    partial class Promise
+    {
+        partial class Internal
+        {
+            public interface ITreeHandleable : ILinked<ITreeHandleable>
+            {
+                void Handle();
+                void Cancel();
+            }
+
+            public interface IValueContainerOrPrevious
+            {
+                bool TryGetValueAs<U>(out U value);
+                bool ContainsType<U>();
+                void Retain();
+                void Release();
+            }
+
+            public interface IValueContainerContainer : IValueContainerOrPrevious
+            {
+                IValueContainerOrPrevious ValueContainerOrPrevious { get; }
+            }
+
+            public interface IDelegateResolve : IRetainable
+            {
+                void ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner);
+            }
+
+            public interface IDelegateResolve<T> : IRetainable
+            {
+                void ReleaseAndInvoke(Promise feed, PromiseResolveReject<T> owner);
+            }
+
+            public interface IDelegateResolvePromise : IRetainable
+            {
+                void ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner);
+            }
+
+            public interface IDelegateResolvePromise<T> : IRetainable
+            {
+                void ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<T> owner);
+            }
+
+            public interface IDelegateReject : IRetainable
+            {
+                void ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner);
+            }
+
+            public interface IDelegateReject<T> : IRetainable
+            {
+                void ReleaseAndInvoke(Promise feed, PromiseResolveReject<T> owner);
+            }
+
+            public interface IDelegateRejectPromise : IRetainable
+            {
+                void ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner);
+            }
+
+            public interface IDelegateRejectPromise<T> : IRetainable
+            {
+                void ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<T> owner);
+            }
+
+            public partial interface IMultiTreeHandleable : ITreeHandleable
+            {
+                void Handle(Promise feed, int index);
+                void Cancel(IValueContainerOrPrevious cancelValue);
+                void ReAdd(PromisePassThrough passThrough);
+            }
+        }
+    }
 }

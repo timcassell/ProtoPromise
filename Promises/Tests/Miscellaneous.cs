@@ -1,6 +1,8 @@
 ﻿#if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
-# endif
+#else
+#undef PROMISE_CANCEL
+#endif
 
 using System;
 using NUnit.Framework;

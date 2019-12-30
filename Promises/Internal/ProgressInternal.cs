@@ -1,11 +1,17 @@
 ﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
 #endif
 #if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
+#else
+#undef PROMISE_CANCEL
 #endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
 #endif
 
 #pragma warning disable RECS0096 // Type parameter is never used
@@ -817,7 +823,7 @@ namespace Proto.Promises
                 }
             }
 
-            partial class PromiseWaitDeferred<TPromise>
+            partial class DeferredPromise0
             {
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
@@ -827,15 +833,10 @@ namespace Proto.Promises
                         return false;
                     }
                     return SubscribeProgressAndContinueLoop(ref progressListener, out previous);
-                }
-
-                protected override sealed void SetDepth(UnsignedFixed32 previousDepth)
-                {
-                    _waitDepthAndProgress = previousDepth.GetIncrementedWholeTruncated();
                 }
             }
 
-            partial class PromiseWaitDeferred<T, TPromise>
+            partial class DeferredPromise<T>
             {
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
@@ -845,11 +846,6 @@ namespace Proto.Promises
                         return false;
                     }
                     return SubscribeProgressAndContinueLoop(ref progressListener, out previous);
-                }
-
-                protected override sealed void SetDepth(UnsignedFixed32 previousDepth)
-                {
-                    _waitDepthAndProgress = previousDepth.GetIncrementedWholeTruncated();
                 }
             }
 

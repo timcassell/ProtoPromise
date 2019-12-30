@@ -1,8 +1,12 @@
 ﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
 #endif
 #if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
+#else
+#undef PROMISE_CANCEL
 #endif
 
 using System;
@@ -933,11 +937,11 @@ namespace Proto.Promises
             var promise = Internal.DeferredPromise0.GetOrCreate(1);
             try
             {
-                resolver.Invoke(promise.Deferred);
+                resolver.Invoke(promise.deferred);
             }
             catch (Exception e)
             {
-                var deferred = promise.Deferred;
+                var deferred = promise.deferred;
                 if (deferred.State == State.Pending)
                 {
                     deferred.Reject(e);
@@ -961,11 +965,11 @@ namespace Proto.Promises
             var promise = Internal.DeferredPromise<T>.GetOrCreate(1);
             try
             {
-                resolver.Invoke(promise.Deferred);
+                resolver.Invoke(promise.deferred);
             }
             catch (Exception e)
             {
-                var deferred = promise.Deferred;
+                var deferred = promise.deferred;
                 if (deferred.State == State.Pending)
                 {
                     deferred.Reject(e);
@@ -1115,7 +1119,7 @@ namespace Proto.Promises
         /// </summary>
 		public static Deferred NewDeferred()
         {
-            return Internal.DeferredPromise0.GetOrCreate(1).Deferred;
+            return Internal.DeferredPromise0.GetOrCreate(1).deferred;
         }
 
         /// <summary>
@@ -1123,7 +1127,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T>.Deferred NewDeferred<T>()
         {
-            return Internal.DeferredPromise<T>.GetOrCreate(1).Deferred;
+            return Internal.DeferredPromise<T>.GetOrCreate(1).deferred;
         }
 
         /// <summary>

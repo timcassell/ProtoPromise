@@ -1,8 +1,12 @@
 ﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
 #endif
 #if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
+#else
+#undef PROMISE_CANCEL
 #endif
 
 #if PROMISE_CANCEL
@@ -288,10 +292,12 @@ namespace Proto.Promises.Tests
 
             Assert.AreEqual(Promise.State.Pending, deferred.State);
 
-            Assert.Throws<ArgumentNullException>(() => {
+            Assert.Throws<ArgumentNullException>(() =>
+            {
                 deferred.Promise.CatchCancelation(default(Action));
             });
-            Assert.Throws<ArgumentNullException>(() => {
+            Assert.Throws<ArgumentNullException>(() =>
+            {
                 deferred.Promise.CatchCancelation(default(Action<int>));
             });
 
@@ -300,10 +306,12 @@ namespace Proto.Promises.Tests
             var deferredInt = Promise.NewDeferred<int>();
             Assert.AreEqual(Promise.State.Pending, deferredInt.State);
 
-            Assert.Throws<ArgumentNullException>(() => {
+            Assert.Throws<ArgumentNullException>(() =>
+            {
                 deferredInt.Promise.CatchCancelation(default(Action));
             });
-            Assert.Throws<ArgumentNullException>(() => {
+            Assert.Throws<ArgumentNullException>(() =>
+            {
                 deferredInt.Promise.CatchCancelation(default(Action<Exception>));
             });
 

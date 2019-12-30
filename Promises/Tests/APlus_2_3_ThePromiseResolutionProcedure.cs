@@ -1,6 +1,8 @@
 ﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
-# endif
+#else
+#undef PROMISE_DEBUG
+#endif
 
 using System;
 using NUnit.Framework;
