@@ -152,21 +152,28 @@ namespace Proto.Promises
             ReleaseInternal();
         }
 
-        protected static Internal.UnhandledExceptionInternal CreateRejection(int skipFrames)
-        {
-            Internal.UnhandledExceptionInternal rejectValue = Internal.UnhandledExceptionVoid.GetOrCreate();
-            SetRejectStacktrace(rejectValue, skipFrames + 1);
-            return rejectValue;
-        }
-
         protected static Internal.UnhandledExceptionInternal CreateRejection<TReject>(TReject reason, int skipFrames)
         {
             Internal.UnhandledExceptionInternal rejectValue;
-            // Is TReject an exception (including if it's null)?
-            if (typeof(Exception).IsAssignableFrom(typeof(TReject)))
+            // Avoid boxing value types.
+            Type type = typeof(TReject);
+#if CSHARP_7_OR_LATER
+            if (type.IsClass && ((object) reason) is Exception e)
             {
-                // Behave the same way .Net behaves if you throw null.
-                rejectValue = Internal.UnhandledExceptionException.GetOrCreate(reason as Exception ?? new NullReferenceException());
+                // reason is a non-null Exception.
+                rejectValue = Internal.UnhandledExceptionException.GetOrCreate(e);
+            }
+#else
+            if (type.IsClass && reason is Exception)
+            {
+                // reason is a non-null Exception.
+                rejectValue = Internal.UnhandledExceptionException.GetOrCreate(reason as Exception);
+            }
+#endif
+            else if (typeof(Exception).IsAssignableFrom(type))
+            {
+                // reason is a null Exception, behave the same way .Net behaves if you throw null.
+                rejectValue = Internal.UnhandledExceptionException.GetOrCreate(new NullReferenceException());
             }
             else
             {

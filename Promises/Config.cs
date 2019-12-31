@@ -78,7 +78,7 @@ namespace Proto.Promises
             /// <summary>
             /// If you need to support longer promise chains, decrease decimalBits. If you need higher precision, increase decimalBits.
             /// <para/>
-            /// Promise chain limit: 2^(32-<see cref="ProgressDecimalBits"/>),
+            /// Wait promise chain limit: 2^(32-<see cref="ProgressDecimalBits"/>),
             /// Precision: 1/(N*2^<see cref="ProgressDecimalBits"/>) where N is the number of wait promises in the chain where Progress is subscribed.
             /// <para/>
             /// NOTE: promises that don't wait (.Then with an onResolved that simply returns a value or void) don't count towards the promise chain limit.
@@ -86,11 +86,12 @@ namespace Proto.Promises
             public const int ProgressDecimalBits = 13;
 #endif
 
+#if PROMISE_DEBUG
+            public static PoolType ObjectPooling { get { return default(PoolType); } set { } }
+#else
             private static PoolType _objectPooling = PoolType.Internal;
-            /// <summary>
-            /// Highly recommend to leave this None or Internal in DEBUG mode, so that exceptions will propagate if/when promises are used incorrectly after they have already completed.
-            /// </summary>
             public static PoolType ObjectPooling { get { return _objectPooling; } set { _objectPooling = value; } }
+#endif
 
 #if PROMISE_DEBUG
             private static GeneratedStacktrace _debugStacktraceGenerator = GeneratedStacktrace.Rejections;
@@ -110,7 +111,7 @@ namespace Proto.Promises
             {
                 bool IValueConverter.TryConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer, out TConvert converted)
                 {
-                    // This avoids boxing value types.
+                    // Avoid boxing value types.
 #if CSHARP_7_OR_LATER
                     if (valueContainer is IValueContainer<TConvert> casted)
 #else

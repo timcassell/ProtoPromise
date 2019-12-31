@@ -34,7 +34,7 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
 
-                deferred.Reject();
+                deferred.Reject("Fail Value");
 
                 Assert.AreEqual(Promise.State.Rejected, deferred.State);
 
@@ -81,9 +81,9 @@ namespace Proto.Promises.Tests
                 deferredInt.Resolve(0);
 
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
-                deferred.Reject();
+                deferred.Reject("Fail Value");
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
-                deferredInt.Reject();
+                deferredInt.Reject("Fail Value");
 
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
                 deferred.Cancel();
@@ -190,9 +190,9 @@ namespace Proto.Promises.Tests
                 deferredInt.Resolve(0);
 
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
-                deferred.Reject();
+                deferred.Reject("Fail Value");
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
-                deferredInt.Reject();
+                deferredInt.Reject("Fail Value");
 
                 Assert.AreEqual(Promise.State.Canceled, deferred.State);
                 Assert.AreEqual(Promise.State.Canceled, deferredInt.State);

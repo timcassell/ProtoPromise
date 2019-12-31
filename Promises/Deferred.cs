@@ -70,12 +70,6 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Reject the linked <see cref="Promise"/> without a reason.
-            /// <para/>NOTE: It is recommended to always reject with a reason!
-            /// </summary>
-            public abstract void Reject();
-
-            /// <summary>
             /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// </summary>
             public abstract void Reject<TReject>(TReject reason);
@@ -243,26 +237,6 @@ namespace Proto.Promises
                     }
                 }
 
-                public override void Reject()
-                {
-                    var promise = Promise;
-                    ValidateOperation(promise, 1);
-
-                    var rejection = CreateRejection(1);
-
-                    if (State == State.Pending)
-                    {
-                        State = State.Rejected;
-                        promise.RejectDirectIfNotCanceled(rejection);
-                        promise.ReleaseInternal();
-                    }
-                    else
-                    {
-                        AddRejectionToUnhandledStack(rejection);
-                        Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
-                    }
-                }
-
                 public override void Reject<TReject>(TReject reason)
                 {
                     var promise = Promise;
@@ -372,26 +346,6 @@ namespace Proto.Promises
                     }
                 }
 #endif
-
-                public override void Reject()
-                {
-                    var promise = Promise;
-                    ValidateOperation(promise, 1);
-
-                    var rejection = CreateRejection(1);
-
-                    if (State == State.Pending)
-                    {
-                        State = State.Rejected;
-                        promise.RejectDirectIfNotCanceled(rejection);
-                        promise.ReleaseInternal();
-                    }
-                    else
-                    {
-                        AddRejectionToUnhandledStack(rejection);
-                        Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
-                    }
-                }
 
                 public override void Reject<TReject>(TReject reason)
                 {

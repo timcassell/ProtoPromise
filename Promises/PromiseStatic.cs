@@ -1011,34 +1011,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that is already rejected without a reason.
-        /// </summary>
-        public static Promise Rejected()
-        {
-            var promise = Internal.LitePromise0.GetOrCreate(1);
-            var rejection = CreateRejection(1);
-            promise.RejectDirect(rejection);
-            return promise;
-        }
-
-        /// <summary>
         /// Returns a <see cref="Promise"/> that is already rejected with <paramref name="reason"/>.
         /// </summary>
         public static Promise Rejected<TReject>(TReject reason)
         {
             var promise = Internal.LitePromise0.GetOrCreate(1);
             var rejection = CreateRejection(reason, 1);
-            promise.RejectDirect(rejection);
-            return promise;
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that is already rejected without a reason.
-        /// </summary>
-        public static Promise<T> Rejected<T>()
-        {
-            var promise = Internal.LitePromise<T>.GetOrCreate(1);
-            var rejection = CreateRejection(1);
             promise.RejectDirect(rejection);
             return promise;
         }
@@ -1200,22 +1178,6 @@ namespace Proto.Promises
 
         /// <summary>
         /// Get an <see cref="Exception"/> that can be thrown to cancel the promise from an onResolved or onRejected callback.
-        /// This should be used as "throw Promise.RejectException();"
-        /// <para/>
-        /// If this is called while not inside an onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
-        /// </summary>
-        /// <exception cref="InvalidOperationException"/>
-        public static Exception RejectException()
-        {
-            if (Internal._invokingResolved | Internal._invokingRejected)
-            {
-                return Internal.UnhandledExceptionVoid.GetOrCreate();
-            }
-            throw new InvalidOperationException("RejectedException can only be accessed inside an onResolved or onRejected callback.", GetFormattedStacktrace(1));
-        }
-
-        /// <summary>
-        /// Get an <see cref="Exception"/> that can be thrown to cancel the promise from an onResolved or onRejected callback.
         /// This should be used as "throw Promise.RejectException(value);"
         /// <para/>
         /// If this is called while not inside an onResolved or onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
@@ -1225,7 +1187,7 @@ namespace Proto.Promises
         {
             if (Internal._invokingResolved | Internal._invokingRejected)
             {
-                if (typeof(Exception).IsAssignableFrom(typeof(T)))
+                if (typeof(Exception).IsAssignableFrom(typeof(T)) || value is Exception)
                 {
                     // No need to wrap the exception, just return it as-is.
                     Logger.LogWarning("An exception was passed to RejectedException, returning that exception as-is.");

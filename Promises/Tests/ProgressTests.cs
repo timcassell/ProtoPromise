@@ -84,7 +84,7 @@ namespace Proto.Promises.Tests
             deferred.Promise.Progress(p => progress = p)
                 .Catch(() => { });
 
-            deferred.Reject();
+            deferred.Reject("Fail Value");
             Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
@@ -109,7 +109,7 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p);
 
             deferred.ReportProgress(0.5f);
-            deferred.Reject();
+            deferred.Reject("Fail Value");
             Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 

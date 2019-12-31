@@ -19,7 +19,6 @@ namespace Proto.Promises.Tests
             Assert.Throws<InvalidOperationException>(() => Promise.CancelException());
             Assert.Throws<InvalidOperationException>(() => Promise.CancelException("Cancel!"));
 #endif
-            Assert.Throws<InvalidOperationException>(() => Promise.RejectException());
             Assert.Throws<InvalidOperationException>(() => Promise.RejectException("Reject!"));
 
             // Clean up.
@@ -40,7 +39,6 @@ namespace Proto.Promises.Tests
                 Promise.CancelException();
                 Promise.CancelException("Cancel!");
 #endif
-                Promise.RejectException();
                 Promise.RejectException("Reject!");
             }, null, null);
             TestHelper.AddCallbacks(promise2, v =>
@@ -49,7 +47,6 @@ namespace Proto.Promises.Tests
                 Promise.CancelException();
                 Promise.CancelException("Cancel!");
 #endif
-                Promise.RejectException();
                 Promise.RejectException("Reject!");
             }, null, null);
 
@@ -73,7 +70,6 @@ namespace Proto.Promises.Tests
                 Promise.CancelException();
                 Promise.CancelException("Cancel!");
 #endif
-                Promise.RejectException();
                 Promise.RejectException("Reject!");
             }, () =>
             {
@@ -81,7 +77,6 @@ namespace Proto.Promises.Tests
                 Promise.CancelException();
                 Promise.CancelException("Cancel!");
 #endif
-                Promise.RejectException();
                 Promise.RejectException("Reject!");
             });
             TestHelper.AddCallbacks(promise2, null, (string rej) =>
@@ -90,7 +85,6 @@ namespace Proto.Promises.Tests
                 Promise.CancelException();
                 Promise.CancelException("Cancel!");
 #endif
-                Promise.RejectException();
                 Promise.RejectException("Reject!");
             }, () =>
             {
@@ -98,7 +92,6 @@ namespace Proto.Promises.Tests
                 Promise.CancelException();
                 Promise.CancelException("Cancel!");
 #endif
-                Promise.RejectException();
                 Promise.RejectException("Reject!");
             });
 
