@@ -1091,6 +1091,9 @@ namespace Proto.Promises
                     {
                         resolveCallback.Release();
                         _invokingRejected = true;
+#if PROMISE_PROGRESS
+                        _suspended = true;
+#endif
                         rejectCallback.ReleaseAndInvoke(feed, this);
                     }
                 }
@@ -1149,6 +1152,9 @@ namespace Proto.Promises
                     {
                         resolveCallback.Release();
                         _invokingRejected = true;
+#if PROMISE_PROGRESS
+                        _suspended = true;
+#endif
                         rejectCallback.ReleaseAndInvoke(feed, this);
                     }
                 }

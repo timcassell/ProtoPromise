@@ -293,18 +293,6 @@ namespace Proto.Promises
             }
 
 
-            public abstract class PoolableDelegate<TDelegate> : ILinked<TDelegate> where TDelegate : PoolableDelegate<TDelegate>
-            {
-                TDelegate ILinked<TDelegate>.Next { get; set; }
-
-                protected static ValueLinkedStack<TDelegate> _pool;
-
-                static PoolableDelegate()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-            }
-
             public sealed class DelegateHandleSelf0 : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 public static readonly DelegateHandleSelf0 instance = new DelegateHandleSelf0();
@@ -343,6 +331,7 @@ namespace Proto.Promises
 
                 void IDelegateResolve<T>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<T> owner)
                 {
+                    owner._value = ((PromiseInternal<T>) feed)._value;
                     owner.ResolveInternal();
                 }
 
@@ -358,6 +347,7 @@ namespace Proto.Promises
 
                 void IDelegateRejectPromise<T>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<T> owner)
                 {
+                    owner._value = ((PromiseInternal<T>) feed)._value;
                     owner.RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                 }
 
@@ -365,6 +355,18 @@ namespace Proto.Promises
                 void IRetainable.Release() { }
             }
 
+
+            public abstract class PoolableDelegate<TDelegate> : ILinked<TDelegate> where TDelegate : PoolableDelegate<TDelegate>
+            {
+                TDelegate ILinked<TDelegate>.Next { get; set; }
+
+                protected static ValueLinkedStack<TDelegate> _pool;
+
+                static PoolableDelegate()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+            }
 
             public sealed class DelegateVoidVoid0 : PoolableDelegate<DelegateVoidVoid0>, IDelegateResolve, IDelegateReject
             {

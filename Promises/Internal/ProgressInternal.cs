@@ -611,12 +611,11 @@ namespace Proto.Promises
                 private UnsignedFixed32 _currentAmount;
                 private bool _invokingProgress;
                 private bool _secondPrevious;
-                private bool _suspended;
+                protected bool _suspended;
 
                 protected override void Reset(int skipFrames)
                 {
                     base.Reset(skipFrames + 1);
-                    _invokingProgress = false;
                     _secondPrevious = false;
                     _suspended = false;
                 }
@@ -657,12 +656,13 @@ namespace Proto.Promises
 
                 void IInvokable.Invoke()
                 {
+                    _invokingProgress = false;
+
                     if (_state != State.Pending | _suspended)
                     {
+                        ReleaseInternal();
                         return;
                     }
-
-                    _invokingProgress = false;
 
                     // Calculate the normalized progress for the depth of the returned promise.
                     // Use double for better precision.
@@ -675,11 +675,14 @@ namespace Proto.Promises
                     {
                         progressListener.IncrementProgress(this, increment);
                     }
+                    ReleaseWithoutDisposeCheck();
                 }
 
                 void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
                 {
                     _currentAmount = amount;
+                    // Don't allow repool until this is removed from the progress queue.
+                    RetainInternal();
                     _invokingProgress = true;
                     AddToFrontOfProgressQueue(this);
                 }
@@ -690,6 +693,8 @@ namespace Proto.Promises
                     _currentAmount.Increment(amount);
                     if (!_invokingProgress)
                     {
+                        // Don't allow repool until this is removed from the progress queue.
+                        RetainInternal();
                         _invokingProgress = true;
                         AddToFrontOfProgressQueue(this);
                     }
@@ -720,7 +725,7 @@ namespace Proto.Promises
                 private UnsignedFixed32 _currentAmount;
                 private bool _invokingProgress;
                 private bool _secondPrevious;
-                private bool _suspended;
+                protected bool _suspended;
 
                 protected override void Reset(int skipFrames)
                 {
@@ -766,12 +771,13 @@ namespace Proto.Promises
 
                 void IInvokable.Invoke()
                 {
+                    _invokingProgress = false;
+
                     if (_state != State.Pending | _suspended)
                     {
+                        ReleaseInternal();
                         return;
                     }
-
-                    _invokingProgress = false;
 
                     // Calculate the normalized progress for the depth of the cached promise.
                     // Use double for better precision.
@@ -784,11 +790,14 @@ namespace Proto.Promises
                     {
                         progressListener.IncrementProgress(this, increment);
                     }
+                    ReleaseWithoutDisposeCheck();
                 }
 
                 void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
                 {
                     _currentAmount = amount;
+                    // Don't allow repool until this is removed from the progress queue.
+                    RetainInternal();
                     _invokingProgress = true;
                     AddToFrontOfProgressQueue(this);
                 }
@@ -799,6 +808,8 @@ namespace Proto.Promises
                     _currentAmount.Increment(amount);
                     if (!_invokingProgress)
                     {
+                        // Don't allow repool until this is removed from the progress queue.
+                        RetainInternal();
                         _invokingProgress = true;
                         AddToFrontOfProgressQueue(this);
                     }
