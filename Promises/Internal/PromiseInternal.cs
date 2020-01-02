@@ -152,6 +152,11 @@ namespace Proto.Promises
             ReleaseInternal();
         }
 
+        protected virtual void ResolveInternal(Promise feed)
+        {
+            ResolveInternal();
+        }
+
         protected static Internal.UnhandledExceptionInternal CreateRejection<TReject>(TReject reason, int skipFrames)
         {
             Internal.UnhandledExceptionInternal rejectValue;
@@ -254,14 +259,6 @@ namespace Proto.Promises
 
         protected virtual void OnHandleCatch() { }
 
-        private void HandleSelf()
-        {
-            // If this was rejected, the progress listeners were already removed, so we don't need to branch here.
-            ResolveProgressListeners();
-            AddToHandleQueueFront(ref _nextBranches);
-            ReleaseInternal();
-        }
-
         protected void RejectDirect(Internal.IValueContainerOrPrevious rejectValue)
         {
             _state = State.Rejected;
@@ -352,9 +349,9 @@ namespace Proto.Promises
 #endif
         protected Promise() { }
 
-        protected override Promise GetDuplicate()
+        protected override sealed Promise GetDuplicate()
         {
-            return Promise.Internal.DuplicatePromise<T>.GetOrCreate(2);
+            return Internal.DuplicatePromise<T>.GetOrCreate(2);
         }
     }
 
@@ -380,6 +377,12 @@ namespace Proto.Promises
                 {
                     _value = ((PromiseInternal<T>) feed)._value;
                     base.HandleSelf(feed);
+                }
+
+                protected override sealed void ResolveInternal(Promise feed)
+                {
+                    _value = ((PromiseInternal<T>) feed)._value;
+                    base.ResolveInternal(feed);
                 }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
@@ -441,6 +444,58 @@ namespace Proto.Promises
                 }
             }
 
+            public abstract partial class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitPromise<TPromise>
+            {
+                public void WaitFor(Promise other)
+                {
+                    ValidateReturn(other);
+#if PROMISE_CANCEL
+                    if (_state == State.Canceled)
+                    {
+                        ReleaseInternal();
+                    }
+                    else
+#endif
+                    {
+                        _rejectedOrCanceledValueOrPrevious = other;
+#if PROMISE_PROGRESS
+                        _secondPrevious = true;
+                        if (_progressListeners.IsNotEmpty)
+                        {
+                            SubscribeProgressToBranchesAndRoots(other, this);
+                        }
+#endif
+                        other.AddWaiter(this);
+                    }
+                }
+            }
+
+            public abstract partial class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitPromise<T, TPromise>
+            {
+                public void WaitFor(Promise other)
+                {
+                    ValidateReturn(other);
+#if PROMISE_CANCEL
+                    if (_state == State.Canceled)
+                    {
+                        ReleaseInternal();
+                    }
+                    else
+#endif
+                    {
+                        _rejectedOrCanceledValueOrPrevious = other;
+#if PROMISE_PROGRESS
+                        _secondPrevious = true;
+                        if (_progressListeners.IsNotEmpty)
+                        {
+                            SubscribeProgressToBranchesAndRoots(other, this);
+                        }
+#endif
+                        other.AddWaiter(this);
+                    }
+                }
+            }
+
             public sealed partial class DeferredPromise0 : PoolablePromise<DeferredPromise0>
             {
                 public readonly DeferredInternal0 deferred;
@@ -468,7 +523,10 @@ namespace Proto.Promises
 
                 protected override void Handle()
                 {
-                    HandleSelf();
+                    // If this was rejected, the progress listeners were already removed, so we don't need an extra branch here.
+                    ResolveProgressListeners();
+                    AddToHandleQueueFront(ref _nextBranches);
+                    ReleaseInternal();
                 }
 
                 protected override void OnCancel()
@@ -506,7 +564,10 @@ namespace Proto.Promises
 
                 protected override void Handle()
                 {
-                    HandleSelf();
+                    // If this was rejected, the progress listeners were already removed, so we don't need an extra branch here.
+                    ResolveProgressListeners();
+                    AddToHandleQueueFront(ref _nextBranches);
+                    ReleaseInternal();
                 }
 
                 protected override void OnCancel()
@@ -517,11 +578,16 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class ResolvedPromise : Promise
+            public sealed class SettledPromise : Promise
             {
-                private ResolvedPromise() { }
+                private SettledPromise() { }
 
-                public static readonly ResolvedPromise instance = new ResolvedPromise() { _state = State.Resolved };
+                private static readonly SettledPromise _resolved = new SettledPromise() { _state = State.Resolved };
+
+                public static SettledPromise GetOrCreateResolved()
+                {
+                    return _resolved;
+                }
 
                 protected override void Dispose() { }
             }
@@ -538,11 +604,6 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Handle()
-                {
-                    HandleSelf();
-                }
-
 #if PROMISE_DEBUG
                 public void ResolveDirect()
                 {
@@ -550,6 +611,11 @@ namespace Proto.Promises
                     AddToHandleQueueBack(this);
                 }
 #endif
+
+                protected override void Handle()
+                {
+                    ReleaseInternal();
+                }
 
                 protected override void OnCancel()
                 {
@@ -950,6 +1016,392 @@ namespace Proto.Promises
                     base.OnCancel();
                 }
             }
+
+
+            public sealed class PromiseCaptureVoidResolve<TCapture> : PoolablePromise<PromiseCaptureVoidResolve<TCapture>>
+            {
+                private TCapture _capturedValue;
+                private Action<TCapture> resolveHandler;
+
+                private PromiseCaptureVoidResolve() { }
+
+                public static PromiseCaptureVoidResolve<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture> resolveHandler, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseCaptureVoidResolve<TCapture>) _pool.Pop() : new PromiseCaptureVoidResolve<TCapture>();
+                    promise._capturedValue = capturedValue;
+                    promise.resolveHandler = resolveHandler;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Handle(Promise feed)
+                {
+                    var value = _capturedValue;
+                    _capturedValue = default(TCapture);
+                    var callback = resolveHandler;
+                    resolveHandler = null;
+                    if (feed._state == State.Resolved)
+                    {
+                        _invokingResolved = true;
+                        callback.Invoke(value);
+                        ResolveInternalIfNotCanceled();
+                    }
+                    else
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                    }
+                }
+
+                protected override void OnCancel()
+                {
+                    _capturedValue = default(TCapture);
+                    resolveHandler = null;
+                    base.OnCancel();
+                }
+            }
+
+            public sealed class PromiseCaptureArgResolve<TCapture, TArg> : PoolablePromise<PromiseCaptureArgResolve<TCapture, TArg>>
+            {
+                private TCapture _capturedValue;
+                private Action<TCapture, TArg> _onResolved;
+
+                private PromiseCaptureArgResolve() { }
+
+                public static PromiseCaptureArgResolve<TCapture, TArg> GetOrCreate(TCapture capturedValue, Action<TCapture, TArg> onResolved, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseCaptureArgResolve<TCapture, TArg>) _pool.Pop() : new PromiseCaptureArgResolve<TCapture, TArg>();
+                    promise._capturedValue = capturedValue;
+                    promise._onResolved = onResolved;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Handle(Promise feed)
+                {
+                    var value = _capturedValue;
+                    _capturedValue = default(TCapture);
+                    var callback = _onResolved;
+                    _onResolved = null;
+                    if (feed._state == State.Resolved)
+                    {
+                        _invokingResolved = true;
+                        callback.Invoke(value, ((PromiseInternal<TArg>) feed)._value);
+                        ResolveInternalIfNotCanceled();
+                    }
+                    else
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                    }
+                }
+
+                protected override void OnCancel()
+                {
+                    _capturedValue = default(TCapture);
+                    _onResolved = null;
+                    base.OnCancel();
+                }
+            }
+
+            public sealed class PromiseCaptureVoidResolve<TCapture, TResult> : PoolablePromise<TResult, PromiseCaptureVoidResolve<TCapture, TResult>>
+            {
+                private TCapture _capturedValue;
+                private Func<TCapture, TResult> _onResolved;
+
+                private PromiseCaptureVoidResolve() { }
+
+                public static PromiseCaptureVoidResolve<TCapture, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, TResult> onResolved, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseCaptureVoidResolve<TCapture, TResult>) _pool.Pop() : new PromiseCaptureVoidResolve<TCapture, TResult>();
+                    promise._capturedValue = capturedValue;
+                    promise._onResolved = onResolved;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Handle(Promise feed)
+                {
+                    var value = _capturedValue;
+                    _capturedValue = default(TCapture);
+                    var callback = _onResolved;
+                    _onResolved = null;
+                    if (feed._state == State.Resolved)
+                    {
+                        _invokingResolved = true;
+                        _value = callback.Invoke(value);
+                        ResolveInternalIfNotCanceled();
+                    }
+                    else
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                    }
+                }
+
+                protected override void OnCancel()
+                {
+                    _capturedValue = default(TCapture);
+                    _onResolved = null;
+                    base.OnCancel();
+                }
+            }
+
+            public sealed class PromiseCaptureArgResolve<TCapture, TArg, TResult> : PoolablePromise<TResult, PromiseCaptureArgResolve<TCapture, TArg, TResult>>
+            {
+                private TCapture _capturedValue;
+                private Func<TCapture, TArg, TResult> _onResolved;
+
+                private PromiseCaptureArgResolve() { }
+
+                public static PromiseCaptureArgResolve<TCapture, TArg, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, TResult> onResolved, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseCaptureArgResolve<TCapture, TArg, TResult>) _pool.Pop() : new PromiseCaptureArgResolve<TCapture, TArg, TResult>();
+                    promise._capturedValue = capturedValue;
+                    promise._onResolved = onResolved;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Handle(Promise feed)
+                {
+                    var value = _capturedValue;
+                    _capturedValue = default(TCapture);
+                    var callback = _onResolved;
+                    _onResolved = null;
+                    if (feed._state == State.Resolved)
+                    {
+                        _invokingResolved = true;
+                        _value = callback.Invoke(value, ((PromiseInternal<TArg>) feed)._value);
+                        ResolveInternalIfNotCanceled();
+                    }
+                    else
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                    }
+                }
+
+                protected override void OnCancel()
+                {
+                    _capturedValue = default(TCapture);
+                    _onResolved = null;
+                    base.OnCancel();
+                }
+            }
+
+            public sealed class PromiseCaptureVoidResolvePromise<TCapture> : PromiseWaitPromise<PromiseCaptureVoidResolvePromise<TCapture>>
+            {
+                private TCapture _capturedValue;
+                private Func<TCapture, Promise> _onResolved;
+
+                private PromiseCaptureVoidResolvePromise() { }
+
+                public static PromiseCaptureVoidResolvePromise<TCapture> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise> onResolved, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseCaptureVoidResolvePromise<TCapture>) _pool.Pop() : new PromiseCaptureVoidResolvePromise<TCapture>();
+                    promise._capturedValue = capturedValue;
+                    promise._onResolved = onResolved;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Handle(Promise feed)
+                {
+                    if (_onResolved == null)
+                    {
+                        // The returned promise is handling this.
+                        HandleSelf(feed);
+                        return;
+                    }
+
+                    var value = _capturedValue;
+                    _capturedValue = default(TCapture);
+                    var callback = _onResolved;
+                    _onResolved = null;
+                    if (feed._state == State.Resolved)
+                    {
+                        _invokingResolved = true;
+                        WaitFor(callback.Invoke(value));
+                    }
+                    else
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                    }
+                }
+
+                protected override void OnCancel()
+                {
+                    _capturedValue = default(TCapture);
+                    _onResolved = null;
+                    base.OnCancel();
+                }
+            }
+
+            public sealed class PromiseCaptureArgResolvePromise<TCapture, TArg> : PromiseWaitPromise<PromiseCaptureArgResolvePromise<TCapture, TArg>>
+            {
+                private TCapture _capturedValue;
+                private Func<TCapture, TArg, Promise> _onResolved;
+
+                private PromiseCaptureArgResolvePromise() { }
+
+                public static PromiseCaptureArgResolvePromise<TCapture, TArg> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, Promise> onResolved, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseCaptureArgResolvePromise<TCapture, TArg>) _pool.Pop() : new PromiseCaptureArgResolvePromise<TCapture, TArg>();
+                    promise._capturedValue = capturedValue;
+                    promise._onResolved = onResolved;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Handle(Promise feed)
+                {
+                    if (_onResolved == null)
+                    {
+                        // The returned promise is handling this.
+                        HandleSelf(feed);
+                        return;
+                    }
+
+                    var value = _capturedValue;
+                    _capturedValue = default(TCapture);
+                    var callback = _onResolved;
+                    _onResolved = null;
+                    if (feed._state == State.Resolved)
+                    {
+                        _invokingResolved = true;
+                        WaitFor(callback.Invoke(value, ((PromiseInternal<TArg>) feed)._value));
+                    }
+                    else
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                    }
+                }
+
+                protected override void OnCancel()
+                {
+                    _capturedValue = default(TCapture);
+                    _onResolved = null;
+                    base.OnCancel();
+                }
+            }
+
+            public sealed class PromiseCaptureVoidResolvePromise<TCapture, TPromise> : PromiseWaitPromise<TPromise, PromiseCaptureVoidResolvePromise<TCapture, TPromise>>
+            {
+                private TCapture _capturedValue;
+                private Func<TCapture, Promise<TPromise>> _onResolved;
+
+                private PromiseCaptureVoidResolvePromise() { }
+
+                public static PromiseCaptureVoidResolvePromise<TCapture, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise<TPromise>> onResolved, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseCaptureVoidResolvePromise<TCapture, TPromise>) _pool.Pop() : new PromiseCaptureVoidResolvePromise<TCapture, TPromise>();
+                    promise._capturedValue = capturedValue;
+                    promise._onResolved = onResolved;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Handle(Promise feed)
+                {
+                    if (_onResolved == null)
+                    {
+                        // The returned promise is handling this.
+                        HandleSelf(feed);
+                        return;
+                    }
+
+                    var value = _capturedValue;
+                    _capturedValue = default(TCapture);
+                    var callback = _onResolved;
+                    _onResolved = null;
+                    if (feed._state == State.Resolved)
+                    {
+                        _invokingResolved = true;
+                        WaitFor(callback.Invoke(value));
+                    }
+                    else
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                    }
+                }
+
+                protected override void OnCancel()
+                {
+                    _capturedValue = default(TCapture);
+                    _onResolved = null;
+                    base.OnCancel();
+                }
+            }
+
+            public sealed class PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise> : PromiseWaitPromise<TPromise, PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise>>
+            {
+                private TCapture _capturedValue;
+                private Func<TCapture, TArg, Promise<TPromise>> _onResolved;
+
+                private PromiseCaptureArgResolvePromise() { }
+
+                public static PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, Promise<TPromise>> onResolved, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise>) _pool.Pop() : new PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise>();
+                    promise._capturedValue = capturedValue;
+                    promise._onResolved = onResolved;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Handle(Promise feed)
+                {
+                    if (_onResolved == null)
+                    {
+                        // The returned promise is handling this.
+                        HandleSelf(feed);
+                        return;
+                    }
+
+                    var value = _capturedValue;
+                    _capturedValue = default(TCapture);
+                    var callback = _onResolved;
+                    _onResolved = null;
+                    if (feed._state == State.Resolved)
+                    {
+                        _invokingResolved = true;
+                        WaitFor(callback.Invoke(value, ((PromiseInternal<TArg>) feed)._value));
+                    }
+                    else
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                    }
+                }
+
+                protected override void OnCancel()
+                {
+                    _capturedValue = default(TCapture);
+                    _onResolved = null;
+                    base.OnCancel();
+                }
+            }
+
+            public sealed class PromiseCapture<TCapture> : PoolablePromise<TCapture, PromiseCapture<TCapture>>
+            {
+                private PromiseCapture() { }
+
+                public static PromiseCapture<TCapture> GetOrCreate(TCapture capturedValue, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseCapture<TCapture>) _pool.Pop() : new PromiseCapture<TCapture>();
+                    promise._value = capturedValue;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Handle(Promise feed)
+                {
+                    if (feed._state == State.Resolved)
+                    {
+                        ResolveInternal();
+                    }
+                    else
+                    {
+                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
+                    }
+                }
+            }
             #endregion
 
             #region Resolve or Reject Promises
@@ -1008,12 +1460,12 @@ namespace Proto.Promises
 
             public sealed class PromiseResolveReject<T> : PoolablePromise<T, PromiseResolveReject<T>>
             {
-                private IDelegateResolve<T> _onResolved;
-                private IDelegateReject<T> _onRejected;
+                private IDelegateResolve _onResolved;
+                private IDelegateReject _onRejected;
 
                 private PromiseResolveReject() { }
 
-                public static PromiseResolveReject<T> GetOrCreate(IDelegateResolve<T> onResolved, IDelegateReject<T> onRejected, int skipFrames)
+                public static PromiseResolveReject<T> GetOrCreate(IDelegateResolve onResolved, IDelegateReject onRejected, int skipFrames)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseResolveReject<T>) _pool.Pop() : new PromiseResolveReject<T>();
                     onResolved.Retain();
@@ -1120,12 +1572,12 @@ namespace Proto.Promises
 
             public sealed class PromiseResolveRejectPromise<TPromise> : PromiseWaitPromise<TPromise, PromiseResolveRejectPromise<TPromise>>
             {
-                private IDelegateResolvePromise<TPromise> _onResolved;
-                private IDelegateRejectPromise<TPromise> _onRejected;
+                private IDelegateResolvePromise _onResolved;
+                private IDelegateRejectPromise _onRejected;
 
                 private PromiseResolveRejectPromise() { }
 
-                public static PromiseResolveRejectPromise<TPromise> GetOrCreate(IDelegateResolvePromise<TPromise> onResolved, IDelegateRejectPromise<TPromise> onRejected, int skipFrames)
+                public static PromiseResolveRejectPromise<TPromise> GetOrCreate(IDelegateResolvePromise onResolved, IDelegateRejectPromise onRejected, int skipFrames)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise<TPromise>) _pool.Pop() : new PromiseResolveRejectPromise<TPromise>();
                     onResolved.Retain();

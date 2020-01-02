@@ -71,283 +71,35 @@ namespace Proto.Promises
                 }
             }
 
-            public abstract partial class PotentialCancelation : ITreeHandleable
+
+            public sealed class DelegatePassthrough : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
-                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+                private static readonly DelegatePassthrough _instance = new DelegatePassthrough();
 
-                public virtual void AssignPrevious(IValueContainerOrPrevious cancelValue) { }
+                private DelegatePassthrough() { }
 
-                void ITreeHandleable.Handle()
+                public static DelegatePassthrough GetOrCreate()
                 {
-                    Dispose();
-                    DisposeBranches();
+                    return _instance;
                 }
 
-                protected virtual void TakeBranches(ref ValueLinkedStack<ITreeHandleable> disposeStack) { }
-
-                public abstract void Cancel();
-
-                protected abstract void Dispose();
-
-                protected void DisposeBranches()
+                void IDelegateResolve.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
-                    var branches = new ValueLinkedStack<ITreeHandleable>();
-                    TakeBranches(ref branches);
-                    while (branches.IsNotEmpty)
-                    {
-                        var current = (PotentialCancelation) branches.Pop();
-                        current.Dispose();
-                        current.TakeBranches(ref branches);
-                    }
-                }
-            }
-
-            public sealed class CancelDelegateAny : PotentialCancelation
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                private Action _onCanceled;
-
-                private CancelDelegateAny() { }
-
-                static CancelDelegateAny()
-                {
-                    OnClearPool += () => _pool.Clear();
+                    owner.ResolveInternal(feed);
                 }
 
-                public static CancelDelegateAny GetOrCreate(Action onCanceled, int skipFrames)
-                {
-                    var del = _pool.IsNotEmpty ? (CancelDelegateAny) _pool.Pop() : new CancelDelegateAny();
-                    del._onCanceled = onCanceled;
-                    SetCreatedStacktrace(del, skipFrames + 1);
-                    return del;
-                }
-
-                protected override void Dispose()
-                {
-                    _onCanceled = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                public override void Cancel()
-                {
-                    var callback = _onCanceled;
-                    Dispose();
-                    try
-                    {
-                        callback.Invoke();
-                    }
-                    catch (Exception e)
-                    {
-                        UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                        SetStacktraceFromCreated(this, unhandledException);
-                        AddRejectionToUnhandledStack(unhandledException);
-                    }
-                }
-            }
-
-            public sealed class CancelDelegate<T> : PotentialCancelation, IPotentialCancelation, IValueContainerOrPrevious, IValueContainerContainer
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                private ValueLinkedQueue<ITreeHandleable> _nextBranches;
-                private IValueContainerOrPrevious _valueContainerOrPrevious;
-                private Action<T> _onCanceled;
-                private uint _retainCounter;
-
-                IValueContainerOrPrevious IValueContainerContainer.ValueContainerOrPrevious { get { return _valueContainerOrPrevious; } }
-
-                private CancelDelegate() { }
-
-                static CancelDelegate()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                ~CancelDelegate()
-                {
-                    if (_retainCounter > 0)
-                    {
-                        // Delegate wasn't released.
-                        var exception = UnhandledExceptionException.GetOrCreate(UnreleasedObjectException.instance);
-                        SetStacktraceFromCreated(this, exception);
-                        AddRejectionToUnhandledStack(exception);
-                    }
-                }
-
-                public static CancelDelegate<T> GetOrCreate(Action<T> onCanceled, IValueContainerOrPrevious previous, int skipFrames)
-                {
-                    var del = _pool.IsNotEmpty ? (CancelDelegate<T>) _pool.Pop() : new CancelDelegate<T>();
-                    del._onCanceled = onCanceled;
-                    del._valueContainerOrPrevious = previous;
-                    SetCreatedStacktrace(del, skipFrames + 1);
-                    del.Retain();
-                    return del;
-                }
-
-                protected override void TakeBranches(ref ValueLinkedStack<ITreeHandleable> disposeStack)
-                {
-                    disposeStack.PushAndClear(ref _nextBranches);
-                }
-
-                protected override void Dispose()
-                {
-                    _onCanceled = null;
-                    Release();
-                }
-
-                public override void Cancel()
-                {
-                    var callback = _onCanceled;
-                    _onCanceled = null;
-                    var cancelValue = ((IValueContainerContainer) _valueContainerOrPrevious).ValueContainerOrPrevious;
-                    cancelValue.Retain();
-                    _valueContainerOrPrevious.Release();
-                    T arg;
-                    if (cancelValue.TryGetValueAs(out arg))
-                    {
-                        _valueContainerOrPrevious = null;
-                        DisposeBranches();
-                        try
-                        {
-                            callback.Invoke(arg);
-                        }
-                        catch (Exception e)
-                        {
-                            UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                            SetStacktraceFromCreated(this, unhandledException);
-                            AddRejectionToUnhandledStack(unhandledException);
-                        }
-                    }
-                    else
-                    {
-                        _valueContainerOrPrevious = cancelValue;
-                    }
-                    AddToCancelQueueFront(ref _nextBranches);
-                    Release();
-                }
-
-                void IPotentialCancelation.CatchCancelation(Action onCanceled)
-                {
-                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
-                    ValidateArgument(onCanceled, "onCanceled", 1);
-
-                    if (_valueContainerOrPrevious != null)
-                    {
-                        _nextBranches.Enqueue(CancelDelegateAny.GetOrCreate(onCanceled, 1));
-                    }
-                }
-
-                IPotentialCancelation IPotentialCancelation.CatchCancelation<TCancel>(Action<TCancel> onCanceled)
-                {
-                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
-                    ValidateArgument(onCanceled, "onCanceled", 1);
-
-                    if (_valueContainerOrPrevious == null)
-                    {
-                        return this;
-                    }
-                    var cancelation = CancelDelegate<TCancel>.GetOrCreate(onCanceled, this, 1);
-                    _nextBranches.Enqueue(cancelation);
-                    Retain();
-                    return cancelation;
-                }
-
-                public void Retain()
-                {
-#if DEBUG
-                    checked
-#endif
-                    {
-                        ++_retainCounter;
-                    }
-                }
-
-                public void Release()
-                {
-#if DEBUG
-                    checked
-#endif
-                    {
-                        if (--_retainCounter == 0)
-                        {
-                            if (_valueContainerOrPrevious != null)
-                            {
-                                _valueContainerOrPrevious.Release();
-                            }
-                            SetDisposed(ref _valueContainerOrPrevious);
-                            if (Config.ObjectPooling == PoolType.All)
-                            {
-                                _pool.Push(this);
-                            }
-                        }
-                    }
-                }
-
-                // This breaks Interface Segregation Principle, but cuts down on memory.
-                bool IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new System.InvalidOperationException(); }
-                bool IValueContainerOrPrevious.ContainsType<U>() { throw new System.InvalidOperationException(); }
-            }
-
-
-            public sealed class DelegateHandleSelf0 : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                public static readonly DelegateHandleSelf0 instance = new DelegateHandleSelf0();
-
-                private DelegateHandleSelf0() { }
-
-                void IDelegateResolve.ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner)
-                {
-                    owner.ResolveInternal();
-                }
-
-                void IDelegateReject.ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     owner.RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner)
+                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
-                    owner.ResolveInternal();
+                    owner.ResolveInternal(feed);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
-                    owner.RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
-                }
-
-                void IRetainable.Retain() { }
-                void IRetainable.Release() { }
-            }
-
-            public sealed class DelegateHandleSelf<T> : IDelegateResolve<T>, IDelegateReject<T>, IDelegateResolvePromise<T>, IDelegateRejectPromise<T>
-            {
-                public static readonly DelegateHandleSelf<T> instance = new DelegateHandleSelf<T>();
-
-                private DelegateHandleSelf() { }
-
-                void IDelegateResolve<T>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<T> owner)
-                {
-                    owner._value = ((PromiseInternal<T>) feed)._value;
-                    owner.ResolveInternal();
-                }
-
-                void IDelegateReject<T>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<T> owner)
-                {
-                    owner.RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
-                }
-
-                void IDelegateResolvePromise<T>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<T> owner)
-                {
-                    owner.ResolveInternal();
-                }
-
-                void IDelegateRejectPromise<T>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<T> owner)
-                {
-                    owner._value = ((PromiseInternal<T>) feed)._value;
                     owner.RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
                 }
 
@@ -382,7 +134,7 @@ namespace Proto.Promises
                     return del;
                 }
 
-                private void ReleaseAndInvoke(PromiseResolveReject0 owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var temp = _callback;
                     Release();
@@ -390,12 +142,12 @@ namespace Proto.Promises
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner)
+                void IDelegateResolve.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
@@ -418,21 +170,20 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class DelegateVoidVoid<T> : PoolableDelegate<DelegateVoidVoid<T>>, IDelegateReject
+            public sealed class DelegateVoidVoid<TReject> : PoolableDelegate<DelegateVoidVoid<TReject>>, IDelegateReject
             {
                 private Action _callback;
-                private int _retainCounter;
 
-                public static DelegateVoidVoid<T> GetOrCreate(Action callback)
+                public static DelegateVoidVoid<TReject> GetOrCreate(Action callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidVoid<T>();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidVoid<TReject>();
                     del._callback = callback;
                     return del;
                 }
 
                 private DelegateVoidVoid() { }
 
-                private void ReleaseAndInvoke(PromiseResolveReject0 owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var temp = _callback;
                     Release();
@@ -440,10 +191,10 @@ namespace Proto.Promises
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
-                    if (rejectValue.ContainsType<T>())
+                    if (rejectValue.ContainsType<TReject>())
                     {
                         ReleaseAndInvoke(owner);
                     }
@@ -454,20 +205,14 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -475,7 +220,6 @@ namespace Proto.Promises
             public sealed class DelegateArgVoid<TArg> : PoolableDelegate<DelegateArgVoid<TArg>>, IDelegateResolve, IDelegateReject
             {
                 private Action<TArg> _callback;
-                private int _retainCounter;
 
                 public static DelegateArgVoid<TArg> GetOrCreate(Action<TArg> callback)
                 {
@@ -486,7 +230,7 @@ namespace Proto.Promises
 
                 private DelegateArgVoid() { }
 
-                private void ReleaseAndInvoke(TArg arg, PromiseResolveReject0 owner)
+                private void ReleaseAndInvoke(TArg arg, Promise owner)
                 {
                     var temp = _callback;
                     Dispose();
@@ -503,12 +247,12 @@ namespace Proto.Promises
                     }
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner)
+                void IDelegateResolve.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(((PromiseInternal<TArg>) feed)._value, owner);
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
                     TArg arg;
@@ -523,25 +267,19 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
 
-            public sealed class DelegateVoidResult<TResult> : PoolableDelegate<DelegateVoidResult<TResult>>, IDelegateResolve<TResult>, IDelegateReject<TResult>
+            public sealed class DelegateVoidResult<TResult> : PoolableDelegate<DelegateVoidResult<TResult>>, IDelegateResolve, IDelegateReject
             {
                 private Func<TResult> _callback;
                 private int _retainCounter;
@@ -555,20 +293,20 @@ namespace Proto.Promises
 
                 private DelegateVoidResult() { }
 
-                private void ReleaseAndInvoke(PromiseResolveReject<TResult> owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var temp = _callback;
                     Release();
-                    owner._value = temp.Invoke();
+                    ((PromiseInternal<TResult>) owner)._value = temp.Invoke();
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateResolve<TResult>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<TResult> owner)
+                void IDelegateResolve.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
 
-                void IDelegateReject<TResult>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<TResult> owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
@@ -591,32 +329,31 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class DelegateVoidResult<T, TResult> : PoolableDelegate<DelegateVoidResult<T, TResult>>, IDelegateReject<TResult>
+            public sealed class DelegateVoidResult<TReject, TResult> : PoolableDelegate<DelegateVoidResult<TReject, TResult>>, IDelegateReject
             {
                 private Func<TResult> _callback;
-                private int _retainCounter;
 
-                public static DelegateVoidResult<T, TResult> GetOrCreate(Func<TResult> callback)
+                public static DelegateVoidResult<TReject, TResult> GetOrCreate(Func<TResult> callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidResult<T, TResult>();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidResult<TReject, TResult>();
                     del._callback = callback;
                     return del;
                 }
 
                 private DelegateVoidResult() { }
 
-                private void ReleaseAndInvoke(PromiseResolveReject<TResult> owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var temp = _callback;
                     Release();
-                    owner._value = temp.Invoke();
+                    ((PromiseInternal<TResult>) owner)._value = temp.Invoke();
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateReject<TResult>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<TResult> owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
-                    if (rejectValue.ContainsType<T>())
+                    if (rejectValue.ContainsType<TReject>())
                     {
                         ReleaseAndInvoke(owner);
                     }
@@ -627,28 +364,21 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
 
-            public sealed class DelegateArgResult<TArg, TResult> : PoolableDelegate<DelegateArgResult<TArg, TResult>>, IDelegateResolve<TResult>, IDelegateReject<TResult>
+            public sealed class DelegateArgResult<TArg, TResult> : PoolableDelegate<DelegateArgResult<TArg, TResult>>, IDelegateResolve, IDelegateReject
             {
                 private Func<TArg, TResult> _callback;
-                private int _retainCounter;
 
                 public static DelegateArgResult<TArg, TResult> GetOrCreate(Func<TArg, TResult> callback)
                 {
@@ -659,20 +389,20 @@ namespace Proto.Promises
 
                 private DelegateArgResult() { }
 
-                private void ReleaseAndInvoke(TArg arg, PromiseResolveReject<TResult> owner)
+                private void ReleaseAndInvoke(TArg arg, Promise owner)
                 {
                     var temp = _callback;
                     Release();
-                    owner._value = temp.Invoke(arg);
+                    ((PromiseInternal<TResult>) owner)._value = temp.Invoke(arg);
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateResolve<TResult>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<TResult> owner)
+                void IDelegateResolve.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(((PromiseInternal<TArg>) feed)._value, owner);
                 }
 
-                void IDelegateReject<TResult>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<TResult> owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
                     TArg arg;
@@ -687,20 +417,14 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -720,19 +444,19 @@ namespace Proto.Promises
                     return del;
                 }
 
-                private void ReleaseAndInvoke(PromiseResolveRejectPromise0 owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var temp = _callback;
                     Release();
-                    owner.WaitFor(temp.Invoke());
+                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke());
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner)
+                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
@@ -755,31 +479,30 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class DelegateVoidPromise<T> : PoolableDelegate<DelegateVoidPromise<T>>, IDelegateRejectPromise
+            public sealed class DelegateVoidPromise<TReject> : PoolableDelegate<DelegateVoidPromise<TReject>>, IDelegateRejectPromise
             {
                 private Func<Promise> _callback;
-                private int _retainCounter;
 
-                public static DelegateVoidPromise<T> GetOrCreate(Func<Promise> callback)
+                public static DelegateVoidPromise<TReject> GetOrCreate(Func<Promise> callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidPromise<T>();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidPromise<TReject>();
                     del._callback = callback;
                     return del;
                 }
 
                 private DelegateVoidPromise() { }
 
-                private void ReleaseAndInvoke(PromiseResolveRejectPromise0 owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var temp = _callback;
                     Release();
-                    owner.WaitFor(temp.Invoke());
+                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke());
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
-                    if (rejectValue.ContainsType<T>())
+                    if (rejectValue.ContainsType<TReject>())
                     {
                         ReleaseAndInvoke(owner);
                     }
@@ -790,20 +513,14 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -811,7 +528,6 @@ namespace Proto.Promises
             public sealed class DelegateArgPromise<TArg> : PoolableDelegate<DelegateArgPromise<TArg>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Func<TArg, Promise> _callback;
-                private int _retainCounter;
 
                 public static DelegateArgPromise<TArg> GetOrCreate(Func<TArg, Promise> callback)
                 {
@@ -822,11 +538,11 @@ namespace Proto.Promises
 
                 private DelegateArgPromise() { }
 
-                private void ReleaseAndInvoke(TArg arg, PromiseResolveRejectPromise0 owner)
+                private void ReleaseAndInvoke(TArg arg, Promise owner)
                 {
                     var temp = _callback;
                     Dispose();
-                    owner.WaitFor(temp.Invoke(arg));
+                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(arg));
                 }
 
                 public void Dispose()
@@ -838,12 +554,12 @@ namespace Proto.Promises
                     }
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner)
+                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(((PromiseInternal<TArg>) feed)._value, owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
                     TArg arg;
@@ -858,25 +574,19 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
 
-            public sealed class DelegateVoidPromiseT<TPromise> : PoolableDelegate<DelegateVoidPromiseT<TPromise>>, IDelegateResolvePromise<TPromise>, IDelegateRejectPromise<TPromise>
+            public sealed class DelegateVoidPromiseT<TPromise> : PoolableDelegate<DelegateVoidPromiseT<TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Func<Promise<TPromise>> _callback;
                 private int _retainCounter;
@@ -890,19 +600,19 @@ namespace Proto.Promises
 
                 private DelegateVoidPromiseT() { }
 
-                private void ReleaseAndInvoke(PromiseResolveRejectPromise<TPromise> owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var temp = _callback;
                     Release();
-                    owner.WaitFor(temp.Invoke());
+                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke());
                 }
 
-                void IDelegateResolvePromise<TPromise>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<TPromise> owner)
+                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
 
-                void IDelegateRejectPromise<TPromise>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<TPromise> owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
@@ -925,31 +635,30 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class DelegateVoidPromiseT<T, TPromise> : PoolableDelegate<DelegateVoidPromiseT<T, TPromise>>, IDelegateRejectPromise<TPromise>
+            public sealed class DelegateVoidPromiseT<TReject, TPromise> : PoolableDelegate<DelegateVoidPromiseT<TReject, TPromise>>, IDelegateRejectPromise
             {
                 private Func<Promise<TPromise>> _callback;
-                private int _retainCounter;
 
-                public static DelegateVoidPromiseT<T, TPromise> GetOrCreate(Func<Promise<TPromise>> callback)
+                public static DelegateVoidPromiseT<TReject, TPromise> GetOrCreate(Func<Promise<TPromise>> callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidPromiseT<T, TPromise>();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidPromiseT<TReject, TPromise>();
                     del._callback = callback;
                     return del;
                 }
 
                 private DelegateVoidPromiseT() { }
 
-                private void ReleaseAndInvoke(PromiseResolveRejectPromise<TPromise> owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var temp = _callback;
                     Release();
-                    owner.WaitFor(temp.Invoke());
+                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke());
                 }
 
-                void IDelegateRejectPromise<TPromise>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<TPromise> owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
-                    if (rejectValue.ContainsType<T>())
+                    if (rejectValue.ContainsType<TReject>())
                     {
                         ReleaseAndInvoke(owner);
                     }
@@ -960,28 +669,21 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
 
-            public sealed class DelegateArgPromiseT<TArg, TPromise> : PoolableDelegate<DelegateArgPromiseT<TArg, TPromise>>, IDelegateResolvePromise<TPromise>, IDelegateRejectPromise<TPromise>
+            public sealed class DelegateArgPromiseT<TArg, TPromise> : PoolableDelegate<DelegateArgPromiseT<TArg, TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Func<TArg, Promise<TPromise>> _callback;
-                private int _retainCounter;
 
                 public static DelegateArgPromiseT<TArg, TPromise> GetOrCreate(Func<TArg, Promise<TPromise>> callback)
                 {
@@ -992,19 +694,19 @@ namespace Proto.Promises
 
                 private DelegateArgPromiseT() { }
 
-                private void ReleaseAndInvoke(TArg arg, PromiseResolveRejectPromise<TPromise> owner)
+                private void ReleaseAndInvoke(TArg arg, Promise owner)
                 {
                     var temp = _callback;
                     Release();
-                    owner.WaitFor(temp.Invoke(arg));
+                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(arg));
                 }
 
-                void IDelegateResolvePromise<TPromise>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<TPromise> owner)
+                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(((PromiseInternal<TArg>) feed)._value, owner);
                 }
 
-                void IDelegateRejectPromise<TPromise>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<TPromise> owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
                     TArg arg;
@@ -1019,20 +721,14 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -1101,205 +797,6 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class CancelDelegateAnyCapture<TCapture> : PotentialCancelation
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                private TCapture _capturedValue;
-                private Action<TCapture> _onCanceled;
-
-                private CancelDelegateAnyCapture() { }
-
-                static CancelDelegateAnyCapture()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                public static CancelDelegateAnyCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture> onCanceled, int skipFrames)
-                {
-                    var del = _pool.IsNotEmpty ? (CancelDelegateAnyCapture<TCapture>) _pool.Pop() : new CancelDelegateAnyCapture<TCapture>();
-                    del._capturedValue = capturedValue;
-                    del._onCanceled = onCanceled;
-                    SetCreatedStacktrace(del, skipFrames + 1);
-                    return del;
-                }
-
-                protected override void Dispose()
-                {
-                    _capturedValue = default(TCapture);
-                    _onCanceled = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                public override void Cancel()
-                {
-                    var value = _capturedValue;
-                    var callback = _onCanceled;
-                    Dispose();
-                    try
-                    {
-                        callback.Invoke(value);
-                    }
-                    catch (Exception e)
-                    {
-                        UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                        SetStacktraceFromCreated(this, unhandledException);
-                        AddRejectionToUnhandledStack(unhandledException);
-                    }
-                }
-            }
-
-            public sealed class CancelDelegateCapture<TCapture, T> : PotentialCancelation, IPotentialCancelation, IValueContainerOrPrevious, IValueContainerContainer
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                private ValueLinkedQueue<ITreeHandleable> _nextBranches;
-                private IValueContainerOrPrevious _valueContainerOrPrevious;
-                private TCapture _capturedValue;
-                private Action<TCapture, T> _onCanceled;
-                private uint _retainCounter;
-
-                IValueContainerOrPrevious IValueContainerContainer.ValueContainerOrPrevious { get { return _valueContainerOrPrevious; } }
-
-                private CancelDelegateCapture() { }
-
-                static CancelDelegateCapture()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                ~CancelDelegateCapture()
-                {
-                    if (_retainCounter > 0)
-                    {
-                        // Delegate wasn't released.
-                        var exception = UnhandledExceptionException.GetOrCreate(UnreleasedObjectException.instance);
-                        SetStacktraceFromCreated(this, exception);
-                        AddRejectionToUnhandledStack(exception);
-                    }
-                }
-
-                public static CancelDelegateCapture<TCapture, T> GetOrCreate(TCapture capturedValue, Action<TCapture, T> onCanceled, IValueContainerOrPrevious previous, int skipFrames)
-                {
-                    var del = _pool.IsNotEmpty ? (CancelDelegateCapture<TCapture, T>) _pool.Pop() : new CancelDelegateCapture<TCapture, T>();
-                    del._capturedValue = capturedValue;
-                    del._onCanceled = onCanceled;
-                    del._valueContainerOrPrevious = previous;
-                    SetCreatedStacktrace(del, skipFrames + 1);
-                    del.Retain();
-                    return del;
-                }
-
-                protected override void TakeBranches(ref ValueLinkedStack<ITreeHandleable> disposeStack)
-                {
-                    disposeStack.PushAndClear(ref _nextBranches);
-                }
-
-                protected override void Dispose()
-                {
-                    _capturedValue = default(TCapture);
-                    _onCanceled = null;
-                    Release();
-                }
-
-                public override void Cancel()
-                {
-                    var value = _capturedValue;
-                    _capturedValue = default(TCapture);
-                    var callback = _onCanceled;
-                    _onCanceled = null;
-                    var cancelValue = ((IValueContainerContainer) _valueContainerOrPrevious).ValueContainerOrPrevious;
-                    cancelValue.Retain();
-                    _valueContainerOrPrevious.Release();
-                    T arg;
-                    if (cancelValue.TryGetValueAs(out arg))
-                    {
-                        _valueContainerOrPrevious = null;
-                        DisposeBranches();
-                        try
-                        {
-                            callback.Invoke(value, arg);
-                        }
-                        catch (Exception e)
-                        {
-                            UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                            SetStacktraceFromCreated(this, unhandledException);
-                            AddRejectionToUnhandledStack(unhandledException);
-                        }
-                    }
-                    else
-                    {
-                        _valueContainerOrPrevious = cancelValue;
-                    }
-                    AddToCancelQueueFront(ref _nextBranches);
-                    Release();
-                }
-
-                void IPotentialCancelation.CatchCancelation(Action onCanceled)
-                {
-                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
-                    ValidateArgument(onCanceled, "onCanceled", 1);
-
-                    if (_valueContainerOrPrevious != null)
-                    {
-                        _nextBranches.Enqueue(CancelDelegateAny.GetOrCreate(onCanceled, 1));
-                    }
-                }
-
-                IPotentialCancelation IPotentialCancelation.CatchCancelation<TCancel>(Action<TCancel> onCanceled)
-                {
-                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
-                    ValidateArgument(onCanceled, "onCanceled", 1);
-
-                    if (_valueContainerOrPrevious == null)
-                    {
-                        return this;
-                    }
-                    var cancelation = CancelDelegate<TCancel>.GetOrCreate(onCanceled, this, 1);
-                    _nextBranches.Enqueue(cancelation);
-                    Retain();
-                    return cancelation;
-                }
-
-                public void Retain()
-                {
-#if DEBUG
-                    checked
-#endif
-                    {
-                        ++_retainCounter;
-                    }
-                }
-
-                public void Release()
-                {
-#if DEBUG
-                    checked
-#endif
-                    {
-                        if (--_retainCounter == 0)
-                        {
-                            if (_valueContainerOrPrevious != null)
-                            {
-                                _valueContainerOrPrevious.Release();
-                            }
-                            SetDisposed(ref _valueContainerOrPrevious);
-                            if (Config.ObjectPooling == PoolType.All)
-                            {
-                                _pool.Push(this);
-                            }
-                        }
-                    }
-                }
-
-                // This breaks Interface Segregation Principle, but cuts down on memory.
-                bool IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new System.InvalidOperationException(); }
-                bool IValueContainerOrPrevious.ContainsType<U>() { throw new System.InvalidOperationException(); }
-            }
-
 
             public sealed class DelegateCaptureVoidVoid<TCapture> : PoolableDelegate<DelegateCaptureVoidVoid<TCapture>>, IDelegateResolve, IDelegateReject
             {
@@ -1317,7 +814,7 @@ namespace Proto.Promises
 
                 private DelegateCaptureVoidVoid() { }
 
-                private void ReleaseAndInvoke(PromiseResolveReject0 owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
@@ -1326,12 +823,12 @@ namespace Proto.Promises
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner)
+                void IDelegateResolve.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
@@ -1355,15 +852,14 @@ namespace Proto.Promises
                 }
             }
 
-            public class DelegateCaptureVoidVoid<TCapture, T> : PoolableDelegate<DelegateCaptureVoidVoid<TCapture, T>>, IDelegateReject
+            public class DelegateCaptureVoidVoid<TCapture, TReject> : PoolableDelegate<DelegateCaptureVoidVoid<TCapture, TReject>>, IDelegateReject
             {
                 private TCapture _capturedValue;
                 private Action<TCapture> _callback;
-                private int _retainCounter;
 
-                public static DelegateCaptureVoidVoid<TCapture, T> GetOrCreate(TCapture capturedValue, Action<TCapture> callback)
+                public static DelegateCaptureVoidVoid<TCapture, TReject> GetOrCreate(TCapture capturedValue, Action<TCapture> callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureVoidVoid<TCapture, T>();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureVoidVoid<TCapture, TReject>();
                     del._capturedValue = capturedValue;
                     del._callback = callback;
                     return del;
@@ -1371,7 +867,7 @@ namespace Proto.Promises
 
                 private DelegateCaptureVoidVoid() { }
 
-                private void ReleaseAndInvoke(PromiseResolveReject0 owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
@@ -1380,10 +876,10 @@ namespace Proto.Promises
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
-                    if (rejectValue.ContainsType<T>())
+                    if (rejectValue.ContainsType<TReject>())
                     {
                         ReleaseAndInvoke(owner);
                     }
@@ -1394,21 +890,15 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _capturedValue = default(TCapture);
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _capturedValue = default(TCapture);
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -1417,7 +907,6 @@ namespace Proto.Promises
             {
                 private TCapture _capturedValue;
                 private Action<TCapture, TArg> _callback;
-                private int _retainCounter;
 
                 public static DelegateCaptureArgVoid<TCapture, TArg> GetOrCreate(TCapture capturedValue, Action<TCapture, TArg> callback)
                 {
@@ -1429,7 +918,7 @@ namespace Proto.Promises
 
                 private DelegateCaptureArgVoid() { }
 
-                private void ReleaseAndInvoke(TArg arg, PromiseResolveReject0 owner)
+                private void ReleaseAndInvoke(TArg arg, Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
@@ -1438,12 +927,12 @@ namespace Proto.Promises
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner)
+                void IDelegateResolve.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(((PromiseInternal<TArg>) feed)._value, owner);
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
                     TArg arg;
@@ -1458,26 +947,20 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _capturedValue = default(TCapture);
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _capturedValue = default(TCapture);
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
 
-            public sealed class DelegateCaptureVoidResult<TCapture, TResult> : PoolableDelegate<DelegateCaptureVoidResult<TCapture, TResult>>, IDelegateResolve<TResult>, IDelegateReject<TResult>
+            public sealed class DelegateCaptureVoidResult<TCapture, TResult> : PoolableDelegate<DelegateCaptureVoidResult<TCapture, TResult>>, IDelegateResolve, IDelegateReject
             {
                 private TCapture _capturedValue;
                 private Func<TCapture, TResult> _callback;
@@ -1493,21 +976,21 @@ namespace Proto.Promises
 
                 private DelegateCaptureVoidResult() { }
 
-                private void ReleaseAndInvoke(PromiseResolveReject<TResult> owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
                     Release();
-                    owner._value = temp.Invoke(value);
+                    ((PromiseInternal<TResult>) owner)._value = temp.Invoke(value);
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateResolve<TResult>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<TResult> owner)
+                void IDelegateResolve.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
 
-                void IDelegateReject<TResult>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<TResult> owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
@@ -1531,15 +1014,14 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class DelegateCaptureVoidResult<TCapture, T, TResult> : PoolableDelegate<DelegateCaptureVoidResult<TCapture, T, TResult>>, IDelegateReject<TResult>
+            public sealed class DelegateCaptureVoidResult<TCapture, TReject, TResult> : PoolableDelegate<DelegateCaptureVoidResult<TCapture, TReject, TResult>>, IDelegateReject
             {
                 private TCapture _capturedValue;
                 private Func<TCapture, TResult> _callback;
-                private int _retainCounter;
 
-                public static DelegateCaptureVoidResult<TCapture, T, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, TResult> callback)
+                public static DelegateCaptureVoidResult<TCapture, TReject, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, TResult> callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureVoidResult<TCapture, T, TResult>();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureVoidResult<TCapture, TReject, TResult>();
                     del._capturedValue = capturedValue;
                     del._callback = callback;
                     return del;
@@ -1547,19 +1029,19 @@ namespace Proto.Promises
 
                 private DelegateCaptureVoidResult() { }
 
-                private void ReleaseAndInvoke(PromiseResolveReject<TResult> owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
                     Release();
-                    owner._value = temp.Invoke(value);
+                    ((PromiseInternal<TResult>) owner)._value = temp.Invoke(value);
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateReject<TResult>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<TResult> owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
-                    if (rejectValue.ContainsType<T>())
+                    if (rejectValue.ContainsType<TReject>())
                     {
                         ReleaseAndInvoke(owner);
                     }
@@ -1570,30 +1052,23 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _capturedValue = default(TCapture);
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _capturedValue = default(TCapture);
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
 
-            public sealed class DelegateCaptureArgResult<TCapture, TArg, TResult> : PoolableDelegate<DelegateCaptureArgResult<TCapture, TArg, TResult>>, IDelegateResolve<TResult>, IDelegateReject<TResult>
+            public sealed class DelegateCaptureArgResult<TCapture, TArg, TResult> : PoolableDelegate<DelegateCaptureArgResult<TCapture, TArg, TResult>>, IDelegateResolve, IDelegateReject
             {
                 private TCapture _capturedValue;
                 private Func<TCapture, TArg, TResult> _callback;
-                private int _retainCounter;
 
                 public static DelegateCaptureArgResult<TCapture, TArg, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
                 {
@@ -1605,21 +1080,21 @@ namespace Proto.Promises
 
                 private DelegateCaptureArgResult() { }
 
-                private void ReleaseAndInvoke(TArg arg, PromiseResolveReject<TResult> owner)
+                private void ReleaseAndInvoke(TArg arg, Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
                     Release();
-                    owner._value = temp.Invoke(value, arg);
+                    ((PromiseInternal<TResult>) owner)._value = temp.Invoke(value, arg);
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateResolve<TResult>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<TResult> owner)
+                void IDelegateResolve.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(((PromiseInternal<TArg>) feed)._value, owner);
                 }
 
-                void IDelegateReject<TResult>.ReleaseAndInvoke(Promise feed, PromiseResolveReject<TResult> owner)
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
                     TArg arg;
@@ -1634,21 +1109,15 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _capturedValue = default(TCapture);
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _capturedValue = default(TCapture);
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -1670,20 +1139,20 @@ namespace Proto.Promises
                     return del;
                 }
 
-                private void ReleaseAndInvoke(PromiseResolveRejectPromise0 owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
                     Release();
-                    owner.WaitFor(temp.Invoke(value));
+                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(value));
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner)
+                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
@@ -1707,15 +1176,14 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class DelegateCaptureVoidPromise<TCapture, T> : PoolableDelegate<DelegateCaptureVoidPromise<TCapture, T>>, IDelegateRejectPromise
+            public sealed class DelegateCaptureVoidPromise<TCapture, TReject> : PoolableDelegate<DelegateCaptureVoidPromise<TCapture, TReject>>, IDelegateRejectPromise
             {
                 private TCapture _capturedValue;
                 private Func<TCapture, Promise> _callback;
-                private int _retainCounter;
 
-                public static DelegateCaptureVoidPromise<TCapture, T> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise> callback)
+                public static DelegateCaptureVoidPromise<TCapture, TReject> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise> callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureVoidPromise<TCapture, T>();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureVoidPromise<TCapture, TReject>();
                     del._capturedValue = capturedValue;
                     del._callback = callback;
                     return del;
@@ -1723,18 +1191,18 @@ namespace Proto.Promises
 
                 private DelegateCaptureVoidPromise() { }
 
-                private void ReleaseAndInvoke(PromiseResolveRejectPromise0 owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
                     Release();
-                    owner.WaitFor(temp.Invoke(value));
+                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(value));
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
-                    if (rejectValue.ContainsType<T>())
+                    if (rejectValue.ContainsType<TReject>())
                     {
                         ReleaseAndInvoke(owner);
                     }
@@ -1745,21 +1213,15 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _capturedValue = default(TCapture);
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _capturedValue = default(TCapture);
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -1768,7 +1230,6 @@ namespace Proto.Promises
             {
                 private TCapture _capturedValue;
                 private Func<TCapture, TArg, Promise> _callback;
-                private int _retainCounter;
 
                 public static DelegateCaptureArgPromise<TCapture, TArg> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
                 {
@@ -1779,12 +1240,12 @@ namespace Proto.Promises
 
                 private DelegateCaptureArgPromise() { }
 
-                private void ReleaseAndInvoke(TArg arg, PromiseResolveRejectPromise0 owner)
+                private void ReleaseAndInvoke(TArg arg, Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
                     Dispose();
-                    owner.WaitFor(temp.Invoke(value, arg));
+                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(value, arg));
                 }
 
                 public void Dispose()
@@ -1796,12 +1257,12 @@ namespace Proto.Promises
                     }
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner)
+                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(((PromiseInternal<TArg>) feed)._value, owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
                     TArg arg;
@@ -1816,26 +1277,20 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _capturedValue = default(TCapture);
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _capturedValue = default(TCapture);
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
 
-            public sealed class DelegateCaptureVoidPromiseT<TCapture, TPromise> : PoolableDelegate<DelegateCaptureVoidPromiseT<TCapture, TPromise>>, IDelegateResolvePromise<TPromise>, IDelegateRejectPromise<TPromise>
+            public sealed class DelegateCaptureVoidPromiseT<TCapture, TPromise> : PoolableDelegate<DelegateCaptureVoidPromiseT<TCapture, TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private TCapture _capturedValue;
                 private Func<TCapture, Promise<TPromise>> _callback;
@@ -1851,20 +1306,20 @@ namespace Proto.Promises
 
                 private DelegateCaptureVoidPromiseT() { }
 
-                private void ReleaseAndInvoke(PromiseResolveRejectPromise<TPromise> owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
                     Release();
-                    owner.WaitFor(temp.Invoke(value));
+                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(value));
                 }
 
-                void IDelegateResolvePromise<TPromise>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<TPromise> owner)
+                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
 
-                void IDelegateRejectPromise<TPromise>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<TPromise> owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(owner);
                 }
@@ -1888,15 +1343,14 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class DelegateCaptureVoidPromiseT<TCapture, T, TPromise> : PoolableDelegate<DelegateCaptureVoidPromiseT<TCapture, T, TPromise>>, IDelegateRejectPromise<TPromise>
+            public sealed class DelegateCaptureVoidPromiseT<TCapture, TReject, TPromise> : PoolableDelegate<DelegateCaptureVoidPromiseT<TCapture, TReject, TPromise>>, IDelegateRejectPromise
             {
                 private TCapture _capturedValue;
                 private Func<TCapture, Promise<TPromise>> _callback;
-                private int _retainCounter;
 
-                public static DelegateCaptureVoidPromiseT<TCapture, T, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise<TPromise>> callback)
+                public static DelegateCaptureVoidPromiseT<TCapture, TReject, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise<TPromise>> callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureVoidPromiseT<TCapture, T, TPromise>();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureVoidPromiseT<TCapture, TReject, TPromise>();
                     del._capturedValue = capturedValue;
                     del._callback = callback;
                     return del;
@@ -1904,18 +1358,18 @@ namespace Proto.Promises
 
                 private DelegateCaptureVoidPromiseT() { }
 
-                private void ReleaseAndInvoke(PromiseResolveRejectPromise<TPromise> owner)
+                private void ReleaseAndInvoke(Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
                     Release();
-                    owner.WaitFor(temp.Invoke(value));
+                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(value));
                 }
 
-                void IDelegateRejectPromise<TPromise>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<TPromise> owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
-                    if (rejectValue.ContainsType<T>())
+                    if (rejectValue.ContainsType<TReject>())
                     {
                         ReleaseAndInvoke(owner);
                     }
@@ -1926,30 +1380,23 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _capturedValue = default(TCapture);
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _capturedValue = default(TCapture);
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
 
-            public sealed class DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> : PoolableDelegate<DelegateCaptureArgPromiseT<TCapture, TArg, TPromise>>, IDelegateResolvePromise<TPromise>, IDelegateRejectPromise<TPromise>
+            public sealed class DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> : PoolableDelegate<DelegateCaptureArgPromiseT<TCapture, TArg, TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private TCapture _capturedValue;
                 private Func<TCapture, TArg, Promise<TPromise>> _callback;
-                private int _retainCounter;
 
                 public static DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, Promise<TPromise>> callback)
                 {
@@ -1960,20 +1407,20 @@ namespace Proto.Promises
 
                 private DelegateCaptureArgPromiseT() { }
 
-                private void ReleaseAndInvoke(TArg arg, PromiseResolveRejectPromise<TPromise> owner)
+                private void ReleaseAndInvoke(TArg arg, Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
                     Release();
-                    owner.WaitFor(temp.Invoke(value, arg));
+                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(value, arg));
                 }
 
-                void IDelegateResolvePromise<TPromise>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<TPromise> owner)
+                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     ReleaseAndInvoke(((PromiseInternal<TArg>) feed)._value, owner);
                 }
 
-                void IDelegateRejectPromise<TPromise>.ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<TPromise> owner)
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
                 {
                     var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
                     TArg arg;
@@ -1988,23 +1435,179 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Retain()
-                {
-                    ++_retainCounter;
-                }
+                void IRetainable.Retain() { }
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+                    _capturedValue = default(TCapture);
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _capturedValue = default(TCapture);
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
+            }
+
+
+            public sealed class DelegateCapture<TCapture> : PoolableDelegate<DelegateCapture<TCapture>>, IDelegateReject, IDelegateRejectPromise
+            {
+                TCapture _capturedValue;
+
+                private DelegateCapture() { }
+
+                public static DelegateCapture<TCapture> GetOrCreate(TCapture capturedValue)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCapture<TCapture>();
+                    del._capturedValue = capturedValue;
+                    return del;
+                }
+
+                private void ReleaseAndInvoke(Promise owner)
+                {
+                    ((PromiseInternal<TCapture>) owner)._value = _capturedValue;
+                    Release();
+                    owner.ResolveInternal();
+                }
+
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
+                {
+                    ReleaseAndInvoke(owner);
+                }
+
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
+                {
+                    ReleaseAndInvoke(owner);
+                }
+
+                void IRetainable.Retain() { }
+
+                public void Release()
+                {
+                    _capturedValue = default(TCapture);
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
+
+            public sealed class DelegateCapture<TCapture, TReject> : PoolableDelegate<DelegateCapture<TCapture, TReject>>, IDelegateReject, IDelegateRejectPromise
+            {
+                TCapture _capturedValue;
+
+                private DelegateCapture() { }
+
+                public static DelegateCapture<TCapture, TReject> GetOrCreate(TCapture capturedValue)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCapture<TCapture, TReject>();
+                    del._capturedValue = capturedValue;
+                    return del;
+                }
+
+                private void ReleaseAndInvoke(Promise owner)
+                {
+                    ((PromiseInternal<TCapture>) owner)._value = _capturedValue;
+                    Release();
+                    owner.ResolveInternal();
+                }
+
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
+                {
+                    ReleaseAndInvoke(owner);
+                }
+
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
+                {
+                    var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
+                    if (rejectValue.ContainsType<TReject>())
+                    {
+                        ReleaseAndInvoke(owner);
+                    }
+                    else
+                    {
+                        Release();
+                        owner.RejectInternalIfNotCanceled(rejectValue);
+                    }
+                }
+
+                void IRetainable.Retain() { }
+
+                public void Release()
+                {
+                    _capturedValue = default(TCapture);
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
+
+            public sealed class DelegateCapturePreserve0 : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            {
+                private static readonly DelegateCapturePreserve0 _instance = new DelegateCapturePreserve0();
+
+                private DelegateCapturePreserve0() { }
+
+                public static DelegateCapturePreserve0 GetOrCreate()
+                {
+                    return _instance;
+                }
+
+                void IDelegateResolve.ReleaseAndInvoke(Promise feed, Promise owner)
+                {
+                    owner.ResolveInternal();
+                }
+
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
+                {
+                    owner.ResolveInternal();
+                }
+
+                void IDelegateResolvePromise.ReleaseAndInvoke(Promise feed, Promise owner)
+                {
+                    owner.ResolveInternal();
+                }
+
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
+                {
+                    owner.ResolveInternal();
+                }
+
+                void IRetainable.Retain() { }
+                void IRetainable.Release() { }
+            }
+
+            public sealed class DelegateCapturePreserve<TReject> : IDelegateReject, IDelegateRejectPromise
+            {
+                private static readonly DelegateCapturePreserve<TReject> _instance = new DelegateCapturePreserve<TReject>();
+
+                private DelegateCapturePreserve() { }
+
+                public static DelegateCapturePreserve<TReject> GetOrCreate()
+                {
+                    return _instance;
+                }
+
+                void IDelegateReject.ReleaseAndInvoke(Promise feed, Promise owner)
+                {
+                    owner.ResolveInternal();
+                }
+
+                void IDelegateRejectPromise.ReleaseAndInvoke(Promise feed, Promise owner)
+                {
+                    var rejectValue = feed._rejectedOrCanceledValueOrPrevious;
+                    if (rejectValue.ContainsType<TReject>())
+                    {
+                        owner.ResolveInternal();
+                    }
+                    else
+                    {
+                        owner.RejectInternalIfNotCanceled(rejectValue);
+                    }
+                }
+
+                void IRetainable.Retain() { }
+                void IRetainable.Release() { }
             }
         }
     }

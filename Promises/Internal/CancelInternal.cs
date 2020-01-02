@@ -14,13 +14,13 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable RECS0108 // Warns about static fields in generic types
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
 #pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0618 // Type or member is obsolete
-#pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
+using System;
 using Proto.Utils;
 
 namespace Proto.Promises
@@ -69,56 +69,476 @@ namespace Proto.Promises
 
         partial class Internal
         {
-            public abstract partial class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitPromise<TPromise>
+            public abstract partial class PotentialCancelation : ITreeHandleable
             {
-                public void WaitFor(Promise other)
+                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+
+                public virtual void AssignPrevious(IValueContainerOrPrevious cancelValue) { }
+
+                void ITreeHandleable.Handle()
                 {
-                    ValidateReturn(other);
-#if PROMISE_CANCEL
-                    if (_state == State.Canceled)
+                    Dispose();
+                    DisposeBranches();
+                }
+
+                protected virtual void TakeBranches(ref ValueLinkedStack<ITreeHandleable> disposeStack) { }
+
+                public abstract void Cancel();
+
+                protected abstract void Dispose();
+
+                protected void DisposeBranches()
+                {
+                    var branches = new ValueLinkedStack<ITreeHandleable>();
+                    TakeBranches(ref branches);
+                    while (branches.IsNotEmpty)
                     {
-                        ReleaseInternal();
-                    }
-                    else
-#endif
-                    {
-                        _rejectedOrCanceledValueOrPrevious = other;
-#if PROMISE_PROGRESS
-                        _secondPrevious = true;
-                        if (_progressListeners.IsNotEmpty)
-                        {
-                            SubscribeProgressToBranchesAndRoots(other, this);
-                        }
-#endif
-                        other.AddWaiter(this);
+                        var current = (PotentialCancelation) branches.Pop();
+                        current.Dispose();
+                        current.TakeBranches(ref branches);
                     }
                 }
             }
 
-            public abstract partial class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitPromise<T, TPromise>
+            public sealed class CancelDelegateAny : PotentialCancelation
             {
-                public void WaitFor(Promise other)
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                private Action _onCanceled;
+
+                private CancelDelegateAny() { }
+
+                static CancelDelegateAny()
                 {
-                    ValidateReturn(other);
-#if PROMISE_CANCEL
-                    if (_state == State.Canceled)
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                public static CancelDelegateAny GetOrCreate(Action onCanceled, int skipFrames)
+                {
+                    var del = _pool.IsNotEmpty ? (CancelDelegateAny) _pool.Pop() : new CancelDelegateAny();
+                    del._onCanceled = onCanceled;
+                    SetCreatedStacktrace(del, skipFrames + 1);
+                    return del;
+                }
+
+                protected override void Dispose()
+                {
+                    _onCanceled = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        ReleaseInternal();
-                    }
-                    else
-#endif
-                    {
-                        _rejectedOrCanceledValueOrPrevious = other;
-#if PROMISE_PROGRESS
-                        _secondPrevious = true;
-                        if (_progressListeners.IsNotEmpty)
-                        {
-                            SubscribeProgressToBranchesAndRoots(other, this);
-                        }
-#endif
-                        other.AddWaiter(this);
+                        _pool.Push(this);
                     }
                 }
+
+                public override void Cancel()
+                {
+                    var callback = _onCanceled;
+                    Dispose();
+                    try
+                    {
+                        callback.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
+                        SetStacktraceFromCreated(this, unhandledException);
+                        AddRejectionToUnhandledStack(unhandledException);
+                    }
+                }
+            }
+
+            public sealed class CancelDelegate<T> : PotentialCancelation, IPotentialCancelation, IValueContainerOrPrevious, IValueContainerContainer
+            {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                private ValueLinkedQueue<ITreeHandleable> _nextBranches;
+                private IValueContainerOrPrevious _valueContainerOrPrevious;
+                private Action<T> _onCanceled;
+                private uint _retainCounter;
+
+                IValueContainerOrPrevious IValueContainerContainer.ValueContainerOrPrevious { get { return _valueContainerOrPrevious; } }
+
+                private CancelDelegate() { }
+
+                static CancelDelegate()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                ~CancelDelegate()
+                {
+                    if (_retainCounter > 0)
+                    {
+                        // Delegate wasn't released.
+                        var exception = UnhandledExceptionException.GetOrCreate(UnreleasedObjectException.instance);
+                        SetStacktraceFromCreated(this, exception);
+                        AddRejectionToUnhandledStack(exception);
+                    }
+                }
+
+                public static CancelDelegate<T> GetOrCreate(Action<T> onCanceled, IValueContainerOrPrevious previous, int skipFrames)
+                {
+                    var del = _pool.IsNotEmpty ? (CancelDelegate<T>) _pool.Pop() : new CancelDelegate<T>();
+                    del._onCanceled = onCanceled;
+                    del._valueContainerOrPrevious = previous;
+                    SetCreatedStacktrace(del, skipFrames + 1);
+                    del.Retain();
+                    return del;
+                }
+
+                protected override void TakeBranches(ref ValueLinkedStack<ITreeHandleable> disposeStack)
+                {
+                    disposeStack.PushAndClear(ref _nextBranches);
+                }
+
+                protected override void Dispose()
+                {
+                    _onCanceled = null;
+                    Release();
+                }
+
+                public override void Cancel()
+                {
+                    var callback = _onCanceled;
+                    _onCanceled = null;
+                    var cancelValue = ((IValueContainerContainer) _valueContainerOrPrevious).ValueContainerOrPrevious;
+                    cancelValue.Retain();
+                    _valueContainerOrPrevious.Release();
+                    T arg;
+                    if (cancelValue.TryGetValueAs(out arg))
+                    {
+                        _valueContainerOrPrevious = null;
+                        DisposeBranches();
+                        try
+                        {
+                            callback.Invoke(arg);
+                        }
+                        catch (Exception e)
+                        {
+                            UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
+                            SetStacktraceFromCreated(this, unhandledException);
+                            AddRejectionToUnhandledStack(unhandledException);
+                        }
+                    }
+                    else
+                    {
+                        _valueContainerOrPrevious = cancelValue;
+                    }
+                    AddToCancelQueueFront(ref _nextBranches);
+                    Release();
+                }
+
+                void IPotentialCancelation.CatchCancelation(Action onCanceled)
+                {
+                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
+                    ValidateArgument(onCanceled, "onCanceled", 1);
+
+                    if (_valueContainerOrPrevious != null)
+                    {
+                        _nextBranches.Enqueue(CancelDelegateAny.GetOrCreate(onCanceled, 1));
+                    }
+                }
+
+                IPotentialCancelation IPotentialCancelation.CatchCancelation<TCancel>(Action<TCancel> onCanceled)
+                {
+                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
+                    ValidateArgument(onCanceled, "onCanceled", 1);
+
+                    if (_valueContainerOrPrevious == null)
+                    {
+                        return this;
+                    }
+                    var cancelation = CancelDelegate<TCancel>.GetOrCreate(onCanceled, this, 1);
+                    _nextBranches.Enqueue(cancelation);
+                    Retain();
+                    return cancelation;
+                }
+
+                void IPotentialCancelation.CatchCancelationCapture<TCapture>(TCapture captureValue, Action<TCapture> onCanceled)
+                {
+                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
+                    ValidateArgument(onCanceled, "onCanceled", 1);
+
+                    if (_valueContainerOrPrevious != null)
+                    {
+                        _nextBranches.Enqueue(CancelDelegateAnyCapture<TCapture>.GetOrCreate(captureValue, onCanceled, 1));
+                    }
+                }
+
+                IPotentialCancelation IPotentialCancelation.CatchCancelationCapture<TCapture, TCancel>(TCapture captureValue, Action<TCapture, TCancel> onCanceled)
+                {
+                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
+                    ValidateArgument(onCanceled, "onCanceled", 1);
+
+                    if (_valueContainerOrPrevious == null)
+                    {
+                        return this;
+                    }
+                    var cancelation = CancelDelegateCapture<TCapture, TCancel>.GetOrCreate(captureValue, onCanceled, this, 1);
+                    _nextBranches.Enqueue(cancelation);
+                    Retain();
+                    return cancelation;
+                }
+
+                public void Retain()
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        ++_retainCounter;
+                    }
+                }
+
+                public void Release()
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        if (--_retainCounter == 0)
+                        {
+                            if (_valueContainerOrPrevious != null)
+                            {
+                                _valueContainerOrPrevious.Release();
+                            }
+                            SetDisposed(ref _valueContainerOrPrevious);
+                            if (Config.ObjectPooling == PoolType.All)
+                            {
+                                _pool.Push(this);
+                            }
+                        }
+                    }
+                }
+
+                // This breaks Interface Segregation Principle, but cuts down on memory.
+                bool IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new System.InvalidOperationException(); }
+                bool IValueContainerOrPrevious.ContainsType<U>() { throw new System.InvalidOperationException(); }
+            }
+
+            public sealed class CancelDelegateAnyCapture<TCapture> : PotentialCancelation
+            {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                private TCapture _capturedValue;
+                private Action<TCapture> _onCanceled;
+
+                private CancelDelegateAnyCapture() { }
+
+                static CancelDelegateAnyCapture()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                public static CancelDelegateAnyCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture> onCanceled, int skipFrames)
+                {
+                    var del = _pool.IsNotEmpty ? (CancelDelegateAnyCapture<TCapture>) _pool.Pop() : new CancelDelegateAnyCapture<TCapture>();
+                    del._capturedValue = capturedValue;
+                    del._onCanceled = onCanceled;
+                    SetCreatedStacktrace(del, skipFrames + 1);
+                    return del;
+                }
+
+                protected override void Dispose()
+                {
+                    _capturedValue = default(TCapture);
+                    _onCanceled = null;
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
+                public override void Cancel()
+                {
+                    var value = _capturedValue;
+                    var callback = _onCanceled;
+                    Dispose();
+                    try
+                    {
+                        callback.Invoke(value);
+                    }
+                    catch (Exception e)
+                    {
+                        UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
+                        SetStacktraceFromCreated(this, unhandledException);
+                        AddRejectionToUnhandledStack(unhandledException);
+                    }
+                }
+            }
+
+            public sealed class CancelDelegateCapture<TCapture, T> : PotentialCancelation, IPotentialCancelation, IValueContainerOrPrevious, IValueContainerContainer
+            {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                private ValueLinkedQueue<ITreeHandleable> _nextBranches;
+                private IValueContainerOrPrevious _valueContainerOrPrevious;
+                private TCapture _capturedValue;
+                private Action<TCapture, T> _onCanceled;
+                private uint _retainCounter;
+
+                IValueContainerOrPrevious IValueContainerContainer.ValueContainerOrPrevious { get { return _valueContainerOrPrevious; } }
+
+                private CancelDelegateCapture() { }
+
+                static CancelDelegateCapture()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                ~CancelDelegateCapture()
+                {
+                    if (_retainCounter > 0)
+                    {
+                        // Delegate wasn't released.
+                        var exception = UnhandledExceptionException.GetOrCreate(UnreleasedObjectException.instance);
+                        SetStacktraceFromCreated(this, exception);
+                        AddRejectionToUnhandledStack(exception);
+                    }
+                }
+
+                public static CancelDelegateCapture<TCapture, T> GetOrCreate(TCapture capturedValue, Action<TCapture, T> onCanceled, IValueContainerOrPrevious previous, int skipFrames)
+                {
+                    var del = _pool.IsNotEmpty ? (CancelDelegateCapture<TCapture, T>) _pool.Pop() : new CancelDelegateCapture<TCapture, T>();
+                    del._capturedValue = capturedValue;
+                    del._onCanceled = onCanceled;
+                    del._valueContainerOrPrevious = previous;
+                    SetCreatedStacktrace(del, skipFrames + 1);
+                    del.Retain();
+                    return del;
+                }
+
+                protected override void TakeBranches(ref ValueLinkedStack<ITreeHandleable> disposeStack)
+                {
+                    disposeStack.PushAndClear(ref _nextBranches);
+                }
+
+                protected override void Dispose()
+                {
+                    _capturedValue = default(TCapture);
+                    _onCanceled = null;
+                    Release();
+                }
+
+                public override void Cancel()
+                {
+                    var value = _capturedValue;
+                    _capturedValue = default(TCapture);
+                    var callback = _onCanceled;
+                    _onCanceled = null;
+                    var cancelValue = ((IValueContainerContainer) _valueContainerOrPrevious).ValueContainerOrPrevious;
+                    cancelValue.Retain();
+                    _valueContainerOrPrevious.Release();
+                    T arg;
+                    if (cancelValue.TryGetValueAs(out arg))
+                    {
+                        _valueContainerOrPrevious = null;
+                        DisposeBranches();
+                        try
+                        {
+                            callback.Invoke(value, arg);
+                        }
+                        catch (Exception e)
+                        {
+                            UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
+                            SetStacktraceFromCreated(this, unhandledException);
+                            AddRejectionToUnhandledStack(unhandledException);
+                        }
+                    }
+                    else
+                    {
+                        _valueContainerOrPrevious = cancelValue;
+                    }
+                    AddToCancelQueueFront(ref _nextBranches);
+                    Release();
+                }
+
+                void IPotentialCancelation.CatchCancelation(Action onCanceled)
+                {
+                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
+                    ValidateArgument(onCanceled, "onCanceled", 1);
+
+                    if (_valueContainerOrPrevious != null)
+                    {
+                        _nextBranches.Enqueue(CancelDelegateAny.GetOrCreate(onCanceled, 1));
+                    }
+                }
+
+                IPotentialCancelation IPotentialCancelation.CatchCancelation<TCancel>(Action<TCancel> onCanceled)
+                {
+                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
+                    ValidateArgument(onCanceled, "onCanceled", 1);
+
+                    if (_valueContainerOrPrevious == null)
+                    {
+                        return this;
+                    }
+                    var cancelation = CancelDelegate<TCancel>.GetOrCreate(onCanceled, this, 1);
+                    _nextBranches.Enqueue(cancelation);
+                    Retain();
+                    return cancelation;
+                }
+
+                void IPotentialCancelation.CatchCancelationCapture<TCapture1>(TCapture1 captureValue, Action<TCapture1> onCanceled)
+                {
+                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
+                    ValidateArgument(onCanceled, "onCanceled", 1);
+
+                    if (_valueContainerOrPrevious != null)
+                    {
+                        _nextBranches.Enqueue(CancelDelegateAnyCapture<TCapture1>.GetOrCreate(captureValue, onCanceled, 1));
+                    }
+                }
+
+                IPotentialCancelation IPotentialCancelation.CatchCancelationCapture<TCapture1, TCancel>(TCapture1 captureValue, Action<TCapture1, TCancel> onCanceled)
+                {
+                    ValidatePotentialOperation(_valueContainerOrPrevious, 1);
+                    ValidateArgument(onCanceled, "onCanceled", 1);
+
+                    if (_valueContainerOrPrevious == null)
+                    {
+                        return this;
+                    }
+                    var cancelation = CancelDelegateCapture<TCapture1, TCancel>.GetOrCreate(captureValue, onCanceled, this, 1);
+                    _nextBranches.Enqueue(cancelation);
+                    Retain();
+                    return cancelation;
+                }
+
+                public void Retain()
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        ++_retainCounter;
+                    }
+                }
+
+                public void Release()
+                {
+#if DEBUG
+                    checked
+#endif
+                    {
+                        if (--_retainCounter == 0)
+                        {
+                            if (_valueContainerOrPrevious != null)
+                            {
+                                _valueContainerOrPrevious.Release();
+                            }
+                            SetDisposed(ref _valueContainerOrPrevious);
+                            if (Config.ObjectPooling == PoolType.All)
+                            {
+                                _pool.Push(this);
+                            }
+                        }
+                    }
+                }
+
+                // This breaks Interface Segregation Principle, but cuts down on memory.
+                bool IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new System.InvalidOperationException(); }
+                bool IValueContainerOrPrevious.ContainsType<U>() { throw new System.InvalidOperationException(); }
             }
         }
 

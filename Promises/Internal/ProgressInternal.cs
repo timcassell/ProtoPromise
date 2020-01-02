@@ -124,7 +124,12 @@ namespace Proto.Promises
             ThrowProgressException(skipFrames + 1);
         }
 
-        private void SubscribeProgress(Action<float> onProgress, int skipFrames)
+        protected void SubscribeProgress(object onProgress, int skipFrames)
+        {
+            ThrowProgressException(skipFrames + 1);
+        }
+
+        protected void SubscribeProgress(object capturedValue, object onProgress, int skipFrames)
         {
             ThrowProgressException(skipFrames + 1);
         }
@@ -228,6 +233,35 @@ namespace Proto.Promises
             else if (_state == State.Resolved)
             {
                 AddToHandleQueueBack(Internal.ProgressDelegate.GetOrCreate(onProgress, this, skipFrames + 1));
+            }
+
+            // Don't report progress if the promise is canceled or rejected.
+        }
+
+        protected void SubscribeProgress<TCapture>(TCapture capturedValue, Action<TCapture, float> onProgress, int skipFrames)
+        {
+            ValidateOperation(this, skipFrames + 1);
+            ValidateArgument(onProgress, "onProgress", skipFrames + 1);
+
+            if (_state == State.Pending)
+            {
+                Internal.IProgressListener progressListener = Internal.ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, this, skipFrames + 1);
+
+                // Directly add to listeners for this promise.
+                // Sets promise to the one this is waiting on. Returns false if not waiting on another promise.
+                Promise promise;
+                if (!SubscribeProgressAndContinueLoop(ref progressListener, out promise))
+                {
+                    // This is the root of the promise tree.
+                    progressListener.SetInitialAmount(_waitDepthAndProgress);
+                    return;
+                }
+
+                SubscribeProgressToBranchesAndRoots(promise, progressListener);
+            }
+            else if (_state == State.Resolved)
+            {
+                AddToHandleQueueBack(Internal.ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, this, skipFrames + 1));
             }
 
             // Don't report progress if the promise is canceled or rejected.
@@ -425,14 +459,13 @@ namespace Proto.Promises
                 void CancelOrIncrementProgress(uint increment, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount);
             }
 
-            public sealed class ProgressDelegate : IProgressListener, IInvokable, ITreeHandleable, IStacktraceable
+            public abstract class ProgressDelegateBase : IProgressListener, IInvokable, ITreeHandleable, IStacktraceable
             {
 #if PROMISE_DEBUG
                 string IStacktraceable.Stacktrace { get; set; }
 #endif
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
-                private Action<float> _onProgress;
                 private Promise _owner;
                 private UnsignedFixed32 _current;
                 uint _retainCounter;
@@ -441,34 +474,33 @@ namespace Proto.Promises
                 private bool _suspended;
                 private bool _canceled;
 
-                private static ValueLinkedStackZeroGC<IProgressListener> _pool;
+                protected static ValueLinkedStackZeroGC<IProgressListener> _pool;
 
-                static ProgressDelegate()
+                static ProgressDelegateBase()
                 {
                     OnClearPool += () => _pool.ClearAndDontRepool();
                 }
 
-                private ProgressDelegate() { }
+                protected ProgressDelegateBase() { }
 
-                public static ProgressDelegate GetOrCreate(Action<float> onProgress, Promise owner, int skipFrames)
+                protected void Reset(Promise owner, int skipFrames)
                 {
-                    var progress = _pool.IsNotEmpty ? (ProgressDelegate) _pool.Pop() : new ProgressDelegate();
-                    progress._onProgress = onProgress;
-                    progress._owner = owner;
-                    progress._handling = false;
-                    progress._done = false;
-                    progress._suspended = false;
-                    progress._canceled = false;
-                    progress._current = default(UnsignedFixed32);
-                    SetCreatedStacktrace(progress, skipFrames + 1);
-                    return progress;
+                    _owner = owner;
+                    _handling = false;
+                    _done = false;
+                    _suspended = false;
+                    _canceled = false;
+                    _current = default(UnsignedFixed32);
+                    SetCreatedStacktrace(this, skipFrames + 1);
                 }
 
-                private void InvokeAndCatch(Action<float> callback, float progress)
+                protected abstract void Invoke(float progress);
+
+                private void InvokeAndCatch(float progress)
                 {
                     try
                     {
-                        callback.Invoke(progress);
+                        Invoke(progress);
                     }
                     catch (Exception e)
                     {
@@ -494,7 +526,7 @@ namespace Proto.Promises
                     // Calculate the normalized progress for the depth that the listener was added.
                     // Use double for better precision.
                     double expected = _owner._waitDepthAndProgress.WholePart + 1u;
-                    InvokeAndCatch(_onProgress, (float) (_current.ToDouble() / expected));
+                    InvokeAndCatch((float) (_current.ToDouble() / expected));
                 }
 
                 private void IncrementProgress(Promise sender, uint amount)
@@ -585,9 +617,8 @@ namespace Proto.Promises
                     }
                 }
 
-                private void Dispose()
+                protected virtual void Dispose()
                 {
-                    _onProgress = null;
                     _owner = null;
                     if (Config.ObjectPooling != PoolType.None)
                     {
@@ -597,12 +628,66 @@ namespace Proto.Promises
 
                 void ITreeHandleable.Handle()
                 {
-                    InvokeAndCatch(_onProgress, 1f);
+                    InvokeAndCatch(1f);
                     _retainCounter = 0;
                     MarkOrDispose();
                 }
 
                 void ITreeHandleable.Cancel() { throw new System.InvalidOperationException(); }
+            }
+
+            public sealed class ProgressDelegate : ProgressDelegateBase
+            {
+                private Action<float> _onProgress;
+
+                private ProgressDelegate() { }
+
+                public static ProgressDelegate GetOrCreate(Action<float> onProgress, Promise owner, int skipFrames)
+                {
+                    var progress = _pool.IsNotEmpty ? (ProgressDelegate) _pool.Pop() : new ProgressDelegate();
+                    progress._onProgress = onProgress;
+                    progress.Reset(owner, skipFrames + 1);
+                    return progress;
+                }
+
+                protected override void Invoke(float progress)
+                {
+                    _onProgress.Invoke(progress);
+                }
+
+                protected override void Dispose()
+                {
+                    _onProgress = null;
+                    base.Dispose();
+                }
+            }
+
+            public sealed class ProgressDelegateCapture<TCapture> : ProgressDelegateBase
+            {
+                TCapture _capturedValue;
+                private Action<TCapture, float> _onProgress;
+
+                private ProgressDelegateCapture() { }
+
+                public static ProgressDelegateCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture, float> onProgress, Promise owner, int skipFrames)
+                {
+                    var progress = _pool.IsNotEmpty ? (ProgressDelegateCapture<TCapture>) _pool.Pop() : new ProgressDelegateCapture<TCapture>();
+                    progress._capturedValue = capturedValue;
+                    progress._onProgress = onProgress;
+                    progress.Reset(owner, skipFrames + 1);
+                    return progress;
+                }
+
+                protected override void Invoke(float progress)
+                {
+                    _onProgress.Invoke(_capturedValue, progress);
+                }
+
+                protected override void Dispose()
+                {
+                    _onProgress = null;
+                    base.Dispose();
+                }
             }
 
             partial class PromiseWaitPromise<TPromise> : IProgressListener, IInvokable
@@ -883,27 +968,6 @@ namespace Proto.Promises
                     Release();
                 }
             }
-        }
-#endif
-    }
-
-    partial class Promise<T>
-    {
-        static partial void ValidateProgress(int skipFrames);
-#if PROMISE_PROGRESS
-        /// <summary>
-        /// Add a progress listener. <paramref name="onProgress"/> will be invoked with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
-        /// Returns this.
-        /// </summary>
-        public new Promise<T> Progress(Action<float> onProgress)
-        {
-            SubscribeProgress(onProgress, 1);
-            return this;
-        }
-#else
-        static partial void ValidateProgress(int skipFrames)
-        {
-            ThrowProgressException(skipFrames + 1);
         }
 #endif
     }

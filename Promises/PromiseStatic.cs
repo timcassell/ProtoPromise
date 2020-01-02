@@ -996,7 +996,7 @@ namespace Proto.Promises
             return promise;
 #else
             // Reuse a single resolved instance.
-            return Internal.ResolvedPromise.instance;
+            return Internal.SettledPromise.GetOrCreateResolved();
 #endif
         }
 

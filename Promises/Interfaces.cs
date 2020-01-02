@@ -52,15 +52,26 @@ namespace Proto.Promises
     {
         /// <summary>
         /// Add a cancel callback.
-        /// <para/>If this instance is canceled for any or no reason, <paramref name="onCanceled"/> will be invoked.
+        /// <para/>If this instance is canceled with any or no reason, <paramref name="onCanceled"/> will be invoked.
         /// </summary>
         void CatchCancelation(Action onCanceled);
         /// <summary>
+        /// Add a cancel callback.
+        /// <para/>If this instance is canceled with any or no reason, <paramref name="onCanceled"/> will be invoked with <paramref name="captureValue"/>.
+        /// </summary>
+        void CatchCancelationCapture<TCapture>(TCapture captureValue, Action<TCapture> onCanceled);
+        /// <summary>
         /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
         /// <para/>If this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with that reason.
-        /// <para/>If this is canceled for any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
+        /// <para/>If this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
         /// </summary>
         IPotentialCancelation CatchCancelation<TCancel>(Action<TCancel> onCanceled);
+        /// <summary>
+        /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
+        /// <para/>If this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with <paramref name="captureValue"/> and that reason.
+        /// <para/>If this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
+        /// </summary>
+        IPotentialCancelation CatchCancelationCapture<TCapture, TCancel>(TCapture captureValue, Action<TCapture, TCancel> onCanceled);
     }
 
     partial class Promise
@@ -88,42 +99,21 @@ namespace Proto.Promises
 
             public interface IDelegateResolve : IRetainable
             {
-                void ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner);
+                void ReleaseAndInvoke(Promise feed, Promise owner);
             }
-
-            public interface IDelegateResolve<T> : IRetainable
-            {
-                void ReleaseAndInvoke(Promise feed, PromiseResolveReject<T> owner);
-            }
-
             public interface IDelegateResolvePromise : IRetainable
             {
-                void ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner);
-            }
-
-            public interface IDelegateResolvePromise<T> : IRetainable
-            {
-                void ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<T> owner);
+                void ReleaseAndInvoke(Promise feed, Promise owner);
             }
 
             public interface IDelegateReject : IRetainable
             {
-                void ReleaseAndInvoke(Promise feed, PromiseResolveReject0 owner);
-            }
-
-            public interface IDelegateReject<T> : IRetainable
-            {
-                void ReleaseAndInvoke(Promise feed, PromiseResolveReject<T> owner);
+                void ReleaseAndInvoke(Promise feed, Promise owner);
             }
 
             public interface IDelegateRejectPromise : IRetainable
             {
-                void ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise0 owner);
-            }
-
-            public interface IDelegateRejectPromise<T> : IRetainable
-            {
-                void ReleaseAndInvoke(Promise feed, PromiseResolveRejectPromise<T> owner);
+                void ReleaseAndInvoke(Promise feed, Promise owner);
             }
 
             public partial interface IMultiTreeHandleable : ITreeHandleable
