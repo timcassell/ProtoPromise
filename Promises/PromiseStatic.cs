@@ -929,7 +929,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Deferred"/> that controls the state of the promise.
+        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Deferred"/> that controls the state of the new <see cref="Promise"/>.
         /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// </summary>
 		public static Promise New(Action<Deferred> resolver)
@@ -957,7 +957,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Deferred"/> that controls the state of the promise.
+        /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Promise{T}.Deferred"/> that controls the state of the new <see cref="Promise{T}"/>.
         /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// </summary>
 		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver)
@@ -966,6 +966,62 @@ namespace Proto.Promises
             try
             {
                 resolver.Invoke(promise.deferred);
+            }
+            catch (Exception e)
+            {
+                var deferred = promise.deferred;
+                if (deferred.State == State.Pending)
+                {
+                    deferred.Reject(e);
+                }
+                else
+                {
+                    var rejectValue = Internal.UnhandledExceptionException.GetOrCreate(e);
+                    _SetStackTraceFromCreated(promise, rejectValue);
+                    AddRejectionToUnhandledStack(rejectValue);
+                }
+            }
+            return promise;
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with <paramref name="captureValue"/> and a <see cref="Deferred"/> that controls the state of the <see cref="Promise"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// </summary>
+        public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver)
+        {
+            var promise = Internal.DeferredPromise0.GetOrCreate(1);
+            try
+            {
+                resolver.Invoke(captureValue, promise.deferred);
+            }
+            catch (Exception e)
+            {
+                var deferred = promise.deferred;
+                if (deferred.State == State.Pending)
+                {
+                    deferred.Reject(e);
+                }
+                else
+                {
+                    var rejectValue = Internal.UnhandledExceptionException.GetOrCreate(e);
+                    _SetStackTraceFromCreated(promise, rejectValue);
+                    AddRejectionToUnhandledStack(rejectValue);
+                }
+            }
+            return promise;
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with <paramref name="captureValue"/> and a <see cref="Promise{T}.Deferred"/> that controls the state of the new <see cref="Promise{T}"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// </summary>
+        public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver)
+        {
+            var promise = Internal.DeferredPromise<T>.GetOrCreate(1);
+            try
+            {
+                resolver.Invoke(captureValue, promise.deferred);
             }
             catch (Exception e)
             {

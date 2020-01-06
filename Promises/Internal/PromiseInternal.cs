@@ -306,8 +306,12 @@ namespace Proto.Promises
 
         protected virtual void OnCancel()
         {
-            _rejectedOrCanceledValueOrPrevious.Release();
-            _rejectedOrCanceledValueOrPrevious = null;
+            // If this is canceled while the callback is being invoked, previous could be null.
+            if (_rejectedOrCanceledValueOrPrevious != null)
+            {
+                _rejectedOrCanceledValueOrPrevious.Release();
+                _rejectedOrCanceledValueOrPrevious = null;
+            }
             CancelProgressListeners();
             AddToCancelQueueFront(ref _nextBranches);
         }
