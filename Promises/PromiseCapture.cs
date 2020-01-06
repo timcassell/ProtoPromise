@@ -21,7 +21,7 @@ namespace Proto.Promises
     public abstract partial class Promise
     {
         /// <summary>
-        /// Add a progress listener. <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// Capture a value and add a progress listener. <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
         /// Returns this.
         /// </summary>
 #if !PROMISE_PROGRESS
@@ -34,7 +34,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a cancel callback.
+        /// Capture a value and add a cancel callback.
         /// <para/>If this instance is canceled with any or no reason, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/>.
         /// </summary>
 #if !PROMISE_CANCEL
@@ -54,9 +54,9 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
-        /// <para/>If this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and that reason.
-        /// <para/>If this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
+        /// Capture a value and add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
+        /// <para/>If/when this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and that reason.
+        /// <para/>If/when this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
         /// </summary>
 #if !PROMISE_CANCEL
         [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
@@ -77,7 +77,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a finally callback. It will be invoked with <paramref name="finallyCaptureValue"/> when this resolves, rejects, or cancels. Returns this.
+        /// Capture a value and add a finally callback. It will be invoked with <paramref name="finallyCaptureValue"/> when this resolves, rejects, or cancels. Returns this.
         /// </summary>
         public Promise FinallyCapture<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
         {
@@ -91,10 +91,11 @@ namespace Proto.Promises
 
         #region Resolve Callbacks
         /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise"/> will be rejected or canceled with the same reason.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved)
         {
@@ -107,10 +108,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise{T}"/> will be rejected or canceled with the same reason.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved)
         {
@@ -123,10 +125,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise"/> will be rejected or canceled with the same reason.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved)
         {
@@ -139,10 +142,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise{T}"/> will be rejected or canceled with the same reason.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved)
         {
@@ -157,11 +161,11 @@ namespace Proto.Promises
 
         #region Reject Callbacks
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise CatchCapture<TCaptureReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
@@ -176,11 +180,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved.
-        /// <para/>If this is canceled or rejected with any other reason or no reason, the new <see cref="Promise"/> will be canceled or rejected with the same reason.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise CatchCapture<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
@@ -195,11 +200,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved.
-        /// <para/>If this is canceled or rejected with any other reason or no reason, the new <see cref="Promise"/> will be canceled or rejected with the same reason.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise CatchCapture<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
@@ -214,11 +220,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise CatchCapture<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
@@ -233,11 +239,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved.
-        /// <para/>If this is canceled or rejected with any other reason or no reason, the new <see cref="Promise"/> will be canceled or rejected with the same reason.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise CatchCapture<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
@@ -252,11 +259,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise"/> will be resolved.
-        /// <para/>If this is canceled or rejected with any other reason or no reason, the new <see cref="Promise"/> will be canceled or rejected with the same reason.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise CatchCapture<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
@@ -273,11 +281,12 @@ namespace Proto.Promises
 
         #region Resolve or Reject Callbacks
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action onRejected)
         {
@@ -293,11 +302,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
@@ -313,11 +323,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
@@ -333,11 +344,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action<TReject> onRejected)
         {
@@ -353,11 +366,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
@@ -373,11 +388,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
@@ -393,11 +410,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action onRejected)
         {
@@ -413,11 +432,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
@@ -433,11 +454,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
@@ -453,11 +476,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TResult> onRejected)
         {
@@ -473,11 +497,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
@@ -493,11 +518,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
@@ -513,11 +539,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, TResult> onRejected)
         {
@@ -533,11 +561,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
@@ -553,11 +583,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
@@ -573,11 +605,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TResult> onRejected)
         {
@@ -593,11 +627,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
@@ -613,11 +649,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.\
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
@@ -633,11 +671,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<Promise> onRejected)
         {
@@ -653,11 +692,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
@@ -673,11 +713,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
@@ -693,11 +734,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<TReject, Promise> onRejected)
         {
@@ -713,11 +756,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
@@ -733,11 +778,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
@@ -753,11 +800,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<Promise> onRejected)
         {
@@ -773,11 +822,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
@@ -793,11 +844,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
@@ -813,11 +866,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
         {
@@ -833,11 +887,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
@@ -853,11 +908,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
@@ -873,11 +929,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected)
         {
@@ -893,11 +951,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
@@ -913,11 +973,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
@@ -933,11 +995,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
         {
@@ -953,11 +1017,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
@@ -973,11 +1039,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
@@ -996,8 +1064,9 @@ namespace Proto.Promises
         #region Simple Captures
         /// <summary>
         /// Capture a value. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise{T}"/> will be rejected or canceled with the same reason.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TResult>(TResult resolveCaptureValue)
         {
@@ -1009,11 +1078,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TResult>(TResult resolveCaptureValue, Func<TResult> onRejected)
         {
@@ -1023,16 +1092,18 @@ namespace Proto.Promises
             var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
             var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
             var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
             HookupNewPromise(promise);
             return promise;
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TResult, TReject>(TResult resolveCaptureValue, Func<TReject, TResult> onRejected)
         {
@@ -1042,16 +1113,18 @@ namespace Proto.Promises
             var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
             var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
             var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
             HookupNewPromise(promise);
             return promise;
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TResult, TReject>(TResult resolveCaptureValue, Func<TResult> onRejected)
         {
@@ -1061,20 +1134,416 @@ namespace Proto.Promises
             var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
             var rejectDelegate = Internal.DelegateVoidResult<TReject, TResult>.GetOrCreate(onRejected);
             var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
             HookupNewPromise(promise);
             return promise;
         }
 
-        // TODO: The rest of simple captures.
+        /// <summary>
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult>(TResult resolveCaptureValue, Func<Promise<TResult>> onRejected)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult, TReject>(TResult resolveCaptureValue, Func<TReject, Promise<TResult>> onRejected)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult, TReject>(TResult resolveCaptureValue, Func<Promise<TResult>> onRejected)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var rejectDelegate = Internal.DelegateVoidPromiseT<TReject, TResult>.GetOrCreate(onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureReject, TResult>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureReject, TResult>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture 2 values. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult>(TResult resolveCaptureValue, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+
+            var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var rejectDelegate = Internal.DelegateCapture<TResult>.GetOrCreate(rejectCaptureValue);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture 2 values. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with <paramref name="resolveCaptureValue"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult, TReject>(TResult resolveCaptureValue, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+
+            var resolveDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var rejectDelegate = Internal.DelegateCapture<TResult, TReject>.GetOrCreate(rejectCaptureValue);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = resolveCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult>(Func<TResult> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult, TReject>(Func<TResult> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve<TReject>.GetOrCreate();
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult>(Func<Promise<TResult>> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult, TReject>(Func<Promise<TResult>> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve<TReject>.GetOrCreate();
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve<TReject>.GetOrCreate();
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve<TReject>.GetOrCreate();
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved or rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="completeCaptureValue"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// <para/>Note: Functionally the same as Then(completeCaptureValue, completeCaptureValue), but more efficient.
+        /// </summary>
+        public Promise<TCapture> CompleteCapture<TCapture>(TCapture completeCaptureValue)
+        {
+            ValidateOperation(this, 1);
+
+            var del = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var promise = Internal.PromiseResolveReject<TCapture>.GetOrCreate(del, del, 1);
+            promise._value = completeCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
         #endregion
 
         #region Complete Callbacks
         /// <summary>
-        /// Add a resolve-or-reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved or rejected with any reason, <paramref name="onResolvedOrRejected"/> will be invoked with <paramref name="completeCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// Capture a value and add a resolve-or-reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved or rejected with any reason, <paramref name="onResolvedOrRejected"/> will be invoked with <paramref name="completeCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// <para/>Note: Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// <para/>Note: Functionally the same as Then(completeCaptureValue, onResolvedOrRejected, completeCaptureValue, onResolvedOrRejected), but more efficient.
         /// </summary>
         public Promise CompleteCapture<TCapture>(TCapture completeCaptureValue, Action<TCapture> onResolvedOrRejected)
         {
@@ -1088,11 +1557,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve-or-reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved or rejected with any reason, <paramref name="onResolvedOrRejected"/> will be invoked with <paramref name="completeCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// Capture a value and add a resolve-or-reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved or rejected with any reason, <paramref name="onResolvedOrRejected"/> will be invoked with <paramref name="completeCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
-        /// <para/>Note: Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// <para/>Note: Functionally the same as Then(completeCaptureValue, onResolvedOrRejected, completeCaptureValue, onResolvedOrRejected), but more efficient.
         /// </summary>
         public Promise<TResult> CompleteCapture<TCapture, TResult>(TCapture completeCaptureValue, Func<TCapture, TResult> onResolvedOrRejected)
         {
@@ -1106,11 +1575,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve-or-reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved or rejected with any reason, <paramref name="onResolvedOrRejected"/> will be invoked with <paramref name="completeCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// Capture a value and add a resolve-or-reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved or rejected with any reason, <paramref name="onResolvedOrRejected"/> will be invoked with <paramref name="completeCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// <para/>Note: Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// <para/>Note: Functionally the same as Then(completeCaptureValue, onResolvedOrRejected, completeCaptureValue, onResolvedOrRejected), but more efficient.
         /// </summary>
         public Promise CompleteCapture<TCapture>(TCapture completeCaptureValue, Func<TCapture, Promise> onResolvedOrRejected)
         {
@@ -1124,11 +1593,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve-or-reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved or rejected with any reason, <paramref name="onResolvedOrRejected"/> will be invoked with <paramref name="completeCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve-or-reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved or rejected with any reason, <paramref name="onResolvedOrRejected"/> will be invoked with <paramref name="completeCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
-        /// <para/>Note: Functionally the same as Then(onResolvedOrRejected, onResolvedOrRejected), but more efficient.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// <para/>Note: Functionally the same as Then(completeCaptureValue, onResolvedOrRejected, completeCaptureValue, onResolvedOrRejected), but more efficient.
         /// </summary>
         public Promise<TResult> CompleteCapture<TCapture, TResult>(TCapture completeCaptureValue, Func<TCapture, Promise<TResult>> onResolvedOrRejected)
         {
@@ -1152,7 +1621,7 @@ namespace Proto.Promises
     public abstract partial class Promise<T> : Promise
     {
         /// <summary>
-        /// Add a progress listener. <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// Capture a value and add a progress listener. <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
         /// Returns this.
         /// </summary>
 #if !PROMISE_PROGRESS
@@ -1165,7 +1634,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a finally callback. It will be invoked with <paramref name="finallyCaptureValue"/> when this is resolved, rejected, or canceled. Returns this.
+        /// Capture a value and add a finally callback. It will be invoked with <paramref name="finallyCaptureValue"/> when this is resolved, rejected, or canceled. Returns this.
         /// </summary>
         public new Promise<T> FinallyCapture<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
         {
@@ -1179,10 +1648,11 @@ namespace Proto.Promises
 
         #region Resolve Callbacks
         /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise"/> will be rejected or canceled with the same reason.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved)
         {
@@ -1195,10 +1665,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise{T}"/> will be rejected or canceled with the same reason.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved)
         {
@@ -1211,10 +1682,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise"/> will be rejected or canceled with the same reason.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved)
         {
@@ -1227,10 +1699,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is rejected or canceled, the new <see cref="Promise{T}"/> will be rejected or canceled with the same reason.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved)
         {
@@ -1245,11 +1718,11 @@ namespace Proto.Promises
 
         #region Reject Callbacks
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved when it returns.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<T> CatchCapture<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, T> onRejected)
         {
@@ -1264,11 +1737,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved when it returns.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
-        /// <para/>If this is canceled or rejected with any other reason or no reason, the new <see cref="Promise{T}"/> will be canceled or rejected with the same reason.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<T> CatchCapture<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, T> onRejected)
         {
@@ -1283,11 +1757,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved when it returns.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
-        /// <para/>If this is canceled or rejected with any other reason or no reason, the new <see cref="Promise{T}"/> will be canceled or rejected with the same reason.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<T> CatchCapture<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, T> onRejected)
         {
@@ -1302,11 +1777,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<T> CatchCapture<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<T>> onRejected)
         {
@@ -1321,11 +1796,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
-        /// <para/>If this is canceled or rejected with any other reason or no reason, the new <see cref="Promise{T}"/> will be canceled or rejected with the same reason.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<T> CatchCapture<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<T>> onRejected)
         {
@@ -1340,11 +1816,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
-        /// <para/>If this is canceled or rejected with any other reason or no reason, the new <see cref="Promise{T}"/> will be canceled or rejected with the same reason.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<T> CatchCapture<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<T>> onRejected)
         {
@@ -1361,11 +1838,12 @@ namespace Proto.Promises
 
         #region Resolve or Reject Callbacks
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Action onRejected)
         {
@@ -1381,11 +1859,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
@@ -1401,11 +1880,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
@@ -1421,11 +1901,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Action<TReject> onRejected)
         {
@@ -1441,11 +1923,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureReject, TReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
@@ -1461,11 +1945,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
@@ -1481,11 +1967,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Action onRejected)
         {
@@ -1501,11 +1989,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureReject, TReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
@@ -1521,11 +2011,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
@@ -1541,11 +2033,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TResult> onRejected)
         {
@@ -1561,11 +2055,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureReject, TResult>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
@@ -1581,11 +2076,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
@@ -1601,11 +2097,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TReject, TResult> onRejected)
         {
@@ -1621,11 +2119,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
@@ -1641,11 +2141,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
@@ -1661,11 +2163,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TResult> onRejected)
         {
@@ -1681,11 +2185,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
@@ -1701,11 +2207,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
@@ -1721,11 +2229,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Func<Promise> onRejected)
         {
@@ -1741,11 +2250,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
@@ -1761,11 +2271,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
@@ -1781,11 +2292,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Func<TReject, Promise> onRejected)
         {
@@ -1801,11 +2314,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureReject, TReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
@@ -1821,11 +2336,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
@@ -1841,11 +2358,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Func<Promise> onRejected)
         {
@@ -1861,11 +2380,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureReject, TReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
@@ -1881,11 +2402,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
         public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
@@ -1901,11 +2424,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
         {
@@ -1921,11 +2445,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureReject, TResult>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
@@ -1941,11 +2466,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
@@ -1961,11 +2487,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected)
         {
@@ -1981,11 +2509,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
@@ -2001,11 +2531,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
@@ -2021,11 +2553,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
         {
@@ -2041,11 +2575,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
@@ -2061,11 +2597,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If either delegate throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
@@ -2084,9 +2622,9 @@ namespace Proto.Promises
         #region Simple Captures
         /// <summary>
         /// Capture a value. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<T> CatchCapture(T rejectCaptureValue)
         {
@@ -2102,9 +2640,10 @@ namespace Proto.Promises
 
         /// <summary>
         /// Capture a value. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
-        /// <para/>If this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
-        /// <para/>If this is canceled, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
         public Promise<T> CatchCapture<TReject>(T rejectCaptureValue)
         {
@@ -2113,6 +2652,162 @@ namespace Proto.Promises
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
             var rejectDelegate = Internal.DelegateCapturePreserve<TReject>.GetOrCreate();
             var promise = Internal.PromiseResolveReject<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult>(Func<T, TResult> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult, TReject>(Func<T, TResult> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve<TReject>.GetOrCreate();
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult>(Func<T, Promise<TResult>> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TResult, TReject>(Func<T, Promise<TResult>> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve<TReject>.GetOrCreate();
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture 2 values and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture 2 values and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve<TReject>.GetOrCreate();
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture 2 values and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve0.GetOrCreate();
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            promise._value = rejectCaptureValue;
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture 2 values and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
+        /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// </summary>
+        public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TResult rejectCaptureValue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCapturePreserve<TReject>.GetOrCreate();
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             promise._value = rejectCaptureValue;
             HookupNewPromise(promise);
             return promise;

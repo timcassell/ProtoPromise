@@ -84,7 +84,7 @@ namespace Proto.Promises
             public abstract void ReportProgress(float progress);
 
             /// <summary>
-            /// Cancels the promise and all promises that have been chained from it without a reason.
+            /// Cancel the linked <see cref="Promise"/> and all promises that have been chained from it without a reason.
             /// </summary>
 #if !PROMISE_CANCEL
             [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
@@ -108,7 +108,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Cancels the promise and all promises that have been chained from it with the provided cancel reason.
+            /// Cancel the linked <see cref="Promise"/> and all promises that have been chained from it with <paramref name="reason"/>.
             /// </summary>
 #if !PROMISE_CANCEL
             [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]

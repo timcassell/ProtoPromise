@@ -26,7 +26,7 @@ namespace Proto.Promises
     public interface ICancelableAny : ICancelable
     {
         /// <summary>
-        /// Cancel this instance with the specified reason.
+        /// Cancel this instance with <paramref name="reason"/>.
         /// </summary>
         void Cancel<TCancel>(TCancel reason);
     }
@@ -62,14 +62,14 @@ namespace Proto.Promises
         void CatchCancelationCapture<TCapture>(TCapture captureValue, Action<TCapture> onCanceled);
         /// <summary>
         /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
-        /// <para/>If this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with that reason.
-        /// <para/>If this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
+        /// <para/>If/when this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with that reason.
+        /// <para/>If/when this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
         /// </summary>
         IPotentialCancelation CatchCancelation<TCancel>(Action<TCancel> onCanceled);
         /// <summary>
         /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
-        /// <para/>If this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with <paramref name="captureValue"/> and that reason.
-        /// <para/>If this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
+        /// <para/>If/when this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with <paramref name="captureValue"/> and that reason.
+        /// <para/>If/when this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
         /// </summary>
         IPotentialCancelation CatchCancelationCapture<TCapture, TCancel>(TCapture captureValue, Action<TCapture, TCancel> onCanceled);
     }
