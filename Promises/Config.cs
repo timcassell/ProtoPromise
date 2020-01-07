@@ -132,12 +132,6 @@ namespace Proto.Promises
                     converted = default(TConvert);
                     return false;
                 }
-
-                bool IValueConverter.CanConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer)
-                {
-                    // Can it be up-casted or down-casted, null or not?
-                    return typeof(TConvert).IsAssignableFrom(typeof(TOriginal)) || valueContainer.Value is TConvert;
-                }
             }
         }
     }

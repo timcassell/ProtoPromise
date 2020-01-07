@@ -9,10 +9,6 @@ namespace Proto.Promises
         /// Tries to convert valueContainer.Value to <typeparamref name="TConvert"/>. Returns true if successful, false otherwise.
         /// </summary>
         bool TryConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer, out TConvert converted);
-        /// <summary>
-        /// Returns true if valueContainer.Value can be converted to <typeparamref name="TConvert"/>, false otherwise.
-        /// </summary>
-        bool CanConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer);
     }
 
     public interface ICancelable
@@ -87,7 +83,6 @@ namespace Proto.Promises
             public interface IValueContainerOrPrevious
             {
                 bool TryGetValueAs<U>(out U value);
-                bool ContainsType<U>();
                 void Retain();
                 void Release();
             }

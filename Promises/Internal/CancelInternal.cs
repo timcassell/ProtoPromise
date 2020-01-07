@@ -313,7 +313,6 @@ namespace Proto.Promises
 
                 // This breaks Interface Segregation Principle, but cuts down on memory.
                 bool IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new System.InvalidOperationException(); }
-                bool IValueContainerOrPrevious.ContainsType<U>() { throw new System.InvalidOperationException(); }
             }
 
             public sealed class CancelDelegateAnyCapture<TCapture> : PotentialCancelation
@@ -538,7 +537,6 @@ namespace Proto.Promises
 
                 // This breaks Interface Segregation Principle, but cuts down on memory.
                 bool IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new System.InvalidOperationException(); }
-                bool IValueContainerOrPrevious.ContainsType<U>() { throw new System.InvalidOperationException(); }
             }
         }
 

@@ -72,7 +72,6 @@ namespace Proto.Promises
 
                 private DisposedChecker() { }
 
-                bool IValueContainerOrPrevious.ContainsType<U>() { throw new System.InvalidOperationException(); }
                 bool IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new System.InvalidOperationException(); }
                 void IValueContainerOrPrevious.Release() { throw new System.InvalidOperationException(); }
                 void IValueContainerOrPrevious.Retain() { throw new System.InvalidOperationException(); }

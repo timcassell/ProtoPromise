@@ -109,7 +109,6 @@ namespace Proto.Promises
             public abstract object GetValue();
             public abstract Type GetValueType();
             public abstract bool TryGetValueAs<U>(out U value);
-            public abstract bool ContainsType<U>();
             public virtual void Retain() { }
             public virtual void Release() { }
 
@@ -139,7 +138,6 @@ namespace Proto.Promises
             public abstract object GetValue();
             public abstract Type GetValueType();
             public abstract bool TryGetValueAs<U>(out U value);
-            public abstract bool ContainsType<U>();
             public virtual void Retain() { }
             public virtual void Release() { }
 
@@ -235,11 +233,6 @@ namespace Proto.Promises
                         _pool.Push(this);
                     }
                 }
-
-                public override bool ContainsType<U>()
-                {
-                    return Config.ValueConverter.CanConvert<T, U>(this);
-                }
             }
 
             public sealed class UnhandledExceptionException : UnhandledExceptionInternal, IValueContainer<Exception>
@@ -278,11 +271,6 @@ namespace Proto.Promises
                 {
                     return Config.ValueConverter.TryConvert(this, out value);
                 }
-
-                public override bool ContainsType<U>()
-                {
-                    return Config.ValueConverter.CanConvert<Exception, U>(this);
-                }
             }
 
             public abstract class CanceledExceptionInternal : CanceledException, IValueContainerOrPrevious, ILinked<UnhandledExceptionInternal>
@@ -295,23 +283,18 @@ namespace Proto.Promises
             public sealed class CancelVoid : CanceledExceptionInternal
             {
                 // We can reuse the same object.
-                private static readonly CancelVoid obj = new CancelVoid();
+                private static readonly CancelVoid _instance = new CancelVoid();
 
                 private CancelVoid() { }
 
                 public static CancelVoid GetOrCreate()
                 {
-                    return obj;
+                    return _instance;
                 }
 
                 public override bool TryGetValueAs<U>(out U value)
                 {
                     value = default(U);
-                    return false;
-                }
-
-                public override bool ContainsType<U>()
-                {
                     return false;
                 }
 
@@ -353,11 +336,6 @@ namespace Proto.Promises
                 public override bool TryGetValueAs<U>(out U value)
                 {
                     return Config.ValueConverter.TryConvert(this, out value);
-                }
-
-                public override bool ContainsType<U>()
-                {
-                    return Config.ValueConverter.CanConvert<T, U>(this);
                 }
 
                 public override object GetValue()

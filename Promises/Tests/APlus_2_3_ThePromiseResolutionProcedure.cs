@@ -37,16 +37,12 @@ namespace Proto.Promises.Tests
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
             promise = deferred.Promise.Then(() => promise, (object failValue) => { rejectAssert(); return promise; });
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferred.Promise.Then<object>(() => promise, () => { rejectAssert(); return promise; });
-            TestHelper.AssertRejectType<InvalidReturnException>(promise);
 
             promiseInt = deferred.Promise.Then(() => promiseInt);
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
             promiseInt = deferred.Promise.Then(() => promiseInt, () => { rejectAssert(); return promiseInt; });
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
             promiseInt = deferred.Promise.Then(() => promiseInt, (object failValue) => { rejectAssert(); return promiseInt; });
-            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
-            promiseInt = deferred.Promise.Then<int, object>(() => promiseInt, () => { rejectAssert(); return promiseInt; });
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
 
 
@@ -56,16 +52,12 @@ namespace Proto.Promises.Tests
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
             promise = deferredInt.Promise.Then(v => promise, (object failValue) => { rejectAssert(); return promise; });
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferredInt.Promise.Then<object>(v => promise, () => { rejectAssert(); return promise; });
-            TestHelper.AssertRejectType<InvalidReturnException>(promise);
 
             promiseInt = deferredInt.Promise.Then(v => promiseInt);
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
             promiseInt = deferredInt.Promise.Then(v => promiseInt, () => { rejectAssert(); return promiseInt; });
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
             promiseInt = deferredInt.Promise.Then(v => promiseInt, (object failValue) => { rejectAssert(); return promiseInt; });
-            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Then<int, object>(v => promiseInt, () => { rejectAssert(); return promiseInt; });
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
 
 
@@ -91,34 +83,24 @@ namespace Proto.Promises.Tests
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
             promise = deferred.Promise.Catch((object failValue) => promise);
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferred.Promise.Catch<object>(() => promise);
-            TestHelper.AssertRejectType<InvalidReturnException>(promise);
             promise = deferred.Promise.Then(() => { resolveAssert(); return promise; }, () => promise);
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
             promise = deferred.Promise.Then(() => { resolveAssert(); return promise; }, (object failValue) => promise);
-            TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferred.Promise.Then<object>(() => { resolveAssert(); return promise; }, () => promise);
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
 
             promiseInt = deferredInt.Promise.Catch(() => promiseInt);
             TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
             promiseInt = deferredInt.Promise.Catch((object failValue) => promiseInt);
             TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Catch<object>(() => promiseInt);
-            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
             promiseInt = deferredInt.Promise.Then(() => { resolveAssert(); return promiseInt; }, () => promiseInt);
             TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
             promiseInt = deferredInt.Promise.Then(() => { resolveAssert(); return promiseInt; }, (object failValue) => promiseInt);
-            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Then<int, object>(() => { resolveAssert(); return promiseInt; }, () => promiseInt);
             TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
 
 
             promiseInt = deferredInt.Promise.Then(v => { resolveAssert(); return promiseInt; }, () => promiseInt);
             TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
             promiseInt = deferredInt.Promise.Then(v => { resolveAssert(); return promiseInt; }, (object failValue) => promiseInt);
-            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Then<int, object>(v => { resolveAssert(); return promiseInt; }, () => promiseInt);
             TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
 
             deferred.Release();
@@ -172,9 +154,6 @@ namespace Proto.Promises.Tests
                 promise = resolveDeferred.Promise.Then(() => resolveWaitDeferred.Promise, (object failValue) => { rejectAssert(); return resolveWaitDeferred.Promise; });
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
-                promise = resolveDeferred.Promise.Then<object>(() => resolveWaitDeferred.Promise, () => { rejectAssert(); return resolveWaitDeferred.Promise; });
-                TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
-                TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
 
                 promiseInt = resolveDeferred.Promise.Then(() => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
@@ -183,9 +162,6 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
                 promiseInt = resolveDeferred.Promise.Then(() => resolveWaitDeferredInt.Promise, (object failValue) => { rejectAssert(); return resolveWaitDeferredInt.Promise; });
-                TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
-                TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
-                promiseInt = resolveDeferred.Promise.Then<int, object>(() => resolveWaitDeferredInt.Promise, () => { rejectAssert(); return resolveWaitDeferredInt.Promise; });
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
 
@@ -198,9 +174,6 @@ namespace Proto.Promises.Tests
                 promise = resolveDeferred.Promise.Then(() => rejectWaitDeferred.Promise, (object failValue) => { rejectAssert(); return rejectWaitDeferred.Promise; });
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++completeCounter);
-                promise = resolveDeferred.Promise.Then<object>(() => rejectWaitDeferred.Promise, () => { rejectAssert(); return rejectWaitDeferred.Promise; });
-                TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
-                TestHelper.AddCallbacks(promise, resolveAssert, s => ++completeCounter);
 
                 promiseInt = resolveDeferred.Promise.Then(() => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
@@ -209,9 +182,6 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
                 promiseInt = resolveDeferred.Promise.Then(() => rejectWaitDeferredInt.Promise, (object failValue) => { rejectAssert(); return rejectWaitDeferredInt.Promise; });
-                TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
-                TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
-                promiseInt = resolveDeferred.Promise.Then<int, object>(() => rejectWaitDeferredInt.Promise, () => { rejectAssert(); return rejectWaitDeferredInt.Promise; });
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
 
@@ -230,9 +200,6 @@ namespace Proto.Promises.Tests
                 promise = resolveDeferredInt.Promise.Then(v => resolveWaitDeferred.Promise, (object failValue) => { rejectAssert(); return resolveWaitDeferred.Promise; });
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
-                promise = resolveDeferredInt.Promise.Then<object>(v => resolveWaitDeferred.Promise, () => { rejectAssert(); return resolveWaitDeferred.Promise; });
-                TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
-                TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
 
                 promiseInt = resolveDeferredInt.Promise.Then(v => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
@@ -241,9 +208,6 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
                 promiseInt = resolveDeferredInt.Promise.Then(v => resolveWaitDeferredInt.Promise, (object failValue) => { rejectAssert(); return resolveWaitDeferredInt.Promise; });
-                TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
-                TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
-                promiseInt = resolveDeferredInt.Promise.Then<int, object>(v => resolveWaitDeferredInt.Promise, () => { rejectAssert(); return resolveWaitDeferredInt.Promise; });
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
 
@@ -256,9 +220,6 @@ namespace Proto.Promises.Tests
                 promise = resolveDeferredInt.Promise.Then(v => rejectWaitDeferred.Promise, (object failValue) => { rejectAssert(); return rejectWaitDeferred.Promise; });
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++completeCounter);
-                promise = resolveDeferredInt.Promise.Then<object>(v => rejectWaitDeferred.Promise, () => { rejectAssert(); return rejectWaitDeferred.Promise; });
-                TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
-                TestHelper.AddCallbacks(promise, resolveAssert, s => ++completeCounter);
 
                 promiseInt = resolveDeferredInt.Promise.Then(v => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
@@ -267,9 +228,6 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
                 promiseInt = resolveDeferredInt.Promise.Then(v => rejectWaitDeferredInt.Promise, (object failValue) => { rejectAssert(); return rejectWaitDeferredInt.Promise; });
-                TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
-                TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
-                promiseInt = resolveDeferredInt.Promise.Then<int, object>(v => rejectWaitDeferredInt.Promise, () => { rejectAssert(); return rejectWaitDeferredInt.Promise; });
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
 
@@ -285,17 +243,11 @@ namespace Proto.Promises.Tests
                 promise = rejectDeferred.Promise.Catch((object failValue) => resolveWaitDeferred.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
-                promise = rejectDeferred.Promise.Catch<object>(() => resolveWaitDeferred.Promise);
-                TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
-                TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
 
                 promise = rejectDeferred.Promise.Then(() => { resolveAssert(); return resolveWaitDeferred.Promise; }, () => resolveWaitDeferred.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
                 promise = rejectDeferred.Promise.Then(() => { resolveAssert(); return resolveWaitDeferred.Promise; }, (object failValue) => resolveWaitDeferred.Promise);
-                TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
-                TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
-                promise = rejectDeferred.Promise.Then<object>(() => { resolveAssert(); return resolveWaitDeferred.Promise; }, () => resolveWaitDeferred.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
 
@@ -305,17 +257,11 @@ namespace Proto.Promises.Tests
                 promise = rejectDeferred.Promise.Then(() => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, (object failValue) => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
-                promise = rejectDeferred.Promise.Then<object>(() => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, () => resolveWaitDeferredInt.Promise);
-                TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
-                TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
 
                 promise = rejectDeferred.Promise.Catch(() => rejectWaitDeferred.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++completeCounter);
                 promise = rejectDeferred.Promise.Catch((object failValue) => rejectWaitDeferred.Promise);
-                TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
-                TestHelper.AddCallbacks(promise, resolveAssert, s => ++completeCounter);
-                promise = rejectDeferred.Promise.Catch<object>(() => rejectWaitDeferred.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++completeCounter);
 
@@ -325,17 +271,11 @@ namespace Proto.Promises.Tests
                 promise = rejectDeferred.Promise.Then(() => { resolveAssert(); return rejectWaitDeferred.Promise; }, (object failValue) => rejectWaitDeferred.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++completeCounter);
-                promise = rejectDeferred.Promise.Then<object>(() => { resolveAssert(); return rejectWaitDeferred.Promise; }, () => rejectWaitDeferred.Promise);
-                TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
-                TestHelper.AddCallbacks(promise, resolveAssert, s => ++completeCounter);
 
                 promise = rejectDeferred.Promise.Then(() => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, () => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++completeCounter);
                 promise = rejectDeferred.Promise.Then(() => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, (object failValue) => rejectWaitDeferredInt.Promise);
-                TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
-                TestHelper.AddCallbacks(promise, resolveAssert, s => ++completeCounter);
-                promise = rejectDeferred.Promise.Then<object>(() => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, () => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++completeCounter);
 
@@ -351,17 +291,11 @@ namespace Proto.Promises.Tests
                 promiseInt = rejectDeferredInt.Promise.Catch((object failValue) => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
-                promiseInt = rejectDeferredInt.Promise.Catch<object>(() => resolveWaitDeferredInt.Promise);
-                TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
-                TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
 
                 promise = rejectDeferredInt.Promise.Then(v => { resolveAssert(); return resolveWaitDeferred.Promise; }, () => resolveWaitDeferred.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
                 promise = rejectDeferredInt.Promise.Then(v => { resolveAssert(); return resolveWaitDeferred.Promise; }, (object failValue) => resolveWaitDeferred.Promise);
-                TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
-                TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
-                promise = rejectDeferredInt.Promise.Then<object>(v => { resolveAssert(); return resolveWaitDeferred.Promise; }, () => resolveWaitDeferred.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, () => ++completeCounter, s => rejectAssert());
 
@@ -371,17 +305,11 @@ namespace Proto.Promises.Tests
                 promiseInt = rejectDeferredInt.Promise.Then(v => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, (object failValue) => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
-                promiseInt = rejectDeferredInt.Promise.Then<int, object>(v => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, () => resolveWaitDeferredInt.Promise);
-                TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
-                TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
 
                 promiseInt = rejectDeferredInt.Promise.Then(() => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, () => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
                 promiseInt = rejectDeferredInt.Promise.Then(() => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, (object failValue) => resolveWaitDeferredInt.Promise);
-                TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
-                TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
-                promiseInt = rejectDeferredInt.Promise.Then<int, object>(() => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, () => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => ++completeCounter, s => rejectAssert());
 
@@ -391,17 +319,11 @@ namespace Proto.Promises.Tests
                 promiseInt = rejectDeferredInt.Promise.Catch((object failValue) => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
-                promiseInt = rejectDeferredInt.Promise.Catch<object>(() => rejectWaitDeferredInt.Promise);
-                TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
-                TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
 
                 promise = rejectDeferredInt.Promise.Then(v => { resolveAssert(); return rejectWaitDeferred.Promise; }, () => rejectWaitDeferred.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, () => resolveAssert(), s => ++completeCounter);
                 promise = rejectDeferredInt.Promise.Then(v => { resolveAssert(); return rejectWaitDeferred.Promise; }, (object failValue) => rejectWaitDeferred.Promise);
-                TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
-                TestHelper.AddCallbacks(promise, () => resolveAssert(), s => ++completeCounter);
-                promise = rejectDeferredInt.Promise.Then<object>(v => { resolveAssert(); return rejectWaitDeferred.Promise; }, () => rejectWaitDeferred.Promise);
                 TestHelper.AddCompleteCallbacks(promise, () => ++completeCounter);
                 TestHelper.AddCallbacks(promise, () => resolveAssert(), s => ++completeCounter);
 
@@ -411,17 +333,11 @@ namespace Proto.Promises.Tests
                 promiseInt = rejectDeferredInt.Promise.Then(v => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, (object failValue) => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
-                promiseInt = rejectDeferredInt.Promise.Then<int, object>(v => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, () => rejectWaitDeferredInt.Promise);
-                TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
-                TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
 
                 promiseInt = rejectDeferredInt.Promise.Then(() => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, () => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
                 promiseInt = rejectDeferredInt.Promise.Then(() => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, (object failValue) => rejectWaitDeferredInt.Promise);
-                TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
-                TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
-                promiseInt = rejectDeferredInt.Promise.Then<int, object>(() => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, () => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCompleteCallbacks(promiseInt, () => ++completeCounter);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++completeCounter);
 
@@ -434,25 +350,25 @@ namespace Proto.Promises.Tests
 
                 resolveWaitDeferred.Resolve();
                 Promise.Manager.HandleCompletes();
-                expectedCompleteCount += (TestHelper.resolveVoidCallbacks + TestHelper.completeCallbacks) * 17;
+                expectedCompleteCount += (TestHelper.resolveVoidCallbacks + TestHelper.completeCallbacks) * 12;
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
                 resolveWaitDeferredInt.Resolve(0);
                 Promise.Manager.HandleCompletes();
-                expectedCompleteCount += (TestHelper.resolveTCallbacks + TestHelper.completeCallbacks) * 20;
+                expectedCompleteCount += (TestHelper.resolveTCallbacks + TestHelper.completeCallbacks) * 14;
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
                 rejectWaitDeferred.Reject("Fail value");
                 Promise.Manager.HandleCompletes();
-                expectedCompleteCount += (TestHelper.rejectVoidCallbacks + TestHelper.completeCallbacks) * 17;
+                expectedCompleteCount += (TestHelper.rejectVoidCallbacks + TestHelper.completeCallbacks) * 12;
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
                 rejectWaitDeferredInt.Reject("Fail value");
                 Promise.Manager.HandleCompletes();
-                expectedCompleteCount += (TestHelper.rejectTCallbacks + TestHelper.completeCallbacks) * 20;
+                expectedCompleteCount += (TestHelper.rejectTCallbacks + TestHelper.completeCallbacks) * 14;
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                 // Clean up.
@@ -512,16 +428,12 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCallbacks(promise, () => ++resolveCounter, s => rejectAssert());
                 promise = resolveDeferred.Promise.Then(() => resolveWaitDeferred.Promise, (object failValue) => { rejectAssert(); return resolveWaitDeferred.Promise; });
                 TestHelper.AddCallbacks(promise, () => ++resolveCounter, s => rejectAssert());
-                promise = resolveDeferred.Promise.Then<object>(() => resolveWaitDeferred.Promise, () => { rejectAssert(); return resolveWaitDeferred.Promise; });
-                TestHelper.AddCallbacks(promise, () => ++resolveCounter, s => rejectAssert());
 
                 promiseInt = resolveDeferred.Promise.Then(() => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
                 promiseInt = resolveDeferred.Promise.Then(() => resolveWaitDeferredInt.Promise, () => { rejectAssert(); return resolveWaitDeferredInt.Promise; });
                 TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
                 promiseInt = resolveDeferred.Promise.Then(() => resolveWaitDeferredInt.Promise, (object failValue) => { rejectAssert(); return resolveWaitDeferredInt.Promise; });
-                TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
-                promiseInt = resolveDeferred.Promise.Then<int, object>(() => resolveWaitDeferredInt.Promise, () => { rejectAssert(); return resolveWaitDeferredInt.Promise; });
                 TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
 
 
@@ -531,8 +443,6 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCallbacks(promise, () => ++resolveCounter, s => rejectAssert());
                 promise = resolveDeferredInt.Promise.Then(v => resolveWaitDeferred.Promise, (object failValue) => { rejectAssert(); return resolveWaitDeferred.Promise; });
                 TestHelper.AddCallbacks(promise, () => ++resolveCounter, s => rejectAssert());
-                promise = resolveDeferredInt.Promise.Then<object>(v => resolveWaitDeferred.Promise, () => { rejectAssert(); return resolveWaitDeferred.Promise; });
-                TestHelper.AddCallbacks(promise, () => ++resolveCounter, s => rejectAssert());
 
                 promiseInt = resolveDeferredInt.Promise.Then(v => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
@@ -540,22 +450,16 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
                 promiseInt = resolveDeferredInt.Promise.Then(v => resolveWaitDeferredInt.Promise, (object failValue) => { rejectAssert(); return resolveWaitDeferredInt.Promise; });
                 TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
-                promiseInt = resolveDeferredInt.Promise.Then<int, object>(v => resolveWaitDeferredInt.Promise, () => { rejectAssert(); return resolveWaitDeferredInt.Promise; });
-                TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
 
 
                 promise = rejectDeferred.Promise.Catch(() => resolveWaitDeferred.Promise);
                 TestHelper.AddCallbacks(promise, () => ++resolveCounter, s => rejectAssert());
                 promise = rejectDeferred.Promise.Catch((object failValue) => resolveWaitDeferred.Promise);
                 TestHelper.AddCallbacks(promise, () => ++resolveCounter, s => rejectAssert());
-                promise = rejectDeferred.Promise.Catch<object>(() => resolveWaitDeferred.Promise);
-                TestHelper.AddCallbacks(promise, () => ++resolveCounter, s => rejectAssert());
 
                 promise = rejectDeferred.Promise.Then(() => { resolveAssert(); return resolveWaitDeferred.Promise; }, () => resolveWaitDeferred.Promise);
                 TestHelper.AddCallbacks(promise, () => ++resolveCounter, s => rejectAssert());
                 promise = rejectDeferred.Promise.Then(() => { resolveAssert(); return resolveWaitDeferred.Promise; }, (object failValue) => resolveWaitDeferred.Promise);
-                TestHelper.AddCallbacks(promise, () => ++resolveCounter, s => rejectAssert());
-                promise = rejectDeferred.Promise.Then<object>(() => { resolveAssert(); return resolveWaitDeferred.Promise; }, () => resolveWaitDeferred.Promise);
                 TestHelper.AddCallbacks(promise, () => ++resolveCounter, s => rejectAssert());
 
 
@@ -563,21 +467,15 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
                 promiseInt = rejectDeferredInt.Promise.Catch((object failValue) => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
-                promiseInt = rejectDeferredInt.Promise.Catch<object>(() => resolveWaitDeferredInt.Promise);
-                TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
 
                 promiseInt = rejectDeferredInt.Promise.Then(v => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, () => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
                 promiseInt = rejectDeferredInt.Promise.Then(v => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, (object failValue) => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
-                promiseInt = rejectDeferredInt.Promise.Then<int, object>(v => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, () => resolveWaitDeferredInt.Promise);
-                TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
 
                 promiseInt = rejectDeferredInt.Promise.Then(() => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, () => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
                 promiseInt = rejectDeferredInt.Promise.Then(() => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, (object failValue) => resolveWaitDeferredInt.Promise);
-                TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
-                promiseInt = rejectDeferredInt.Promise.Then<int, object>(() => { resolveAssert(); return resolveWaitDeferredInt.Promise; }, () => resolveWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => ++resolveCounter, s => rejectAssert());
 
                 Assert.AreEqual(0, resolveCounter);
@@ -589,14 +487,14 @@ namespace Proto.Promises.Tests
                     resolveWaitDeferredInt.Resolve(0);
                     Promise.Manager.HandleCompletes();
 
-                    Assert.AreEqual(TestHelper.resolveVoidCallbacks * 14 + TestHelper.resolveTCallbacks * 17, resolveCounter);
+                    Assert.AreEqual(TestHelper.resolveVoidCallbacks * 10 + TestHelper.resolveTCallbacks * 12, resolveCounter);
                     firstRun = false;
                     goto RunAgain;
                 }
 
                 Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(TestHelper.resolveVoidCallbacks * 14 + TestHelper.resolveTCallbacks * 17, resolveCounter);
+                Assert.AreEqual(TestHelper.resolveVoidCallbacks * 10 + TestHelper.resolveTCallbacks * 12, resolveCounter);
 
                 resolveDeferred.Release();
                 resolveDeferredInt.Release();
@@ -663,16 +561,12 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++rejectCounter);
                 promise = resolveDeferred.Promise.Then(() => rejectWaitDeferred.Promise, (object failValue) => { rejectAssert(); return rejectWaitDeferred.Promise; });
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++rejectCounter);
-                promise = resolveDeferred.Promise.Then<object>(() => rejectWaitDeferred.Promise, () => { rejectAssert(); return rejectWaitDeferred.Promise; });
-                TestHelper.AddCallbacks(promise, resolveAssert, s => ++rejectCounter);
 
                 promiseInt = resolveDeferred.Promise.Then(() => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
                 promiseInt = resolveDeferred.Promise.Then(() => rejectWaitDeferredInt.Promise, () => { rejectAssert(); return rejectWaitDeferredInt.Promise; });
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
                 promiseInt = resolveDeferred.Promise.Then(() => rejectWaitDeferredInt.Promise, (object failValue) => { rejectAssert(); return rejectWaitDeferredInt.Promise; });
-                TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
-                promiseInt = resolveDeferred.Promise.Then<int, object>(() => rejectWaitDeferredInt.Promise, () => { rejectAssert(); return rejectWaitDeferredInt.Promise; });
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
 
 
@@ -682,8 +576,6 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++rejectCounter);
                 promise = resolveDeferredInt.Promise.Then(v => rejectWaitDeferred.Promise, (object failValue) => { rejectAssert(); return rejectWaitDeferred.Promise; });
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++rejectCounter);
-                promise = resolveDeferredInt.Promise.Then<object>(v => rejectWaitDeferred.Promise, () => { rejectAssert(); return rejectWaitDeferred.Promise; });
-                TestHelper.AddCallbacks(promise, resolveAssert, s => ++rejectCounter);
 
                 promiseInt = resolveDeferredInt.Promise.Then(v => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
@@ -691,22 +583,16 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
                 promiseInt = resolveDeferredInt.Promise.Then(v => rejectWaitDeferredInt.Promise, (object failValue) => { rejectAssert(); return rejectWaitDeferredInt.Promise; });
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
-                promiseInt = resolveDeferredInt.Promise.Then<int, object>(v => rejectWaitDeferredInt.Promise, () => { rejectAssert(); return rejectWaitDeferredInt.Promise; });
-                TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
 
 
                 promise = rejectDeferred.Promise.Catch(() => rejectWaitDeferred.Promise);
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++rejectCounter);
                 promise = rejectDeferred.Promise.Catch((object failValue) => rejectWaitDeferred.Promise);
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++rejectCounter);
-                promise = rejectDeferred.Promise.Catch<object>(() => rejectWaitDeferred.Promise);
-                TestHelper.AddCallbacks(promise, resolveAssert, s => ++rejectCounter);
 
                 promise = rejectDeferred.Promise.Then(() => { resolveAssert(); return rejectWaitDeferred.Promise; }, () => rejectWaitDeferred.Promise);
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++rejectCounter);
                 promise = rejectDeferred.Promise.Then(() => { resolveAssert(); return rejectWaitDeferred.Promise; }, (object failValue) => rejectWaitDeferred.Promise);
-                TestHelper.AddCallbacks(promise, resolveAssert, s => ++rejectCounter);
-                promise = rejectDeferred.Promise.Then<object>(() => { resolveAssert(); return rejectWaitDeferred.Promise; }, () => rejectWaitDeferred.Promise);
                 TestHelper.AddCallbacks(promise, resolveAssert, s => ++rejectCounter);
 
 
@@ -714,22 +600,16 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
                 promiseInt = rejectDeferredInt.Promise.Catch((object failValue) => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
-                promiseInt = rejectDeferredInt.Promise.Catch<object>(() => rejectWaitDeferredInt.Promise);
-                TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
 
                 promiseInt = rejectDeferredInt.Promise.Then(v => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, () => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
                 promiseInt = rejectDeferredInt.Promise.Then(v => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, (object failValue) => rejectWaitDeferredInt.Promise);
-                TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
-                promiseInt = rejectDeferredInt.Promise.Then<int, object>(v => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, () => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
 
 
                 promiseInt = rejectDeferredInt.Promise.Then(() => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, () => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
                 promiseInt = rejectDeferredInt.Promise.Then(() => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, (object failValue) => rejectWaitDeferredInt.Promise);
-                TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
-                promiseInt = rejectDeferredInt.Promise.Then<int, object>(() => { resolveAssert(); return rejectWaitDeferredInt.Promise; }, () => rejectWaitDeferredInt.Promise);
                 TestHelper.AddCallbacks(promiseInt, v => resolveAssert(), s => ++rejectCounter);
 
                 Assert.AreEqual(0, rejectCounter);
@@ -741,14 +621,14 @@ namespace Proto.Promises.Tests
                     rejectWaitDeferredInt.Reject("Fail value");
                     Promise.Manager.HandleCompletes();
 
-                    Assert.AreEqual(TestHelper.rejectVoidCallbacks * 14 + TestHelper.rejectTCallbacks * 17, rejectCounter);
+                    Assert.AreEqual(TestHelper.rejectVoidCallbacks * 10 + TestHelper.rejectTCallbacks * 12, rejectCounter);
                     firstRun = false;
                     goto RunAgain;
                 }
 
                 Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(TestHelper.rejectVoidCallbacks * 14 + TestHelper.rejectTCallbacks * 17, rejectCounter);
+                Assert.AreEqual(TestHelper.rejectVoidCallbacks * 10 + TestHelper.rejectTCallbacks * 12, rejectCounter);
 
                 resolveDeferred.Release();
                 resolveDeferredInt.Release();
@@ -809,26 +689,20 @@ namespace Proto.Promises.Tests
             assertResolved.Invoke(resolveDeferred.Promise.Then(() => { }));
             assertResolved.Invoke(resolveDeferred.Promise.Then(() => { }, () => Assert.Fail("Promise was rejected when it should have been resolved")));
             assertResolved.Invoke(resolveDeferred.Promise.Then<object>(() => { }, failValue => Assert.Fail("Promise was rejected when it should have been resolved")));
-            assertResolved.Invoke(resolveDeferred.Promise.Then<object>(() => { }, () => Assert.Fail("Promise was rejected when it should have been resolved")));
 
             assertResolved.Invoke(rejectDeferred.Promise.Then(() => Assert.Fail("Promise was resolved when it should have been rejected"), () => { }));
             assertResolved.Invoke(rejectDeferred.Promise.Then<object>(() => Assert.Fail("Promise was resolved when it should have been rejected"), failValue => { }));
-            assertResolved.Invoke(rejectDeferred.Promise.Then<object>(() => Assert.Fail("Promise was resolved when it should have been rejected"), () => { }));
             assertResolved.Invoke(rejectDeferred.Promise.Catch(() => { }));
             assertResolved.Invoke(rejectDeferred.Promise.Catch<object>(failValue => { }));
-            assertResolved.Invoke(rejectDeferred.Promise.Catch<object>(() => { }));
 
             assertResolved.Invoke(resolveDeferredInt.Promise.Then(v => { }));
             assertResolved.Invoke(resolveDeferredInt.Promise.Then(v => { }, () => Assert.Fail("Promise was rejected when it should have been resolved")));
             assertResolved.Invoke(resolveDeferredInt.Promise.Then<object>(v => { }, failValue => Assert.Fail("Promise was rejected when it should have been resolved")));
-            assertResolved.Invoke(resolveDeferredInt.Promise.Then<object>(v => { }, () => Assert.Fail("Promise was rejected when it should have been resolved")));
 
             assertResolved.Invoke(rejectDeferredInt.Promise.Then(v => Assert.Fail("Promise was resolved when it should have been rejected"), () => { }));
             assertResolved.Invoke(rejectDeferredInt.Promise.Then<object>(v => Assert.Fail("Promise was resolved when it should have been rejected"), failValue => { }));
-            assertResolved.Invoke(rejectDeferredInt.Promise.Then<object>(v => Assert.Fail("Promise was resolved when it should have been rejected"), () => { }));
             assertResolved.Invoke(rejectDeferredInt.Promise.Catch(() => { }));
             assertResolved.Invoke(rejectDeferredInt.Promise.Catch<object>(failValue => { }));
-            assertResolved.Invoke(rejectDeferredInt.Promise.Catch<object>(() => { }));
 
 
             resolveDeferred.Release();
@@ -885,23 +759,18 @@ namespace Proto.Promises.Tests
             assertResolved.Invoke(resolveDeferred.Promise.Then<int>(() => expected));
             assertResolved.Invoke(resolveDeferred.Promise.Then<int>(() => expected, () => { Assert.Fail("Promise was rejected when it should have been resolved"); return 0; }));
             assertResolved.Invoke(resolveDeferred.Promise.Then<int, object>(() => expected, failValue => { Assert.Fail("Promise was rejected when it should have been resolved"); return 0; }));
-            assertResolved.Invoke(resolveDeferred.Promise.Then<int, object>(() => expected, () => { Assert.Fail("Promise was rejected when it should have been resolved"); return 0; }));
 
             assertResolved.Invoke(rejectDeferred.Promise.Then<int>(() => { Assert.Fail("Promise was resolved when it should have been rejected"); return 0; }, () => expected));
             assertResolved.Invoke(rejectDeferred.Promise.Then<int, object>(() => { Assert.Fail("Promise was resolved when it should have been rejected"); return 0; }, failValue => expected));
-            assertResolved.Invoke(rejectDeferred.Promise.Then<int, object>(() => { Assert.Fail("Promise was resolved when it should have been rejected"); return 0; }, () => expected));
 
             assertResolved.Invoke(resolveDeferredInt.Promise.Then<int>(v => expected));
             assertResolved.Invoke(resolveDeferredInt.Promise.Then<int>(v => expected, () => { Assert.Fail("Promise was rejected when it should have been resolved"); return 0; }));
             assertResolved.Invoke(resolveDeferredInt.Promise.Then<int, object>(v => expected, failValue => { Assert.Fail("Promise was rejected when it should have been resolved"); return 0; }));
-            assertResolved.Invoke(resolveDeferredInt.Promise.Then<int, object>(v => expected, () => { Assert.Fail("Promise was rejected when it should have been resolved"); return 0; }));
 
             assertResolved.Invoke(rejectDeferredInt.Promise.Then<int>(v => { Assert.Fail("Promise was resolved when it should have been rejected"); return 0; }, () => expected));
             assertResolved.Invoke(rejectDeferredInt.Promise.Then<int, object>(v => { Assert.Fail("Promise was resolved when it should have been rejected"); return 0; }, failValue => expected));
-            assertResolved.Invoke(rejectDeferredInt.Promise.Then<int, object>(v => { Assert.Fail("Promise was resolved when it should have been rejected"); return 0; }, () => expected));
             assertResolved.Invoke(rejectDeferredInt.Promise.Catch(() => expected));
             assertResolved.Invoke(rejectDeferredInt.Promise.Catch<object>(failValue => expected));
-            assertResolved.Invoke(rejectDeferredInt.Promise.Catch<object>(() => expected));
 
 
             resolveDeferred.Release();
@@ -939,47 +808,39 @@ namespace Proto.Promises.Tests
             Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
 
-            promise = deferred.Promise.Then(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            promise = deferred.Promise.Then(() => promise.Then(() => { }).Then(() => { }).Catch((InvalidReturnException _) => { }));
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferred.Promise.Then(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }), () => { rejectAssert(); return promise; });
+            promise = deferred.Promise.Then(() => promise.Then(() => { }).Then(() => { }).Catch((InvalidReturnException _) => { }), () => { rejectAssert(); return promise; });
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferred.Promise.Then(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }), (object failValue) => { rejectAssert(); return promise; });
-            TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferred.Promise.Then<object>(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }), () => { rejectAssert(); return promise; });
+            promise = deferred.Promise.Then(() => promise.Then(() => { }).Then(() => { }).Catch((InvalidReturnException _) => { }), (object failValue) => { rejectAssert(); return promise; });
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
 
-            promiseInt = deferred.Promise.Then(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            promiseInt = deferred.Promise.Then(() => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0));
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
-            promiseInt = deferred.Promise.Then(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0), () => { rejectAssert(); return promiseInt; });
+            promiseInt = deferred.Promise.Then(() => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0), () => { rejectAssert(); return promiseInt; });
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
-            promiseInt = deferred.Promise.Then(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0), (object failValue) => { rejectAssert(); return promiseInt; });
-            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
-            promiseInt = deferred.Promise.Then<int, object>(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0), () => { rejectAssert(); return promiseInt; });
+            promiseInt = deferred.Promise.Then(() => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0), (object failValue) => { rejectAssert(); return promiseInt; });
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
 
 
-            promise = deferredInt.Promise.Then(v => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            promise = deferredInt.Promise.Then(v => promise.Then(() => { }).Then(() => { }).Catch((InvalidReturnException _) => { }));
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferredInt.Promise.Then(v => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }), () => { rejectAssert(); return promise; });
+            promise = deferredInt.Promise.Then(v => promise.Then(() => { }).Then(() => { }).Catch((InvalidReturnException _) => { }), () => { rejectAssert(); return promise; });
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferredInt.Promise.Then(v => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }), (object failValue) => { rejectAssert(); return promise; });
-            TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferredInt.Promise.Then<object>(v => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }), () => { rejectAssert(); return promise; });
+            promise = deferredInt.Promise.Then(v => promise.Then(() => { }).Then(() => { }).Catch((InvalidReturnException _) => { }), (object failValue) => { rejectAssert(); return promise; });
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
 
-            promiseInt = deferredInt.Promise.Then(v => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            promiseInt = deferredInt.Promise.Then(v => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0));
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Then(v => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0), () => { rejectAssert(); return promiseInt; });
+            promiseInt = deferredInt.Promise.Then(v => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0), () => { rejectAssert(); return promiseInt; });
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Then(v => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0), (object failValue) => { rejectAssert(); return promiseInt; });
-            TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Then<int, object>(v => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0), () => { rejectAssert(); return promiseInt; });
+            promiseInt = deferredInt.Promise.Then(v => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0), (object failValue) => { rejectAssert(); return promiseInt; });
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
 
 
-            promise = deferred.Promise.Complete(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            promise = deferred.Promise.Complete(() => promise.Then(() => { }).Then(() => { }).Catch((InvalidReturnException _) => { }));
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promiseInt = deferred.Promise.Complete(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            promiseInt = deferred.Promise.Complete(() => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0));
             TestHelper.AssertRejectType<int, InvalidReturnException>(promiseInt);
 
 
@@ -995,38 +856,28 @@ namespace Proto.Promises.Tests
             deferredInt.Reject("Fail value");
 
 
-            promise = deferred.Promise.Catch(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            promise = deferred.Promise.Catch(() => promise.Then(() => { }).Then(() => { }).Catch((InvalidReturnException _) => { }));
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferred.Promise.Catch((object failValue) => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            promise = deferred.Promise.Catch((object failValue) => promise.Then(() => { }).Then(() => { }).Catch((InvalidReturnException _) => { }));
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferred.Promise.Catch<object>(() => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            promise = deferred.Promise.Then(() => { resolveAssert(); return promise; }, () => promise.Then(() => { }).Then(() => { }).Catch((InvalidReturnException _) => { }));
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferred.Promise.Then(() => { resolveAssert(); return promise; }, () => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
-            TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferred.Promise.Then(() => { resolveAssert(); return promise; }, (object failValue) => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
-            TestHelper.AssertRejectType<InvalidReturnException>(promise);
-            promise = deferred.Promise.Then<object>(() => { resolveAssert(); return promise; }, () => promise.Then(() => { }).Then(() => { }).Catch<InvalidReturnException>(() => { }));
+            promise = deferred.Promise.Then(() => { resolveAssert(); return promise; }, (object failValue) => promise.Then(() => { }).Then(() => { }).Catch((InvalidReturnException _) => { }));
             TestHelper.AssertRejectType<InvalidReturnException>(promise);
 
-            promiseInt = deferredInt.Promise.Catch(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            promiseInt = deferredInt.Promise.Catch(() => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0));
             TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Catch((object failValue) => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            promiseInt = deferredInt.Promise.Catch((object failValue) => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0));
             TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Catch<object>(() => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            promiseInt = deferredInt.Promise.Then(() => { resolveAssert(); return promiseInt; }, () => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0));
             TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Then(() => { resolveAssert(); return promiseInt; }, () => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
-            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Then(() => { resolveAssert(); return promiseInt; }, (object failValue) => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
-            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Then<int, object>(() => { resolveAssert(); return promiseInt; }, () => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            promiseInt = deferredInt.Promise.Then(() => { resolveAssert(); return promiseInt; }, (object failValue) => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0));
             TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
 
 
-            promiseInt = deferredInt.Promise.Then(v => { resolveAssert(); return promiseInt; }, () => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            promiseInt = deferredInt.Promise.Then(v => { resolveAssert(); return promiseInt; }, () => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0));
             TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Then(v => { resolveAssert(); return promiseInt; }, (object failValue) => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
-            TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
-            promiseInt = deferredInt.Promise.Then<int, object>(v => { resolveAssert(); return promiseInt; }, () => promiseInt.Then(() => { }).Then(() => 0).Catch<InvalidReturnException>(() => 0));
+            promiseInt = deferredInt.Promise.Then(v => { resolveAssert(); return promiseInt; }, (object failValue) => promiseInt.Then(() => { }).Then(() => 0).Catch((InvalidReturnException _) => 0));
             TestHelper.AssertRejectType<InvalidReturnException>(promiseInt);
 
             deferred.Release();

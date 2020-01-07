@@ -40,7 +40,6 @@ namespace Proto.Promises
 
         // This breaks Interface Segregation Principle, but cuts down on memory.
         bool Internal.IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new System.InvalidOperationException(); }
-        bool Internal.IValueContainerOrPrevious.ContainsType<U>() { throw new System.InvalidOperationException(); }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
         private
@@ -231,6 +230,19 @@ namespace Proto.Promises
                     _state = State.Canceled;
                     _rejectedOrCanceledValueOrPrevious = e;
                     e.Retain();
+                    CancelProgressListeners();
+                    AddToCancelQueueFront(ref _nextBranches);
+                }
+                ReleaseInternal();
+                OnHandleCatch();
+            }
+            catch (OperationCanceledException) // Built-in system cancelation (or Task cancelation)
+            {
+                if (_state == State.Pending)
+                {
+                    _state = State.Canceled;
+                    _rejectedOrCanceledValueOrPrevious = Internal.CancelVoid.GetOrCreate();
+                    _rejectedOrCanceledValueOrPrevious.Retain();
                     CancelProgressListeners();
                     AddToCancelQueueFront(ref _nextBranches);
                 }
