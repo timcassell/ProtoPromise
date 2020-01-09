@@ -27,7 +27,7 @@ namespace Proto.Promises
 #if !PROMISE_PROGRESS
         [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
-        public Promise ProgressCapture<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress)
+        public Promise Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress)
         {
             SubscribeProgress(progressCaptureValue, onProgress, 1);
             return this;
@@ -40,7 +40,7 @@ namespace Proto.Promises
 #if !PROMISE_CANCEL
         [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
-        public void CatchCancelationCapture<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel> onCanceled)
+        public void CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel> onCanceled)
         {
             ValidateCancel(1);
             ValidateOperation(this, 1);
@@ -61,7 +61,7 @@ namespace Proto.Promises
 #if !PROMISE_CANCEL
         [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
-        public IPotentialCancelation CatchCancelationCapture<TCaptureCancel, TCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, TCancel> onCanceled)
+        public IPotentialCancelation CatchCancelation<TCaptureCancel, TCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, TCancel> onCanceled)
         {
             ValidateCancel(1);
             ValidateOperation(this, 1);
@@ -79,7 +79,7 @@ namespace Proto.Promises
         /// <summary>
         /// Capture a value and add a finally callback. It will be invoked with <paramref name="finallyCaptureValue"/> when this resolves, rejects, or cancels. Returns this.
         /// </summary>
-        public Promise FinallyCapture<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
+        public Promise Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
@@ -97,7 +97,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -114,7 +114,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -131,7 +131,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -148,7 +148,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -167,7 +167,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise CatchCapture<TCaptureReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
+        public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -187,7 +187,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise CatchCapture<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
+        public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -206,7 +206,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise CatchCapture<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
+        public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -226,7 +226,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise CatchCapture<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
+        public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -248,7 +248,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action onRejected)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -269,7 +269,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
+        public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -290,7 +290,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -312,7 +312,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action<TReject> onRejected)
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action<TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -334,7 +334,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
+        public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -356,7 +356,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -377,7 +377,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -398,7 +398,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -419,7 +419,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -441,7 +441,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -463,7 +463,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -485,7 +485,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -506,7 +506,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<Promise> onRejected)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -527,7 +527,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
+        public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -548,7 +548,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -570,7 +570,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<TReject, Promise> onRejected)
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -592,7 +592,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
+        public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -614,7 +614,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -635,7 +635,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -656,7 +656,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -677,7 +677,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -699,7 +699,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -721,7 +721,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -743,7 +743,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -764,7 +764,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<Promise> onRejected)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -785,7 +785,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
+        public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -806,7 +806,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -828,7 +828,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<TReject, Promise> onRejected)
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -850,7 +850,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
+        public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -872,7 +872,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -893,7 +893,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -914,7 +914,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -935,7 +935,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -957,7 +957,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -979,7 +979,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1001,7 +1001,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1022,7 +1022,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action onRejected)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1043,7 +1043,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
+        public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1064,7 +1064,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1086,7 +1086,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action<TReject> onRejected)
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action<TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1108,7 +1108,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
+        public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1130,7 +1130,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1151,7 +1151,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1172,7 +1172,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1193,7 +1193,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1215,7 +1215,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1237,7 +1237,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1259,7 +1259,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1280,7 +1280,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TResult>(TResult resolveCaptureValue)
+        public Promise<TResult> Then<TResult>(TResult resolveCaptureValue)
         {
             ValidateOperation(this, 1);
 
@@ -1296,7 +1296,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TResult>(TResult resolveCaptureValue, Func<TResult> onRejected)
+        public Promise<TResult> Then<TResult>(TResult resolveCaptureValue, Func<TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1317,7 +1317,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TResult, TReject>(TResult resolveCaptureValue, Func<TReject, TResult> onRejected)
+        public Promise<TResult> Then<TResult, TReject>(TResult resolveCaptureValue, Func<TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1337,7 +1337,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TResult>(TResult resolveCaptureValue, Func<Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TResult>(TResult resolveCaptureValue, Func<Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1358,7 +1358,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TResult, TReject>(TResult resolveCaptureValue, Func<TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TResult, TReject>(TResult resolveCaptureValue, Func<TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1378,7 +1378,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1399,7 +1399,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1419,7 +1419,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1440,7 +1440,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(TResult resolveCaptureValue, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1459,7 +1459,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TResult>(TResult resolveCaptureValue, TResult rejectCaptureValue)
+        public Promise<TResult> Then<TResult>(TResult resolveCaptureValue, TResult rejectCaptureValue)
         {
             ValidateOperation(this, 1);
 
@@ -1477,7 +1477,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TResult>(Func<TResult> onResolved, TResult rejectCaptureValue)
+        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, TResult rejectCaptureValue)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1496,7 +1496,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TResult>(Func<Promise<TResult>> onResolved, TResult rejectCaptureValue)
+        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, TResult rejectCaptureValue)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1515,7 +1515,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TResult rejectCaptureValue)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TResult rejectCaptureValue)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1534,7 +1534,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TResult rejectCaptureValue)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TResult rejectCaptureValue)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1554,7 +1554,7 @@ namespace Proto.Promises
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// <para/>Note: Functionally the same as Then(completeCaptureValue, completeCaptureValue), but more efficient.
         /// </summary>
-        public Promise<TCapture> CompleteCapture<TCapture>(TCapture completeCaptureValue)
+        public Promise<TCapture> Complete<TCapture>(TCapture completeCaptureValue)
         {
             ValidateOperation(this, 1);
 
@@ -1574,7 +1574,7 @@ namespace Proto.Promises
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// <para/>Note: Functionally the same as Then(completeCaptureValue, onResolvedOrRejected, completeCaptureValue, onResolvedOrRejected), but more efficient.
         /// </summary>
-        public Promise CompleteCapture<TCapture>(TCapture completeCaptureValue, Action<TCapture> onResolvedOrRejected)
+        public Promise Complete<TCapture>(TCapture completeCaptureValue, Action<TCapture> onResolvedOrRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
@@ -1592,7 +1592,7 @@ namespace Proto.Promises
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// <para/>Note: Functionally the same as Then(completeCaptureValue, onResolvedOrRejected, completeCaptureValue, onResolvedOrRejected), but more efficient.
         /// </summary>
-        public Promise<TResult> CompleteCapture<TCapture, TResult>(TCapture completeCaptureValue, Func<TCapture, TResult> onResolvedOrRejected)
+        public Promise<TResult> Complete<TCapture, TResult>(TCapture completeCaptureValue, Func<TCapture, TResult> onResolvedOrRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
@@ -1610,7 +1610,7 @@ namespace Proto.Promises
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// <para/>Note: Functionally the same as Then(completeCaptureValue, onResolvedOrRejected, completeCaptureValue, onResolvedOrRejected), but more efficient.
         /// </summary>
-        public Promise CompleteCapture<TCapture>(TCapture completeCaptureValue, Func<TCapture, Promise> onResolvedOrRejected)
+        public Promise Complete<TCapture>(TCapture completeCaptureValue, Func<TCapture, Promise> onResolvedOrRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
@@ -1628,7 +1628,7 @@ namespace Proto.Promises
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// <para/>Note: Functionally the same as Then(completeCaptureValue, onResolvedOrRejected, completeCaptureValue, onResolvedOrRejected), but more efficient.
         /// </summary>
-        public Promise<TResult> CompleteCapture<TCapture, TResult>(TCapture completeCaptureValue, Func<TCapture, Promise<TResult>> onResolvedOrRejected)
+        public Promise<TResult> Complete<TCapture, TResult>(TCapture completeCaptureValue, Func<TCapture, Promise<TResult>> onResolvedOrRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
@@ -1656,7 +1656,7 @@ namespace Proto.Promises
 #if !PROMISE_PROGRESS
         [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
-        public new Promise<T> ProgressCapture<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress)
+        public new Promise<T> Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress)
         {
             SubscribeProgress(progressCaptureValue, onProgress, 1);
             return this;
@@ -1665,7 +1665,7 @@ namespace Proto.Promises
         /// <summary>
         /// Capture a value and add a finally callback. It will be invoked with <paramref name="finallyCaptureValue"/> when this is resolved, rejected, or canceled. Returns this.
         /// </summary>
-        public new Promise<T> FinallyCapture<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
+        public new Promise<T> Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
@@ -1683,7 +1683,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1700,7 +1700,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1717,7 +1717,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1734,7 +1734,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1753,7 +1753,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<T> CatchCapture<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, T> onRejected)
+        public Promise<T> Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, T> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1773,7 +1773,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<T> CatchCapture<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, T> onRejected)
+        public Promise<T> Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, T> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1792,7 +1792,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<T> CatchCapture<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<T>> onRejected)
+        public Promise<T> Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<T>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1812,7 +1812,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<T> CatchCapture<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<T>> onRejected)
+        public Promise<T> Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<T>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
@@ -1834,7 +1834,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Action onRejected)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Action onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1855,7 +1855,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
+        public Promise Then<TCaptureReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1876,7 +1876,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1898,7 +1898,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Action<TReject> onRejected)
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Action<TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1920,7 +1920,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject, TReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
+        public Promise Then<TCaptureReject, TReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1942,7 +1942,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1964,7 +1964,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -1985,7 +1985,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2006,7 +2006,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2028,7 +2028,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2050,7 +2050,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2072,7 +2072,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2093,7 +2093,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Func<Promise> onRejected)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Func<Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2114,7 +2114,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
+        public Promise Then<TCaptureReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2135,7 +2135,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2157,7 +2157,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Func<TReject, Promise> onRejected)
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Func<TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2179,7 +2179,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject, TReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
+        public Promise Then<TCaptureReject, TReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2201,7 +2201,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2222,7 +2222,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2243,7 +2243,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2264,7 +2264,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2286,7 +2286,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2308,7 +2308,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2330,7 +2330,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2351,7 +2351,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Func<Promise> onRejected)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Func<Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2372,7 +2372,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
+        public Promise Then<TCaptureReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2393,7 +2393,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2415,7 +2415,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Func<TReject, Promise> onRejected)
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Func<TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2437,7 +2437,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject, TReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
+        public Promise Then<TCaptureReject, TReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2459,7 +2459,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2481,7 +2481,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2502,7 +2502,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2523,7 +2523,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2545,7 +2545,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2567,7 +2567,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2589,7 +2589,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2610,7 +2610,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Action onRejected)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Action onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2631,7 +2631,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
+        public Promise Then<TCaptureReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2652,7 +2652,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2674,7 +2674,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Action<TReject> onRejected)
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Action<TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2696,7 +2696,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureReject, TReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
+        public Promise Then<TCaptureReject, TReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2718,7 +2718,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// </summary>
-        public Promise ThenCapture<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2739,7 +2739,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2760,7 +2760,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2781,7 +2781,7 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2803,7 +2803,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2825,7 +2825,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureReject, TResult, TReject>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2847,7 +2847,7 @@ namespace Proto.Promises
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2868,7 +2868,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<T> CatchCapture(T rejectCaptureValue)
+        public Promise<T> Catch(T rejectCaptureValue)
         {
             ValidateOperation(this, 1);
 
@@ -2886,7 +2886,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TResult>(Func<T, TResult> onResolved, TResult rejectCaptureValue)
+        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, TResult rejectCaptureValue)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2905,7 +2905,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TResult>(Func<T, Promise<TResult>> onResolved, TResult rejectCaptureValue)
+        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, TResult rejectCaptureValue)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2924,7 +2924,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TResult rejectCaptureValue)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TResult rejectCaptureValue)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
@@ -2943,7 +2943,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be resolved with <paramref name="rejectCaptureValue"/>.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// </summary>
-        public Promise<TResult> ThenCapture<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TResult rejectCaptureValue)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TResult rejectCaptureValue)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);

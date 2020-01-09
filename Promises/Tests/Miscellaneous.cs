@@ -33,7 +33,7 @@ namespace Proto.Promises.Tests
             var promise1 = Promise.Resolved();
             var promise2 = Promise.Resolved(100);
 
-            TestHelper.AddCallbacks(promise1, () =>
+            TestHelper.AddCallbacks<object>(promise1, () =>
             {
 #if PROMISE_CANCEL
                 Promise.CancelException();
@@ -41,7 +41,7 @@ namespace Proto.Promises.Tests
 #endif
                 Promise.RejectException("Reject!");
             }, null, null);
-            TestHelper.AddCallbacks(promise2, v =>
+            TestHelper.AddCallbacks<int, object>(promise2, v =>
             {
 #if PROMISE_CANCEL
                 Promise.CancelException();

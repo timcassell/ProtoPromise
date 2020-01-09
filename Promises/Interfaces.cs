@@ -55,7 +55,7 @@ namespace Proto.Promises
         /// Add a cancel callback.
         /// <para/>If this instance is canceled with any or no reason, <paramref name="onCanceled"/> will be invoked with <paramref name="captureValue"/>.
         /// </summary>
-        void CatchCancelationCapture<TCapture>(TCapture captureValue, Action<TCapture> onCanceled);
+        void CatchCancelation<TCapture>(TCapture captureValue, Action<TCapture> onCanceled);
         /// <summary>
         /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
         /// <para/>If/when this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with that reason.
@@ -67,7 +67,7 @@ namespace Proto.Promises
         /// <para/>If/when this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with <paramref name="captureValue"/> and that reason.
         /// <para/>If/when this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
         /// </summary>
-        IPotentialCancelation CatchCancelationCapture<TCapture, TCancel>(TCapture captureValue, Action<TCapture, TCancel> onCanceled);
+        IPotentialCancelation CatchCancelation<TCapture, TCancel>(TCapture captureValue, Action<TCapture, TCancel> onCanceled);
     }
 
     partial class Promise

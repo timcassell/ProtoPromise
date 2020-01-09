@@ -21,131 +21,23 @@ namespace Proto.Promises.Tests
         public static readonly double progressEpsilon = 1d / Math.Pow(2d, Promise.Config.ProgressDecimalBits);
 #endif
 
-        public const int resolveVoidCallbacks = 12;
-        public const int resolveTCallbacks = 12;
-        public const int rejectVoidCallbacks = 12;
-        public const int rejectTCallbacks = 12;
+        public const int resolveVoidCallbacks = 20;
+        public const int resolveTCallbacks = 20;
+        public const int rejectVoidCallbacks = 20;
+        public const int rejectTCallbacks = 20;
 
-        public const int catchRejectVoidCallbacks = 16;
-        public const int catchRejectTCallbacks = 16;
+        public const int catchRejectVoidCallbacks = 24;
+        public const int catchRejectTCallbacks = 24;
 
         public const int completeCallbacks = 4;
 
         public const int totalVoidCallbacks = 25;
         public const int totalTCallbacks = 25;
 
-        public const int secondCatchVoidCallbacks = 6;
-        public const int secondCatchTCallbacks = 6;
+        public const int secondCatchVoidCallbacks = 10;
+        public const int secondCatchTCallbacks = 10;
 
-        public static void AddCallbacks(Promise promise, Action onResolve, Action<string> onReject, string unknownRejectValue = "Unknown fail", Action<Exception> onError = null)
-        {
-            // Add empty delegates so no need for null check.
-            onResolve += () => { };
-            onReject += s => { };
-            if (onError == null)
-            {
-                onError = e => { throw Promise.Rethrow; };
-            }
-
-            promise.Then(() => onResolve())
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.Then(() => { onResolve(); return 0; })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.Then(() => { onResolve(); return Promise.Resolved(); })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); })
-                .Catch(onError)
-                .Catch((string s) => { });
-
-            promise.Then(() => onResolve(), () => onReject(unknownRejectValue))
-                .Catch(onError);
-            promise.Then(() => onResolve(), (string failValue) => onReject(failValue))
-                .Catch(onError);
-
-            promise.Then(() => { onResolve(); return 0; }, () => { onReject(unknownRejectValue); return 0; })
-                .Catch(onError);
-            promise.Then(() => { onResolve(); return 0; }, (string failValue) => { onReject(failValue); return 0; })
-                .Catch(onError);
-
-            promise.Then(() => { onResolve(); return Promise.Resolved(); }, () => { onReject(unknownRejectValue); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Then(() => { onResolve(); return Promise.Resolved(); }, (string failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(onError);
-
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, () => { onReject(unknownRejectValue); return Promise.Resolved(0); })
-                .Catch(onError);
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (string failValue) => { onReject(failValue); return Promise.Resolved(0); })
-                .Catch(onError);
-
-            promise.Catch(() => onReject(unknownRejectValue))
-                .Catch(onError);
-            promise.Catch((string failValue) => onReject(failValue))
-                .Catch(onError);
-
-            promise.Catch(() => { onReject(unknownRejectValue); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Catch((string failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(onError);
-        }
-
-        public static void AddCallbacks<T>(Promise<T> promise, Action<T> onResolve, Action<string> onReject, string unknownRejectValue = "Unknown fail", Action<Exception> onError = null)
-        {
-            // Add empty delegates so no need for null check.
-            onResolve += x => { };
-            onReject += s => { };
-            if (onError == null)
-            {
-                onError = e => { throw Promise.Rethrow; };
-            }
-
-            promise.Then(x => { onResolve(x); })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.Then(x => { onResolve(x); return 0; })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); })
-                .Catch(onError)
-                .Catch((string s) => { });
-
-            promise.Then(x => onResolve(x), () => onReject(unknownRejectValue))
-                .Catch(onError);
-            promise.Then(x => onResolve(x), (string failValue) => onReject(failValue))
-                .Catch(onError);
-
-            promise.Then(x => { onResolve(x); return 0; }, () => { onReject(unknownRejectValue); return 0; })
-                .Catch(onError);
-            promise.Then(x => { onResolve(x); return 0; }, (string failValue) => { onReject(failValue); return 0; })
-                .Catch(onError);
-
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, () => { onReject(unknownRejectValue); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (string failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(onError);
-
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, () => { onReject(unknownRejectValue); return Promise.Resolved(0); })
-                .Catch(onError);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (string failValue) => { onReject(failValue); return Promise.Resolved(0); })
-                .Catch(onError);
-
-            promise.Catch(() => { onReject(unknownRejectValue); return default(T); })
-                .Catch(onError);
-            promise.Catch((string failValue) => { onReject(failValue); return default(T); })
-                .Catch(onError);
-
-            promise.Catch(() => { onReject(unknownRejectValue); return Promise.Resolved(default(T)); })
-                .Catch(onError);
-            promise.Catch((string failValue) => { onReject(failValue); return Promise.Resolved(default(T)); })
-                .Catch(onError);
-        }
-
-        public static void AddCallbacks<TReject>(Promise promise, Action onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<Exception> onError = null)
+        public static void AddCallbacks<TReject>(Promise promise, Action onResolve, Action<TReject> onReject, Action onUnknownRejection = null, Action<Exception> onError = null)
         {
             // Add empty delegates so no need for null check.
             onResolve += () => { };
@@ -173,20 +65,36 @@ namespace Proto.Promises.Tests
                 .Catch(onError);
             promise.Then(() => onResolve(), (TReject failValue) => onReject(failValue))
                 .Catch(onError);
+            promise.Then(() => onResolve(), () => { onUnknownRejection(); return Promise.Resolved(); })
+                .Catch(onError);
+            promise.Then(() => onResolve(), (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
+                .Catch(onError);
 
             promise.Then(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return 0; })
                 .Catch(onError);
             promise.Then(() => { onResolve(); return 0; }, (TReject failValue) => { onReject(failValue); return 0; })
+                .Catch(onError);
+            promise.Then(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return Promise.Resolved(0); })
+                .Catch(onError);
+            promise.Then(() => { onResolve(); return 0; }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
                 .Catch(onError);
 
             promise.Then(() => { onResolve(); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
                 .Catch(onError);
             promise.Then(() => { onResolve(); return Promise.Resolved(); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
                 .Catch(onError);
+            promise.Then(() => { onResolve(); return Promise.Resolved(); }, () => onUnknownRejection())
+                .Catch(onError);
+            promise.Then(() => { onResolve(); return Promise.Resolved(); }, (TReject failValue) => onReject(failValue))
+                .Catch(onError);
 
             promise.Then(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
                 .Catch(onError);
             promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
+                .Catch(onError);
+            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return 0; })
+                .Catch(onError);
+            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return 0; })
                 .Catch(onError);
 
             promise.Catch(() => onUnknownRejection())
@@ -200,7 +108,7 @@ namespace Proto.Promises.Tests
                 .Catch(onError);
         }
 
-        public static void AddCallbacks<T, TReject>(Promise<T> promise, Action<T> onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<Exception> onError = null)
+        public static void AddCallbacks<T, TReject>(Promise<T> promise, Action<T> onResolve, Action<TReject> onReject, Action onUnknownRejection = null, Action<Exception> onError = null)
         {
             // Add empty delegates so no need for null check.
             onResolve += x => { };
@@ -228,20 +136,36 @@ namespace Proto.Promises.Tests
                 .Catch(onError);
             promise.Then(x => onResolve(x), (TReject failValue) => onReject(failValue))
                 .Catch(onError);
+            promise.Then(x => onResolve(x), () => { onUnknownRejection(); return Promise.Resolved(); })
+                .Catch(onError);
+            promise.Then(x => onResolve(x), (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
+                .Catch(onError);
 
             promise.Then(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return 0; })
                 .Catch(onError);
             promise.Then(x => { onResolve(x); return 0; }, (TReject failValue) => { onReject(failValue); return 0; })
+                .Catch(onError);
+            promise.Then(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return Promise.Resolved(0); })
+                .Catch(onError);
+            promise.Then(x => { onResolve(x); return 0; }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
                 .Catch(onError);
 
             promise.Then(x => { onResolve(x); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
                 .Catch(onError);
             promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
                 .Catch(onError);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, () => onUnknownRejection())
+                .Catch(onError);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (TReject failValue) => onReject(failValue))
+                .Catch(onError);
 
             promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
                 .Catch(onError);
             promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
+                .Catch(onError);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return 0; })
+                .Catch(onError);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return 0; })
                 .Catch(onError);
 
             promise.Catch(() => { onUnknownRejection(); return default(T); })
@@ -264,19 +188,24 @@ namespace Proto.Promises.Tests
 
             promise.Then(onResolve, (TReject0 failValue) => onReject0(failValue))
                 .Catch(onReject1);
-
             promise.Then(() => { onResolve(); return 0; }, (TReject0 failValue) => { onReject0(failValue); return 0; })
                 .Catch(onReject1);
-
             promise.Then(() => { onResolve(); return Promise.Resolved(); }, (TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(); })
                 .Catch(onReject1);
-
             promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(0); })
+                .Catch(onReject1);
+
+            promise.Then(onResolve, (TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(); })
+                .Catch(onReject1);
+            promise.Then(() => { onResolve(); return 0; }, (TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(0); })
+                .Catch(onReject1);
+            promise.Then(() => { onResolve(); return Promise.Resolved(); }, (TReject0 failValue) => onReject0(failValue))
+                .Catch(onReject1);
+            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (TReject0 failValue) => { onReject0(failValue); return 0; })
                 .Catch(onReject1);
 
             promise.Catch((TReject0 failValue) => onReject0(failValue))
                 .Catch(onReject1);
-
             promise.Catch((TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(); })
                 .Catch(onReject1);
         }
@@ -290,19 +219,24 @@ namespace Proto.Promises.Tests
 
             promise.Then(x => onResolve(x), (TReject0 failValue) => onReject0(failValue))
                 .Catch(onReject1);
-
             promise.Then(x => { onResolve(x); return 0; }, (TReject0 failValue) => { onReject0(failValue); return 0; })
                 .Catch(onReject1);
-
             promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(); })
                 .Catch(onReject1);
-
             promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(0); })
+                .Catch(onReject1);
+
+            promise.Then(x => onResolve(x), (TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(); })
+                .Catch(onReject1);
+            promise.Then(x => { onResolve(x); return 0; }, (TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(0); })
+                .Catch(onReject1);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (TReject0 failValue) => onReject0(failValue))
+                .Catch(onReject1);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (TReject0 failValue) => { onReject0(failValue); return 0; })
                 .Catch(onReject1);
 
             promise.Catch((TReject0 failValue) => { onReject0(failValue); return default(T); })
                 .Catch(onReject1);
-
             promise.Catch((TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(default(T)); })
                 .Catch(onReject1);
         }
@@ -346,38 +280,6 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(rejectTCallbacks, rejectCounter);
         }
 
-        public static void AssertIgnore(Promise promise, int expectedResolveCount, int expectedRejectCount, params Action[] ignoreActions)
-        {
-            foreach (var action in ignoreActions)
-            {
-                int resolveCounter = 0;
-                int rejectCounter = 0;
-                action.Invoke();
-                Assert.AreEqual(0, resolveCounter);
-                Assert.AreEqual(0, rejectCounter);
-                AddCallbacks(promise, () => ++resolveCounter, s => ++rejectCounter);
-                Promise.Manager.HandleCompletes();
-                Assert.AreEqual(expectedResolveCount, resolveCounter);
-                Assert.AreEqual(expectedRejectCount, rejectCounter);
-            }
-        }
-
-        public static void AssertIgnore<T>(Promise<T> promise, int expectedResolveCount, int expectedRejectCount, params Action[] ignoreActions)
-        {
-            foreach (var action in ignoreActions)
-            {
-                int resolveCounter = 0;
-                int rejectCounter = 0;
-                action.Invoke();
-                Assert.AreEqual(0, resolveCounter);
-                Assert.AreEqual(0, rejectCounter);
-                AddCallbacks(promise, v => ++resolveCounter, s => ++rejectCounter);
-                Promise.Manager.HandleCompletes();
-                Assert.AreEqual(expectedResolveCount, resolveCounter);
-                Assert.AreEqual(expectedRejectCount, rejectCounter);
-            }
-        }
-
 #if PROMISE_CANCEL
         public static void AddCatchCancelCallbacks<TReject, TCancel>(Promise promise, Action onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<TCancel> onCancel)
         {
@@ -406,11 +308,23 @@ namespace Proto.Promises.Tests
             promise.Then(() => onResolve(), (TReject failValue) => onReject(failValue))
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
+            promise.Then(() => onResolve(), () => { onUnknownRejection(); return Promise.Resolved(); })
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
+            promise.Then(() => onResolve(), (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
 
             promise.Then(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return 0; })
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
             promise.Then(() => { onResolve(); return 0; }, (TReject failValue) => { onReject(failValue); return 0; })
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
+            promise.Then(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return Promise.Resolved(0); })
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
+            promise.Then(() => { onResolve(); return 0; }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
 
@@ -420,11 +334,23 @@ namespace Proto.Promises.Tests
             promise.Then(() => { onResolve(); return Promise.Resolved(); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
+            promise.Then(() => { onResolve(); return Promise.Resolved(); }, () => onUnknownRejection())
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
+            promise.Then(() => { onResolve(); return Promise.Resolved(); }, (TReject failValue) => onReject(failValue))
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
 
             promise.Then(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
             promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
+            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return 0; })
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
+            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return 0; })
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
 
@@ -471,11 +397,23 @@ namespace Proto.Promises.Tests
             promise.Then(x => onResolve(x), (TReject failValue) => onReject(failValue))
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
+            promise.Then(x => onResolve(x), () => { onUnknownRejection(); return Promise.Resolved(); })
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
+            promise.Then(x => onResolve(x), (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
 
             promise.Then(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return 0; })
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
             promise.Then(x => { onResolve(x); return 0; }, (TReject failValue) => { onReject(failValue); return 0; })
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
+            promise.Then(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return Promise.Resolved(0); })
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
+            promise.Then(x => { onResolve(x); return 0; }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
 
@@ -485,11 +423,23 @@ namespace Proto.Promises.Tests
             promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, () => onUnknownRejection())
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (TReject failValue) => onReject(failValue))
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
 
             promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
             promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return 0; })
+                .Catch(() => { })
+                .CatchCancelation(onCancel);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return 0; })
                 .Catch(() => { })
                 .CatchCancelation(onCancel);
 
@@ -534,20 +484,36 @@ namespace Proto.Promises.Tests
                 .Catch(onThrown);
             promise.Then(() => onResolve(), (TReject failValue) => onReject(failValue))
                 .Catch(onThrown);
+            promise.Then(() => onResolve(), () => { onUnknownRejection(); return Promise.Resolved(); })
+                .Catch(onThrown);
+            promise.Then(() => onResolve(), (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
+                .Catch(onThrown);
 
             promise.Then(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return 0; })
                 .Catch(onThrown);
             promise.Then(() => { onResolve(); return 0; }, (TReject failValue) => { onReject(failValue); return 0; })
+                .Catch(onThrown);
+            promise.Then(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return Promise.Resolved(0); })
+                .Catch(onThrown);
+            promise.Then(() => { onResolve(); return 0; }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
                 .Catch(onThrown);
 
             promise.Then(() => { onResolve(); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
                 .Catch(onThrown);
             promise.Then(() => { onResolve(); return Promise.Resolved(); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
                 .Catch(onThrown);
+            promise.Then(() => { onResolve(); return Promise.Resolved(); }, () => onUnknownRejection())
+                .Catch(onThrown);
+            promise.Then(() => { onResolve(); return Promise.Resolved(); }, (TReject failValue) => onReject(failValue))
+                .Catch(onThrown);
 
             promise.Then(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
                 .Catch(onThrown);
             promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
+                .Catch(onThrown);
+            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return 0; })
+                .Catch(onThrown);
+            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return 0; })
                 .Catch(onThrown);
 
             promise.Catch(() => onUnknownRejection())
@@ -587,20 +553,36 @@ namespace Proto.Promises.Tests
                 .Catch(onThrown);
             promise.Then(x => onResolve(x), (TReject failValue) => onReject(failValue))
                 .Catch(onThrown);
+            promise.Then(x => onResolve(x), () => { onUnknownRejection(); return Promise.Resolved(); })
+                .Catch(onThrown);
+            promise.Then(x => onResolve(x), (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
+                .Catch(onThrown);
 
             promise.Then(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return 0; })
                 .Catch(onThrown);
             promise.Then(x => { onResolve(x); return 0; }, (TReject failValue) => { onReject(failValue); return 0; })
+                .Catch(onThrown);
+            promise.Then(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return Promise.Resolved(0); })
+                .Catch(onThrown);
+            promise.Then(x => { onResolve(x); return 0; }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
                 .Catch(onThrown);
 
             promise.Then(x => { onResolve(x); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
                 .Catch(onThrown);
             promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
                 .Catch(onThrown);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, () => onUnknownRejection())
+                .Catch(onThrown);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (TReject failValue) => onReject(failValue))
+                .Catch(onThrown);
 
             promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
                 .Catch(onThrown);
             promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
+                .Catch(onThrown);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return 0; })
+                .Catch(onThrown);
+            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return 0; })
                 .Catch(onThrown);
 
             promise.Catch(() => { onUnknownRejection(); return default(T); })

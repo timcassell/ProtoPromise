@@ -254,7 +254,7 @@ namespace Proto.Promises
                     return cancelation;
                 }
 
-                void IPotentialCancelation.CatchCancelationCapture<TCapture>(TCapture captureValue, Action<TCapture> onCanceled)
+                void IPotentialCancelation.CatchCancelation<TCapture>(TCapture captureValue, Action<TCapture> onCanceled)
                 {
                     ValidatePotentialOperation(_valueContainerOrPrevious, 1);
                     ValidateArgument(onCanceled, "onCanceled", 1);
@@ -265,7 +265,7 @@ namespace Proto.Promises
                     }
                 }
 
-                IPotentialCancelation IPotentialCancelation.CatchCancelationCapture<TCapture, TCancel>(TCapture captureValue, Action<TCapture, TCancel> onCanceled)
+                IPotentialCancelation IPotentialCancelation.CatchCancelation<TCapture, TCancel>(TCapture captureValue, Action<TCapture, TCancel> onCanceled)
                 {
                     ValidatePotentialOperation(_valueContainerOrPrevious, 1);
                     ValidateArgument(onCanceled, "onCanceled", 1);
@@ -478,7 +478,7 @@ namespace Proto.Promises
                     return cancelation;
                 }
 
-                void IPotentialCancelation.CatchCancelationCapture<TCapture1>(TCapture1 captureValue, Action<TCapture1> onCanceled)
+                void IPotentialCancelation.CatchCancelation<TCapture1>(TCapture1 captureValue, Action<TCapture1> onCanceled)
                 {
                     ValidatePotentialOperation(_valueContainerOrPrevious, 1);
                     ValidateArgument(onCanceled, "onCanceled", 1);
@@ -489,7 +489,7 @@ namespace Proto.Promises
                     }
                 }
 
-                IPotentialCancelation IPotentialCancelation.CatchCancelationCapture<TCapture1, TCancel>(TCapture1 captureValue, Action<TCapture1, TCancel> onCanceled)
+                IPotentialCancelation IPotentialCancelation.CatchCancelation<TCapture1, TCancel>(TCapture1 captureValue, Action<TCapture1, TCancel> onCanceled)
                 {
                     ValidatePotentialOperation(_valueContainerOrPrevious, 1);
                     ValidateArgument(onCanceled, "onCanceled", 1);
