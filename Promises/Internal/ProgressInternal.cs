@@ -685,6 +685,7 @@ namespace Proto.Promises
 
                 protected override void Dispose()
                 {
+                    _capturedValue = default(TCapture);
                     _onProgress = null;
                     base.Dispose();
                 }

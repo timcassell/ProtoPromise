@@ -1393,31 +1393,6 @@ namespace Proto.Promises
                     base.OnCancel();
                 }
             }
-
-            public sealed class PromiseCapture<TCapture> : PoolablePromise<TCapture, PromiseCapture<TCapture>>
-            {
-                private PromiseCapture() { }
-
-                public static PromiseCapture<TCapture> GetOrCreate(TCapture capturedValue, int skipFrames)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseCapture<TCapture>) _pool.Pop() : new PromiseCapture<TCapture>();
-                    promise._value = capturedValue;
-                    promise.Reset(skipFrames + 1);
-                    return promise;
-                }
-
-                protected override void Handle(Promise feed)
-                {
-                    if (feed._state == State.Resolved)
-                    {
-                        ResolveInternal();
-                    }
-                    else
-                    {
-                        RejectInternal(feed._rejectedOrCanceledValueOrPrevious);
-                    }
-                }
-            }
             #endregion
 
             #region Resolve or Reject Promises
