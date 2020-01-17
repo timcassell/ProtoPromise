@@ -594,6 +594,16 @@ namespace Proto.Promises.Tests
                 .Catch(onThrown);
         }
 
+        public const int resolveVoidVoidCallbacks = 5;
+        public const int resolveVoidConvertCallbacks = 5;
+        public const int resolveTVoidCallbacks = 5;
+        public const int resolveTConvertCallbacks = 5;
+        public const int rejectVoidVoidCallbacks = 6;
+        public const int rejectVoidConvertCallbacks = 4;
+        public const int rejectTVoidCallbacks = 4;
+        public const int rejectTConvertCallbacks = 4;
+        public const int rejectTTCallbacks = 2;
+
         public const int resolveVoidPromiseVoidCallbacks = 5;
         public const int resolveVoidPromiseConvertCallbacks = 5;
         public const int resolveTPromiseVoidCallbacks = 5;
@@ -605,18 +615,23 @@ namespace Proto.Promises.Tests
         public const int rejectTPromiseTCallbacks = 2;
 
         public const int completeCallbacks = 4;
+        public const int completeVoidCallbacks = 1;
+        public const int completeConvertCallbacks = 1;
         public const int completePromiseVoidCallbacks = 1;
         public const int completePromiseConvertCallbacks = 1;
 
         public static void AddResolveCallbacks<TConvert>(Promise promise,
             Action onResolve = null, TConvert convertValue = default(TConvert),
-            Action<Promise> onCallbackAddedVoid = null, Action<Promise<TConvert>> onCallbackAddedConvert = null,
+            Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
         {
             // Add empty delegates so no need for null check.
             onResolve += () => { };
-            onCallbackAddedVoid += _ => { };
-            onCallbackAddedConvert += _ => { };
+            promiseToVoid += _ => { };
+            if (promiseToConvert == null)
+            {
+                promiseToConvert += _ => convertValue;
+            }
             if (promiseToPromise == null)
             {
                 promiseToPromise = _ => Promise.Resolved();
@@ -626,25 +641,28 @@ namespace Proto.Promises.Tests
                 promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
             }
 
-            onCallbackAddedVoid(promise.Then(() => onResolve()));
-            onCallbackAddedConvert(promise.Then(() => { onResolve(); return convertValue; }));
             Promise p1 = null;
-            p1 = promise.Then(() => { onResolve(); return promiseToPromise(p1); });
-            onCallbackAddedVoid(p1);
+            p1 = promise.Then(() => { onResolve(); promiseToVoid(p1); });
             Promise<TConvert> p2 = null;
-            p2 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p2); });
-            onCallbackAddedConvert(p2);
+            p2 = promise.Then(() => { onResolve(); return promiseToConvert(p2); });
+            Promise p3 = null;
+            p3 = promise.Then(() => { onResolve(); return promiseToPromise(p3); });
+            Promise<TConvert> p4 = null;
+            p4 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p4); });
         }
 
         public static void AddResolveCallbacks<T, TConvert>(Promise<T> promise,
             Action<T> onResolve = null, TConvert convertValue = default(TConvert),
-            Action<Promise> onCallbackAddedVoid = null, Action<Promise<TConvert>> onCallbackAddedConvert = null,
+            Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
         {
             // Add empty delegates so no need for null check.
             onResolve += x => { };
-            onCallbackAddedVoid += _ => { };
-            onCallbackAddedConvert += _ => { };
+            promiseToVoid += _ => { };
+            if (promiseToConvert == null)
+            {
+                promiseToConvert += _ => convertValue;
+            }
             if (promiseToPromise == null)
             {
                 promiseToPromise = _ => Promise.Resolved();
@@ -654,27 +672,30 @@ namespace Proto.Promises.Tests
                 promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
             }
 
-            onCallbackAddedVoid(promise.Then(x => onResolve(x)));
-            onCallbackAddedConvert(promise.Then(x => { onResolve(x); return convertValue; }));
             Promise p1 = null;
-            p1 = promise.Then(x => { onResolve(x); return promiseToPromise(p1); });
-            onCallbackAddedVoid(p1);
+            p1 = promise.Then(x => { onResolve(x); promiseToVoid(p1); });
             Promise<TConvert> p2 = null;
-            p2 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p2); });
-            onCallbackAddedConvert(p2);
+            p2 = promise.Then(x => { onResolve(x); return promiseToConvert(p2); });
+            Promise p3 = null;
+            p3 = promise.Then(x => { onResolve(x); return promiseToPromise(p3); });
+            Promise<TConvert> p4 = null;
+            p4 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p4); });
         }
 
         public static void AddCallbacks<TConvert, TReject>(Promise promise,
             Action onResolve = null, Action<TReject> onReject = null, Action onUnknownRejection = null, TConvert convertValue = default(TConvert),
-            Action<Promise> onCallbackAddedVoid = null, Action<Promise<TConvert>> onCallbackAddedConvert = null,
+            Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
         {
             // Add empty delegates so no need for null check.
             onResolve += () => { };
             onReject += s => { };
             onUnknownRejection += () => { };
-            onCallbackAddedVoid += _ => { };
-            onCallbackAddedConvert += _ => { };
+            promiseToVoid += _ => { };
+            if (promiseToConvert == null)
+            {
+                promiseToConvert += _ => convertValue;
+            }
             if (promiseToPromise == null)
             {
                 promiseToPromise = _ => Promise.Resolved();
@@ -684,73 +705,71 @@ namespace Proto.Promises.Tests
                 promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
             }
 
-            onCallbackAddedVoid(promise.Then(() => onResolve(), () => onUnknownRejection()));
-            onCallbackAddedVoid(promise.Then(() => onResolve(), (TReject failValue) => onReject(failValue)));
+            Promise p1 = null;
+            p1 = promise.Then(() => { onResolve(); promiseToVoid(p1); }, () => { onUnknownRejection(); promiseToVoid(p1); });
+            Promise p2 = null;
+            p2 = promise.Then(() => { onResolve(); promiseToVoid(p2); }, (TReject failValue) => { onReject(failValue); promiseToVoid(p2); });
             Promise p3 = null;
-            p3 = promise.Then(() => onResolve(), () => { onUnknownRejection(); return promiseToPromise(p3); });
-            onCallbackAddedVoid(p3);
+            p3 = promise.Then(() => { onResolve(); promiseToVoid(p3); }, () => { onUnknownRejection(); return promiseToPromise(p3); });
             Promise p4 = null;
-            p4 = promise.Then(() => onResolve(), (TReject failValue) => { onReject(failValue); return promiseToPromise(p4); });
-            onCallbackAddedVoid(p4);
+            p4 = promise.Then(() => { onResolve(); promiseToVoid(p4); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p4); });
 
-            onCallbackAddedConvert(promise.Then(() => { onResolve(); return convertValue; }, () => { onUnknownRejection(); return convertValue; }));
-            onCallbackAddedConvert(promise.Then(() => { onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }));
             Promise<TConvert> p5 = null;
-            p5 = promise.Then(() => { onResolve(); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p5); });
-            onCallbackAddedConvert(p5);
+            p5 = promise.Then(() => { onResolve(); return promiseToConvert(p5); }, () => { onUnknownRejection(); return promiseToConvert(p5); });
             Promise<TConvert> p6 = null;
-            p6 = promise.Then(() => { onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p6); });
-            onCallbackAddedConvert(p6);
+            p6 = promise.Then(() => { onResolve(); return promiseToConvert(p6); }, (TReject failValue) => { onReject(failValue); return promiseToConvert(p6); });
+            Promise<TConvert> p7 = null;
+            p7 = promise.Then(() => { onResolve(); return promiseToConvert(p7); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p7); });
+            Promise<TConvert> p8 = null;
+            p8 = promise.Then(() => { onResolve(); return promiseToConvert(p8); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p8); });
 
-            Promise p7 = null;
-            p7 = promise.Then(() => { onResolve(); return promiseToPromise(p7); }, () => { onUnknownRejection(); return promiseToPromise(p7); });
-            onCallbackAddedVoid(p7);
-            Promise p8 = null;
-            p8 = promise.Then(() => { onResolve(); return promiseToPromise(p8); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p8); });
-            onCallbackAddedVoid(p8);
             Promise p9 = null;
-            p9 = promise.Then(() => { onResolve(); return promiseToPromise(p9); }, () => onUnknownRejection());
-            onCallbackAddedVoid(p9);
+            p9 = promise.Then(() => { onResolve(); return promiseToPromise(p9); }, () => { onUnknownRejection(); return promiseToPromise(p9); });
             Promise p10 = null;
-            p10 = promise.Then(() => { onResolve(); return promiseToPromise(p10); }, (TReject failValue) => onReject(failValue));
-            onCallbackAddedVoid(p10);
+            p10 = promise.Then(() => { onResolve(); return promiseToPromise(p10); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p10); });
+            Promise p11 = null;
+            p11 = promise.Then(() => { onResolve(); return promiseToPromise(p11); }, () => { onUnknownRejection(); promiseToVoid(p11); });
+            Promise p12 = null;
+            p12 = promise.Then(() => { onResolve(); return promiseToPromise(p12); }, (TReject failValue) => { onReject(failValue); promiseToVoid(p12); });
 
-            Promise<TConvert> p11 = null;
-            p11 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p11); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p11); });
-            onCallbackAddedConvert(p11);
-            Promise<TConvert> p12 = null;
-            p12 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p12); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p12); });
-            onCallbackAddedConvert(p12);
             Promise<TConvert> p13 = null;
-            p13 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p13); }, () => { onUnknownRejection(); return convertValue; });
-            onCallbackAddedConvert(p13);
+            p13 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p13); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p13); });
             Promise<TConvert> p14 = null;
-            p14 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p14); }, (TReject failValue) => { onReject(failValue); return convertValue; });
-            onCallbackAddedConvert(p14);
+            p14 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p14); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p14); });
+            Promise<TConvert> p15 = null;
+            p15 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p15); }, () => { onUnknownRejection(); return promiseToConvert(p15); });
+            Promise<TConvert> p16 = null;
+            p16 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p16); }, (TReject failValue) => { onReject(failValue); return promiseToConvert(p16); });
 
-            onCallbackAddedVoid(promise.Catch(() => onUnknownRejection()));
-            onCallbackAddedVoid(promise.Catch((TReject failValue) => onReject(failValue)));
+            Promise p17 = null;
+            p17 = promise.Catch(() => { onUnknownRejection(); promiseToVoid(p17); });
+            Promise p18 = null;
+            p18 = promise.Catch((TReject failValue) => { onReject(failValue); promiseToVoid(p18); });
 
-            Promise p15 = null;
-            p15 = promise.Catch(() => { onUnknownRejection(); return promiseToPromise(p15); });
-            onCallbackAddedVoid(p15);
-            Promise p16 = null;
-            p16 = promise.Catch((TReject failValue) => { onReject(failValue); return promiseToPromise(p16); });
-            onCallbackAddedVoid(p16);
+            Promise p19 = null;
+            p19 = promise.Catch(() => { onUnknownRejection(); return promiseToPromise(p19); });
+            Promise p20 = null;
+            p20 = promise.Catch((TReject failValue) => { onReject(failValue); return promiseToPromise(p20); });
         }
 
         public static void AddCallbacks<T, TConvert, TReject>(Promise<T> promise,
             Action<T> onResolve = null, Action<TReject> onReject = null, Action onUnknownRejection = null, TConvert convertValue = default(TConvert),
-            Action<Promise> onCallbackAddedVoid = null, Action<Promise<TConvert>> onCallbackAddedConvert = null, Action<Promise<T>> onCallbackAddedT = null,
+            Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null, Func<Promise<T>, T> promiseToT = null,
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null, Func<Promise<T>, Promise<T>> promiseToPromiseT = null)
         {
             // Add empty delegates so no need for null check.
             onResolve += x => { };
             onReject += s => { };
             onUnknownRejection += () => { };
-            onCallbackAddedVoid += _ => { };
-            onCallbackAddedConvert += _ => { };
-            onCallbackAddedT += _ => { };
+            promiseToVoid += _ => { };
+            if (promiseToConvert == null)
+            {
+                promiseToConvert += _ => convertValue;
+            }
+            if (promiseToT == null)
+            {
+                promiseToT += _ => default(T);
+            }
             if (promiseToPromise == null)
             {
                 promiseToPromise = _ => Promise.Resolved();
@@ -764,69 +783,64 @@ namespace Proto.Promises.Tests
                 promiseToPromiseT = _ => Promise.Resolved(default(T));
             }
 
-            onCallbackAddedVoid(promise.Then(x => onResolve(x), () => onUnknownRejection()));
-            onCallbackAddedVoid(promise.Then(x => onResolve(x), (TReject failValue) => onReject(failValue)));
+            Promise p1 = null;
+            p1 = promise.Then(x => { onResolve(x); promiseToVoid(p1); }, () => { onUnknownRejection(); promiseToVoid(p1); });
+            Promise p2 = null;
+            p2 = promise.Then(x => { onResolve(x); promiseToVoid(p2); }, (TReject failValue) => { onReject(failValue); promiseToVoid(p2); });
             Promise p3 = null;
-            p3 = promise.Then(x => onResolve(x), () => { onUnknownRejection(); return promiseToPromise(p3); });
-            onCallbackAddedVoid(p3);
+            p3 = promise.Then(x => { onResolve(x); promiseToVoid(p3); }, () => { onUnknownRejection(); return promiseToPromise(p3); });
             Promise p4 = null;
-            p4 = promise.Then(x => onResolve(x), (TReject failValue) => { onReject(failValue); return promiseToPromise(p4); });
-            onCallbackAddedVoid(p4);
+            p4 = promise.Then(x => { onResolve(x); promiseToVoid(p4); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p4); });
 
-            onCallbackAddedConvert(promise.Then(x => { onResolve(x); return convertValue; }, () => { onUnknownRejection(); return convertValue; }));
-            onCallbackAddedConvert(promise.Then(x => { onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }));
             Promise<TConvert> p5 = null;
-            p5 = promise.Then(x => { onResolve(x); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p5); });
-            onCallbackAddedConvert(p5);
+            p5 = promise.Then(x => { onResolve(x); return promiseToConvert(p5); }, () => { onUnknownRejection(); return promiseToConvert(p5); });
             Promise<TConvert> p6 = null;
-            p6 = promise.Then(x => { onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p6); });
-            onCallbackAddedConvert(p6);
+            p6 = promise.Then(x => { onResolve(x); return promiseToConvert(p6); }, (TReject failValue) => { onReject(failValue); return promiseToConvert(p6); });
+            Promise<TConvert> p7 = null;
+            p7 = promise.Then(x => { onResolve(x); return promiseToConvert(p7); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p7); });
+            Promise<TConvert> p8 = null;
+            p8 = promise.Then(x => { onResolve(x); return promiseToConvert(p8); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p8); });
 
-            Promise p7 = null;
-            p7 = promise.Then(x => { onResolve(x); return promiseToPromise(p7); }, () => { onUnknownRejection(); return promiseToPromise(p7); });
-            onCallbackAddedVoid(p7);
-            Promise p8 = null;
-            p8 = promise.Then(x => { onResolve(x); return promiseToPromise(p8); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p8); });
-            onCallbackAddedVoid(p8);
             Promise p9 = null;
-            p9 = promise.Then(x => { onResolve(x); return promiseToPromise(p9); }, () => onUnknownRejection());
-            onCallbackAddedVoid(p9);
+            p9 = promise.Then(x => { onResolve(x); return promiseToPromise(p9); }, () => { onUnknownRejection(); return promiseToPromise(p9); });
             Promise p10 = null;
-            p10 = promise.Then(x => { onResolve(x); return promiseToPromise(p10); }, (TReject failValue) => onReject(failValue));
-            onCallbackAddedVoid(p10);
+            p10 = promise.Then(x => { onResolve(x); return promiseToPromise(p10); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p10); });
+            Promise p11 = null;
+            p11 = promise.Then(x => { onResolve(x); return promiseToPromise(p11); }, () => { onUnknownRejection(); promiseToVoid(p11); });
+            Promise p12 = null;
+            p12 = promise.Then(x => { onResolve(x); return promiseToPromise(p12); }, (TReject failValue) => { onReject(failValue); promiseToVoid(p12); });
 
-            Promise<TConvert> p11 = null;
-            p11 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p11); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p11); });
-            onCallbackAddedConvert(p11);
-            Promise<TConvert> p12 = null;
-            p12 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p12); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p12); });
-            onCallbackAddedConvert(p12);
             Promise<TConvert> p13 = null;
-            p13 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p13); }, () => { onUnknownRejection(); return convertValue; });
-            onCallbackAddedConvert(p13);
+            p13 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p13); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p13); });
             Promise<TConvert> p14 = null;
-            p14 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p14); }, (TReject failValue) => { onReject(failValue); return convertValue; });
-            onCallbackAddedConvert(p14);
+            p14 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p14); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p14); });
+            Promise<TConvert> p15 = null;
+            p15 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p15); }, () => { onUnknownRejection(); return promiseToConvert(p15); });
+            Promise<TConvert> p16 = null;
+            p16 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p16); }, (TReject failValue) => { onReject(failValue); return promiseToConvert(p16); });
 
-            onCallbackAddedT(promise.Catch(() => { onUnknownRejection(); return default(T); }));
-            onCallbackAddedT(promise.Catch((TReject failValue) => { onReject(failValue); return default(T); }));
+            Promise<T> p17 = null;
+            p17 = promise.Catch(() => { onUnknownRejection(); return promiseToT(p17); });
+            Promise<T> p18 = null;
+            p18 = promise.Catch((TReject failValue) => { onReject(failValue); return promiseToT(p18); });
 
-            Promise<T> p15 = null;
-            p15 = promise.Catch(() => { onUnknownRejection(); return promiseToPromiseT(p15); });
-            onCallbackAddedT(p15);
-            Promise<T> p16 = null;
-            p16 = promise.Catch((TReject failValue) => { onReject(failValue); return promiseToPromiseT(p16); });
-            onCallbackAddedT(p16);
+            Promise<T> p19 = null;
+            p19 = promise.Catch(() => { onUnknownRejection(); return promiseToPromiseT(p19); });
+            Promise<T> p20 = null;
+            p20 = promise.Catch((TReject failValue) => { onReject(failValue); return promiseToPromiseT(p20); });
         }
 
         public static void AddCompleteCallbacks<TConvert>(Promise promise, Action onComplete = null, TConvert convertValue = default(TConvert),
-            Action<Promise> onCallbackAddedVoid = null, Action<Promise<TConvert>> onCallbackAddedConvert = null,
+            Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
         {
             // Add empty delegate so no need for null check.
             onComplete += () => { };
-            onCallbackAddedVoid += _ => { };
-            onCallbackAddedConvert += _ => { };
+            promiseToVoid += _ => { };
+            if (promiseToConvert == null)
+            {
+                promiseToConvert += _ => convertValue;
+            }
             if (promiseToPromise == null)
             {
                 promiseToPromise = _ => Promise.Resolved();
@@ -836,14 +850,14 @@ namespace Proto.Promises.Tests
                 promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
             }
 
-            onCallbackAddedVoid(promise.Complete(() => onComplete()));
-            onCallbackAddedConvert(promise.Complete(() => { onComplete(); return convertValue; }));
             Promise p1 = null;
-            p1 = promise.Complete(() => { onComplete(); return promiseToPromise(p1); });
-            onCallbackAddedVoid(p1);
+            p1 = promise.Complete(() => { onComplete(); promiseToVoid(p1); });
             Promise<TConvert> p2 = null;
-            p2 = promise.Complete(() => { onComplete(); return promiseToPromiseConvert(p2); });
-            onCallbackAddedConvert(p2);
+            p2 = promise.Complete(() => { onComplete(); return promiseToConvert(p2); });
+            Promise p3 = null;
+            p3 = promise.Complete(() => { onComplete(); return promiseToPromise(p3); });
+            Promise<TConvert> p4 = null;
+            p4 = promise.Complete(() => { onComplete(); return promiseToPromiseConvert(p4); });
         }
     }
 }

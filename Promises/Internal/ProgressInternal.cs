@@ -134,7 +134,7 @@ namespace Proto.Promises
             ThrowProgressException(skipFrames + 1);
         }
 #else
-        protected ValueLinkedStackZeroGC<Internal.IProgressListener> _progressListeners;
+        private ValueLinkedStackZeroGC<Internal.IProgressListener> _progressListeners;
         private Internal.UnsignedFixed32 _waitDepthAndProgress;
 
         static partial void ClearPooledProgress()
