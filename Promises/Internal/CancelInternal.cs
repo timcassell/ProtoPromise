@@ -282,7 +282,7 @@ namespace Proto.Promises
 
                 public void Retain()
                 {
-#if DEBUG
+#if PROMISE_DEBUG
                     checked
 #endif
                     {
@@ -292,7 +292,7 @@ namespace Proto.Promises
 
                 public void Release()
                 {
-#if DEBUG
+#if PROMISE_DEBUG
                     checked
 #endif
                     {
@@ -506,7 +506,7 @@ namespace Proto.Promises
 
                 public void Retain()
                 {
-#if DEBUG
+#if PROMISE_DEBUG
                     checked
 #endif
                     {
@@ -516,7 +516,7 @@ namespace Proto.Promises
 
                 public void Release()
                 {
-#if DEBUG
+#if PROMISE_DEBUG
                     checked
 #endif
                     {
@@ -543,11 +543,7 @@ namespace Proto.Promises
         private void ResolveDirectIfNotCanceled()
         {
 #if PROMISE_CANCEL
-            if (_state == State.Canceled)
-            {
-                ReleaseInternal();
-            }
-            else
+            if (_state != State.Canceled)
 #endif
             {
                 _state = State.Resolved;
@@ -561,7 +557,6 @@ namespace Proto.Promises
             if (_state == State.Canceled)
             {
                 AddRejectionToUnhandledStack((Internal.UnhandledExceptionInternal) rejectValue);
-                ReleaseInternal();
             }
             else
 #endif

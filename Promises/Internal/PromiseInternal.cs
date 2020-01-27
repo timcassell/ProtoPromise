@@ -122,7 +122,12 @@ namespace Proto.Promises
 
         protected uint ReleaseWithoutDisposeCheck()
         {
-            return --_retainCounter;
+#if PROMISE_DEBUG
+            checked // This should never fail, but check in debug mode just in case.
+#endif
+            {
+                return --_retainCounter;
+            }
         }
 
         protected virtual Promise GetDuplicate()
@@ -408,11 +413,7 @@ namespace Proto.Promises
 #endif
                 {
 #if PROMISE_CANCEL
-                    if (_state == State.Canceled)
-                    {
-                        ReleaseInternal();
-                    }
-                    else
+                    if (_state != State.Canceled)
 #endif
                     {
                         _state = State.Resolved;
