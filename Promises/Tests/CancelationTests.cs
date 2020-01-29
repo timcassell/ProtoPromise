@@ -221,14 +221,20 @@ namespace Proto.Promises.Tests
                 Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
                 Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
-                TestHelper.AddCallbacks<object>(deferred.Promise, resolveAssert, failValue => rejectAssert());
+                TestHelper.AddCallbacks<int, object>(deferred.Promise,
+                    onResolve: resolveAssert,
+                    onReject: failValue => rejectAssert(),
+                    onUnknownRejection: rejectAssert);
                 deferred.Promise.CatchCancelation<string>(cancelValue => { cancelation = cancelValue; Assert.AreEqual(expected, cancelValue); });
                 deferred.Cancel(expected);
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(expected, cancelation);
 
-                TestHelper.AddCallbacks<object>(deferred.Promise, resolveAssert, failValue => rejectAssert());
+                TestHelper.AddCallbacks<int, object>(deferred.Promise,
+                    onResolve: resolveAssert,
+                    onReject: failValue => rejectAssert(),
+                    onUnknownRejection: rejectAssert);
                 deferred.Promise.CatchCancelation<string>(cancelValue => { cancelation = cancelValue; Assert.AreEqual(expected, cancelValue); });
 
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
@@ -259,14 +265,21 @@ namespace Proto.Promises.Tests
                 Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
                 Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
-                TestHelper.AddCallbacks<object>(deferred.Promise, resolveAssert, failValue => rejectAssert());
+                TestHelper.AddCallbacks<int, bool, object>(deferred.Promise,
+                    onResolve: _ => resolveAssert(),
+                    onReject: _ => rejectAssert(),
+                    onUnknownRejection: rejectAssert);
                 deferred.Promise.CatchCancelation<string>(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue));
                 deferred.Cancel(expected);
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(expected, cancelation);
 
-                TestHelper.AddCallbacks<object>(deferred.Promise, resolveAssert, failValue => rejectAssert());
+                TestHelper.AddCallbacks<int, bool, object>(deferred.Promise,
+                    onResolve: _ => resolveAssert(),
+                    onReject: _ => rejectAssert(),
+                    onUnknownRejection: rejectAssert);
+                deferred.Promise.CatchCancelation<string>(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue));
                 deferred.Promise.CatchCancelation<string>(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue));
 
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
@@ -504,8 +517,14 @@ namespace Proto.Promises.Tests
             Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been canceled.");
             Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been canceled.");
 
-            TestHelper.AddCallbacks(deferred.Promise, resolveAssert, (object o) => rejectAssert(), rejectAssert);
-            TestHelper.AddCallbacks(deferredInt.Promise, v => resolveAssert(), (object o) => rejectAssert(), rejectAssert);
+            TestHelper.AddCallbacks<int, object>(deferred.Promise,
+                onResolve: resolveAssert,
+                onReject: _ => rejectAssert(),
+                onUnknownRejection: rejectAssert);
+            TestHelper.AddCallbacks<int, bool, object>(deferredInt.Promise,
+                onResolve: _ => resolveAssert(),
+                onReject: _ => rejectAssert(),
+                onUnknownRejection: rejectAssert);
 
             deferred.Cancel();
             deferredInt.Cancel();

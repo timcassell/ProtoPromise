@@ -146,10 +146,11 @@ namespace Proto.Promises.Tests
                 .Catch<string>(e => { rejected = true; });
 
             deferred1.Reject("Error!");
+            deferred1.Promise.Catch((string _) => { });
             deferred2.Reject("Error!");
+            deferred2.Promise.Catch((string _) => { });
 
-            // Only 1 rejection is caught, so expect an unhandled throw.
-            Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(true, rejected);
 

@@ -1081,55 +1081,55 @@ namespace Proto.Promises.Tests
             };
 
             TestHelper.AddResolveCallbacks<int>(resolveDeferred.Promise,
-                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => { }); },
-                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => 0); }
+                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
+                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
             TestHelper.AddCallbacks<int, bool>(resolveDeferred.Promise,
                 onReject: _ => rejectAssert(),
                 onUnknownRejection: rejectAssert,
-                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => { }); },
-                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => 0); }
+                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
+                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
             TestHelper.AddCompleteCallbacks<int>(resolveDeferred.Promise,
-                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => { }); },
-                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => 0); }
+                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
+                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
 
             TestHelper.AddResolveCallbacks<int, bool>(resolveDeferredInt.Promise,
-                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => { }); },
-                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => false); }
+                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
+                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => false); }
             );
             TestHelper.AddCallbacks<int, bool, string>(resolveDeferredInt.Promise,
                 onReject: _ => rejectAssert(),
                 onUnknownRejection: rejectAssert,
-                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => { }); },
-                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => false); },
-                promiseToPromiseT: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => 0); }
+                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
+                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => false); },
+                promiseToPromiseT: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
             TestHelper.AddCompleteCallbacks<bool>(resolveDeferredInt.Promise,
-                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => { }); },
-                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => false); }
+                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
+                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => false); }
             );
 
             TestHelper.AddCallbacks<int, string>(rejectDeferred.Promise,
                 onResolve: resolveAssert,
-                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => { }); },
-                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => 0); }
+                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
+                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
             TestHelper.AddCompleteCallbacks<int>(rejectDeferred.Promise,
-                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => { }); },
-                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => 0); }
+                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
+                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
 
             TestHelper.AddCallbacks<int, bool, string>(rejectDeferredInt.Promise,
                 onResolve: _ => resolveAssert(),
-                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => { }); },
-                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => false); },
-                promiseToPromiseT: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => 0); }
+                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
+                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => false); },
+                promiseToPromiseT: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
             TestHelper.AddCompleteCallbacks<bool>(rejectDeferredInt.Promise,
-                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => { }); },
-                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch((InvalidReturnException _) => false); }
+                promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
+                promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => false); }
             );
 
             resolveDeferred.Resolve();
