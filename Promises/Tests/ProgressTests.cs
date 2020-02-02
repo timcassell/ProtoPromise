@@ -334,6 +334,36 @@ namespace Proto.Promises.Tests
 
 #if PROMISE_DEBUG
         [Test]
+        public void IfOnProgressIsNullThrow()
+        {
+            var deferred = Promise.NewDeferred();
+
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                deferred.Promise.Progress(default(Action<float>));
+            });
+
+            deferred.Resolve();
+
+            var deferredInt = Promise.NewDeferred<int>();
+            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                deferredInt.Promise.Progress(default(Action<float>));
+            });
+
+            deferredInt.Resolve(0);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
         public void OnProgressWillOnlyBeInvokedWithAValueBetween0And1()
         {
             var deferred = Promise.NewDeferred();

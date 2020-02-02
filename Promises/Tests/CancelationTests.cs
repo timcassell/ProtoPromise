@@ -221,7 +221,7 @@ namespace Proto.Promises.Tests
                 Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
                 Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
-                TestHelper.AddCallbacks<int, object>(deferred.Promise,
+                TestHelper.AddCallbacks<int, object, string>(deferred.Promise,
                     onResolve: resolveAssert,
                     onReject: failValue => rejectAssert(),
                     onUnknownRejection: rejectAssert);
@@ -231,7 +231,7 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(expected, cancelation);
 
-                TestHelper.AddCallbacks<int, object>(deferred.Promise,
+                TestHelper.AddCallbacks<int, object, string>(deferred.Promise,
                     onResolve: resolveAssert,
                     onReject: failValue => rejectAssert(),
                     onUnknownRejection: rejectAssert);
@@ -265,7 +265,7 @@ namespace Proto.Promises.Tests
                 Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
                 Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
-                TestHelper.AddCallbacks<int, bool, object>(deferred.Promise,
+                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
                     onResolve: _ => resolveAssert(),
                     onReject: _ => rejectAssert(),
                     onUnknownRejection: rejectAssert);
@@ -275,7 +275,7 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(expected, cancelation);
 
-                TestHelper.AddCallbacks<int, bool, object>(deferred.Promise,
+                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
                     onResolve: _ => resolveAssert(),
                     onReject: _ => rejectAssert(),
                     onUnknownRejection: rejectAssert);
@@ -517,11 +517,11 @@ namespace Proto.Promises.Tests
             Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been canceled.");
             Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been canceled.");
 
-            TestHelper.AddCallbacks<int, object>(deferred.Promise,
+            TestHelper.AddCallbacks<int, object, string>(deferred.Promise,
                 onResolve: resolveAssert,
                 onReject: _ => rejectAssert(),
                 onUnknownRejection: rejectAssert);
-            TestHelper.AddCallbacks<int, bool, object>(deferredInt.Promise,
+            TestHelper.AddCallbacks<int, bool, object, string>(deferredInt.Promise,
                 onResolve: _ => resolveAssert(),
                 onReject: _ => rejectAssert(),
                 onUnknownRejection: rejectAssert);

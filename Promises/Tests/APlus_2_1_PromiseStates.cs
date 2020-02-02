@@ -79,7 +79,7 @@ namespace Proto.Promises.Tests
                 int result = -1;
                 int expected = 0;
 
-                TestHelper.AddCallbacks<int, bool, object>(deferred.Promise,
+                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
                     onResolve: num => { Assert.AreEqual(expected, num); result = num; },
                     onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
                     onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved.")
@@ -89,7 +89,7 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(expected, result);
 
-                TestHelper.AddCallbacks<int, bool, object>(deferred.Promise,
+                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
                     onResolve: num => { Assert.AreEqual(expected, num); result = num; },
                     onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
                     onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved.")
@@ -152,7 +152,7 @@ namespace Proto.Promises.Tests
                 deferred.Retain();
                 string rejection = null;
                 string expected = "Fail Value";
-                TestHelper.AddCallbacks<int, string>(deferred.Promise,
+                TestHelper.AddCallbacks<int, string, string>(deferred.Promise,
                     onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
                     onReject: failValue =>
                     {
@@ -165,7 +165,7 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(expected, rejection);
 
-                TestHelper.AddCallbacks<int, string>(deferred.Promise,
+                TestHelper.AddCallbacks<int, string, string>(deferred.Promise,
                     onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
                     onReject: failValue =>
                     {
@@ -199,7 +199,7 @@ namespace Proto.Promises.Tests
                 deferred.Retain();
                 string rejection = null;
                 string expected = "Fail Value";
-                TestHelper.AddCallbacks<int, bool, string>(deferred.Promise,
+                TestHelper.AddCallbacks<int, bool, string, string>(deferred.Promise,
                     onResolve: v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     onReject: failValue =>
                     {
@@ -210,7 +210,7 @@ namespace Proto.Promises.Tests
                 deferred.Reject(expected);
                 Promise.Manager.HandleCompletes();
 
-                TestHelper.AddCallbacks<int, bool, string>(deferred.Promise,
+                TestHelper.AddCallbacks<int, bool, string, string>(deferred.Promise,
                     onResolve: v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     onReject: failValue =>
                     {

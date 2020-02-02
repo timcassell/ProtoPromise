@@ -996,6 +996,7 @@ namespace Proto.Promises
                 public static DelegateCaptureArgPromise<TCapture, TArg> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureArgPromise<TCapture, TArg>();
+                    del._capturedValue = capturedValue;
                     del._callback = callback;
                     return del;
                 }
@@ -1113,6 +1114,7 @@ namespace Proto.Promises
                 public static DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, Promise<TPromise>> callback)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureArgPromiseT<TCapture, TArg, TPromise>();
+                    del._capturedValue = capturedValue;
                     del._callback = callback;
                     return del;
                 }

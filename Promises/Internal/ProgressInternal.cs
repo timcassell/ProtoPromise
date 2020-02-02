@@ -14,6 +14,7 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable RECS0108 // Warns about static fields in generic types
 #pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
@@ -459,7 +460,7 @@ namespace Proto.Promises
                 void CancelOrIncrementProgress(uint increment, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount);
             }
 
-            public abstract class ProgressDelegateBase : IProgressListener, IInvokable, ITreeHandleable, IStacktraceable
+            public abstract class ProgressDelegateBase<T> : IProgressListener, IInvokable, ITreeHandleable, IStacktraceable where T : ProgressDelegateBase<T>
             {
 #if PROMISE_DEBUG
                 string IStacktraceable.Stacktrace { get; set; }
@@ -636,7 +637,7 @@ namespace Proto.Promises
                 void ITreeHandleable.Cancel() { throw new System.InvalidOperationException(); }
             }
 
-            public sealed class ProgressDelegate : ProgressDelegateBase
+            public sealed class ProgressDelegate : ProgressDelegateBase<ProgressDelegate>
             {
                 private Action<float> _onProgress;
 
@@ -662,7 +663,7 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class ProgressDelegateCapture<TCapture> : ProgressDelegateBase
+            public sealed class ProgressDelegateCapture<TCapture> : ProgressDelegateBase<ProgressDelegateCapture<TCapture>>
             {
                 TCapture _capturedValue;
                 private Action<TCapture, float> _onProgress;
