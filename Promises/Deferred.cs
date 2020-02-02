@@ -170,14 +170,6 @@ namespace Proto.Promises
             /// Resolve the linked <see cref="Promise{T}"/> with <paramref name="value"/>.
             /// </summary>
             public abstract void Resolve(T value);
-
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-            /// <summary>
-            /// Resolve the linked <see cref="Promise{T}"/> with <paramref name="value"/>.
-            /// Use this method to resolve a large struct.
-            /// </summary>
-            public abstract void Resolve(in T value);
-#endif
         }
     }
 
@@ -326,26 +318,6 @@ namespace Proto.Promises
                         return;
                     }
                 }
-
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-                public override void Resolve(in T value)
-                {
-                    var promise = (PromiseInternal<T>) Promise;
-                    ValidateOperation(promise, 1);
-
-                    if (State == State.Pending)
-                    {
-                        State = State.Resolved;
-                        promise.ResolveDirectIfNotCanceled(value);
-                        promise.ReleaseInternal();
-                    }
-                    else
-                    {
-                        Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
-                        return;
-                    }
-                }
-#endif
 
                 public override void Reject<TReject>(TReject reason)
                 {
