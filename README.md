@@ -35,11 +35,14 @@ This library took inspiration from <a href="https://developer.mozilla.org/en-US/
 - [Configuration](#configuration)
     - [Compiler Options](#compiler-options)
 - [Advanced](#advanced)
+    - [Special Exceptions](#special-exceptions)
     - [Error Retries](#error-retries)
     - [Multiple Callbacks](#multiple-callbacks)
+    - [Capture Values](#capture-values)
     - [Promise Retention](#promise-retention)
-- [Configuration](#configuration)
 - [Additional Information](#additional-information)
+    - [Understanding Then](#understanding-then)
+    - [Complete and Finally](#complete-and-finally)
     - [Unity Yield Instructions and Coroutines](#unity-yield-instructions-and-coroutines)
 
 ## Promises/A+ Spec
@@ -75,7 +78,7 @@ To see it in context, here is an example function that downloads text from a URL
 ```cs
 public Promise<string> Download(string url)
 {
-    var promise = Promise.NewDeferred<string>();    // Create deferred.
+    var deferred = Promise.NewDeferred<string>();    // Create deferred.
     using (var client = new WebClient())
     {
         client.DownloadStringCompleted += (s, ev) =>  // Monitor event for download completed.
@@ -86,7 +89,7 @@ public Promise<string> Download(string url)
             }
             else
             {
-                promise.Resolve(ev.Result); // Downloaded completed successfully, resolve the promise.
+                deferred.Resolve(ev.Result); // Downloaded completed successfully, resolve the promise.
             }
         };
 
@@ -116,7 +119,7 @@ public Promise<string> Download(string url)
               }
               else
               {
-                  promise.Resolve(ev.Result); // Downloaded completed successfully, resolve the promise.
+                  deferred.Resolve(ev.Result); // Downloaded completed successfully, resolve the promise.
               }
           };
 
@@ -253,7 +256,7 @@ When `Catch` is omitted, or none of the filters apply, a System.AggregateExcepti
 
 Promise implementations usually do not allow cancelations, but I thought it would be an invaluable addition to this library.
 
-Promises can be canceled 2 ways: `deferred.Cancel(reason)` or `promise.Cancel(reason)`. When a promise is canceled, all promises that have been chained from it will be canceled with the same reason.
+Promises can be canceled 3 ways: `deferred.Cancel(reason)` or `promise.Cancel(reason)` or with a [Special Exception](#special-exceptions). When a promise is canceled, all promises that have been chained from it will be canceled with the same reason.
 ```cs
 cancelable = Download("http://www.google.com");     // <---- This will be canceled before the download completes.
 cancelable
@@ -289,12 +292,25 @@ cancelable
     };
 ```
 
+Unless CatchCancelations are chain added, then it acts like typical catch clauses in synchronous code:
+```cs
+cancelable
+    .CatchCancelation((string reason) =>
+    {
+        Console.Log("Download was canceled! Reason: " + reason);        // <--- This will run if reason is a string.
+    }
+    .CatchCancelation(() =>
+    {
+        Console.Log("This will only run if reason is not a string.")    // <--- This will not run if reason is a string.
+    };
+```
+
 Cancelations always propagate downwards, and never upwards:
 ```cs
 cancelable =
     Download("http://www.google.com")               // <---- This will *not* be canceled and will run to completion
     .Then(html => Console.Log(html))                // <---- This will also *not* be canceled and will run
-    .Then(() => Download("http://www.bing.com"));    // <---- This will be canceled before the download starts and will not run.
+    .Then(() => Download("http://www.bing.com"));   // <---- This will be canceled before the download starts and will not run.
 cancelable
     .Then(html => Console.Log(html));               // <----This will also be canceled and will not run.
     
@@ -454,6 +470,22 @@ By default, debug options are tied to the `DEBUG` compiler symbol, which is defi
 
 ## Advanced
 
+### Special Exceptions
+
+Normally, an `Exception` thrown in an `onResolved` or `onRejected` callback will reject the promise with that exception. There are, however, a few special exceptions that can be thrown to produce different behaviour:
+
+#### Rethrow
+
+`throw Promise.Rethrow` can be used if you want to do something if a rejection occurs, but not suppress that rejection. Throwing `Promise.Rethrow` will rethrow that rejection, preserving its stacktrace (if applicable). This works just like `throw;` in synchronous catch clauses. This is only valid when used in `onRejected` callbacks. If accessed in other contexts, it will throw an `InvalidOperationException`.
+
+#### RejectException
+
+`throw Promise.RejectException(reason)` can be used to reject the promise with a reason that is not an `Exception`. If reason is an `Exception`, you can just throw that reason directly. This is only valid when used in `onResolved`, `onRejected`, or `onComplete` callbacks. If accessed in other contexts, it will throw an `InvalidOperationException`.
+
+#### CancelException
+
+`throw Promise.CancelException(reason)` can be used to cancel the promise with any reason, or `throw Promise.CancelException()` to cancel the promise without a reason. You can also throw an `OperationCanceledException`, which is equivalent to `Promise.CancelException()`. `Promise.CancelException` functions are only valid when used in `onResolved`, `onRejected`, or `onComplete` callbacks. If accessed in other contexts, it will throw an `InvalidOperationException`.
+
 ### Error Retries
 
 What I especially love above this system is you can implement retries through a technique I call "Asynchronous Recursion":
@@ -463,8 +495,6 @@ public Promise<string> Download(string url, int maxRetries = 0)
     return Download(url)
         .Catch(() =>
         {
-            //if (maxRetries == 0)  // If maxRetries is negative and we only check if it equals zero,
-                                    // this will potentially keep retrying 4 billion times and take up all the heap space.
             if (maxRetries <= 0)
             {
                 throw Promise.Rethrow; // Rethrow the rejection without processing it so that the caller can catch it.
@@ -475,12 +505,43 @@ public Promise<string> Download(string url, int maxRetries = 0)
 }
 ```
 
+Even though the recursion can go extremely deep or shallow, the promise's progress will still be normalized between 0 and 1. Though you might notice it behave like 0.5, 0.75, 0.875, 0.9375,...
+
 Async recursion is just as powerful as regular recursion, but it is also just as dangerous, if not more. If you mess up on regular recursion, your program will immediately crash from a `StackOverflowException`. Async recursion with this library will never crash from a stack overflow due to the iterative implementation, however if you don't do it right, it will eventually crash from an `OutOfMemoryException` due to each call waiting for the next and creating a new promise each time, consuming your heap space.
 Because promises can remain pending for an indeterminate amount of time, this error can potentially take a long time to show itself and be difficult to track down. So be very careful when implementing async recursion, and remember to always have a base case!
 
 ### Multiple Callbacks
 
-Multiple callbacks can be added to a single promise object which will be invoked in the order that they are added. Adding multiple resolve or reject callbacks creates promise branches. Sometimes you might want to use a single promise for multiple consumers. One or more of those consumers might want to cancel the promise, and if one consumer cancels the base promise, all branches will be canceled. In order to solve this issue, you can use `promise.ThenDuplicate()` to get a new promise that will adopt the state of the base promise which can be canceled without canceling all the other branches.
+Multiple callbacks can be added to a single promise object which will be invoked in the order that they are added. Adding multiple resolve or reject callbacks creates promise branches. Sometimes you might want to use a single promise for multiple consumers. One or more of those consumers might want to cancel the promise, and if one consumer cancels the base promise, all branches will be canceled. In order to solve this issue, you can use `promise.ThenDuplicate()` to get a new promise that will adopt the state of the base promise, which can be canceled without canceling all the other branches.
+
+### Capture Values
+
+The C# compiler allows capturing variables inside delegates, known as closures. This involves creating a new object and a new delegate for every closure. These objects will eventually need to be garbage collected when the delegate is no longer reachable.
+
+To solve this issue, I added capture values to the library. Every method that accepts a delegate can optionally take any value as a parameter, and pass that value as the first argument to the delegate. To capture multiple values, you should pass a `System.ValueTuple<>` that contains the values you wish to capture. The error retry example can be rewritten to reduce allocations:
+
+```cs
+public Promise<string> Download(string url, int maxRetries = 0)
+{
+    return Download(url)
+        .Catch((url, maxRetries), cv =>
+        {
+            var (_url, retryCount) = cv; // Deconstruct the value tuple (C# 7 feature)
+            if (retryCount <= 0)
+            {
+                throw Promise.Rethrow; // Rethrow the rejection without processing it so that the caller can catch it.
+            }
+            Console.Log($"There was an error downloading {_url}, retrying..."); 
+            return Download(_url, retryCount - 1);
+        };
+}
+```
+
+When the C# compiler sees a lamda expression that does not capture/close any variables, it will cache the delegate statically, so there is only one instance in the program. If the lambda only captures `this`,  it's not quite as bad as capturing local variables, as the compiler will generate a cached delegate in the class. This means there is one delegate per instance. We can reduce that to one instance in the program by passing `this` as the capture value.
+
+Visual Studio will tell you what variables are captured/closed if you hover the `=>`. You can use that information to optimize your delegates.
+
+See [Understanding Then](#understanding-then) for information on all the different ways you can capture values with the `Then` overloads.
 
 ### Promise Retention
 
@@ -493,9 +554,44 @@ If for some reason you wish to hold onto a promise reference and re-use it even 
 Almost all calls are asynchronous. This means that calling `promise.Then` will never call the delegate before the method returns, even if the promise is already settled. The same goes for `deferred.Resolve/Reject/Cancel/Progress`. Invoking those methods will not call attached progress or resolve/reject/cancel listeners before the method returns. Callbacks will be invoked later, the next time `Promise.Manager.HandleCompletes(AndProgress)` is called, which happens automatically every frame if you're in Unity.
 The exception to this rule is `Retain/Release`. If you release the promise and it is already settled, then it will be put back in the pool (if pooling is enabled) and will no longer be in a usable state. That's why you must always clear your references.
 
+### Understanding Then
+
+There are 144 overloads for the `Then` method (72 for `Promise` and another 72 for `Promise<T>`). Rather than trying to remember all 144 overloads, it's easier to remember these rules:
+
+- `Then` must always be given at least 1 delegate.
+- The first delegate is `onResolved`.
+- `onResolved` will be invoked if the promise is resolved.
+- If the promise provides a value (`Promise<T>`), onResolved may take that value as an argument.
+- If a capture value is provided to `onResolved`, the capture value must be the first argument to `Then` and the first argument to `onResolved`
+
+- A second delegate is optional. If it is provided, it is `onRejected`.
+- If `onRejected` does not accept any arguments, it will be invoked if the promise is rejected for any reason.
+- If `onRejected` accepts an argument without a capture value, it will be invoked if the promise is rejected with a reason that is convertible to that argument's type.
+- If a capture value is provided to `onRejected`, it must come after `onResolved` and before `onRejected` in the `Then` arguments, and it must be the first argument to `onRejected`.
+- If a capture value is provided to `onRejected` and that is the only argument `onRejected` accepts, it will be invoked if the promise is rejected for any reason.
+- If a capture value is provided to `onRejected` and `onRejected` accepts another argument, it will be invoked if the promise is rejected with a reason that is convertible to the second argument's type.
+
+- If `onResolved` does not return a value, or it returns a non-value `Promise`:
+    - the returned promise will be a non-value `Promise`.
+    - `onRejected` must not return a value, or it must return a non-value `Promise`.
+- If `onResolved` returns a value, or it returns a `Promise<T>`:
+    - the returned promise will be a `Promise<T>` of the type of that value (or the same type of promise).
+    - `onRejected` must return a value of the same type, or a `Promise<T>` of the same type.
+    
+- If either `onResolved` or `onRejected` return a promise, the promise returned from `Then` will adopt the state of that promise (waits until it completes).
+- If either `onResolved` or `onRejected` throws an `Exception`, the returned promise will be rejected with that exception, unless that exception is one of the [Special Exceptions](#special-exceptions).
+
+You may realize that `Catch(onRejected)` also works just like `onRejected` in `Then`. There is, however, one key difference: with `Then(onResolved, onRejected)`, only one of the callbacks will ever be invoked. With `Then(onResolved).Catch(onRejected)`, both callbacks can be invoked if `onResolved` throws.
+
+### Complete and Finally
+
+`Complete` adds an `onComplete` delegate that will be invoked if/when the promise is resolved or rejected. This is logically equivalent to Then(onComplete, onComplete), but more efficient. If the promise is rejected, that rejection will be caught and handled, and the returned promise will be resolved with the same rules as `onRejected` in [Understanding Then](#understanding-then).
+
+`Finally` adds an `onFinally` delegate that will be invoked when the promise is resolved, rejected, or canceled. Unlike `Complete`, if the promise is rejected, that rejection will _not_ be handled by the finally callback. That way it works just like finally clauses in normal synchronous code. `Finally`, therefore, should be used to clean up resources, like `IDisposable`s.
+
 ### Unity Yield Instructions and Coroutines
 
-If you are using coroutines, you can easily convert a promise to a yield instruction via `promise.ToYieldInstruction()` which you can yield return to wait until the promise has settled. You can also convert any yield instruction (including coroutines themselves) to a promise via `PromiseYielder.WaitFor(yieldInstruction)`. This will wait until the yieldInstruction has completed and yield the same instruction to a resolve handler.
+If you are using coroutines, you can easily convert a promise to a yield instruction via `promise.ToYieldInstruction()` which you can yield return to wait until the promise has settled. You can also convert any yield instruction (including coroutines themselves) to a promise via `PromiseYielder.WaitFor(yieldInstruction)`. This will wait until the yieldInstruction has completed and provide the same instruction to an onResolved callback.
 ```cs
 public Promise<Texture2D> DownloadTexture(string url)
 {
@@ -513,4 +609,4 @@ public Promise<Texture2D> DownloadTexture(string url)
 }
 ```
 
-In this example, we use the `Finally` method to clean up resources. Finally handlers will be called when the promise is resolved, rejected, or canceled.
+In this example, we use the `Finally` method to dispose the UnityWebRequest.
