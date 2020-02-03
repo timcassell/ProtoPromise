@@ -250,7 +250,7 @@ rejectedPromise
 
 ### Unhandled Rejections
 
-When `Catch` is omitted, or none of the filters apply, a System.AggregateException (which contains Promise.UnhandledExceptions that wrap the rejections) is thrown the next time Promise.Manager.HandleCompletes(AndProgress) is called, which happens automatically every frame if you're in Unity.
+When `Catch` is omitted, or none of the filters apply, a System.AggregateException (which contains Promise.UnhandledExceptions that wrap the rejections) is thrown the next time Promise.Manager.HandleCompletes(AndProgress) is called, which happens automatically every frame if you're in Unity. [You can optionally reroute unhandled rejections.](#configuration)
 
 ## Canceling Promises
 
@@ -459,6 +459,10 @@ var sequence = Promise.Sequence(
 You can change whether or not objects will be pooled via `Promise.Config.ObjectPooling`. Enabling pooling reduces GC pressure.
 
 If you are in DEBUG mode, you can configure when additional stacktraces will be generated via `Promise.Config.DebugStacktraceGenerator`.
+
+`Promise.Config.UncaughtRejectionHandler` allows you to route unhandled rejections through a delegate instead of being thrown.
+
+This is not recommended, but if you are unhappy with the default convertible implementation (Type.IsAssignableFrom(Type)), you can implement your own implementation via `Promise.Config.ValueConverter`.
 
 ### Compiler Options
 
