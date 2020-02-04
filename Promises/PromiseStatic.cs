@@ -1,8 +1,12 @@
 ﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
 #endif
 #if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
+#else
+#undef PROMISE_CANCEL
 #endif
 
 using System;
@@ -13,6 +17,54 @@ namespace Proto.Promises
 {
     public partial class Promise
     {
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise All(Promise promise1, Promise promise2)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+
+            return Internal.AllPromise0.GetOrCreate(passThroughs, 2, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise All(Promise promise1, Promise promise2, Promise promise3)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+
+            return Internal.AllPromise0.GetOrCreate(passThroughs, 3, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise All(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
+
+            return Internal.AllPromise0.GetOrCreate(passThroughs, 4, 1);
+        }
+
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
@@ -38,54 +90,6 @@ namespace Proto.Promises
         public static Promise AllNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             return Internal._All(promises, 1);
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
-        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
-        public static Promise AllNonAlloc(Promise promise1, Promise promise2)
-        {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
-
-            return Internal.AllPromise0.GetOrCreate(passThroughs, 2, 1);
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
-        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
-        public static Promise AllNonAlloc(Promise promise1, Promise promise2, Promise promise3)
-        {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
-
-            return Internal.AllPromise0.GetOrCreate(passThroughs, 3, 1);
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
-        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
-        public static Promise AllNonAlloc(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
-        {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
-
-            return Internal.AllPromise0.GetOrCreate(passThroughs, 4, 1);
         }
 
         /// <summary>
@@ -117,6 +121,54 @@ namespace Proto.Promises
         }
 
         /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise Race(Promise promise1, Promise promise2)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+
+            return Internal.RacePromise0.GetOrCreate(passThroughs, 2, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise Race(Promise promise1, Promise promise2, Promise promise3)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
+
+            return Internal.RacePromise0.GetOrCreate(passThroughs, 3, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
+        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise Race(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 0, 1));
+
+            return Internal.RacePromise0.GetOrCreate(passThroughs, 4, 1);
+        }
+
+        /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
@@ -144,24 +196,24 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
-        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise RaceNonAlloc(Promise promise1, Promise promise2)
+        public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2)
         {
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
 
-            return Internal.RacePromise0.GetOrCreate(passThroughs, 2, 1);
+            return Internal.RacePromise<T>.GetOrCreate(passThroughs, 2, 1);
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
-        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise RaceNonAlloc(Promise promise1, Promise promise2, Promise promise3)
+        public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -170,14 +222,14 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
 
-            return Internal.RacePromise0.GetOrCreate(passThroughs, 3, 1);
+            return Internal.RacePromise<T>.GetOrCreate(passThroughs, 3, 1);
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
-        /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise RaceNonAlloc(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
+        public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -188,7 +240,7 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 0, 1));
 
-            return Internal.RacePromise0.GetOrCreate(passThroughs, 4, 1);
+            return Internal.RacePromise<T>.GetOrCreate(passThroughs, 4, 1);
         }
 
         /// <summary>
@@ -219,54 +271,6 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
-        public static Promise RaceNonAlloc<T>(Promise<T> promise1, Promise<T> promise2)
-        {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
-
-            return Internal.RacePromise<T>.GetOrCreate(passThroughs, 2, 1);
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
-        public static Promise RaceNonAlloc<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
-        {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
-
-            return Internal.RacePromise<T>.GetOrCreate(passThroughs, 3, 1);
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
-        public static Promise RaceNonAlloc<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
-        {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 0, 1));
-
-            return Internal.RacePromise<T>.GetOrCreate(passThroughs, 4, 1);
-        }
-
-        /// <summary>
         /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
@@ -291,6 +295,54 @@ namespace Proto.Promises
         public static Promise SequenceNonAlloc<TEnumerator>(TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
         {
             return Internal._Sequence(promiseFuncs, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise First(Promise promise1, Promise promise2)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+
+            return Internal.FirstPromise0.GetOrCreate(passThroughs, 2, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise First(Promise promise1, Promise promise2, Promise promise3)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
+
+            return Internal.FirstPromise0.GetOrCreate(passThroughs, 3, 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise First(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
+        {
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
+            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 0, 1));
+
+            return Internal.FirstPromise0.GetOrCreate(passThroughs, 4, 1);
         }
 
         /// <summary>
@@ -321,24 +373,24 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
-        public static Promise FirstNonAlloc(Promise promise1, Promise promise2)
+        public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2)
         {
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
 
-            return Internal.FirstPromise0.GetOrCreate(passThroughs, 2, 1);
+            return Internal.FirstPromise<T>.GetOrCreate(passThroughs, 2, 1);
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
-        public static Promise FirstNonAlloc(Promise promise1, Promise promise2, Promise promise3)
+        public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -347,14 +399,14 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
 
-            return Internal.FirstPromise0.GetOrCreate(passThroughs, 3, 1);
+            return Internal.FirstPromise<T>.GetOrCreate(passThroughs, 3, 1);
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
-        public static Promise FirstNonAlloc(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
+        public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -365,7 +417,7 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 0, 1));
 
-            return Internal.FirstPromise0.GetOrCreate(passThroughs, 4, 1);
+            return Internal.FirstPromise<T>.GetOrCreate(passThroughs, 4, 1);
         }
 
         /// <summary>
@@ -393,54 +445,6 @@ namespace Proto.Promises
         public static Promise<T> FirstNonAlloc<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Internal._First<T, TEnumerator>(promises, 1);
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
-        public static Promise FirstNonAlloc<T>(Promise<T> promise1, Promise<T> promise2)
-        {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
-
-            return Internal.FirstPromise<T>.GetOrCreate(passThroughs, 2, 1);
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
-        public static Promise FirstNonAlloc<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
-        {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
-
-            return Internal.FirstPromise<T>.GetOrCreate(passThroughs, 3, 1);
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
-        public static Promise FirstNonAlloc<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
-        {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 0, 1));
-            passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 0, 1));
-
-            return Internal.FirstPromise<T>.GetOrCreate(passThroughs, 4, 1);
         }
 
         /// <summary>
@@ -925,7 +929,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Deferred"/> that controls the state of the promise.
+        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Deferred"/> that controls the state of the new <see cref="Promise"/>.
         /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// </summary>
 		public static Promise New(Action<Deferred> resolver)
@@ -933,11 +937,11 @@ namespace Proto.Promises
             var promise = Internal.DeferredPromise0.GetOrCreate(1);
             try
             {
-                resolver.Invoke(promise.Deferred);
+                resolver.Invoke(promise.deferred);
             }
             catch (Exception e)
             {
-                var deferred = promise.Deferred;
+                var deferred = promise.deferred;
                 if (deferred.State == State.Pending)
                 {
                     deferred.Reject(e);
@@ -953,7 +957,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Deferred"/> that controls the state of the promise.
+        /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Promise{T}.Deferred"/> that controls the state of the new <see cref="Promise{T}"/>.
         /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// </summary>
 		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver)
@@ -961,11 +965,67 @@ namespace Proto.Promises
             var promise = Internal.DeferredPromise<T>.GetOrCreate(1);
             try
             {
-                resolver.Invoke(promise.Deferred);
+                resolver.Invoke(promise.deferred);
             }
             catch (Exception e)
             {
-                var deferred = promise.Deferred;
+                var deferred = promise.deferred;
+                if (deferred.State == State.Pending)
+                {
+                    deferred.Reject(e);
+                }
+                else
+                {
+                    var rejectValue = Internal.UnhandledExceptionException.GetOrCreate(e);
+                    _SetStackTraceFromCreated(promise, rejectValue);
+                    AddRejectionToUnhandledStack(rejectValue);
+                }
+            }
+            return promise;
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with <paramref name="captureValue"/> and a <see cref="Deferred"/> that controls the state of the <see cref="Promise"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// </summary>
+        public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver)
+        {
+            var promise = Internal.DeferredPromise0.GetOrCreate(1);
+            try
+            {
+                resolver.Invoke(captureValue, promise.deferred);
+            }
+            catch (Exception e)
+            {
+                var deferred = promise.deferred;
+                if (deferred.State == State.Pending)
+                {
+                    deferred.Reject(e);
+                }
+                else
+                {
+                    var rejectValue = Internal.UnhandledExceptionException.GetOrCreate(e);
+                    _SetStackTraceFromCreated(promise, rejectValue);
+                    AddRejectionToUnhandledStack(rejectValue);
+                }
+            }
+            return promise;
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with <paramref name="captureValue"/> and a <see cref="Promise{T}.Deferred"/> that controls the state of the new <see cref="Promise{T}"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// </summary>
+        public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver)
+        {
+            var promise = Internal.DeferredPromise<T>.GetOrCreate(1);
+            try
+            {
+                resolver.Invoke(captureValue, promise.deferred);
+            }
+            catch (Exception e)
+            {
+                var deferred = promise.deferred;
                 if (deferred.State == State.Pending)
                 {
                     deferred.Reject(e);
@@ -992,7 +1052,7 @@ namespace Proto.Promises
             return promise;
 #else
             // Reuse a single resolved instance.
-            return Internal.ResolvedPromise.instance;
+            return Internal.SettledPromise.GetOrCreateResolved();
 #endif
         }
 
@@ -1007,34 +1067,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that is already rejected without a reason.
-        /// </summary>
-        public static Promise Rejected()
-        {
-            var promise = Internal.LitePromise0.GetOrCreate(1);
-            var rejection = CreateRejection(1);
-            promise.RejectDirect(rejection);
-            return promise;
-        }
-
-        /// <summary>
         /// Returns a <see cref="Promise"/> that is already rejected with <paramref name="reason"/>.
         /// </summary>
         public static Promise Rejected<TReject>(TReject reason)
         {
             var promise = Internal.LitePromise0.GetOrCreate(1);
             var rejection = CreateRejection(reason, 1);
-            promise.RejectDirect(rejection);
-            return promise;
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that is already rejected without a reason.
-        /// </summary>
-        public static Promise<T> Rejected<T>()
-        {
-            var promise = Internal.LitePromise<T>.GetOrCreate(1);
-            var rejection = CreateRejection(1);
             promise.RejectDirect(rejection);
             return promise;
         }
@@ -1115,7 +1153,7 @@ namespace Proto.Promises
         /// </summary>
 		public static Deferred NewDeferred()
         {
-            return Internal.DeferredPromise0.GetOrCreate(1).Deferred;
+            return Internal.DeferredPromise0.GetOrCreate(1).deferred;
         }
 
         /// <summary>
@@ -1123,7 +1161,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T>.Deferred NewDeferred<T>()
         {
-            return Internal.DeferredPromise<T>.GetOrCreate(1).Deferred;
+            return Internal.DeferredPromise<T>.GetOrCreate(1).deferred;
         }
 
         /// <summary>
@@ -1196,22 +1234,6 @@ namespace Proto.Promises
 
         /// <summary>
         /// Get an <see cref="Exception"/> that can be thrown to cancel the promise from an onResolved or onRejected callback.
-        /// This should be used as "throw Promise.RejectException();"
-        /// <para/>
-        /// If this is called while not inside an onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
-        /// </summary>
-        /// <exception cref="InvalidOperationException"/>
-        public static Exception RejectException()
-        {
-            if (Internal._invokingResolved | Internal._invokingRejected)
-            {
-                return Internal.UnhandledExceptionVoid.GetOrCreate();
-            }
-            throw new InvalidOperationException("RejectedException can only be accessed inside an onResolved or onRejected callback.", GetFormattedStacktrace(1));
-        }
-
-        /// <summary>
-        /// Get an <see cref="Exception"/> that can be thrown to cancel the promise from an onResolved or onRejected callback.
         /// This should be used as "throw Promise.RejectException(value);"
         /// <para/>
         /// If this is called while not inside an onResolved or onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
@@ -1221,7 +1243,7 @@ namespace Proto.Promises
         {
             if (Internal._invokingResolved | Internal._invokingRejected)
             {
-                if (typeof(Exception).IsAssignableFrom(typeof(T)))
+                if (typeof(Exception).IsAssignableFrom(typeof(T)) || value is Exception)
                 {
                     // No need to wrap the exception, just return it as-is.
                     Logger.LogWarning("An exception was passed to RejectedException, returning that exception as-is.");

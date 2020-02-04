@@ -1,11 +1,17 @@
 ﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
 #endif
 #if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
+#else
+#undef PROMISE_CANCEL
 #endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
 #endif
 
 #if PROMISE_PROGRESS
@@ -78,7 +84,7 @@ namespace Proto.Promises.Tests
             deferred.Promise.Progress(p => progress = p)
                 .Catch(() => { });
 
-            deferred.Reject();
+            deferred.Reject("Fail Value");
             Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
@@ -92,24 +98,26 @@ namespace Proto.Promises.Tests
         public void OnProgressWillNoLongerBeInvokedWhenAPromiseIsRejectedAndContinueBeingInvokedWhenAChainedPromisesProgressIsUpdated()
         {
             var deferred = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
+            Assert.AreEqual(Promise.State.Pending, deferred2.State);
 
             float progress = float.NaN;
 
             deferred.Promise
-                .CatchDefer(() => d => deferred = d)
+                .Catch(() => deferred2.Promise)
                 .Progress(p => progress = p);
 
             deferred.ReportProgress(0.5f);
-            deferred.Reject();
+            deferred.Reject("Fail Value");
             Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
-            deferred.ReportProgress(0.5f);
+            deferred2.ReportProgress(0.5f);
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.75f, progress, TestHelper.progressEpsilon);
 
-            deferred.Resolve();
+            deferred2.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
@@ -326,6 +334,36 @@ namespace Proto.Promises.Tests
 
 #if PROMISE_DEBUG
         [Test]
+        public void IfOnProgressIsNullThrow()
+        {
+            var deferred = Promise.NewDeferred();
+
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                deferred.Promise.Progress(default(Action<float>));
+            });
+
+            deferred.Resolve();
+
+            var deferredInt = Promise.NewDeferred<int>();
+            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                deferredInt.Promise.Progress(default(Action<float>));
+            });
+
+            deferredInt.Resolve(0);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletes();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
         public void OnProgressWillOnlyBeInvokedWithAValueBetween0And1()
         {
             var deferred = Promise.NewDeferred();
@@ -355,85 +393,9 @@ namespace Proto.Promises.Tests
         }
 #endif
 
-        // A wait promise is a promise that waits on a deferred or another promise.
+        // A wait promise is a promise that waits on another promise.
         [Test]
         public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain0()
-        {
-            var deferred = Promise.NewDeferred();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-            Promise.Deferred nextDeferred = null;
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .ThenDefer(() => d => nextDeferred = d)
-                .Progress(p => progress = p);
-
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0f, progress, 0f);
-
-            deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.75f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1f, progress, 0f);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain1()
-        {
-            var deferred = Promise.NewDeferred();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-            Promise<int>.Deferred nextDeferred = null;
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .ThenDefer<int>(() => d => nextDeferred = d)
-                .Progress(p => progress = p);
-
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0f, progress, 0f);
-
-            deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.75f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.Resolve(100);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1f, progress, 0f);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain2()
         {
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
@@ -472,7 +434,7 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain3()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain1()
         {
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
@@ -511,83 +473,7 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain4()
-        {
-            var deferred = Promise.NewDeferred<int>();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-            Promise.Deferred nextDeferred = null;
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .ThenDefer(() => d => nextDeferred = d)
-                .Progress(p => progress = p);
-
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0f, progress, 0f);
-
-            deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve(100);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.75f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1f, progress, 0f);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain5()
-        {
-            var deferred = Promise.NewDeferred<int>();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-            Promise<int>.Deferred nextDeferred = null;
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .ThenDefer<int>(() => d => nextDeferred = d)
-                .Progress(p => progress = p);
-
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0f, progress, 0f);
-
-            deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve(100);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.75f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.Resolve(100);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1f, progress, 0f);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain6()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain2()
         {
             var deferred = Promise.NewDeferred<int>();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
@@ -626,7 +512,7 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain7()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain3()
         {
             var deferred = Promise.NewDeferred<int>();
             Assert.AreEqual(Promise.State.Pending, deferred.State);

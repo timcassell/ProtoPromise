@@ -22,7 +22,7 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
 
-                deferred.Reject();
+                deferred.Reject("Fail Value");
 
                 Assert.AreEqual(Promise.State.Rejected, deferred.State);
 
@@ -50,12 +50,12 @@ namespace Proto.Promises.Tests
 
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
 
-                deferred.Reject();
+                deferred.Reject("Fail Value");
                 deferredInt.Resolve(0);
 
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
 
-                deferredInt.Reject();
+                deferredInt.Reject("Fail Value");
 
                 Assert.AreEqual(Promise.State.Resolved, deferred.State);
                 Assert.AreEqual(Promise.State.Resolved, deferredInt.State);
@@ -79,16 +79,22 @@ namespace Proto.Promises.Tests
                 int result = -1;
                 int expected = 0;
 
-                TestHelper.AddCallbacks(deferred.Promise, num => { Assert.AreEqual(expected, num); result = num; }, s => Assert.Fail("Promise was rejected when it should have been resolved."));
+                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
+                    onResolve: num => { Assert.AreEqual(expected, num); result = num; },
+                    onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
+                    onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved.")
+                );
                 deferred.Resolve(expected);
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(expected, result);
 
-                TestHelper.AddCallbacks(deferred.Promise, num => { Assert.AreEqual(expected, num); result = num; }, s => Assert.Fail("Promise was rejected when it should have been resolved."));
-
+                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
+                    onResolve: num => { Assert.AreEqual(expected, num); result = num; },
+                    onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
+                    onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved.")
+                );
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
-
                 deferred.Resolve(1);
                 Promise.Manager.HandleCompletes();
 
@@ -146,21 +152,27 @@ namespace Proto.Promises.Tests
                 deferred.Retain();
                 string rejection = null;
                 string expected = "Fail Value";
-                TestHelper.AddCallbacks(deferred.Promise, () => Assert.Fail("Promise was resolved when it should have been rejected."), failValue => {
-                    rejection = failValue;
+                TestHelper.AddCallbacks<int, string, string>(deferred.Promise,
+                    onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
+                    onReject: failValue =>
+                    {
+                        rejection = failValue;
 
-                    Assert.AreEqual(expected, failValue);
-                }, expected);
+                        Assert.AreEqual(expected, failValue);
+                    });
                 deferred.Reject(expected);
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(expected, rejection);
 
-                TestHelper.AddCallbacks(deferred.Promise, () => Assert.Fail("Promise was resolved when it should have been rejected."), failValue => {
-                    rejection = failValue;
+                TestHelper.AddCallbacks<int, string, string>(deferred.Promise,
+                    onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
+                    onReject: failValue =>
+                    {
+                        rejection = failValue;
 
-                    Assert.AreEqual(expected, failValue);
-                }, expected);
+                        Assert.AreEqual(expected, failValue);
+                    });
 
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
 
@@ -187,22 +199,26 @@ namespace Proto.Promises.Tests
                 deferred.Retain();
                 string rejection = null;
                 string expected = "Fail Value";
-                TestHelper.AddCallbacks(deferred.Promise, v => Assert.Fail("Promise was resolved when it should have been rejected."), failValue => {
-                    rejection = failValue;
+                TestHelper.AddCallbacks<int, bool, string, string>(deferred.Promise,
+                    onResolve: v => Assert.Fail("Promise was resolved when it should have been rejected."),
+                    onReject: failValue =>
+                    {
+                        rejection = failValue;
 
-                    Assert.AreEqual(expected, failValue);
-                }, expected);
+                        Assert.AreEqual(expected, failValue);
+                    });
                 deferred.Reject(expected);
                 Promise.Manager.HandleCompletes();
 
-                TestHelper.AddCallbacks(deferred.Promise, v => Assert.Fail("Promise was resolved when it should have been rejected."), failValue => {
-                    rejection = failValue;
+                TestHelper.AddCallbacks<int, bool, string, string>(deferred.Promise,
+                    onResolve: v => Assert.Fail("Promise was resolved when it should have been rejected."),
+                    onReject: failValue =>
+                    {
+                        rejection = failValue;
 
-                    Assert.AreEqual(expected, failValue);
-                }, expected);
-
+                        Assert.AreEqual(expected, failValue);
+                    });
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
-
                 deferred.Reject("Different Fail Value");
                 deferred.Release();
                 // The second rejection will be added to the unhandled rejection queue instead of set as the promise's reason.

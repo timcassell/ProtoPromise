@@ -1,12 +1,15 @@
 ﻿#if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
+#else
+#undef PROMISE_CANCEL
 #endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
-# endif
+#else
+#undef PROMISE_PROGRESS
+#endif
 
 using System;
-using NUnit.Framework;
 
 namespace Proto.Promises.Tests
 {
@@ -17,1010 +20,712 @@ namespace Proto.Promises.Tests
         public static readonly double progressEpsilon = 1d / Math.Pow(2d, Promise.Config.ProgressDecimalBits);
 #endif
 
-        public const int resolveVoidCallbacks = 24;
-        public const int resolveTCallbacks = 24;
-        public const int rejectVoidCallbacks = 27;
-        public const int rejectTCallbacks = 27;
+        public const int resolveVoidCallbacks = 72;
+        public const int resolveTCallbacks = 72;
+        public const int rejectVoidCallbacks = 72;
+        public const int rejectTCallbacks = 72;
 
-        public const int catchRejectVoidCallbacks = 33;
-        public const int catchRejectTCallbacks = 33;
+        public const int resolveVoidVoidCallbacks = 18;
+        public const int resolveVoidConvertCallbacks = 18;
+        public const int resolveTVoidCallbacks = 18;
+        public const int resolveTConvertCallbacks = 18;
+        public const int rejectVoidVoidCallbacks = 20;
+        public const int rejectVoidConvertCallbacks = 16;
+        public const int rejectTVoidCallbacks = 16;
+        public const int rejectTConvertCallbacks = 16;
+        public const int rejectTTCallbacks = 4;
 
-        public const int completeCallbacks = 6;
+        public const int resolveVoidPromiseVoidCallbacks = 18;
+        public const int resolveVoidPromiseConvertCallbacks = 18;
+        public const int resolveTPromiseVoidCallbacks = 18;
+        public const int resolveTPromiseConvertCallbacks = 18;
+        public const int rejectVoidPromiseVoidCallbacks = 20;
+        public const int rejectVoidPromiseConvertCallbacks = 16;
+        public const int rejectTPromiseVoidCallbacks = 16;
+        public const int rejectTPromiseConvertCallbacks = 16;
+        public const int rejectTPromiseTCallbacks = 4;
 
-        public const int totalVoidCallbacks = 33;
-        public const int totalTCallbacks = 33;
+        public const int rejectVoidKnownCallbacks = 36;
+        public const int rejectTKnownCallbacks = 36;
 
-        public const int secondCatchVoidCallbacks = 18;
-        public const int secondCatchTCallbacks = 18;
+        public const int completeCallbacks = 8;
+        public const int completeVoidCallbacks = 2;
+        public const int completeConvertCallbacks = 2;
+        public const int completePromiseVoidCallbacks = 2;
+        public const int completePromiseConvertCallbacks = 2;
 
-        static Action<Promise.Deferred> resolveDeferredAction = deferred => deferred.Resolve();
-        static Action<Promise<int>.Deferred> resolveDeferredActionInt = deferred => deferred.Resolve(0);
-
-        public static void AddCallbacks(Promise promise, Action onResolve, Action<string> onReject, string unknownRejectValue = "Unknown fail", Action<Exception> onError = null)
+        public static void AddResolveCallbacks<TConvert, TCapture>(Promise promise,
+            Action onResolve = null, TConvert convertValue = default(TConvert),
+            Action<TCapture> onResolveCapture = null, TCapture captureValue = default(TCapture),
+            Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
+            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
         {
             // Add empty delegates so no need for null check.
             onResolve += () => { };
-            onReject += s => { };
-            if (onError == null)
+            onResolveCapture += _ => { };
+            promiseToVoid += _ => { };
+            if (promiseToConvert == null)
             {
-                onError = e => { throw Promise.Rethrow; };
+                promiseToConvert += _ => convertValue;
+            }
+            if (promiseToPromise == null)
+            {
+                promiseToPromise = _ => Promise.Resolved();
+            }
+            if (promiseToPromiseConvert == null)
+            {
+                promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
             }
 
-            promise.Then(() => onResolve())
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.Then(() => { onResolve(); return 0; })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.Then(() => { onResolve(); return Promise.Resolved(); })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.ThenDefer<int>(() => { onResolve(); return resolveDeferredActionInt; })
-                .Catch(onError)
-                .Catch((string s) => { });
+            Promise p1 = null;
+            p1 = promise.Then(() => { onResolve(); promiseToVoid(p1); });
+            Promise<TConvert> p2 = null;
+            p2 = promise.Then(() => { onResolve(); return promiseToConvert(p2); });
+            Promise p3 = null;
+            p3 = promise.Then(() => { onResolve(); return promiseToPromise(p3); });
+            Promise<TConvert> p4 = null;
+            p4 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p4); });
 
-            promise.Then(() => onResolve(), () => onReject(unknownRejectValue))
-                .Catch(onError);
-            promise.Then(() => onResolve(), (string failValue) => onReject(failValue))
-                .Catch(onError);
-            promise.Then<string>(() => onResolve(), () => onReject(unknownRejectValue))
-                .Catch(onError);
-
-            promise.Then(() => { onResolve(); return 0; }, () => { onReject(unknownRejectValue); return 0; })
-                .Catch(onError);
-            promise.Then(() => { onResolve(); return 0; }, (string failValue) => { onReject(failValue); return 0; })
-                .Catch(onError);
-            promise.Then<int, string>(() => { onResolve(); return 0; }, () => { onReject(unknownRejectValue); return 0; })
-                .Catch(onError);
-
-            promise.Then(() => { onResolve(); return Promise.Resolved(); }, () => { onReject(unknownRejectValue); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Then(() => { onResolve(); return Promise.Resolved(); }, (string failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Then<string>(() => { onResolve(); return Promise.Resolved(); }, () => { onReject(unknownRejectValue); return Promise.Resolved(); })
-                .Catch(onError);
-
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, () => { onReject(unknownRejectValue); return Promise.Resolved(0); })
-                .Catch(onError);
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (string failValue) => { onReject(failValue); return Promise.Resolved(0); })
-                .Catch(onError);
-            promise.Then<int, string>(() => { onResolve(); return Promise.Resolved(0); }, () => { onReject(unknownRejectValue); return Promise.Resolved(0); })
-                .Catch(onError);
-
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, () => { onReject(unknownRejectValue); return resolveDeferredAction; })
-                .Catch(onError);
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, (string failValue) => { onReject(failValue); return resolveDeferredAction; })
-                .Catch(onError);
-            promise.ThenDefer<string>(() => { onResolve(); return resolveDeferredAction; }, () => { onReject(unknownRejectValue); return resolveDeferredAction; })
-                .Catch(onError);
-
-            promise.ThenDefer<int>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onReject(unknownRejectValue); return resolveDeferredActionInt; })
-                .Catch(onError);
-            promise.ThenDefer<int, string>(() => { onResolve(); return resolveDeferredActionInt; }, (string failValue) => { onReject(failValue); return resolveDeferredActionInt; })
-                .Catch(onError);
-            promise.ThenDefer<int, string>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onReject(unknownRejectValue); return resolveDeferredActionInt; })
-                .Catch(onError);
-
-            promise.Catch(() => onReject(unknownRejectValue))
-                .Catch(onError);
-            promise.Catch((string failValue) => onReject(failValue))
-                .Catch(onError);
-            promise.Catch<string>(() => onReject(unknownRejectValue))
-                .Catch(onError);
-
-            promise.Catch(() => { onReject(unknownRejectValue); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Catch((string failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Catch<string>(() => { onReject(unknownRejectValue); return Promise.Resolved(); })
-                .Catch(onError);
-
-            promise.CatchDefer(() => { onReject(unknownRejectValue); return resolveDeferredAction; })
-                .Catch(onError);
-            promise.CatchDefer((string failValue) => { onReject(failValue); return resolveDeferredAction; })
-                .Catch(onError);
-            promise.CatchDefer<string>(() => { onReject(unknownRejectValue); return resolveDeferredAction; })
-                .Catch(onError);
+            Promise p5 = null;
+            p5 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); promiseToVoid(p5); });
+            Promise<TConvert> p6 = null;
+            p6 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToConvert(p6); });
+            Promise p7 = null;
+            p7 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p7); });
+            Promise<TConvert> p8 = null;
+            p8 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p8); });
         }
 
-        public static void AddCallbacks<T>(Promise<T> promise, Action<T> onResolve, Action<string> onReject, string unknownRejectValue = "Unknown fail", Action<Exception> onError = null)
+        public static void AddResolveCallbacks<T, TConvert, TCapture>(Promise<T> promise,
+            Action<T> onResolve = null, TConvert convertValue = default(TConvert),
+            Action<TCapture> onResolveCapture = null, TCapture captureValue = default(TCapture),
+            Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
+            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
         {
             // Add empty delegates so no need for null check.
-            onResolve += x => { };
-            onReject += s => { };
-            if (onError == null)
+            onResolve += _ => { };
+            onResolveCapture += _ => { };
+            promiseToVoid += _ => { };
+            if (promiseToConvert == null)
             {
-                onError = e => { throw Promise.Rethrow; };
+                promiseToConvert += _ => convertValue;
+            }
+            if (promiseToPromise == null)
+            {
+                promiseToPromise = _ => Promise.Resolved();
+            }
+            if (promiseToPromiseConvert == null)
+            {
+                promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
             }
 
-            promise.Then(x => onResolve(x))
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.Then(x => { onResolve(x); return 0; })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; })
-                .Catch(onError)
-                .Catch((string s) => { });
-            promise.ThenDefer<int>(x => { onResolve(x); return resolveDeferredActionInt; })
-                .Catch(onError)
-                .Catch((string s) => { });
+            Promise p1 = null;
+            p1 = promise.Then(x => { onResolve(x); promiseToVoid(p1); });
+            Promise<TConvert> p2 = null;
+            p2 = promise.Then(x => { onResolve(x); return promiseToConvert(p2); });
+            Promise p3 = null;
+            p3 = promise.Then(x => { onResolve(x); return promiseToPromise(p3); });
+            Promise<TConvert> p4 = null;
+            p4 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p4); });
 
-            promise.Then(x => onResolve(x), () => onReject(unknownRejectValue))
-                .Catch(onError);
-            promise.Then(x => onResolve(x), (string failValue) => onReject(failValue))
-                .Catch(onError);
-            promise.Then<string>(x => onResolve(x), () => onReject(unknownRejectValue))
-                .Catch(onError);
-
-            promise.Then(x => { onResolve(x); return 0; }, () => { onReject(unknownRejectValue); return 0; })
-                .Catch(onError);
-            promise.Then(x => { onResolve(x); return 0; }, (string failValue) => { onReject(failValue); return 0; })
-                .Catch(onError);
-            promise.Then<int, string>(x => { onResolve(x); return 0; }, () => { onReject(unknownRejectValue); return 0; })
-                .Catch(onError);
-
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, () => { onReject(unknownRejectValue); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (string failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Then<string>(x => { onResolve(x); return Promise.Resolved(); }, () => { onReject(unknownRejectValue); return Promise.Resolved(); })
-                .Catch(onError);
-
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, () => { onReject(unknownRejectValue); return Promise.Resolved(0); })
-                .Catch(onError);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (string failValue) => { onReject(failValue); return Promise.Resolved(0); })
-                .Catch(onError);
-            promise.Then<int, string>(x => { onResolve(x); return Promise.Resolved(0); }, () => { onReject(unknownRejectValue); return Promise.Resolved(0); })
-                .Catch(onError);
-
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, () => { onReject(unknownRejectValue); return resolveDeferredAction; })
-                .Catch(onError);
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, (string failValue) => { onReject(failValue); return resolveDeferredAction; })
-                .Catch(onError);
-            promise.ThenDefer<string>(x => { onResolve(x); return resolveDeferredAction; }, () => { onReject(unknownRejectValue); return resolveDeferredAction; })
-                .Catch(onError);
-
-            promise.ThenDefer<int>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onReject(unknownRejectValue); return resolveDeferredActionInt; })
-                .Catch(onError);
-            promise.ThenDefer<int, string>(x => { onResolve(x); return resolveDeferredActionInt; }, (string failValue) => { onReject(failValue); return resolveDeferredActionInt; })
-                .Catch(onError);
-            promise.ThenDefer<int, string>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onReject(unknownRejectValue); return resolveDeferredActionInt; })
-                .Catch(onError);
-
-            promise.Catch(() => { onReject(unknownRejectValue); return default(T); })
-                .Catch(onError);
-            promise.Catch((string failValue) => { onReject(failValue); return default(T); })
-                .Catch(onError);
-            promise.Catch<string>(() => { onReject(unknownRejectValue); return default(T); })
-                .Catch(onError);
-
-            promise.Catch(() => { onReject(unknownRejectValue); return Promise.Resolved(default(T)); })
-                .Catch(onError);
-            promise.Catch((string failValue) => { onReject(failValue); return Promise.Resolved(default(T)); })
-                .Catch(onError);
-            promise.Catch<string>(() => { onReject(unknownRejectValue); return Promise.Resolved(default(T)); })
-                .Catch(onError);
-
-            Action<Promise<T>.Deferred> resolveDeferredActionT = d => d.Resolve(default(T));
-
-            promise.CatchDefer(() => { onReject(unknownRejectValue); return resolveDeferredActionT; })
-                .Catch(onError);
-            promise.CatchDefer((string failValue) => { onReject(failValue); return resolveDeferredActionT; })
-                .Catch(onError);
-            promise.CatchDefer<string>(() => { onReject(unknownRejectValue); return resolveDeferredActionT; })
-                .Catch(onError);
+            Promise p5 = null;
+            p5 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); promiseToVoid(p5); });
+            Promise<TConvert> p6 = null;
+            p6 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToConvert(p6); });
+            Promise p7 = null;
+            p7 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p7); });
+            Promise<TConvert> p8 = null;
+            p8 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p8); });
         }
 
-        public static void AddCallbacks<TReject>(Promise promise, Action onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<Exception> onError = null)
+        public static void AddCallbacks<TConvert, TReject, TCapture>(Promise promise,
+            Action onResolve = null, Action<TReject> onReject = null, Action onUnknownRejection = null, TConvert convertValue = default(TConvert),
+            Action<TCapture> onResolveCapture = null, Action<TCapture> onRejectCapture = null, Action<TCapture> onUnknownRejectionCapture = null, TCapture captureValue = default(TCapture),
+            Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
+            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
+            Action<Promise> onCallbackAdded = null, Action<Promise<TConvert>> onCallbackAddedConvert = null)
         {
             // Add empty delegates so no need for null check.
             onResolve += () => { };
             onReject += s => { };
             onUnknownRejection += () => { };
-            if (onError == null)
+            onResolveCapture += _ => { };
+            onRejectCapture += _ => { };
+            onUnknownRejectionCapture += _ => { };
+            promiseToVoid += _ => { };
+            onCallbackAdded += _ => { };
+            onCallbackAddedConvert += _ => { };
+            if (promiseToConvert == null)
             {
-                onError = e => { throw Promise.Rethrow; };
+                promiseToConvert += _ => convertValue;
+            }
+            if (promiseToPromise == null)
+            {
+                promiseToPromise = _ => Promise.Resolved();
+            }
+            if (promiseToPromiseConvert == null)
+            {
+                promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
             }
 
-            promise.Then(() => onResolve())
-                .Catch((object e) => { if (e is Exception) throw Promise.Rethrow; })
-                .Catch(onError);
-            promise.Then(() => { onResolve(); return 0; })
-                .Catch((object e) => { if (e is Exception) throw Promise.Rethrow; })
-                .Catch(onError);
-            promise.Then(() => { onResolve(); return Promise.Resolved(); })
-                .Catch((object e) => { if (e is Exception) throw Promise.Rethrow; })
-                .Catch(onError);
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); })
-                .Catch((object e) => { if (e is Exception) throw Promise.Rethrow; })
-                .Catch(onError);
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; })
-                .Catch((object e) => { if (e is Exception) throw Promise.Rethrow; })
-                .Catch(onError);
-            promise.ThenDefer<int>(() => { onResolve(); return resolveDeferredActionInt; })
-                .Catch((object e) => { if (e is Exception) throw Promise.Rethrow; })
-                .Catch(onError);
+            Promise p1 = null;
+            p1 = promise.Then(() => { onResolve(); promiseToVoid(p1); }, () => { onUnknownRejection(); promiseToVoid(p1); });
+            onCallbackAdded(p1);
+            Promise p2 = null;
+            p2 = promise.Then(() => { onResolve(); promiseToVoid(p2); }, (TReject failValue) => { onReject(failValue); promiseToVoid(p2); });
+            onCallbackAdded(p2);
+            Promise p3 = null;
+            p3 = promise.Then(() => { onResolve(); promiseToVoid(p3); }, () => { onUnknownRejection(); return promiseToPromise(p3); });
+            onCallbackAdded(p3);
+            Promise p4 = null;
+            p4 = promise.Then(() => { onResolve(); promiseToVoid(p4); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p4); });
+            onCallbackAdded(p4);
 
-            promise.Then(() => onResolve(), () => onUnknownRejection())
-                .Catch(onError);
-            promise.Then(() => onResolve(), (TReject failValue) => onReject(failValue))
-                .Catch(onError);
-            promise.Then<TReject>(() => onResolve(), () => onUnknownRejection())
-                .Catch(onError);
+            Promise<TConvert> p5 = null;
+            p5 = promise.Then(() => { onResolve(); return promiseToConvert(p5); }, () => { onUnknownRejection(); return promiseToConvert(p5); });
+            onCallbackAddedConvert(p5);
+            Promise<TConvert> p6 = null;
+            p6 = promise.Then(() => { onResolve(); return promiseToConvert(p6); }, (TReject failValue) => { onReject(failValue); return promiseToConvert(p6); });
+            onCallbackAddedConvert(p6);
+            Promise<TConvert> p7 = null;
+            p7 = promise.Then(() => { onResolve(); return promiseToConvert(p7); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p7); });
+            onCallbackAddedConvert(p7);
+            Promise<TConvert> p8 = null;
+            p8 = promise.Then(() => { onResolve(); return promiseToConvert(p8); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p8); });
+            onCallbackAddedConvert(p8);
 
-            promise.Then(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(onError);
-            promise.Then(() => { onResolve(); return 0; }, (TReject failValue) => { onReject(failValue); return 0; })
-                .Catch(onError);
-            promise.Then<int, TReject>(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(onError);
+            Promise p9 = null;
+            p9 = promise.Then(() => { onResolve(); return promiseToPromise(p9); }, () => { onUnknownRejection(); return promiseToPromise(p9); });
+            onCallbackAdded(p9);
+            Promise p10 = null;
+            p10 = promise.Then(() => { onResolve(); return promiseToPromise(p10); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p10); });
+            onCallbackAdded(p10);
+            Promise p11 = null;
+            p11 = promise.Then(() => { onResolve(); return promiseToPromise(p11); }, () => { onUnknownRejection(); promiseToVoid(p11); });
+            onCallbackAdded(p11);
+            Promise p12 = null;
+            p12 = promise.Then(() => { onResolve(); return promiseToPromise(p12); }, (TReject failValue) => { onReject(failValue); promiseToVoid(p12); });
+            onCallbackAdded(p12);
 
-            promise.Then(() => { onResolve(); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Then(() => { onResolve(); return Promise.Resolved(); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Then<TReject>(() => { onResolve(); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onError);
+            Promise<TConvert> p13 = null;
+            p13 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p13); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p13); });
+            onCallbackAddedConvert(p13);
+            Promise<TConvert> p14 = null;
+            p14 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p14); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p14); });
+            onCallbackAddedConvert(p14);
+            Promise<TConvert> p15 = null;
+            p15 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p15); }, () => { onUnknownRejection(); return promiseToConvert(p15); });
+            onCallbackAddedConvert(p15);
+            Promise<TConvert> p16 = null;
+            p16 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p16); }, (TReject failValue) => { onReject(failValue); return promiseToConvert(p16); });
+            onCallbackAddedConvert(p16);
 
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(onError);
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
-                .Catch(onError);
-            promise.Then<int, TReject>(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(onError);
+            Promise p17 = null;
+            p17 = promise.Catch(() => { onUnknownRejection(); promiseToVoid(p17); });
+            onCallbackAdded(p17);
+            Promise p18 = null;
+            p18 = promise.Catch((TReject failValue) => { onReject(failValue); promiseToVoid(p18); });
+            onCallbackAdded(p18);
 
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onError);
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, (TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
-                .Catch(onError);
-            promise.ThenDefer<TReject>(() => { onResolve(); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onError);
+            Promise p19 = null;
+            p19 = promise.Catch(() => { onUnknownRejection(); return promiseToPromise(p19); });
+            onCallbackAdded(p19);
+            Promise p20 = null;
+            p20 = promise.Catch((TReject failValue) => { onReject(failValue); return promiseToPromise(p20); });
+            onCallbackAdded(p20);
 
-            promise.ThenDefer<int>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(onError);
-            promise.ThenDefer<int, TReject>(() => { onResolve(); return resolveDeferredActionInt; }, (TReject failValue) => { onReject(failValue); return resolveDeferredActionInt; })
-                .Catch(onError);
-            promise.ThenDefer<int, TReject>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(onError);
 
-            promise.Catch(() => onUnknownRejection())
-                .Catch(onError);
-            promise.Catch((TReject failValue) => onReject(failValue))
-                .Catch(onError);
-            promise.Catch<TReject>(() => onUnknownRejection())
-                .Catch(onError);
+            Promise p21 = null;
+            p21 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); promiseToVoid(p21); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); promiseToVoid(p21); });
+            onCallbackAdded(p21);
+            Promise p22 = null;
+            p22 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); promiseToVoid(p22); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); promiseToVoid(p22); });
+            onCallbackAdded(p22);
+            Promise p23 = null;
+            p23 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); promiseToVoid(p23); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p23); });
+            onCallbackAdded(p23);
+            Promise p24 = null;
+            p24 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); promiseToVoid(p24); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p24); });
+            onCallbackAdded(p24);
 
-            promise.Catch(() => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Catch((TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Catch<TReject>(() => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onError);
+            Promise<TConvert> p25 = null;
+            p25 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToConvert(p25); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToConvert(p25); });
+            onCallbackAddedConvert(p25);
+            Promise<TConvert> p26 = null;
+            p26 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToConvert(p26); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToConvert(p26); });
+            onCallbackAddedConvert(p26);
+            Promise<TConvert> p27 = null;
+            p27 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToConvert(p27); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p27); });
+            onCallbackAddedConvert(p7);
+            Promise<TConvert> p28 = null;
+            p28 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToConvert(p28); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p28); });
+            onCallbackAddedConvert(p28);
 
-            promise.CatchDefer(() => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onError);
-            promise.CatchDefer((TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
-                .Catch(onError);
-            promise.CatchDefer<TReject>(() => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onError);
+            Promise p29 = null;
+            p29 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p29); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p29); });
+            onCallbackAdded(p29);
+            Promise p30 = null;
+            p30 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p30); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p30); });
+            onCallbackAdded(p30);
+            Promise p31 = null;
+            p31 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p31); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); promiseToVoid(p31); });
+            onCallbackAdded(p31);
+            Promise p32 = null;
+            p32 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p32); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); promiseToVoid(p32); });
+            onCallbackAdded(p32);
+
+            Promise<TConvert> p33 = null;
+            p33 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p33); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p33); });
+            onCallbackAddedConvert(p33);
+            Promise<TConvert> p34 = null;
+            p34 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p34); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p34); });
+            onCallbackAddedConvert(p34);
+            Promise<TConvert> p35 = null;
+            p35 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p35); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToConvert(p35); });
+            onCallbackAddedConvert(p35);
+            Promise<TConvert> p36 = null;
+            p36 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p36); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToConvert(p36); });
+            onCallbackAddedConvert(p36);
+
+            Promise p37 = null;
+            p37 = promise.Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); promiseToVoid(p37); });
+            onCallbackAdded(p37);
+            Promise p38 = null;
+            p38 = promise.Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); promiseToVoid(p38); });
+            onCallbackAdded(p38);
+
+            Promise p39 = null;
+            p39 = promise.Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p39); });
+            onCallbackAdded(p39);
+            Promise p40 = null;
+            p40 = promise.Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p40); });
+            onCallbackAdded(p40);
+
+
+            Promise p41 = null;
+            p41 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); promiseToVoid(p41); }, () => { onUnknownRejection(); promiseToVoid(p41); });
+            onCallbackAdded(p41);
+            Promise p42 = null;
+            p42 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); promiseToVoid(p42); }, (TReject failValue) => { onReject(failValue); promiseToVoid(p42); });
+            onCallbackAdded(p42);
+            Promise p43 = null;
+            p43 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); promiseToVoid(p43); }, () => { onUnknownRejection(); return promiseToPromise(p43); });
+            onCallbackAdded(p43);
+            Promise p44 = null;
+            p44 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); promiseToVoid(p44); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p44); });
+            onCallbackAdded(p44);
+
+            Promise<TConvert> p45 = null;
+            p45 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToConvert(p45); }, () => { onUnknownRejection(); return promiseToConvert(p45); });
+            onCallbackAddedConvert(p45);
+            Promise<TConvert> p46 = null;
+            p46 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToConvert(p46); }, (TReject failValue) => { onReject(failValue); return promiseToConvert(p46); });
+            onCallbackAddedConvert(p46);
+            Promise<TConvert> p47 = null;
+            p47 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToConvert(p47); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p47); });
+            onCallbackAddedConvert(p47);
+            Promise<TConvert> p48 = null;
+            p48 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToConvert(p48); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p48); });
+            onCallbackAddedConvert(p48);
+
+            Promise p49 = null;
+            p49 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p49); }, () => { onUnknownRejection(); return promiseToPromise(p49); });
+            onCallbackAdded(p49);
+            Promise p50 = null;
+            p50 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p50); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p50); });
+            onCallbackAdded(p50);
+            Promise p51 = null;
+            p51 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p51); }, () => { onUnknownRejection(); promiseToVoid(p51); });
+            onCallbackAdded(p51);
+            Promise p52 = null;
+            p52 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p52); }, (TReject failValue) => { onReject(failValue); promiseToVoid(p52); });
+            onCallbackAdded(p52);
+
+            Promise<TConvert> p53 = null;
+            p53 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p53); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p53); });
+            onCallbackAddedConvert(p53);
+            Promise<TConvert> p54 = null;
+            p54 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p54); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p54); });
+            onCallbackAddedConvert(p54);
+            Promise<TConvert> p55 = null;
+            p55 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p55); }, () => { onUnknownRejection(); return promiseToConvert(p55); });
+            onCallbackAddedConvert(p55);
+            Promise<TConvert> p56 = null;
+            p56 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p56); }, (TReject failValue) => { onReject(failValue); return promiseToConvert(p56); });
+            onCallbackAddedConvert(p56);
+
+
+            Promise p57 = null;
+            p57 = promise.Then(() => { onResolve(); promiseToVoid(p57); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); promiseToVoid(p57); });
+            onCallbackAdded(p57);
+            Promise p58 = null;
+            p58 = promise.Then(() => { onResolve(); promiseToVoid(p58); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); promiseToVoid(p58); });
+            onCallbackAdded(p58);
+            Promise p59 = null;
+            p59 = promise.Then(() => { onResolve(); promiseToVoid(p59); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p59); });
+            onCallbackAdded(p59);
+            Promise p60 = null;
+            p60 = promise.Then(() => { onResolve(); promiseToVoid(p60); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p60); });
+            onCallbackAdded(p60);
+
+            Promise<TConvert> p61 = null;
+            p61 = promise.Then(() => { onResolve(); return promiseToConvert(p61); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToConvert(p61); });
+            onCallbackAddedConvert(p61);
+            Promise<TConvert> p62 = null;
+            p62 = promise.Then(() => { onResolve(); return promiseToConvert(p62); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToConvert(p62); });
+            onCallbackAddedConvert(p62);
+            Promise<TConvert> p63 = null;
+            p63 = promise.Then(() => { onResolve(); return promiseToConvert(p63); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p63); });
+            onCallbackAddedConvert(p63);
+            Promise<TConvert> p64 = null;
+            p64 = promise.Then(() => { onResolve(); return promiseToConvert(p64); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p64); });
+            onCallbackAddedConvert(p64);
+
+            Promise p65 = null;
+            p65 = promise.Then(() => { onResolve(); return promiseToPromise(p65); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p65); });
+            onCallbackAdded(p65);
+            Promise p66 = null;
+            p66 = promise.Then(() => { onResolve(); return promiseToPromise(p66); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p66); });
+            onCallbackAdded(p66);
+            Promise p67 = null;
+            p67 = promise.Then(() => { onResolve(); return promiseToPromise(p67); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); promiseToVoid(p67); });
+            onCallbackAdded(p67);
+            Promise p68 = null;
+            p68 = promise.Then(() => { onResolve(); return promiseToPromise(p68); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); promiseToVoid(p68); });
+            onCallbackAdded(p68);
+
+            Promise<TConvert> p69 = null;
+            p69 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p69); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p69); });
+            onCallbackAddedConvert(p69);
+            Promise<TConvert> p70 = null;
+            p70 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p70); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p70); });
+            onCallbackAddedConvert(p70);
+            Promise<TConvert> p71 = null;
+            p71 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p71); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToConvert(p71); });
+            onCallbackAddedConvert(p71);
+            Promise<TConvert> p72 = null;
+            p72 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p72); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToConvert(p72); });
+            onCallbackAddedConvert(p72);
         }
 
-        public static void AddCallbacks<T, TReject>(Promise<T> promise, Action<T> onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<Exception> onError = null)
+        public static void AddCallbacks<T, TConvert, TReject, TCapture>(Promise<T> promise,
+            Action<T> onResolve = null, Action<TReject> onReject = null, Action onUnknownRejection = null, TConvert convertValue = default(TConvert),
+            Action<TCapture> onResolveCapture = null, Action<TCapture> onRejectCapture = null, Action<TCapture> onUnknownRejectionCapture = null, TCapture captureValue = default(TCapture),
+            Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null, Func<Promise<T>, T> promiseToT = null,
+            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null, Func<Promise<T>, Promise<T>> promiseToPromiseT = null,
+            Action<Promise> onCallbackAdded = null, Action<Promise<TConvert>> onCallbackAddedConvert = null, Action<Promise<T>> onCallbackAddedT = null)
         {
             // Add empty delegates so no need for null check.
             onResolve += x => { };
             onReject += s => { };
             onUnknownRejection += () => { };
-            if (onError == null)
+            onResolveCapture += _ => { };
+            onRejectCapture += _ => { };
+            onUnknownRejectionCapture += _ => { };
+            promiseToVoid += _ => { };
+            onCallbackAdded += _ => { };
+            onCallbackAddedConvert += _ => { };
+            onCallbackAddedT += _ => { };
+            if (promiseToConvert == null)
             {
-                onError = e => { throw Promise.Rethrow; };
+                promiseToConvert += _ => convertValue;
+            }
+            if (promiseToT == null)
+            {
+                promiseToT += _ => default(T);
+            }
+            if (promiseToPromise == null)
+            {
+                promiseToPromise = _ => Promise.Resolved();
+            }
+            if (promiseToPromiseConvert == null)
+            {
+                promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
+            }
+            if (promiseToPromiseT == null)
+            {
+                promiseToPromiseT = _ => Promise.Resolved(default(T));
             }
 
-            promise.Then(x => onResolve(x))
-                .Catch((object e) => { if (e is Exception) throw Promise.Rethrow; })
-                .Catch(onError);
-            promise.Then(x => { onResolve(x); return 0; })
-                .Catch((object e) => { if (e is Exception) throw Promise.Rethrow; })
-                .Catch(onError);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); })
-                .Catch((object e) => { if (e is Exception) throw Promise.Rethrow; })
-                .Catch(onError);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); })
-                .Catch((object e) => { if (e is Exception) throw Promise.Rethrow; })
-                .Catch(onError);
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; })
-                .Catch((object e) => { if (e is Exception) throw Promise.Rethrow; })
-                .Catch(onError);
-            promise.ThenDefer<int>(x => { onResolve(x); return resolveDeferredActionInt; })
-                .Catch((object e) => { if (e is Exception) throw Promise.Rethrow; })
-                .Catch(onError);
+            Promise p1 = null;
+            p1 = promise.Then(x => { onResolve(x); promiseToVoid(p1); }, () => { onUnknownRejection(); promiseToVoid(p1); });
+            onCallbackAdded(p1);
+            Promise p2 = null;
+            p2 = promise.Then(x => { onResolve(x); promiseToVoid(p2); }, (TReject failValue) => { onReject(failValue); promiseToVoid(p2); });
+            onCallbackAdded(p2);
+            Promise p3 = null;
+            p3 = promise.Then(x => { onResolve(x); promiseToVoid(p3); }, () => { onUnknownRejection(); return promiseToPromise(p3); });
+            onCallbackAdded(p3);
+            Promise p4 = null;
+            p4 = promise.Then(x => { onResolve(x); promiseToVoid(p4); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p4); });
+            onCallbackAdded(p4);
 
-            promise.Then(x => onResolve(x), () => onUnknownRejection())
-                .Catch(onError);
-            promise.Then(x => onResolve(x), (TReject failValue) => onReject(failValue))
-                .Catch(onError);
-            promise.Then<TReject>(x => onResolve(x), () => onUnknownRejection())
-                .Catch(onError);
+            Promise<TConvert> p5 = null;
+            p5 = promise.Then(x => { onResolve(x); return promiseToConvert(p5); }, () => { onUnknownRejection(); return promiseToConvert(p5); });
+            onCallbackAddedConvert(p5);
+            Promise<TConvert> p6 = null;
+            p6 = promise.Then(x => { onResolve(x); return promiseToConvert(p6); }, (TReject failValue) => { onReject(failValue); return promiseToConvert(p6); });
+            onCallbackAddedConvert(p6);
+            Promise<TConvert> p7 = null;
+            p7 = promise.Then(x => { onResolve(x); return promiseToConvert(p7); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p7); });
+            onCallbackAddedConvert(p7);
+            Promise<TConvert> p8 = null;
+            p8 = promise.Then(x => { onResolve(x); return promiseToConvert(p8); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p8); });
+            onCallbackAddedConvert(p8);
 
-            promise.Then(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(onError);
-            promise.Then(x => { onResolve(x); return 0; }, (TReject failValue) => { onReject(failValue); return 0; })
-                .Catch(onError);
-            promise.Then<int, TReject>(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(onError);
+            Promise p9 = null;
+            p9 = promise.Then(x => { onResolve(x); return promiseToPromise(p9); }, () => { onUnknownRejection(); return promiseToPromise(p9); });
+            onCallbackAdded(p9);
+            Promise p10 = null;
+            p10 = promise.Then(x => { onResolve(x); return promiseToPromise(p10); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p10); });
+            onCallbackAdded(p10);
+            Promise p11 = null;
+            p11 = promise.Then(x => { onResolve(x); return promiseToPromise(p11); }, () => { onUnknownRejection(); promiseToVoid(p11); });
+            onCallbackAdded(p11);
+            Promise p12 = null;
+            p12 = promise.Then(x => { onResolve(x); return promiseToPromise(p12); }, (TReject failValue) => { onReject(failValue); promiseToVoid(p12); });
+            onCallbackAdded(p12);
 
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(onError);
-            promise.Then<TReject>(x => { onResolve(x); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onError);
+            Promise<TConvert> p13 = null;
+            p13 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p13); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p13); });
+            onCallbackAddedConvert(p13);
+            Promise<TConvert> p14 = null;
+            p14 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p14); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p14); });
+            onCallbackAddedConvert(p14);
+            Promise<TConvert> p15 = null;
+            p15 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p15); }, () => { onUnknownRejection(); return promiseToConvert(p15); });
+            onCallbackAddedConvert(p15);
+            Promise<TConvert> p16 = null;
+            p16 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p16); }, (TReject failValue) => { onReject(failValue); return promiseToConvert(p16); });
+            onCallbackAddedConvert(p16);
 
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(onError);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
-                .Catch(onError);
-            promise.Then<int, TReject>(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(onError);
+            Promise<T> p17 = null;
+            p17 = promise.Catch(() => { onUnknownRejection(); return promiseToT(p17); });
+            onCallbackAddedT(p17);
+            Promise<T> p18 = null;
+            p18 = promise.Catch((TReject failValue) => { onReject(failValue); return promiseToT(p18); });
+            onCallbackAddedT(p18);
 
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onError);
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, (TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
-                .Catch(onError);
-            promise.ThenDefer<TReject>(x => { onResolve(x); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onError);
+            Promise<T> p19 = null;
+            p19 = promise.Catch(() => { onUnknownRejection(); return promiseToPromiseT(p19); });
+            onCallbackAddedT(p19);
+            Promise<T> p20 = null;
+            p20 = promise.Catch((TReject failValue) => { onReject(failValue); return promiseToPromiseT(p20); });
+            onCallbackAddedT(p20);
 
-            promise.ThenDefer<int>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(onError);
-            promise.ThenDefer<int, TReject>(x => { onResolve(x); return resolveDeferredActionInt; }, (TReject failValue) => { onReject(failValue); return resolveDeferredActionInt; })
-                .Catch(onError);
-            promise.ThenDefer<int, TReject>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(onError);
 
-            promise.Catch(() => { onUnknownRejection(); return default(T); })
-                .Catch(onError);
-            promise.Catch((TReject failValue) => { onReject(failValue); return default(T); })
-                .Catch(onError);
-            promise.Catch<TReject>(() => { onUnknownRejection(); return default(T); })
-                .Catch(onError);
+            Promise p21 = null;
+            p21 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); promiseToVoid(p21); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); promiseToVoid(p21); });
+            onCallbackAdded(p21);
+            Promise p22 = null;
+            p22 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); promiseToVoid(p22); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); promiseToVoid(p22); });
+            onCallbackAdded(p22);
+            Promise p23 = null;
+            p23 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); promiseToVoid(p23); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p23); });
+            onCallbackAdded(p23);
+            Promise p24 = null;
+            p24 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); promiseToVoid(p24); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p24); });
+            onCallbackAdded(p24);
 
-            promise.Catch(() => { onUnknownRejection(); return Promise.Resolved(default(T)); })
-                .Catch(onError);
-            promise.Catch((TReject failValue) => { onReject(failValue); return Promise.Resolved(default(T)); })
-                .Catch(onError);
-            promise.Catch<TReject>(() => { onUnknownRejection(); return Promise.Resolved(default(T)); })
-                .Catch(onError);
+            Promise<TConvert> p25 = null;
+            p25 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToConvert(p25); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToConvert(p25); });
+            onCallbackAddedConvert(p25);
+            Promise<TConvert> p26 = null;
+            p26 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToConvert(p26); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToConvert(p26); });
+            onCallbackAddedConvert(p26);
+            Promise<TConvert> p27 = null;
+            p27 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToConvert(p27); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p27); });
+            onCallbackAddedConvert(p7);
+            Promise<TConvert> p28 = null;
+            p28 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToConvert(p28); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p28); });
+            onCallbackAddedConvert(p28);
 
-            Action<Promise<T>.Deferred> resolveDeferredActionT = d => d.Resolve(default(T));
+            Promise p29 = null;
+            p29 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p29); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p29); });
+            onCallbackAdded(p29);
+            Promise p30 = null;
+            p30 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p30); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p30); });
+            onCallbackAdded(p30);
+            Promise p31 = null;
+            p31 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p31); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); promiseToVoid(p31); });
+            onCallbackAdded(p31);
+            Promise p32 = null;
+            p32 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p32); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); promiseToVoid(p32); });
+            onCallbackAdded(p32);
 
-            promise.CatchDefer(() => { onUnknownRejection(); return resolveDeferredActionT; })
-                .Catch(onError);
-            promise.CatchDefer((TReject failValue) => { onReject(failValue); return resolveDeferredActionT; })
-                .Catch(onError);
-            promise.CatchDefer<TReject>(() => { onUnknownRejection(); return resolveDeferredActionT; })
-                .Catch(onError);
+            Promise<TConvert> p33 = null;
+            p33 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p33); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p33); });
+            onCallbackAddedConvert(p33);
+            Promise<TConvert> p34 = null;
+            p34 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p34); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p34); });
+            onCallbackAddedConvert(p34);
+            Promise<TConvert> p35 = null;
+            p35 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p35); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToConvert(p35); });
+            onCallbackAddedConvert(p35);
+            Promise<TConvert> p36 = null;
+            p36 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p36); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToConvert(p36); });
+            onCallbackAddedConvert(p36);
+
+            Promise<T> p37 = null;
+            p37 = promise.Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToT(p37); });
+            onCallbackAddedT(p37);
+            Promise<T> p38 = null;
+            p38 = promise.Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToT(p38); });
+            onCallbackAddedT(p38);
+
+            Promise<T> p39 = null;
+            p39 = promise.Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseT(p39); });
+            onCallbackAddedT(p39);
+            Promise<T> p40 = null;
+            p40 = promise.Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseT(p40); });
+            onCallbackAddedT(p40);
+
+
+            Promise p41 = null;
+            p41 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); promiseToVoid(p41); }, () => { onUnknownRejection(); promiseToVoid(p41); });
+            onCallbackAdded(p41);
+            Promise p42 = null;
+            p42 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); promiseToVoid(p42); }, (TReject failValue) => { onReject(failValue); promiseToVoid(p42); });
+            onCallbackAdded(p42);
+            Promise p43 = null;
+            p43 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); promiseToVoid(p43); }, () => { onUnknownRejection(); return promiseToPromise(p43); });
+            onCallbackAdded(p43);
+            Promise p44 = null;
+            p44 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); promiseToVoid(p44); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p44); });
+            onCallbackAdded(p44);
+
+            Promise<TConvert> p45 = null;
+            p45 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToConvert(p45); }, () => { onUnknownRejection(); return promiseToConvert(p45); });
+            onCallbackAddedConvert(p45);
+            Promise<TConvert> p46 = null;
+            p46 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToConvert(p46); }, (TReject failValue) => { onReject(failValue); return promiseToConvert(p46); });
+            onCallbackAddedConvert(p46);
+            Promise<TConvert> p47 = null;
+            p47 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToConvert(p47); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p47); });
+            onCallbackAddedConvert(p47);
+            Promise<TConvert> p48 = null;
+            p48 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToConvert(p48); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p48); });
+            onCallbackAddedConvert(p48);
+
+            Promise p49 = null;
+            p49 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p49); }, () => { onUnknownRejection(); return promiseToPromise(p49); });
+            onCallbackAdded(p49);
+            Promise p50 = null;
+            p50 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p50); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p50); });
+            onCallbackAdded(p50);
+            Promise p51 = null;
+            p51 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p51); }, () => { onUnknownRejection(); promiseToVoid(p51); });
+            onCallbackAdded(p51);
+            Promise p52 = null;
+            p52 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p52); }, (TReject failValue) => { onReject(failValue); promiseToVoid(p52); });
+            onCallbackAdded(p52);
+
+            Promise<TConvert> p53 = null;
+            p53 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p53); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p53); });
+            onCallbackAddedConvert(p53);
+            Promise<TConvert> p54 = null;
+            p54 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p54); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p54); });
+            onCallbackAddedConvert(p54);
+            Promise<TConvert> p55 = null;
+            p55 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p55); }, () => { onUnknownRejection(); return promiseToConvert(p55); });
+            onCallbackAddedConvert(p55);
+            Promise<TConvert> p56 = null;
+            p56 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p56); }, (TReject failValue) => { onReject(failValue); return promiseToConvert(p56); });
+            onCallbackAddedConvert(p56);
+
+
+            Promise p57 = null;
+            p57 = promise.Then(x => { onResolve(x); promiseToVoid(p57); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); promiseToVoid(p57); });
+            onCallbackAdded(p57);
+            Promise p58 = null;
+            p58 = promise.Then(x => { onResolve(x); promiseToVoid(p58); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); promiseToVoid(p58); });
+            onCallbackAdded(p58);
+            Promise p59 = null;
+            p59 = promise.Then(x => { onResolve(x); promiseToVoid(p59); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p59); });
+            onCallbackAdded(p59);
+            Promise p60 = null;
+            p60 = promise.Then(x => { onResolve(x); promiseToVoid(p60); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p60); });
+            onCallbackAdded(p60);
+
+            Promise<TConvert> p61 = null;
+            p61 = promise.Then(x => { onResolve(x); return promiseToConvert(p61); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToConvert(p61); });
+            onCallbackAddedConvert(p61);
+            Promise<TConvert> p62 = null;
+            p62 = promise.Then(x => { onResolve(x); return promiseToConvert(p62); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToConvert(p62); });
+            onCallbackAddedConvert(p62);
+            Promise<TConvert> p63 = null;
+            p63 = promise.Then(x => { onResolve(x); return promiseToConvert(p63); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p63); });
+            onCallbackAddedConvert(p63);
+            Promise<TConvert> p64 = null;
+            p64 = promise.Then(x => { onResolve(x); return promiseToConvert(p64); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p64); });
+            onCallbackAddedConvert(p64);
+
+            Promise p65 = null;
+            p65 = promise.Then(x => { onResolve(x); return promiseToPromise(p65); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p65); });
+            onCallbackAdded(p65);
+            Promise p66 = null;
+            p66 = promise.Then(x => { onResolve(x); return promiseToPromise(p66); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p66); });
+            onCallbackAdded(p66);
+            Promise p67 = null;
+            p67 = promise.Then(x => { onResolve(x); return promiseToPromise(p67); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); promiseToVoid(p67); });
+            onCallbackAdded(p67);
+            Promise p68 = null;
+            p68 = promise.Then(x => { onResolve(x); return promiseToPromise(p68); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); promiseToVoid(p68); });
+            onCallbackAdded(p68);
+
+            Promise<TConvert> p69 = null;
+            p69 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p69); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p69); });
+            onCallbackAddedConvert(p69);
+            Promise<TConvert> p70 = null;
+            p70 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p70); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p70); });
+            onCallbackAddedConvert(p70);
+            Promise<TConvert> p71 = null;
+            p71 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p71); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToConvert(p71); });
+            onCallbackAddedConvert(p71);
+            Promise<TConvert> p72 = null;
+            p72 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p72); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToConvert(p72); });
+            onCallbackAddedConvert(p72);
         }
 
-        public static void AddCatchCallbacks<TReject0, TReject1>(Promise promise, Action<TReject0> onReject0, Action<TReject1> onReject1)
-        {
-            // Add empty delegates so no need for null check.
-            onReject0 += v => { };
-            onReject1 += v => { };
-            Action onResolve = () => { };
-            Action onUnknownRejection = () => onReject0(default(TReject0));
-
-            promise.Then(onResolve, (TReject0 failValue) => onReject0(failValue))
-                .Catch(onReject1);
-            promise.Then<TReject0>(onResolve, onUnknownRejection)
-                .Catch(onReject1);
-
-            promise.Then(() => { onResolve(); return 0; }, (TReject0 failValue) => { onReject0(failValue); return 0; })
-                .Catch(onReject1);
-            promise.Then<int, TReject0>(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(onReject1);
-
-            promise.Then(() => { onResolve(); return Promise.Resolved(); }, (TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(); })
-                .Catch(onReject1);
-            promise.Then<TReject0>(() => { onResolve(); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onReject1);
-
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(0); })
-                .Catch(onReject1);
-            promise.Then<int, TReject0>(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(onReject1);
-
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, (TReject0 failValue) => { onReject0(failValue); return resolveDeferredAction; })
-                .Catch(onReject1);
-            promise.ThenDefer<TReject0>(() => { onResolve(); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onReject1);
-
-            promise.ThenDefer<int, TReject0>(() => { onResolve(); return resolveDeferredActionInt; }, (TReject0 failValue) => { onReject0(failValue); return resolveDeferredActionInt; })
-                .Catch(onReject1);
-            promise.ThenDefer<int, TReject0>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(onReject1);
-
-            promise.Catch((TReject0 failValue) => onReject0(failValue))
-                .Catch(onReject1);
-            promise.Catch<TReject0>(() => onUnknownRejection())
-                .Catch(onReject1);
-
-            promise.Catch((TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(); })
-                .Catch(onReject1);
-            promise.Catch<TReject0>(() => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onReject1);
-
-            promise.CatchDefer((TReject0 failValue) => { onReject0(failValue); return resolveDeferredAction; })
-                .Catch(onReject1);
-            promise.CatchDefer<TReject0>(() => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onReject1);
-        }
-
-        public static void AddCatchCallbacks<T, TReject0, TReject1>(Promise<T> promise, Action<TReject0> onReject0, Action<TReject1> onReject1)
-        {
-            // Add empty delegates so no need for null check.
-            onReject0 += v => { };
-            onReject1 += v => { };
-            Action<T> onResolve = v => { };
-            Action onUnknownRejection = () => onReject0(default(TReject0));
-
-            promise.Then(x => onResolve(x), (TReject0 failValue) => onReject0(failValue))
-                .Catch(onReject1);
-            promise.Then<TReject0>(x => onResolve(x), () => onUnknownRejection())
-                .Catch(onReject1);
-
-            promise.Then(x => { onResolve(x); return 0; }, (TReject0 failValue) => { onReject0(failValue); return 0; })
-                .Catch(onReject1);
-            promise.Then<int, TReject0>(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(onReject1);
-
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(); })
-                .Catch(onReject1);
-            promise.Then<TReject0>(x => { onResolve(x); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onReject1);
-
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(0); })
-                .Catch(onReject1);
-            promise.Then<int, TReject0>(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(onReject1);
-
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, (TReject0 failValue) => { onReject0(failValue); return resolveDeferredAction; })
-                .Catch(onReject1);
-            promise.ThenDefer<TReject0>(x => { onResolve(x); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onReject1);
-
-            promise.ThenDefer<int, TReject0>(x => { onResolve(x); return resolveDeferredActionInt; }, (TReject0 failValue) => { onReject0(failValue); return resolveDeferredActionInt; })
-                .Catch(onReject1);
-            promise.ThenDefer<int, TReject0>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(onReject1);
-
-            promise.Catch((TReject0 failValue) => { onReject0(failValue); return default(T); })
-                .Catch(onReject1);
-            promise.Catch<TReject0>(() => { onUnknownRejection(); return default(T); })
-                .Catch(onReject1);
-
-            promise.Catch((TReject0 failValue) => { onReject0(failValue); return Promise.Resolved(default(T)); })
-                .Catch(onReject1);
-            promise.Catch<TReject0>(() => { onUnknownRejection(); return Promise.Resolved(default(T)); })
-                .Catch(onReject1);
-
-            Action<Promise<T>.Deferred> resolveDeferredActionT = d => d.Resolve(default(T));
-
-            promise.CatchDefer((TReject0 failValue) => { onReject0(failValue); return resolveDeferredActionT; })
-                .Catch(onReject1);
-            promise.CatchDefer<TReject0>(() => { onUnknownRejection(); return resolveDeferredActionT; })
-                .Catch(onReject1);
-        }
-
-        public static void AddCompleteCallbacks(Promise promise, Action onComplete)
+        public static void AddCompleteCallbacks<TConvert, TCapture>(Promise promise, Action onComplete = null, TConvert convertValue = default(TConvert),
+            Action<TCapture> onCompleteCapture = null, TCapture captureValue = default(TCapture),
+            Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
+            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
         {
             // Add empty delegate so no need for null check.
             onComplete += () => { };
-
-            promise.Complete(() => onComplete());
-            promise.Complete(() => { onComplete(); return 0; });
-            promise.Complete(() => { onComplete(); return Promise.Resolved(); });
-            promise.Complete(() => { onComplete(); return Promise.Resolved(0); });
-            promise.CompleteDefer(() => { onComplete(); return deferred => deferred.Resolve(); });
-            promise.CompleteDefer<int>(() => { onComplete(); return deferred => deferred.Resolve(0); });
-        }
-
-        public static void AssertRejectType<TReject>(Promise promise)
-        {
-            int rejectCounter = 0;
-            AddCallbacks(promise,
-                () => Assert.Fail("Promise was resolved when it should be rejected with " + typeof(TReject)),
-                (object e) => { Assert.IsInstanceOf<TReject>(e); ++rejectCounter; },
-                () => ++rejectCounter,
-                e => Assert.IsInstanceOf<TReject>(e)
-                );
-            Promise.Manager.HandleCompletes();
-
-            Assert.AreEqual(rejectVoidCallbacks, rejectCounter);
-        }
-
-        public static void AssertRejectType<T, TReject>(Promise<T> promise)
-        {
-            int rejectCounter = 0;
-            AddCallbacks(promise,
-                v => Assert.Fail("Promise was resolved when it should be rejected with " + typeof(TReject)),
-                (object e) => { Assert.IsInstanceOf<TReject>(e); ++rejectCounter; },
-                () => ++rejectCounter,
-                e => Assert.IsInstanceOf<TReject>(e)
-                );
-            Promise.Manager.HandleCompletes();
-
-            Assert.AreEqual(rejectTCallbacks, rejectCounter);
-        }
-
-        public static void AssertIgnore(Promise promise, int expectedResolveCount, int expectedRejectCount, params Action[] ignoreActions)
-        {
-            foreach (var action in ignoreActions)
+            onCompleteCapture += _ => { };
+            promiseToVoid += _ => { };
+            if (promiseToConvert == null)
             {
-                int resolveCounter = 0;
-                int rejectCounter = 0;
-                action.Invoke();
-                Assert.AreEqual(0, resolveCounter);
-                Assert.AreEqual(0, rejectCounter);
-                AddCallbacks(promise, () => ++resolveCounter, s => ++rejectCounter);
-                Promise.Manager.HandleCompletes();
-                Assert.AreEqual(expectedResolveCount, resolveCounter);
-                Assert.AreEqual(expectedRejectCount, rejectCounter);
+                promiseToConvert += _ => convertValue;
             }
-        }
-
-        public static void AssertIgnore<T>(Promise<T> promise, int expectedResolveCount, int expectedRejectCount, params Action[] ignoreActions)
-        {
-            foreach (var action in ignoreActions)
+            if (promiseToPromise == null)
             {
-                int resolveCounter = 0;
-                int rejectCounter = 0;
-                action.Invoke();
-                Assert.AreEqual(0, resolveCounter);
-                Assert.AreEqual(0, rejectCounter);
-                AddCallbacks(promise, v => ++resolveCounter, s => ++rejectCounter);
-                Promise.Manager.HandleCompletes();
-                Assert.AreEqual(expectedResolveCount, resolveCounter);
-                Assert.AreEqual(expectedRejectCount, rejectCounter);
+                promiseToPromise = _ => Promise.Resolved();
             }
-        }
+            if (promiseToPromiseConvert == null)
+            {
+                promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
+            }
 
-#if PROMISE_CANCEL
-        public static void AddCatchCancelCallbacks<TReject, TCancel>(Promise promise, Action onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<TCancel> onCancel)
-        {
-            // Add empty delegates so no need for null check.
-            onResolve += () => { };
-            onReject += s => { };
-            onUnknownRejection += () => { };
-            onCancel += x => { };
+            Promise p1 = null;
+            p1 = promise.Complete(() => { onComplete(); promiseToVoid(p1); });
+            Promise<TConvert> p2 = null;
+            p2 = promise.Complete(() => { onComplete(); return promiseToConvert(p2); });
+            Promise p3 = null;
+            p3 = promise.Complete(() => { onComplete(); return promiseToPromise(p3); });
+            Promise<TConvert> p4 = null;
+            p4 = promise.Complete(() => { onComplete(); return promiseToPromiseConvert(p4); });
 
-            promise.Then(() => onResolve())
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(() => { onResolve(); return 0; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(() => { onResolve(); return Promise.Resolved(); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.ThenDefer<int>(() => { onResolve(); return resolveDeferredActionInt; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.Then(() => onResolve(), () => onUnknownRejection())
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(() => onResolve(), (TReject failValue) => onReject(failValue))
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then<TReject>(() => onResolve(), () => onUnknownRejection())
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.Then(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(() => { onResolve(); return 0; }, (TReject failValue) => { onReject(failValue); return 0; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then<int, TReject>(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.Then(() => { onResolve(); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(() => { onResolve(); return Promise.Resolved(); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then<TReject>(() => { onResolve(); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then<int, TReject>(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, (TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.ThenDefer<TReject>(() => { onResolve(); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.ThenDefer<int>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.ThenDefer<int, TReject>(() => { onResolve(); return resolveDeferredActionInt; }, (TReject failValue) => { onReject(failValue); return resolveDeferredActionInt; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.ThenDefer<int, TReject>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.Catch(() => onUnknownRejection())
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Catch((TReject failValue) => onReject(failValue))
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Catch<TReject>(() => onUnknownRejection())
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.Catch(() => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Catch((TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Catch<TReject>(() => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.CatchDefer(() => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.CatchDefer((TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.CatchDefer<TReject>(() => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-        }
-
-        //public static void AddCatchCancelCallbacks<T, TReject, TCancel>(Promise<T> promise, Action<T> onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<TCancel> onCancel)
-        public static void AddCatchCancelCallbacks<T, TReject, TCancel>(Promise<T> promise, Action<T> onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<TCancel> onCancel)
-        {
-            // Add empty delegates so no need for null check.
-            onResolve += x => { };
-            onReject += s => { };
-            onUnknownRejection += () => { };
-            onCancel += x => { };
-
-            promise.Then(x => onResolve(x))
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(x => { onResolve(x); return 0; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.ThenDefer<int>(x => { onResolve(x); return resolveDeferredActionInt; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.Then(x => onResolve(x), () => onUnknownRejection())
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(x => onResolve(x), (TReject failValue) => onReject(failValue))
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then<TReject>(x => onResolve(x), () => onUnknownRejection())
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.Then(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(x => { onResolve(x); return 0; }, (TReject failValue) => { onReject(failValue); return 0; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then<int, TReject>(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then<TReject>(x => { onResolve(x); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Then<int, TReject>(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, (TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.ThenDefer<TReject>(x => { onResolve(x); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.ThenDefer<int>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.ThenDefer<int, TReject>(x => { onResolve(x); return resolveDeferredActionInt; }, (TReject failValue) => { onReject(failValue); return resolveDeferredActionInt; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.ThenDefer<int, TReject>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.Catch(() => { onUnknownRejection(); return default(T); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Catch((TReject failValue) => { onReject(failValue); return default(T); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Catch<TReject>(() => { onUnknownRejection(); return default(T); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            promise.Catch(() => { onUnknownRejection(); return Promise.Resolved(default(T)); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Catch((TReject failValue) => { onReject(failValue); return Promise.Resolved(default(T)); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.Catch<TReject>(() => { onUnknownRejection(); return Promise.Resolved(default(T)); })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-
-            Action<Promise<T>.Deferred> resolveDeferredActionT = d => d.Resolve(default(T));
-
-            promise.CatchDefer(() => { onUnknownRejection(); return resolveDeferredActionT; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.CatchDefer((TReject failValue) => { onReject(failValue); return resolveDeferredActionT; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-            promise.CatchDefer<TReject>(() => { onUnknownRejection(); return resolveDeferredActionT; })
-                .Catch(() => { })
-                .CatchCancelation(onCancel);
-        }
-#endif
-
-        public static void AddCatchRejectCallbacks<TReject, TThrown>(Promise promise, Action onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<TThrown> onThrown)
-        {
-            // Add empty delegates so no need for null check.
-            onResolve += () => { };
-            onReject += s => { };
-            onUnknownRejection += () => { };
-            onThrown += x => { };
-
-            promise.Then(() => onResolve())
-                .Catch(onUnknownRejection)
-                .Catch(onThrown);
-            promise.Then(() => { onResolve(); return 0; })
-                .Catch(onUnknownRejection)
-                .Catch(onThrown);
-            promise.Then(() => { onResolve(); return Promise.Resolved(); })
-                .Catch(onUnknownRejection)
-                .Catch(onThrown);
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); })
-                .Catch(onUnknownRejection)
-                .Catch(onThrown);
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; })
-                .Catch(onUnknownRejection)
-                .Catch(onThrown);
-            promise.ThenDefer<int>(() => { onResolve(); return resolveDeferredActionInt; })
-                .Catch(onUnknownRejection)
-                .Catch(onThrown);
-
-            promise.Then(() => onResolve(), () => onUnknownRejection())
-                .Catch(onThrown);
-            promise.Then(() => onResolve(), (TReject failValue) => onReject(failValue))
-                .Catch(onThrown);
-            promise.Then<TReject>(() => onResolve(), () => onUnknownRejection())
-                .Catch(onThrown);
-
-            promise.Then(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(onThrown);
-            promise.Then(() => { onResolve(); return 0; }, (TReject failValue) => { onReject(failValue); return 0; })
-                .Catch(onThrown);
-            promise.Then<int, TReject>(() => { onResolve(); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(onThrown);
-
-            promise.Then(() => { onResolve(); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onThrown);
-            promise.Then(() => { onResolve(); return Promise.Resolved(); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(onThrown);
-            promise.Then<TReject>(() => { onResolve(); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onThrown);
-
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(onThrown);
-            promise.Then(() => { onResolve(); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
-                .Catch(onThrown);
-            promise.Then<int, TReject>(() => { onResolve(); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(onThrown);
-
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onThrown);
-            promise.ThenDefer(() => { onResolve(); return resolveDeferredAction; }, (TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
-                .Catch(onThrown);
-            promise.ThenDefer<TReject>(() => { onResolve(); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onThrown);
-
-            promise.ThenDefer<int>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(onThrown);
-            promise.ThenDefer<int, TReject>(() => { onResolve(); return resolveDeferredActionInt; }, (TReject failValue) => { onReject(failValue); return resolveDeferredActionInt; })
-                .Catch(onThrown);
-            promise.ThenDefer<int, TReject>(() => { onResolve(); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(onThrown);
-
-            promise.Catch(() => onUnknownRejection())
-                .Catch(onThrown);
-            promise.Catch((TReject failValue) => onReject(failValue))
-                .Catch(onThrown);
-            promise.Catch<TReject>(() => onUnknownRejection())
-                .Catch(onThrown);
-
-            promise.Catch(() => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onThrown);
-            promise.Catch((TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(onThrown);
-            promise.Catch<TReject>(() => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onThrown);
-
-            promise.CatchDefer(() => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onThrown);
-            promise.CatchDefer((TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
-                .Catch(onThrown);
-            promise.CatchDefer<TReject>(() => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onThrown);
-        }
-
-        //public static void AddCatchCancelCallbacks<T, TReject, TCancel>(Promise<T> promise, Action<T> onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<TCancel> onCancel)
-        public static void AddCatchRejectCallbacks<T, TReject, TThrown>(Promise<T> promise, Action<T> onResolve, Action<TReject> onReject, Action onUnknownRejection, Action<TThrown> onThrown)
-        {
-            // Add empty delegates so no need for null check.
-            onResolve += x => { };
-            onReject += s => { };
-            onUnknownRejection += () => { };
-            onThrown += x => { };
-
-            promise.Then(x => onResolve(x))
-                .Catch(onUnknownRejection)
-                .Catch(onThrown);
-            promise.Then(x => { onResolve(x); return 0; })
-                .Catch(onUnknownRejection)
-                .Catch(onThrown);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); })
-                .Catch(onUnknownRejection)
-                .Catch(onThrown);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); })
-                .Catch(onUnknownRejection)
-                .Catch(onThrown);
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; })
-                .Catch(onUnknownRejection)
-                .Catch(onThrown);
-            promise.ThenDefer<int>(x => { onResolve(x); return resolveDeferredActionInt; })
-                .Catch(onUnknownRejection)
-                .Catch(onThrown);
-
-            promise.Then(x => onResolve(x), () => onUnknownRejection())
-                .Catch(onThrown);
-            promise.Then(x => onResolve(x), (TReject failValue) => onReject(failValue))
-                .Catch(onThrown);
-            promise.Then<TReject>(x => onResolve(x), () => onUnknownRejection())
-                .Catch(onThrown);
-
-            promise.Then(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(onThrown);
-            promise.Then(x => { onResolve(x); return 0; }, (TReject failValue) => { onReject(failValue); return 0; })
-                .Catch(onThrown);
-            promise.Then<int, TReject>(x => { onResolve(x); return 0; }, () => { onUnknownRejection(); return 0; })
-                .Catch(onThrown);
-
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onThrown);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(); })
-                .Catch(onThrown);
-            promise.Then<TReject>(x => { onResolve(x); return Promise.Resolved(); }, () => { onUnknownRejection(); return Promise.Resolved(); })
-                .Catch(onThrown);
-
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(onThrown);
-            promise.Then(x => { onResolve(x); return Promise.Resolved(0); }, (TReject failValue) => { onReject(failValue); return Promise.Resolved(0); })
-                .Catch(onThrown);
-            promise.Then<int, TReject>(x => { onResolve(x); return Promise.Resolved(0); }, () => { onUnknownRejection(); return Promise.Resolved(0); })
-                .Catch(onThrown);
-
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onThrown);
-            promise.ThenDefer(x => { onResolve(x); return resolveDeferredAction; }, (TReject failValue) => { onReject(failValue); return resolveDeferredAction; })
-                .Catch(onThrown);
-            promise.ThenDefer<TReject>(x => { onResolve(x); return resolveDeferredAction; }, () => { onUnknownRejection(); return resolveDeferredAction; })
-                .Catch(onThrown);
-
-            promise.ThenDefer<int>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(onThrown);
-            promise.ThenDefer<int, TReject>(x => { onResolve(x); return resolveDeferredActionInt; }, (TReject failValue) => { onReject(failValue); return resolveDeferredActionInt; })
-                .Catch(onThrown);
-            promise.ThenDefer<int, TReject>(x => { onResolve(x); return resolveDeferredActionInt; }, () => { onUnknownRejection(); return resolveDeferredActionInt; })
-                .Catch(onThrown);
-
-            promise.Catch(() => { onUnknownRejection(); return default(T); })
-                .Catch(onThrown);
-            promise.Catch((TReject failValue) => { onReject(failValue); return default(T); })
-                .Catch(onThrown);
-            promise.Catch<TReject>(() => { onUnknownRejection(); return default(T); })
-                .Catch(onThrown);
-
-            promise.Catch(() => { onUnknownRejection(); return Promise.Resolved(default(T)); })
-                .Catch(onThrown);
-            promise.Catch((TReject failValue) => { onReject(failValue); return Promise.Resolved(default(T)); })
-                .Catch(onThrown);
-            promise.Catch<TReject>(() => { onUnknownRejection(); return Promise.Resolved(default(T)); })
-                .Catch(onThrown);
-
-            Action<Promise<T>.Deferred> resolveDeferredActionT = d => d.Resolve(default(T));
-
-            promise.CatchDefer(() => { onUnknownRejection(); return resolveDeferredActionT; })
-                .Catch(onThrown);
-            promise.CatchDefer((TReject failValue) => { onReject(failValue); return resolveDeferredActionT; })
-                .Catch(onThrown);
-            promise.CatchDefer<TReject>(() => { onUnknownRejection(); return resolveDeferredActionT; })
-                .Catch(onThrown);
+            Promise p5 = null;
+            p5 = promise.Complete(captureValue, cv => { onCompleteCapture(cv); onComplete(); promiseToVoid(p5); });
+            Promise<TConvert> p6 = null;
+            p6 = promise.Complete(captureValue, cv => { onCompleteCapture(cv); onComplete(); return promiseToConvert(p6); });
+            Promise p7 = null;
+            p7 = promise.Complete(captureValue, cv => { onCompleteCapture(cv); onComplete(); return promiseToPromise(p7); });
+            Promise<TConvert> p8 = null;
+            p8 = promise.Complete(captureValue, cv => { onCompleteCapture(cv); onComplete(); return promiseToPromiseConvert(p8); });
         }
     }
 }

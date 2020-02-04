@@ -1,16 +1,22 @@
 ﻿// define PROTO_PROMISE_DEBUG_ENABLE to enable debugging options in RELEASE mode. define PROTO_PROMISE_DEBUG_DISABLE to disable debugging options in DEBUG mode.
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
 #endif
 // define PROTO_PROMISE_CANCEL_DISABLE to disable cancelations on promises.
 // If Cancelations are enabled, it breaks the Promises/A+ spec "2.1. Promise States", but allows breaking promise chains. Execution is also a little slower.
 #if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
+#else
+#undef PROMISE_CANCEL
 #endif
 // define PROTO_PROMISE_PROGRESS_DISABLE to disable progress reports on promises.
 // If Progress is enabled, promises use more memory, and it creates an upper bound to the depth of a promise chain (see Config for details).
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
 #endif
 
 #pragma warning disable RECS0096 // Type parameter is never used
@@ -72,7 +78,7 @@ namespace Proto.Promises
             /// <summary>
             /// If you need to support longer promise chains, decrease decimalBits. If you need higher precision, increase decimalBits.
             /// <para/>
-            /// Promise chain limit: 2^(32-<see cref="ProgressDecimalBits"/>),
+            /// Wait promise chain limit: 2^(32-<see cref="ProgressDecimalBits"/>),
             /// Precision: 1/(N*2^<see cref="ProgressDecimalBits"/>) where N is the number of wait promises in the chain where Progress is subscribed.
             /// <para/>
             /// NOTE: promises that don't wait (.Then with an onResolved that simply returns a value or void) don't count towards the promise chain limit.
@@ -80,11 +86,12 @@ namespace Proto.Promises
             public const int ProgressDecimalBits = 13;
 #endif
 
+#if PROMISE_DEBUG
+            public static PoolType ObjectPooling { get { return default(PoolType); } set { } }
+#else
             private static PoolType _objectPooling = PoolType.Internal;
-            /// <summary>
-            /// Highly recommend to leave this None or Internal in DEBUG mode, so that exceptions will propagate if/when promises are used incorrectly after they have already completed.
-            /// </summary>
             public static PoolType ObjectPooling { get { return _objectPooling; } set { _objectPooling = value; } }
+#endif
 
 #if PROMISE_DEBUG
             private static GeneratedStacktrace _debugStacktraceGenerator = GeneratedStacktrace.Rejections;
@@ -100,11 +107,16 @@ namespace Proto.Promises
             /// </summary>
             public static IValueConverter ValueConverter { get { return _valueConverter; } set { _valueConverter = value; } }
 
+            /// <summary>
+            /// If this is not null, uncaught rejections get routed through this instead of being thrown.
+            /// </summary>
+            public static Action<UnhandledException> UncaughtRejectionHandler { get; set; }
+
             private sealed class DefaultValueConverter : IValueConverter
             {
                 bool IValueConverter.TryConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer, out TConvert converted)
                 {
-                    // This avoids boxing value types.
+                    // Avoid boxing value types.
 #if CSHARP_7_OR_LATER
                     if (valueContainer is IValueContainer<TConvert> casted)
 #else
@@ -124,12 +136,6 @@ namespace Proto.Promises
                     }
                     converted = default(TConvert);
                     return false;
-                }
-
-                bool IValueConverter.CanConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer)
-                {
-                    // Can it be up-casted or down-casted, null or not?
-                    return typeof(TConvert).IsAssignableFrom(typeof(TOriginal)) || valueContainer.Value is TConvert;
                 }
             }
         }

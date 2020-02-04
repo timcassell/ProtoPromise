@@ -1,11 +1,17 @@
 ﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
 #endif
 #if !PROTO_PROMISE_CANCEL_DISABLE
 #define PROMISE_CANCEL
+#else
+#undef PROMISE_CANCEL
 #endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
 #endif
 
 #pragma warning disable RECS0096 // Type parameter is never used
@@ -66,7 +72,6 @@ namespace Proto.Promises
 
                 private DisposedChecker() { }
 
-                bool IValueContainerOrPrevious.ContainsType<U>() { throw new System.InvalidOperationException(); }
                 bool IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new System.InvalidOperationException(); }
                 void IValueContainerOrPrevious.Release() { throw new System.InvalidOperationException(); }
                 void IValueContainerOrPrevious.Retain() { throw new System.InvalidOperationException(); }
@@ -266,6 +271,13 @@ namespace Proto.Promises
             }
 
             partial class FinallyDelegate : IStacktraceable
+            {
+#if PROMISE_DEBUG
+                string IStacktraceable.Stacktrace { get; set; }
+#endif
+            }
+
+            partial class FinallyDelegateCapture<TCapture> : IStacktraceable
             {
 #if PROMISE_DEBUG
                 string IStacktraceable.Stacktrace { get; set; }
