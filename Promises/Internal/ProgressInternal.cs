@@ -202,12 +202,12 @@ namespace Proto.Promises
         {
             progressListener.Retain();
             _progressListeners.Push(progressListener);
-            return (previous = _rejectedOrCanceledValueOrPrevious as Promise) != null;
+            return (previous = _valueOrPrevious as Promise) != null;
         }
 
         protected virtual bool SubscribeProgressIfWaiterAndContinueLoop(ref Internal.IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<Internal.PromisePassThrough> passThroughs)
         {
-            return (previous = _rejectedOrCanceledValueOrPrevious as Promise) != null;
+            return (previous = _valueOrPrevious as Promise) != null;
         }
 
         protected void SubscribeProgress(Action<float> onProgress, int skipFrames)
@@ -460,7 +460,7 @@ namespace Proto.Promises
                 void CancelOrIncrementProgress(uint increment, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount);
             }
 
-            public abstract class ProgressDelegateBase<T> : IProgressListener, IInvokable, ITreeHandleable, IStacktraceable where T : ProgressDelegateBase<T>
+            public abstract class ProgressDelegateBase<T> : IProgressListener, ITreeHandleable, IInvokable, IStacktraceable where T : ProgressDelegateBase<T>
             {
 #if PROMISE_DEBUG
                 string IStacktraceable.Stacktrace { get; set; }
@@ -505,9 +505,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        UnhandledExceptionException unhandledException = UnhandledExceptionException.GetOrCreate(e);
-                        SetStacktraceFromCreated(this, unhandledException);
-                        AddRejectionToUnhandledStack(unhandledException);
+                        AddRejectionToUnhandledStack(e, this);
                     }
                 }
 
@@ -551,16 +549,9 @@ namespace Proto.Promises
                 {
                     if (sender == _owner)
                     {
-                        if (_canceled)
-                        {
-                            MarkOrDispose();
-                        }
-                        else
-                        {
-                            // Add to the owner's branches to invoke this with a value of 1.
-                            _owner._nextBranches.Push(this);
-                            _canceled = true;
-                        }
+                        // Add to front of handle queue to invoke this with a value of 1.
+                        _canceled = true;
+                        AddToHandleQueueFront(this);
                     }
                     else
                     {
@@ -631,10 +622,13 @@ namespace Proto.Promises
                 {
                     InvokeAndCatch(1f);
                     _retainCounter = 0;
+                    _canceled = true;
                     MarkOrDispose();
                 }
-
+        
                 void ITreeHandleable.Cancel() { throw new System.InvalidOperationException(); }
+                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue, ref ValueLinkedQueue<ITreeHandleable> cancelQueue) { throw new System.InvalidOperationException(); }
+                void ITreeHandleable.MakeReadyFromSettled(IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
             }
 
             public sealed class ProgressDelegate : ProgressDelegateBase<ProgressDelegate>
@@ -713,7 +707,7 @@ namespace Proto.Promises
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     progressListener.Retain();
                     _progressListeners.Push(progressListener);
-                    previous = _rejectedOrCanceledValueOrPrevious as Promise;
+                    previous = _valueOrPrevious as Promise;
                     if (_secondPrevious)
                     {
                         if (firstSubscribe)
@@ -753,7 +747,7 @@ namespace Proto.Promises
 
                     // Calculate the normalized progress for the depth of the returned promise.
                     // Use double for better precision.
-                    double expected = ((Promise) _rejectedOrCanceledValueOrPrevious)._waitDepthAndProgress.WholePart + 1u;
+                    double expected = ((Promise) _valueOrPrevious)._waitDepthAndProgress.WholePart + 1u;
                     float progress = (float) (_currentAmount.ToDouble() / expected);
 
                     uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
@@ -762,7 +756,7 @@ namespace Proto.Promises
                     {
                         progressListener.IncrementProgress(this, increment);
                     }
-                    ReleaseWithoutDisposeCheck();
+                    ReleaseInternal();
                 }
 
                 void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
@@ -828,7 +822,7 @@ namespace Proto.Promises
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     progressListener.Retain();
                     _progressListeners.Push(progressListener);
-                    previous = _rejectedOrCanceledValueOrPrevious as Promise;
+                    previous = _valueOrPrevious as Promise;
                     if (_secondPrevious)
                     {
                         if (firstSubscribe)
@@ -868,7 +862,7 @@ namespace Proto.Promises
 
                     // Calculate the normalized progress for the depth of the cached promise.
                     // Use double for better precision.
-                    double expected = ((Promise) _rejectedOrCanceledValueOrPrevious)._waitDepthAndProgress.WholePart + 1u;
+                    double expected = ((Promise) _valueOrPrevious)._waitDepthAndProgress.WholePart + 1u;
                     float progress = (float) (_currentAmount.ToDouble() / expected);
 
                     uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
@@ -877,7 +871,7 @@ namespace Proto.Promises
                     {
                         progressListener.IncrementProgress(this, increment);
                     }
-                    ReleaseWithoutDisposeCheck();
+                    ReleaseInternal();
                 }
 
                 void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
@@ -949,6 +943,8 @@ namespace Proto.Promises
 
             partial class PromisePassThrough : IProgressListener
             {
+                public UnsignedFixed32 _progress;
+
                 void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
                 {
                     target.IncrementProgress(amount.ToUInt32(), amount, Owner._waitDepthAndProgress);
@@ -961,12 +957,21 @@ namespace Proto.Promises
 
                 void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount)
                 {
+                    _progress = sender._waitDepthAndProgress;
+                    if (Owner != null)
+                    {
+                        target.IncrementProgress(amount, sender._waitDepthAndProgress, Owner._waitDepthAndProgress);
+                    }
                     Release();
                 }
 
                 void IProgressListener.CancelOrIncrementProgress(Promise sender, uint amount)
                 {
-                    target.CancelOrIncrementProgress(amount, sender._waitDepthAndProgress, Owner._waitDepthAndProgress);
+                    _progress = sender._waitDepthAndProgress;
+                    if (Owner != null)
+                    {
+                        target.CancelOrIncrementProgress(amount, sender._waitDepthAndProgress, Owner._waitDepthAndProgress);
+                    }
                     Release();
                 }
             }

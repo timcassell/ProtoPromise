@@ -94,7 +94,7 @@ namespace Proto.Promises
 #endif
 
 #if PROMISE_DEBUG
-            private static GeneratedStacktrace _debugStacktraceGenerator = GeneratedStacktrace.Rejections;
+            private static GeneratedStacktrace _debugStacktraceGenerator = GeneratedStacktrace.All;
             public static GeneratedStacktrace DebugStacktraceGenerator { get { return _debugStacktraceGenerator; } set { _debugStacktraceGenerator = value; } }
 #else
             public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }

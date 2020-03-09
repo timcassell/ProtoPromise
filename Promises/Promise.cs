@@ -76,18 +76,6 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Mark this instance to not be added to the pool when it is settled and released. This cannot be un-done.
-        /// <para/>NOTE: This automatically happens to all promises that are created or released while <see cref="Config.ObjectPooling"/> is not <see cref="PoolType.All"/>.
-        /// </summary>
-        public Promise DontPool()
-        {
-            ValidateOperation(this, 1);
-
-            _dontPool = true;
-            return this;
-        }
-
-        /// <summary>
         /// Returns a new <see cref="YieldInstruction"/> that can be yielded in a coroutine to wait until this is settled.
         /// </summary>
         public YieldInstruction ToYieldInstruction()
@@ -96,7 +84,6 @@ namespace Proto.Promises
 
             var yield = InternalYieldInstruction.GetOrCreate(this);
             AddWaiter(yield);
-            ReleaseWithoutDisposeCheck(); // No need to keep this retained.
             return yield;
         }
 
@@ -144,7 +131,6 @@ namespace Proto.Promises
             if (_state == State.Pending | _state == State.Canceled)
             {
                 AddWaiter(Internal.CancelDelegateAny.GetOrCreate(onCanceled, 1));
-                ReleaseWithoutDisposeCheck(); // No need to keep this retained.
             }
         }
 
@@ -164,7 +150,7 @@ namespace Proto.Promises
 
             if (_state == State.Pending | _state == State.Canceled)
             {
-                var cancelation = Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled, this, 1);
+                var cancelation = Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled, 1);
                 AddWaiter(cancelation);
                 return cancelation;
             }
@@ -188,7 +174,12 @@ namespace Proto.Promises
                 return;
             }
 
-            CancelInternal(Internal.CancelVoid.GetOrCreate());
+            _state = State.Canceled;
+            var cancelValue = Internal.CancelContainerVoid.GetOrCreate();
+            _valueOrPrevious = cancelValue;
+            OnCancel();
+            AddBranchesToCancelQueueBack(cancelValue);
+            CancelProgressListeners();
         }
 
         /// <summary>
@@ -208,7 +199,13 @@ namespace Proto.Promises
                 return;
             }
 
-            CancelInternal(Internal.CancelValue<TCancel>.GetOrCreate(reason));
+            _state = State.Canceled;
+            var cancelValue = Internal.CancelContainer<TCancel>.GetOrCreate(reason);
+            cancelValue.Retain();
+            _valueOrPrevious = cancelValue;
+            OnCancel();
+            AddBranchesToCancelQueueBack(cancelValue);
+            CancelProgressListeners();
         }
 
         /// <summary>
@@ -220,7 +217,6 @@ namespace Proto.Promises
             ValidateArgument(onFinally, "onFinally", 1);
 
             AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, this, 1));
-            ReleaseWithoutDisposeCheck(); // No need to keep this retained.
             return this;
         }
 
@@ -804,18 +800,6 @@ namespace Proto.Promises
     public abstract partial class Promise<T> : Promise
     {
         /// <summary>
-        /// Mark this instance to not be added to the pool when it is settled and released. This cannot be un-done.
-        /// <para/>NOTE: This automatically happens to all promises that are created or released while <see cref="Promise.Config.ObjectPooling"/> is not <see cref="Promise.PoolType.All"/>.
-        /// </summary>
-        public new Promise<T> DontPool()
-        {
-            ValidateOperation(this, 1);
-
-            _dontPool = true;
-            return this;
-        }
-
-        /// <summary>
         /// Returns a new <see cref="Promise{T}"/> that adopts the state of this. This is mostly useful for branches that you expect might be canceled, and you don't want all branches to be canceled.
         /// </summary>
 #if !PROMISE_CANCEL
@@ -852,7 +836,6 @@ namespace Proto.Promises
             ValidateArgument(onFinally, "onFinally", 1);
 
             AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, this, 1));
-            ReleaseWithoutDisposeCheck(); // No need to keep this retained.
             return this;
         }
 

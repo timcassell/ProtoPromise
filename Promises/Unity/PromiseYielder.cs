@@ -48,8 +48,6 @@ namespace Proto.Promises
 
             private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
-            private Promise _owner;
-
             static InternalYieldInstruction()
             {
                 Internal.OnClearPool += () => _pool.Clear();
@@ -60,7 +58,7 @@ namespace Proto.Promises
             public static InternalYieldInstruction GetOrCreate(Promise owner)
             {
                 var yieldInstruction = _pool.IsNotEmpty ? (InternalYieldInstruction) _pool.Pop() : new InternalYieldInstruction();
-                yieldInstruction._owner = owner;
+                yieldInstruction.State = owner._state;
                 return yieldInstruction;
             }
 
@@ -69,21 +67,20 @@ namespace Proto.Promises
                 _pool.Push(this);
             }
 
-            void Internal.ITreeHandleable.Cancel()
+            void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer,
+                ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue,
+                ref ValueLinkedQueue<Internal.ITreeHandleable> cancelQueue)
             {
-#pragma warning disable CS0618 // Type or member is obsolete
-                State = State.Canceled;
-#pragma warning restore CS0618 // Type or member is obsolete
-                _owner.ReleaseInternal();
-                _owner = null;
+                State = valueContainer.GetState();
             }
 
-            void Internal.ITreeHandleable.Handle()
+            void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer)
             {
-                State = _owner._state;
-                _owner.ReleaseInternal();
-                _owner = null;
+                State = valueContainer.GetState();
             }
+
+            void Internal.ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
+            void Internal.ITreeHandleable.Cancel() { throw new System.InvalidOperationException(); }
         }
 
     }

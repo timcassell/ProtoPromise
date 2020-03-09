@@ -67,9 +67,9 @@ namespace Proto.Promises
                     return newPromise;
                 }
 
-                protected override void Handle(Promise feed)
+                protected override void Execute()
                 {
-                    HandleSelf(feed);
+                    HandleSelf();
                 }
             }
 #endif

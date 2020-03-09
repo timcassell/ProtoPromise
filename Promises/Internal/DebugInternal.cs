@@ -27,54 +27,52 @@ namespace Proto.Promises
 {
     partial class Promise
     {
-        protected static void _SetStackTraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException)
-        {
-            SetStacktraceFromCreated(stacktraceable, unhandledException);
-        }
-
         // Calls to these get compiled away in RELEASE mode
         static partial void ValidateOperation(Promise promise, int skipFrames);
         static partial void ValidateProgress(float progress, int skipFrames);
         static partial void ValidateArgument(object arg, string argName, int skipFrames);
         partial void ValidateReturn(Promise other);
         static partial void ValidateReturn(Delegate other);
-        static partial void ValidatePotentialOperation(Internal.IValueContainerOrPrevious valueContainer, int skipFrames);
+        static partial void ValidatePotentialOperation(object valueContainer, int skipFrames);
         static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames);
 
         static partial void SetCreatedStacktrace(Internal.IStacktraceable stacktraceable, int skipFrames);
-        static partial void SetStacktraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException);
-        static partial void SetRejectStacktrace(Internal.UnhandledExceptionInternal unhandledException, int skipFrames);
-        static partial void SetNotDisposed(ref Internal.IValueContainerOrPrevious valueContainer);
+        partial void SetOwnerAndRejectStacktrace(Internal.IRejectionContainer unhandledException, bool generateStacktrace);
+        partial void SetNotDisposed();
 #if PROMISE_DEBUG
-        private uint _userRetainCounter;
+        private ushort _userRetainCounter;
         private string _createdStackTrace;
         string Internal.IStacktraceable.Stacktrace { get { return _createdStackTrace; } set { _createdStackTrace = value; } }
 
         private static int idCounter;
         protected readonly int _id;
 
-        private static void SetDisposed(ref Internal.IValueContainerOrPrevious valueContainer)
+        private static object DisposedObject
         {
-            valueContainer = Internal.DisposedChecker.instance;
+            get
+            {
+                return Internal.DisposedChecker.instance;
+            }
         }
 
-        static partial void SetNotDisposed(ref Internal.IValueContainerOrPrevious valueContainer)
+        private static string GetFormattedStacktrace(Internal.IStacktraceable traceable)
         {
-            valueContainer = null;
+            return FormatStackTrace(traceable.Stacktrace);
+        }
+
+        partial void SetNotDisposed()
+        {
+            _valueOrPrevious = null;
         }
 
         partial class Internal
         {
             // This allows us to re-use the reference field without having to add another bool field.
-            public sealed class DisposedChecker : IValueContainerOrPrevious
+            public sealed class DisposedChecker
             {
                 public static readonly DisposedChecker instance = new DisposedChecker();
 
                 private DisposedChecker() { }
-
-                bool IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new System.InvalidOperationException(); }
-                void IValueContainerOrPrevious.Release() { throw new System.InvalidOperationException(); }
-                void IValueContainerOrPrevious.Retain() { throw new System.InvalidOperationException(); }
             }
         }
 
@@ -86,17 +84,12 @@ namespace Proto.Promises
             }
         }
 
-        static partial void SetStacktraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException)
+        partial void SetOwnerAndRejectStacktrace(Internal.IRejectionContainer unhandledException, bool generateStacktrace)
         {
-            unhandledException.SetStackTrace(FormatStackTrace(stacktraceable.Stacktrace));
-        }
-
-        static partial void SetRejectStacktrace(Internal.UnhandledExceptionInternal unhandledException, int skipFrames)
-        {
-            if (Config.DebugStacktraceGenerator != GeneratedStacktrace.None)
-            {
-                unhandledException.SetStackTrace(GetFormattedStacktrace(skipFrames + 1));
-            }
+            string stacktrace = generateStacktrace & Config.DebugStacktraceGenerator != GeneratedStacktrace.None
+                ? new System.Diagnostics.StackTrace(1, true).ToString()
+                : null;
+            unhandledException.SetOwnerAndRejectedStacktrace(this, stacktrace);
         }
 
         private static string GetStackTrace(int skipFrames)
@@ -109,7 +102,7 @@ namespace Proto.Promises
             return FormatStackTrace(GetStackTrace(skipFrames + 1));
         }
 
-        private static System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(128);
+        private static readonly System.Text.StringBuilder _stringBuilder = new System.Text.StringBuilder(128);
 
         private static string FormatStackTrace(string stackTrace)
         {
@@ -118,11 +111,11 @@ namespace Proto.Promises
                 return stackTrace;
             }
 
-            stringBuilder.Length = 0;
-            stringBuilder.Append(stackTrace);
+            _stringBuilder.Length = 0;
+            _stringBuilder.Append(stackTrace);
 
             // Format stacktrace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
-            return stringBuilder.Remove(0, 1)
+            return _stringBuilder.Remove(0, 1)
                 .Replace(":line ", ":")
                 .Replace("\n ", " \n")
                 .Replace("(", " (")
@@ -140,7 +133,7 @@ namespace Proto.Promises
             }
 
             // Validate returned promise as not disposed.
-            if (IsDisposed(other._rejectedOrCanceledValueOrPrevious))
+            if (IsDisposed(other._valueOrPrevious))
             {
                 throw new InvalidReturnException("A disposed promise was returned.");
             }
@@ -151,7 +144,7 @@ namespace Proto.Promises
             ValueLinkedStack<Internal.PromisePassThrough> passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>();
             var prev = other;
         Repeat:
-            for (; prev != null; prev = prev._rejectedOrCanceledValueOrPrevious as Promise)
+            for (; prev != null; prev = prev._valueOrPrevious as Promise)
             {
                 if (prev == this)
                 {
@@ -188,12 +181,12 @@ namespace Proto.Promises
             }
         }
 
-        private static bool IsDisposed(Internal.IValueContainerOrPrevious valueContainer)
+        private static bool IsDisposed(object valueContainer)
         {
             return ReferenceEquals(valueContainer, Internal.DisposedChecker.instance);
         }
 
-        static protected void ValidateNotDisposed(Internal.IValueContainerOrPrevious valueContainer, int skipFrames)
+        static protected void ValidateNotDisposed(object valueContainer, int skipFrames)
         {
             if (IsDisposed(valueContainer))
             {
@@ -203,14 +196,14 @@ namespace Proto.Promises
             }
         }
 
-        static partial void ValidatePotentialOperation(Internal.IValueContainerOrPrevious valueContainer, int skipFrames)
+        static partial void ValidatePotentialOperation(object valueContainer, int skipFrames)
         {
             ValidateNotDisposed(valueContainer, skipFrames + 1);
         }
 
         static partial void ValidateOperation(Promise promise, int skipFrames)
         {
-            ValidateNotDisposed(promise._rejectedOrCanceledValueOrPrevious, skipFrames + 1);
+            ValidateNotDisposed(promise._valueOrPrevious, skipFrames + 1);
         }
 
         static partial void ValidateProgress(float progress, int skipFrames)
@@ -249,10 +242,17 @@ namespace Proto.Promises
             return null;
         }
 
-        private static void SetDisposed(ref Internal.IValueContainerOrPrevious valueContainer)
+        private static string GetFormattedStacktrace(Internal.IStacktraceable traceable)
         {
-            // Allow GC to clean up the object if necessary.
-            valueContainer = null;
+            return null;
+        }
+
+        private static object DisposedObject
+        {
+            get
+            {
+                return null;
+            }
         }
 
         public override string ToString()
@@ -307,7 +307,7 @@ namespace Proto.Promises
 
         static partial void ValidateOperation(Promise<T> promise, int skipFrames)
         {
-            ValidateNotDisposed(promise._rejectedOrCanceledValueOrPrevious, skipFrames + 1);
+            ValidateNotDisposed(promise._valueOrPrevious, skipFrames + 1);
         }
 
         static partial void ValidateArgument(object arg, string argName, int skipFrames)

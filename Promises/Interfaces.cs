@@ -78,43 +78,60 @@ namespace Proto.Promises
             {
                 void Handle();
                 void Cancel();
+                void MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue, ref ValueLinkedQueue<ITreeHandleable> cancelQueue);
+                void MakeReadyFromSettled(IValueContainer valueContainer);
             }
 
-            public interface IValueContainerOrPrevious
+            public interface IValueContainer
             {
-                bool TryGetValueAs<U>(out U value);
                 void Retain();
                 void Release();
+                State GetState();
+                State GetStateAndValueAs<U>(out U value);
+                bool TryGetValueAs<U>(out U value);
+
+                void SetNewOwner(Promise newOwner, bool appendStacktrace);
+                void ReleaseAndMaybeAddToUnhandledStack();
             }
 
-            public interface IValueContainerContainer : IValueContainerOrPrevious
+            public interface IExceptionToContainer
             {
-                IValueContainerOrPrevious ValueContainerOrPrevious { get; }
+                IValueContainer ToContainer();
+            }
+
+            public interface ICantHandleException
+            {
+                void AddToUnhandledStack(IStacktraceable traceable);
+            }
+
+            public interface IRejectionContainer : IValueContainer
+            {
+                void SetOwnerAndRejectedStacktrace(Promise owner, string rejectedStacktrace);
             }
 
             public interface IDelegateResolve : IRetainable
             {
-                void ReleaseAndInvoke(Promise feed, Promise owner);
+                void ReleaseAndInvoke(IValueContainer valueContainer, Promise owner);
             }
             public interface IDelegateResolvePromise : IRetainable
             {
-                void ReleaseAndInvoke(Promise feed, Promise owner);
+                void ReleaseAndInvoke(IValueContainer valueContainer, Promise owner);
             }
 
             public interface IDelegateReject : IRetainable
             {
-                void ReleaseAndInvoke(Promise feed, Promise owner);
+                void ReleaseAndInvoke(IValueContainer valueContainer, Promise owner);
             }
 
             public interface IDelegateRejectPromise : IRetainable
             {
-                void ReleaseAndInvoke(Promise feed, Promise owner);
+                void ReleaseAndInvoke(IValueContainer valueContainer, Promise owner);
             }
 
             public partial interface IMultiTreeHandleable : ITreeHandleable
             {
-                void Handle(Promise feed, int index);
-                void Cancel(IValueContainerOrPrevious cancelValue);
+                void Handle(PromisePassThrough passThrough);
+                void Cancel(PromisePassThrough passThrough);
                 void ReAdd(PromisePassThrough passThrough);
             }
         }

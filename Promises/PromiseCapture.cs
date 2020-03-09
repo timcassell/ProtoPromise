@@ -49,7 +49,6 @@ namespace Proto.Promises
             if (_state == State.Pending | _state == State.Canceled)
             {
                 AddWaiter(Internal.CancelDelegateAnyCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled, 1));
-                ReleaseWithoutDisposeCheck(); // No need to keep this retained.
             }
         }
 
@@ -69,7 +68,7 @@ namespace Proto.Promises
 
             if (_state == State.Pending | _state == State.Canceled)
             {
-                var cancelation = Internal.CancelDelegateCapture<TCaptureCancel, TCancel>.GetOrCreate(cancelCaptureValue, onCanceled, this, 1);
+                var cancelation = Internal.CancelDelegateCapture<TCaptureCancel, TCancel>.GetOrCreate(cancelCaptureValue, onCanceled, 1);
                 AddWaiter(cancelation);
                 return cancelation;
             }
@@ -85,7 +84,6 @@ namespace Proto.Promises
             ValidateArgument(onFinally, "onFinally", 1);
 
             AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(finallyCaptureValue, onFinally, this, 1));
-            ReleaseWithoutDisposeCheck(); // No need to keep this retained.
             return this;
         }
 
@@ -1378,7 +1376,6 @@ namespace Proto.Promises
             ValidateArgument(onFinally, "onFinally", 1);
 
             AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(finallyCaptureValue, onFinally, this, 1));
-            ReleaseWithoutDisposeCheck(); // No need to keep this retained.
             return this;
         }
 

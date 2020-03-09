@@ -99,272 +99,272 @@ namespace Proto.Promises
         private UnreleasedObjectException(string message) : base(message) { }
     }
 
+    /// <summary>
+    /// Special Exception that is used to rethrow a rejection from a Promise onRejected callback.
+    /// </summary>
+    public sealed class RethrowException : Exception
+    {
+        public static readonly RethrowException instance = new RethrowException();
+
+        private RethrowException() { }
+    }
+
+    /// <summary>
+    /// Special Exception that is used to reject a Promise from an onResolved or onRejected callback.
+    /// </summary>
+    public abstract class RejectException : Exception
+    {
+        protected RejectException() { }
+
+        public override string Message
+        {
+            get
+            {
+                return "This is used to reject a Promise from an onResolved or onRejected handler.";
+            }
+        }
+    }
+
+    /// <summary>
+    /// Special Exception that is used to reject a Promise with a reason from an onResolved or onRejected callback.
+    /// </summary>
+    public abstract class RejectException<T> : RejectException
+    {
+        protected RejectException() { }
+    }
+
+    /// <summary>
+    /// Special Exception that is used to cancel a Promise from an onResolved or onRejected callback.
+    /// </summary>
+    public abstract class CancelException : OperationCanceledException
+    {
+        protected CancelException() { }
+
+        public override string Message
+        {
+            get
+            {
+                return "This is used to cancel a Promise from an onResolved or onRejected handler.";
+            }
+        }
+    }
+
+
+    /// <summary>
+    /// Special Exception that is used to cancel a Promise without a reason from an onResolved or onRejected callback.
+    /// </summary>
+    public abstract class CancelExceptionVoid : CancelException
+    {
+        protected CancelExceptionVoid() { }
+    }
+
+
+    /// <summary>
+    /// Special Exception that is used to cancel a Promise with a reason from an onResolved or onRejected callback.
+    /// </summary>
+    public abstract class CancelException<T> : CancelException
+    {
+        protected CancelException() { }
+    }
+
     partial class Promise
     {
-        public abstract class UnhandledException : Exception, IRetainable
+        /// <summary>
+        /// Exception that is thrown if a promise is rejected and that rejection is never handled.
+        /// </summary>
+        public abstract class UnhandledException : Exception
         {
-            protected UnhandledException() { }
-            protected UnhandledException(Exception innerException) : base(null, innerException) { }
+            protected UnhandledException(string message, string stacktrace, Exception innerException) : base(message, innerException)
+            {
+                _stackTrace = stacktrace;
+            }
 
             public abstract object GetValue();
             public abstract Type GetValueType();
             public abstract bool TryGetValueAs<U>(out U value);
-            public virtual void Retain() { }
-            public virtual void Release() { }
 
-            protected string _stackTrace;
+            private readonly string _stackTrace;
             public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
         }
 
-        private static RethrowException _rethrow;
-
         /// <summary>
-        /// Used to rethrow a rejection from a Promise onRejected callback.
+        /// Exception that is thrown if a promise is rejected and that rejection is never handled.
         /// </summary>
-        public sealed class RethrowException : Exception
+        public sealed class UnhandledException<T> : UnhandledException, IValueContainer<T>
         {
-            private RethrowException() { }
+            public T Value { get; private set; }
 
-            static RethrowException() { _rethrow = new RethrowException(); }
+            public UnhandledException(T value, string message, string stacktrace, Exception innerException) : base(message, stacktrace, innerException)
+            {
+                Value = value;
+            }
+
+            public override object GetValue()
+            {
+                return Value;
+            }
+
+            public override Type GetValueType()
+            {
+                Type type = typeof(T);
+                if (type.IsValueType)
+                {
+                    return type;
+                }
+                return ReferenceEquals(Value, null) ? type : Value.GetType();
+            }
+
+            public override bool TryGetValueAs<U>(out U value)
+            {
+                return Config.ValueConverter.TryConvert(this, out value);
+            }
         }
 
         /// <summary>
-        /// Used to cancel a Promise from an onResolved or onRejected callback.
+        /// Exception that is thrown if an awaited promise is canceled.
         /// </summary>
-        public abstract class CanceledException : OperationCanceledException, IRetainable
+        public abstract class CanceledException : OperationCanceledException
         {
-            protected CanceledException() { }
+            protected CanceledException(string message) : base(message) { }
 
             public abstract object GetValue();
             public abstract Type GetValueType();
             public abstract bool TryGetValueAs<U>(out U value);
-            public virtual void Retain() { }
-            public virtual void Release() { }
+        }
 
-            public override string StackTrace { get { return null; } }
-            public override string Message
+        /// <summary>
+        /// Exception that is thrown if an awaited promise is canceled without a reason.
+        /// </summary>
+        public sealed class CanceledExceptionVoid : CanceledException
+        {
+            public CanceledExceptionVoid() : base("A Promise was canceled without a reason.") { }
+
+            public override bool TryGetValueAs<U>(out U value)
             {
-                get
+                value = default(U);
+                return false;
+            }
+
+            public override object GetValue()
+            {
+                return null;
+            }
+
+            public override Type GetValueType()
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Exception that is thrown if an awaited promise is canceled with a reason.
+        /// </summary>
+        public sealed class CanceledException<T> : CanceledException, IValueContainer<T>
+        {
+            public T Value { get; private set; }
+
+            public CanceledException(T value) :
+                base("A Promise was canceled with a reason. Type: " + typeof(T) + ", Value: " + (ReferenceEquals(value, null) ? "NULL" : value.ToString()))
+            {
+                Value = value;
+            }
+
+            public override bool TryGetValueAs<U>(out U value)
+            {
+                return Config.ValueConverter.TryConvert(this, out value);
+            }
+
+            public override object GetValue()
+            {
+                return Value;
+            }
+
+            public override Type GetValueType()
+            {
+                Type type = typeof(T);
+                if (type.IsValueType)
                 {
-                    return "This is used to cancel a Promise from an onResolved or onRejected handler.";
+                    return type;
                 }
+                return ReferenceEquals(Value, null) ? type : Value.GetType();
             }
         }
 
         partial class Internal
         {
-            public abstract class UnhandledExceptionInternal : UnhandledException, IValueContainerOrPrevious, ILinked<UnhandledExceptionInternal>
+            public sealed class InnerException<T> : Exception
             {
-                UnhandledExceptionInternal ILinked<UnhandledExceptionInternal>.Next { get; set; }
-
-                public bool handled;
-
-                protected UnhandledExceptionInternal() { }
-                protected UnhandledExceptionInternal(Exception innerException) : base(innerException) { }
-
-                public void SetStackTrace(string stackTrace)
+                public InnerException(string message, string stacktrace, Exception innerException) : base(message, innerException)
                 {
-                    _stackTrace = stackTrace;
+                    _stackTrace = stacktrace;
                 }
+
+                private readonly string _stackTrace;
+                public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
             }
 
-            public sealed class UnhandledException<T> : UnhandledExceptionInternal, IValueContainer<T>
-            {
-                public T Value { get; private set; }
-
-                private static ValueLinkedStack<UnhandledExceptionInternal> _pool;
-
-                private uint _retainCounter;
-
-                static UnhandledException()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                private UnhandledException() { }
-
-                public static UnhandledException<T> GetOrCreate(T value)
-                {
-                    UnhandledException<T> ex = _pool.IsNotEmpty ? (UnhandledException<T>) _pool.Pop() : new UnhandledException<T>();
-                    ex.Value = value;
-                    ex._message = "A rejected value was not handled: " + (typeof(T).IsClass && ReferenceEquals(value, null) ? "null" : value.ToString());
-                    return ex;
-                }
-
-                public override object GetValue()
-                {
-                    return Value;
-                }
-
-                public override bool TryGetValueAs<U>(out U value)
-                {
-                    return Config.ValueConverter.TryConvert(this, out value);
-                }
-
-                public override Type GetValueType()
-                {
-                    Type type = typeof(T);
-                    if (type.IsValueType)
-                    {
-                        return type;
-                    }
-                    return ReferenceEquals(Value, null) ? type : Value.GetType();
-                }
-
-                private string _message;
-                public override string Message
-                {
-                    get
-                    {
-                        return _message;
-                    }
-                }
-
-                public override void Retain()
-                {
-                    ++_retainCounter;
-                }
-
-                public override void Release()
-                {
-                    if (--_retainCounter == 0 & Config.ObjectPooling != PoolType.None)
-                    {
-                        Value = default(T);
-                        _pool.Push(this);
-                    }
-                }
-            }
-
-            public sealed class UnhandledExceptionException : UnhandledExceptionInternal, IValueContainer<Exception>
-            {
-                private UnhandledExceptionException(Exception innerException) : base(innerException) { }
-
-                // Don't care about re-using this exception for 2 reasons:
-                // exceptions create garbage themselves, creating a little more with this one is negligible,
-                // and it's too difficult to try to replicate the formatting for Unity to pick it up by using a cached local variable like in UnhandledException<T>, and prefer not to use reflection to assign innerException
-                public static UnhandledExceptionException GetOrCreate(Exception innerException)
-                {
-                    return new UnhandledExceptionException(innerException);
-                }
-
-                public override string Message
-                {
-                    get
-                    {
-                        return "An exception was encountered that was not handled.";
-                    }
-                }
-
-                Exception IValueContainer<Exception>.Value { get { return InnerException; } }
-
-                public override object GetValue()
-                {
-                    return InnerException;
-                }
-
-                public override Type GetValueType()
-                {
-                    return InnerException.GetType();
-                }
-
-                public override bool TryGetValueAs<U>(out U value)
-                {
-                    return Config.ValueConverter.TryConvert(this, out value);
-                }
-            }
-
-            public abstract class CanceledExceptionInternal : CanceledException, IValueContainerOrPrevious, ILinked<UnhandledExceptionInternal>
-            {
-                UnhandledExceptionInternal ILinked<UnhandledExceptionInternal>.Next { get; set; }
-
-                protected CanceledExceptionInternal() { }
-            }
-
-            public sealed class CancelVoid : CanceledExceptionInternal
+            public sealed class RejectExceptionInternal<T> : RejectException<T>, IExceptionToContainer, ICantHandleException
             {
                 // We can reuse the same object.
-                private static readonly CancelVoid _instance = new CancelVoid();
+                private static readonly RejectExceptionInternal<T> _instance = new RejectExceptionInternal<T>();
 
-                private CancelVoid() { }
+                public T Value { get; private set; }
 
-                public static CancelVoid GetOrCreate()
+                public static RejectExceptionInternal<T> GetOrCreate(T value)
+                {
+                    _instance.Value = value;
+                    return _instance;
+                }
+
+                private RejectExceptionInternal() { }
+
+                public IValueContainer ToContainer()
+                {
+                    return RejectionContainer<T>.GetOrCreate(Value);
+                }
+
+                public void AddToUnhandledStack(IStacktraceable traceable)
+                {
+                    AddRejectionToUnhandledStack(Value, traceable);
+                }
+            }
+
+            public sealed class CancelExceptionVoidInternal : CancelExceptionVoid, IExceptionToContainer
+            {
+                // We can reuse the same object.
+                private static readonly CancelExceptionVoidInternal _instance = new CancelExceptionVoidInternal();
+
+                public static CancelExceptionVoidInternal GetOrCreate()
                 {
                     return _instance;
                 }
 
-                public override bool TryGetValueAs<U>(out U value)
-                {
-                    value = default(U);
-                    return false;
-                }
+                private CancelExceptionVoidInternal() { }
 
-                public override object GetValue()
+                public IValueContainer ToContainer()
                 {
-                    return null;
-                }
-
-                public override Type GetValueType()
-                {
-                    return null;
+                    return CancelContainerVoid.GetOrCreate();
                 }
             }
 
-            public sealed class CancelValue<T> : CanceledExceptionInternal, IValueContainer<T>, ILinked<CancelValue<T>>
+            public sealed class CancelExceptionInternal<T> : CancelException<T>, IExceptionToContainer
             {
-                CancelValue<T> ILinked<CancelValue<T>>.Next { get; set; }
+                // We can reuse the same object.
+                private static readonly CancelExceptionInternal<T> _instance = new CancelExceptionInternal<T>();
 
                 public T Value { get; private set; }
 
-                private static ValueLinkedStack<CancelValue<T>> _pool;
-
-                private uint _retainCounter;
-
-                static CancelValue()
+                public static CancelExceptionInternal<T> GetOrCreate(T value)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _instance.Value = value;
+                    return _instance;
                 }
 
-                private CancelValue() { }
+                private CancelExceptionInternal() { }
 
-                public static CancelValue<T> GetOrCreate(T value)
+                public IValueContainer ToContainer()
                 {
-                    CancelValue<T> cv = _pool.IsNotEmpty ? _pool.Pop() : new CancelValue<T>();
-                    cv.Value = value;
-                    return cv;
-                }
-
-                public override bool TryGetValueAs<U>(out U value)
-                {
-                    return Config.ValueConverter.TryConvert(this, out value);
-                }
-
-                public override object GetValue()
-                {
-                    return Value;
-                }
-
-                public override Type GetValueType()
-                {
-                    Type type = typeof(T);
-                    if (type.IsValueType)
-                    {
-                        return type;
-                    }
-                    return ReferenceEquals(Value, null) ? type : Value.GetType();
-                }
-
-                public override void Retain()
-                {
-                    ++_retainCounter;
-                }
-
-                public override void Release()
-                {
-                    if (--_retainCounter == 0 & Config.ObjectPooling != PoolType.None)
-                    {
-                        Value = default(T);
-                        _pool.Push(this);
-                    }
+                    return CancelContainer<T>.GetOrCreate(Value);
                 }
             }
         }

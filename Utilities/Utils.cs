@@ -203,7 +203,6 @@ namespace Proto.Utils
             _first = item;
         }
 
-
         public void PushAndClear(ref ValueLinkedQueue<T> other)
         {
             if (IsEmpty)
@@ -215,6 +214,21 @@ namespace Proto.Utils
             {
                 other._last.Next = _first;
                 _first = other._first;
+                other.Clear();
+            }
+        }
+
+        public void EnqueueAndClear(ref ValueLinkedQueue<T> other)
+        {
+            if (IsEmpty)
+            {
+                this = other;
+                other.Clear();
+            }
+            else if (other.IsNotEmpty)
+            {
+                _last.Next = other._first;
+                _last = other._last;
                 other.Clear();
             }
         }

@@ -75,15 +75,8 @@ namespace Proto.Promises
                     promise._waitCount = (uint) count;
                     // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
-                    promise._retainCounter = promise._waitCount + 1u;
 
                     return promise;
-                }
-
-                private bool ReleaseOne()
-                {
-                    ReleaseWithoutDisposeCheck();
-                    return --_waitCount == 0;
                 }
 
                 private void MaybeRelease(bool done)
@@ -94,35 +87,33 @@ namespace Proto.Promises
                         {
                             _passThroughs.Pop().Release();
                         }
-                        ReleaseInternal();
                     }
                 }
 
-                void IMultiTreeHandleable.Cancel(IValueContainerOrPrevious cancelValue)
+                void IMultiTreeHandleable.Handle(PromisePassThrough passThrough)
                 {
-                    bool done = ReleaseOne();
-                    if (_state == State.Pending & done)
+                    bool done = --_waitCount == 0;
+                    if (_state == State.Pending)
                     {
-                        CancelInternal(cancelValue);
+                        IValueContainer valueContainer = passThrough.ValueContainer;
+                        if (valueContainer.GetState() == State.Resolved)
+                        {
+                            ResolveInternal();
+                        }
+                        else if (done)
+                        {
+                            RejectInternal(valueContainer);
+                        }
                     }
                     MaybeRelease(done);
                 }
 
-                void IMultiTreeHandleable.Handle(Promise feed, int index)
+                void IMultiTreeHandleable.Cancel(PromisePassThrough passThrough)
                 {
-                    bool done = ReleaseOne();
+                    bool done = --_waitCount == 0;
                     if (_state == State.Pending)
                     {
-                        if (feed._state == State.Resolved)
-                        {
-                            feed._wasWaitedOn = true;
-                            ResolveInternalWithoutRelease();
-                        }
-                        else if (done)
-                        {
-                            feed._wasWaitedOn = true;
-                            HandleSelfWithoutRelease(feed);
-                        }
+                        CancelInternal(passThrough.ValueContainer);
                     }
                     MaybeRelease(done);
                 }
@@ -130,12 +121,6 @@ namespace Proto.Promises
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     _passThroughs.Push(passThrough);
-                }
-
-                protected override void OnCancel()
-                {
-                    CancelProgressListeners();
-                    AddToCancelQueueFront(ref _nextBranches);
                 }
             }
 
@@ -159,15 +144,8 @@ namespace Proto.Promises
                     promise._waitCount = (uint) count;
                     // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
-                    promise._retainCounter = promise._waitCount + 1u;
 
                     return promise;
-                }
-
-                private bool ReleaseOne()
-                {
-                    ReleaseWithoutDisposeCheck();
-                    return --_waitCount == 0;
                 }
 
                 private void MaybeRelease(bool done)
@@ -178,36 +156,33 @@ namespace Proto.Promises
                         {
                             _passThroughs.Pop().Release();
                         }
-                        ReleaseInternal();
                     }
                 }
 
-                void IMultiTreeHandleable.Cancel(IValueContainerOrPrevious cancelValue)
+                void IMultiTreeHandleable.Handle(PromisePassThrough passThrough)
                 {
-                    bool done = ReleaseOne();
-                    if (_state == State.Pending & done)
+                    bool done = --_waitCount == 0;
+                    if (_state == State.Pending)
                     {
-                        CancelInternal(cancelValue);
+                        IValueContainer valueContainer = passThrough.ValueContainer;
+                        if (valueContainer.GetState() == State.Resolved)
+                        {
+                            ResolveInternal(valueContainer);
+                        }
+                        else if (done)
+                        {
+                            RejectInternal(valueContainer);
+                        }
                     }
                     MaybeRelease(done);
                 }
 
-                void IMultiTreeHandleable.Handle(Promise feed, int index)
+                void IMultiTreeHandleable.Cancel(PromisePassThrough passThrough)
                 {
-                    bool done = ReleaseOne();
+                    bool done = --_waitCount == 0;
                     if (_state == State.Pending)
                     {
-                        if (feed._state == State.Resolved)
-                        {
-                            feed._wasWaitedOn = true;
-                            _value = ((PromiseInternal<T>) feed)._value;
-                            ResolveInternalWithoutRelease();
-                        }
-                        else if (done)
-                        {
-                            feed._wasWaitedOn = true;
-                            HandleSelfWithoutRelease(feed);
-                        }
+                        CancelInternal(passThrough.ValueContainer);
                     }
                     MaybeRelease(done);
                 }
@@ -215,12 +190,6 @@ namespace Proto.Promises
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     _passThroughs.Push(passThrough);
-                }
-
-                protected override void OnCancel()
-                {
-                    CancelProgressListeners();
-                    AddToCancelQueueFront(ref _nextBranches);
                 }
             }
 
