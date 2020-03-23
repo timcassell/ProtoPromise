@@ -285,6 +285,50 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
+
+        [Test]
+        public void RaceProgressReportsTheMaximumProgress2()
+        {
+            var deferred1 = Promise.NewDeferred();
+
+            float progress = float.NaN;
+
+            Promise.Race(deferred1.Promise, Promise.Resolved())
+                .Progress(p => progress = p);
+
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(1f, progress, 0f);
+
+            deferred1.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void RaceProgressReportsTheMaximumProgress3()
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+
+            float progress = float.NaN;
+
+            Promise.Race(deferred1.Promise, Promise.Resolved(1))
+                .Progress(p => progress = p);
+
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(1f, progress, 0f);
+
+            deferred1.Resolve(1);
+            Promise.Manager.HandleCompletesAndProgress();
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
 #endif
     }
 }

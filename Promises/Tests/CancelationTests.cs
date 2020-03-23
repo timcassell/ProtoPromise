@@ -776,8 +776,8 @@ namespace Proto.Promises.Tests
         {
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
-            var deferredInt = Promise.NewDeferred<int>();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
+            //var deferredInt = Promise.NewDeferred<int>();
+            //Assert.AreEqual(Promise.State.Pending, deferred.State);
 
             string cancelValue = "Cancel";
             Action<Promise> validate = promise =>
@@ -795,11 +795,11 @@ namespace Proto.Promises.Tests
 
             validate(deferred.Promise);
 
-            deferredInt.Promise.Cancel(cancelValue);
-            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
-            deferredInt.Resolve(100);
+            //deferredInt.Promise.Cancel(cancelValue);
+            //Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+            //deferredInt.Resolve(100);
 
-            validate(deferredInt.Promise);
+            //validate(deferredInt.Promise);
 
             // Clean up.
             GC.Collect();

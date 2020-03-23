@@ -68,10 +68,19 @@ namespace Proto.Promises
             ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue,
             ref ValueLinkedQueue<Internal.ITreeHandleable> cancelQueue)
         {
-            ((Promise) _valueOrPrevious)._wasWaitedOn = true;
-            valueContainer.Retain();
-            _valueOrPrevious = valueContainer;
-            handleQueue.Push(this);
+#if PROMISE_CANCEL
+            if (_state != State.Pending)
+            {
+                ReleaseInternal();
+            }
+            else
+#endif
+            {
+                ((Promise) _valueOrPrevious)._wasWaitedOn = true;
+                valueContainer.Retain();
+                _valueOrPrevious = valueContainer;
+                handleQueue.Push(this);
+            }
         }
 
         void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer)
@@ -79,7 +88,16 @@ namespace Proto.Promises
             ((Promise) _valueOrPrevious)._wasWaitedOn = true;
             valueContainer.Retain();
             _valueOrPrevious = valueContainer;
-            AddToHandleQueueBack(this);
+#if PROMISE_CANCEL
+            if (valueContainer.GetState() == State.Canceled)
+            {
+                AddToCancelQueueBack(this);
+            }
+            else
+#endif
+            {
+                AddToHandleQueueBack(this);
+            }
         }
 
         protected virtual void Reset(int skipFrames)
@@ -105,7 +123,7 @@ namespace Proto.Promises
         protected void RetainInternal()
         {
 #if PROMISE_DEBUG
-            checked // If this fails, change _retainCounter to ulong.
+            checked // If this fails, change _retainCounter to uint or ulong.
 #endif
             {
                 ++_retainCounter;
@@ -114,7 +132,7 @@ namespace Proto.Promises
 
         protected void ReleaseInternal()
         {
-            if (ReleaseWithoutDisposeCheck() == 0 & _state != State.Pending)
+            if (ReleaseWithoutDisposeCheck() == 0)
             {
                 Dispose();
             }
@@ -130,19 +148,15 @@ namespace Proto.Promises
             }
         }
 
-        private void MaybeDispose()
-        {
-            if (_retainCounter == 0)
-            {
-                Dispose();
-            }
-        }
-
         protected virtual void Dispose()
         {
             if (_valueOrPrevious != null)
             {
-                if (!_wasWaitedOn)
+                if (_wasWaitedOn)
+                {
+                    ((Internal.IValueContainer) _valueOrPrevious).Release();
+                }
+                else
                 {
                     // Rejection maybe wasn't caught.
                     ((Internal.IValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack();
@@ -155,7 +169,7 @@ namespace Proto.Promises
         {
             if (_state != State.Pending)
             {
-                MaybeDispose();
+                ReleaseInternal();
             }
             else
             {
@@ -182,7 +196,7 @@ namespace Proto.Promises
             CancelBranches();
             CancelProgressListeners();
 
-            MaybeDispose();
+            ReleaseInternal();
         }
 
         protected void ResolveInternal(Internal.IValueContainer container)
@@ -198,7 +212,7 @@ namespace Proto.Promises
             HandleBranches();
             ResolveProgressListeners();
 
-            MaybeDispose();
+            ReleaseInternal();
         }
 
         protected void RejectInternal(Internal.IValueContainer container)
@@ -214,7 +228,7 @@ namespace Proto.Promises
             HandleBranches();
             CancelProgressListeners();
 
-            MaybeDispose();
+            ReleaseInternal();
         }
 
         protected void HookupNewPromise(Promise newPromise)
@@ -240,7 +254,7 @@ namespace Proto.Promises
                     HandleBranches();
                     CancelProgressListeners();
                 }
-                MaybeDispose();
+                ReleaseInternal();
             }
 #if PROMISE_CANCEL
             catch (CancelException e)
@@ -251,7 +265,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    MaybeDispose();
+                    ReleaseInternal();
                 }
             }
             catch (OperationCanceledException) // Built-in system cancelation (or Task cancelation)
@@ -262,7 +276,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    MaybeDispose();
+                    ReleaseInternal();
                 }
             }
 #endif
@@ -272,7 +286,7 @@ namespace Proto.Promises
                 if (_state == State.Canceled)
                 {
                     ((Internal.ICantHandleException) e).AddToUnhandledStack(this);
-                    MaybeDispose();
+                    ReleaseInternal();
                 }
                 else
 #endif
@@ -286,7 +300,7 @@ namespace Proto.Promises
                 if (_state == State.Canceled)
                 {
                     AddRejectionToUnhandledStack(e, this);
-                    MaybeDispose();
+                    ReleaseInternal();
                 }
                 else
 #endif
@@ -354,7 +368,7 @@ namespace Proto.Promises
                 CancelProgressListeners();
             }
 
-            MaybeDispose();
+            ReleaseInternal();
         }
 
         protected virtual void Execute() { }
@@ -478,8 +492,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
         private
 #endif
-        protected Promise()
-        { }
+        protected Promise() { }
 
         protected override sealed Promise GetDuplicate()
         {
@@ -494,29 +507,6 @@ namespace Proto.Promises
             internal static bool _invokingResolved, _invokingRejected;
 
             internal static Action OnClearPool;
-
-            public abstract partial class PromiseInternal<T> : Promise<T>
-            {
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-                public void ResolveDirectIfNotCanceled(in T value)
-#else
-                public void ResolveDirectIfNotCanceled(T value)
-#endif
-                {
-#if PROMISE_CANCEL
-                    if (_state != State.Canceled)
-#endif
-                    {
-                        _state = State.Resolved;
-                        var resolveValue = ResolveContainer<T>.GetOrCreate(value);
-                        resolveValue.Retain();
-                        _valueOrPrevious = resolveValue;
-                        AddBranchesToHandleQueueBack(resolveValue);
-                        ResolveProgressListeners();
-                        AddToHandleQueueFront(this);
-                    }
-                }
-            }
 
             public abstract class PoolablePromise<TPromise> : Promise where TPromise : PoolablePromise<TPromise>
             {
@@ -537,7 +527,7 @@ namespace Proto.Promises
                 }
             }
 
-            public abstract class PoolablePromise<T, TPromise> : PromiseInternal<T> where TPromise : PoolablePromise<T, TPromise>
+            public abstract class PoolablePromise<T, TPromise> : Promise<T> where TPromise : PoolablePromise<T, TPromise>
             {
                 protected static ValueLinkedStack<ITreeHandleable> _pool;
 
@@ -564,7 +554,7 @@ namespace Proto.Promises
 #if PROMISE_CANCEL
                     if (_state == State.Canceled)
                     {
-                        MaybeDispose();
+                        ReleaseInternal();
                     }
                     else
 #endif
@@ -590,7 +580,7 @@ namespace Proto.Promises
 #if PROMISE_CANCEL
                     if (_state == State.Canceled)
                     {
-                        MaybeDispose();
+                        ReleaseInternal();
                     }
                     else
 #endif
@@ -627,6 +617,11 @@ namespace Proto.Promises
                     promise.ResetDepth();
                     return promise;
                 }
+
+                protected override void OnCancel()
+                {
+                    AddToHandleQueueFront(this);
+                }
             }
 
             public sealed partial class DeferredPromise<T> : PoolablePromise<T, DeferredPromise<T>>
@@ -648,13 +643,22 @@ namespace Proto.Promises
                     promise.ResetDepth();
                     return promise;
                 }
+
+                protected override void OnCancel()
+                {
+                    AddToHandleQueueFront(this);
+                }
             }
 
             public sealed class SettledPromise : Promise
             {
                 private SettledPromise() { }
 
-                private static readonly SettledPromise _resolved = new SettledPromise() { _state = State.Resolved };
+                private static readonly SettledPromise _resolved = new SettledPromise()
+                {
+                    _state = State.Resolved,
+                    _valueOrPrevious = ResolveContainerVoid.GetOrCreate()
+                };
 
                 public static SettledPromise GetOrCreateResolved()
                 {
@@ -684,6 +688,11 @@ namespace Proto.Promises
                     AddToHandleQueueFront(this);
                 }
 #endif
+
+                protected override void OnCancel()
+                {
+                    AddToHandleQueueFront(this);
+                }
             }
 
             public sealed class LitePromise<T> : PoolablePromise<T, LitePromise<T>>
@@ -708,6 +717,11 @@ namespace Proto.Promises
                     var val = ResolveContainer<T>.GetOrCreate(value);
                     val.Retain();
                     _valueOrPrevious = val;
+                    AddToHandleQueueFront(this);
+                }
+
+                protected override void OnCancel()
+                {
                     AddToHandleQueueFront(this);
                 }
             }
@@ -1482,10 +1496,13 @@ namespace Proto.Promises
 
                 protected override void OnCancel()
                 {
-                    _onResolved.Release();
-                    _onResolved = null;
-                    _onRejected.Release();
-                    _onRejected = null;
+                    if (_onResolved != null)
+                    {
+                        _onResolved.Release();
+                        _onResolved = null;
+                        _onRejected.Release();
+                        _onRejected = null;
+                    }
                 }
             }
 
@@ -1530,10 +1547,13 @@ namespace Proto.Promises
 
                 protected override void OnCancel()
                 {
-                    _onResolved.Release();
-                    _onResolved = null;
-                    _onRejected.Release();
-                    _onRejected = null;
+                    if (_onResolved != null)
+                    {
+                        _onResolved.Release();
+                        _onResolved = null;
+                        _onRejected.Release();
+                        _onRejected = null;
+                    }
                 }
             }
 
@@ -1588,10 +1608,13 @@ namespace Proto.Promises
 
                 protected override void OnCancel()
                 {
-                    _onResolved.Release();
-                    _onResolved = null;
-                    _onRejected.Release();
-                    _onRejected = null;
+                    if (_onResolved != null)
+                    {
+                        _onResolved.Release();
+                        _onResolved = null;
+                        _onRejected.Release();
+                        _onRejected = null;
+                    }
                 }
             }
 
@@ -1646,10 +1669,13 @@ namespace Proto.Promises
 
                 protected override void OnCancel()
                 {
-                    _onResolved.Release();
-                    _onResolved = null;
-                    _onRejected.Release();
-                    _onRejected = null;
+                    if (_onResolved != null)
+                    {
+                        _onResolved.Release();
+                        _onResolved = null;
+                        _onRejected.Release();
+                        _onRejected = null;
+                    }
                 }
             }
             #endregion
@@ -1704,7 +1730,16 @@ namespace Proto.Promises
                     Owner._wasWaitedOn = true;
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
-                    AddToHandleQueueBack(this);
+#if PROMISE_CANCEL
+                    if (valueContainer.GetState() == State.Canceled)
+                    {
+                        AddToCancelQueueBack(this);
+                    }
+                    else
+#endif
+                    {
+                        AddToHandleQueueBack(this);
+                    }
                 }
 
                 void ITreeHandleable.Handle()

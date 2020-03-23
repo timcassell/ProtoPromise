@@ -87,7 +87,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise AllNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
+        public static Promise All<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             return Internal._All(promises, 1);
         }
@@ -108,6 +108,15 @@ namespace Proto.Promises
         public static Promise<IList<T>> All<T>(IEnumerable<Promise<T>> promises)
         {
             return Internal._All(promises.GetEnumerator(), new List<T>(), 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/>s when they have all resolved.
+        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<IList<T>> All<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
+        {
+            return Internal._All(promises, new List<T>(), 1);
         }
 
         /// <summary>
@@ -190,7 +199,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise RaceNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
+        public static Promise Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             return Internal._Race(promises, 1);
         }
@@ -265,9 +274,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
         /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise<T> RaceNonAlloc<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
+        public static Promise<T> Race<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            return Internal._Race<T, IEnumerator<Promise<T>>>(promises, 1);
+            return Internal._Race<T, TEnumerator>(promises, 1);
         }
 
         /// <summary>
@@ -292,7 +301,7 @@ namespace Proto.Promises
         /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise SequenceNonAlloc<TEnumerator>(TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
+        public static Promise Sequence<TEnumerator>(TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
         {
             return Internal._Sequence(promiseFuncs, 1);
         }
@@ -367,7 +376,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
-        public static Promise FirstNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
+        public static Promise First<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             return Internal._First(promises, 1);
         }
@@ -442,7 +451,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
-        public static Promise<T> FirstNonAlloc<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
+        public static Promise<T> First<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Internal._First<T, TEnumerator>(promises, 1);
         }

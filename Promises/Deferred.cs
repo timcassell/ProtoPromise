@@ -17,8 +17,6 @@
 #pragma warning disable CS0672 // Member overrides obsolete member
 #pragma warning disable CS0618 // Type or member is obsolete
 
-using System;
-
 namespace Proto.Promises
 {
     partial class Promise
@@ -96,8 +94,8 @@ namespace Proto.Promises
                 if (State == State.Pending)
                 {
                     State = State.Canceled;
-                    promise.Cancel();
-                    promise.ReleaseInternal();
+                    promise.ReleaseWithoutDisposeCheck();
+                    promise.CancelDirectIfPending();
                 }
                 else
                 {
@@ -120,8 +118,8 @@ namespace Proto.Promises
                 if (State == State.Pending)
                 {
                     State = State.Canceled;
-                    promise.Cancel(reason);
-                    promise.ReleaseInternal();
+                    promise.ReleaseWithoutDisposeCheck();
+                    promise.CancelDirectIfPending(reason);
                 }
                 else
                 {
@@ -211,8 +209,8 @@ namespace Proto.Promises
                     if (State == State.Pending)
                     {
                         State = State.Resolved;
+                        promise.ReleaseWithoutDisposeCheck();
                         promise.ResolveDirectIfNotCanceled();
-                        promise.ReleaseInternal();
                     }
                     else
                     {
@@ -229,8 +227,8 @@ namespace Proto.Promises
                     if (State == State.Pending)
                     {
                         State = State.Rejected;
+                        promise.ReleaseWithoutDisposeCheck();
                         promise.RejectDirectIfNotCanceled(reason, true);
-                        promise.ReleaseInternal();
                     }
                     else
                     {
@@ -270,14 +268,14 @@ namespace Proto.Promises
 
                 public override void Resolve(T value)
                 {
-                    var promise = (PromiseInternal<T>) Promise;
+                    var promise = Promise;
                     ValidateOperation(promise, 1);
 
                     if (State == State.Pending)
                     {
                         State = State.Resolved;
+                        promise.ReleaseWithoutDisposeCheck();
                         promise.ResolveDirectIfNotCanceled(value);
-                        promise.ReleaseInternal();
                     }
                     else
                     {
@@ -294,8 +292,8 @@ namespace Proto.Promises
                     if (State == State.Pending)
                     {
                         State = State.Rejected;
+                        promise.ReleaseWithoutDisposeCheck();
                         promise.RejectDirectIfNotCanceled(reason, true);
-                        promise.ReleaseInternal();
                     }
                     else
                     {

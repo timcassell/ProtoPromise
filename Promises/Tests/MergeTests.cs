@@ -40,7 +40,6 @@ namespace Proto.Promises.Tests
             deferred2.Resolve(success);
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(true, resolved);
 
             // Clean up.
@@ -52,17 +51,11 @@ namespace Proto.Promises.Tests
         [Test]
         public void MergePromiseIsResolvedWhenAllPromisesAreAlreadyResolved()
         {
-            var promise1 = Promise.Resolved(1);
             string success = "Success";
-            var promise2 = Promise.Resolved(success);
-
-            promise1.Retain();
-            promise2.Retain();
-            Promise.Manager.HandleCompletes();
 
             bool resolved = false;
 
-            Promise.Merge(promise1, promise2)
+            Promise.Merge(Promise.Resolved(1), Promise.Resolved(success))
                 .Then(values =>
                 {
                     resolved = true;
@@ -71,10 +64,7 @@ namespace Proto.Promises.Tests
                     Assert.AreEqual(success, values.Item2);
                 });
 
-            promise1.Release();
-            promise2.Release();
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(true, resolved);
 
             // Clean up.
@@ -99,7 +89,6 @@ namespace Proto.Promises.Tests
             deferred2.Resolve("Success");
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(true, rejected);
 
             // Clean up.
@@ -124,7 +113,6 @@ namespace Proto.Promises.Tests
             deferred2.Reject("Error!");
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(true, rejected);
 
             // Clean up.
@@ -151,7 +139,6 @@ namespace Proto.Promises.Tests
             deferred2.Promise.Catch((string _) => { });
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(true, rejected);
 
             // Clean up.
@@ -167,12 +154,8 @@ namespace Proto.Promises.Tests
             string rejection = "Error!";
 
             var deferred = Promise.NewDeferred<int>();
-            var promise = Promise.Rejected<int, string>(rejection);
 
-            promise.Retain();
-            Promise.Manager.HandleCompletes();
-
-            Promise.Merge(deferred.Promise, promise)
+            Promise.Merge(deferred.Promise, Promise.Rejected<int, string>(rejection))
                 .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
                 .Catch<string>(ex =>
                 {
@@ -181,10 +164,8 @@ namespace Proto.Promises.Tests
                 });
 
             deferred.Resolve(0);
-            promise.Release();
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(true, rejected);
 
             // Clean up.
@@ -210,7 +191,6 @@ namespace Proto.Promises.Tests
             deferred2.Resolve("Success");
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(true, canceled);
 
             // Clean up.
@@ -235,7 +215,6 @@ namespace Proto.Promises.Tests
             deferred2.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(true, canceled);
 
             // Clean up.
@@ -260,7 +239,6 @@ namespace Proto.Promises.Tests
             deferred2.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(true, canceled);
 
             // Clean up.
@@ -270,18 +248,14 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void MergePromiseIsCancelededWhenAnyPromiseIsAlreadyCanceled()
+        public void MergePromiseIsCanceledWhenAnyPromiseIsAlreadyCanceled()
         {
             bool canceled = false;
             string cancelation = "Cancel!";
 
             var deferred = Promise.NewDeferred<int>();
-            var promise = Promise.Canceled<int, string>(cancelation);
 
-            promise.Retain();
-            Promise.Manager.HandleCompletes();
-
-            Promise.All(deferred.Promise, promise)
+            Promise.Merge(deferred.Promise, Promise.Canceled<int, string>(cancelation))
                 .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
                 .CatchCancelation<string>(ex =>
                 {
@@ -290,10 +264,8 @@ namespace Proto.Promises.Tests
                 });
 
             deferred.Resolve(0);
-            promise.Release();
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(true, canceled);
 
             // Clean up.
@@ -305,7 +277,7 @@ namespace Proto.Promises.Tests
 
 #if PROMISE_PROGRESS
         [Test]
-        public void MergeProgressIsNormalized()
+        public void MergeProgressIsNormalized0()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<string>();
@@ -333,6 +305,51 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(3f / 8f, progress, TestHelper.progressEpsilon);
 
             deferred2.Resolve("Success");
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(4f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred3.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(5f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred3.Resolve(2f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(6f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred4.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(7f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred4.Resolve(true);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(8f / 8f, progress, TestHelper.progressEpsilon);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void MergeProgressIsNormalized1()
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred3 = Promise.NewDeferred<float>();
+            var deferred4 = Promise.NewDeferred<bool>();
+
+            float progress = float.NaN;
+
+            Promise.Merge(deferred1.Promise, Promise.Resolved("Success"), deferred3.Promise, deferred4.Promise)
+                .Progress(p => progress = p);
+
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(2f, progress, TestHelper.progressEpsilon);
+
+            deferred1.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(3f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred1.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(4f / 8f, progress, TestHelper.progressEpsilon);
 

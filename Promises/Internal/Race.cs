@@ -73,8 +73,9 @@ namespace Proto.Promises
                     promise._passThroughs = promisePassThroughs;
 
                     promise._waitCount = (uint) count;
-                    // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
+                    // Retain this until all promises resolve/reject/cancel.
+                    promise.RetainInternal();
 
                     return promise;
                 }
@@ -93,6 +94,7 @@ namespace Proto.Promises
 
                 void IMultiTreeHandleable.Handle(PromisePassThrough passThrough)
                 {
+                    MaybeRelease(--_waitCount == 0);
                     if (_state == State.Pending)
                     {
                         IValueContainer valueContainer = passThrough.ValueContainer;
@@ -100,22 +102,25 @@ namespace Proto.Promises
                         _valueOrPrevious = valueContainer;
                         HandleSelf();
                     }
-                    MaybeRelease(--_waitCount == 0);
                 }
 
                 void IMultiTreeHandleable.Cancel(PromisePassThrough passThrough)
                 {
-                    bool done = --_waitCount == 0;
+                    MaybeRelease(--_waitCount == 0);
                     if (_state == State.Pending)
                     {
                         CancelInternal(passThrough.ValueContainer);
                     }
-                    MaybeRelease(done);
                 }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     _passThroughs.Push(passThrough);
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
                 }
             }
 
@@ -137,8 +142,9 @@ namespace Proto.Promises
                     promise._passThroughs = promisePassThroughs;
 
                     promise._waitCount = (uint) count;
-                    // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
+                    // Retain this until all promises resolve/reject/cancel.
+                    promise.RetainInternal();
 
                     return promise;
                 }
@@ -157,6 +163,7 @@ namespace Proto.Promises
 
                 void IMultiTreeHandleable.Handle(PromisePassThrough passThrough)
                 {
+                    MaybeRelease(--_waitCount == 0);
                     if (_state == State.Pending)
                     {
                         IValueContainer valueContainer = passThrough.ValueContainer;
@@ -164,17 +171,15 @@ namespace Proto.Promises
                         _valueOrPrevious = valueContainer;
                         HandleSelf();
                     }
-                    MaybeRelease(--_waitCount == 0);
                 }
 
                 void IMultiTreeHandleable.Cancel(PromisePassThrough passThrough)
                 {
-                    bool done = --_waitCount == 0;
+                    MaybeRelease(--_waitCount == 0);
                     if (_state == State.Pending)
                     {
                         CancelInternal(passThrough.ValueContainer);
                     }
-                    MaybeRelease(done);
                 }
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
@@ -200,7 +205,11 @@ namespace Proto.Promises
                     uint minWaitDepth = uint.MaxValue;
                     foreach (var passThrough in _passThroughs)
                     {
-                        minWaitDepth = Math.Min(minWaitDepth, passThrough.Owner._waitDepthAndProgress.WholePart);
+                        Promise owner = passThrough.Owner;
+                        if (owner != null)
+                        {
+                            minWaitDepth = Math.Min(minWaitDepth, owner._waitDepthAndProgress.WholePart);
+                        }
                     }
 
                     // Expect the shortest chain to finish first.
@@ -302,7 +311,11 @@ namespace Proto.Promises
                     uint minWaitDepth = uint.MaxValue;
                     foreach (var passThrough in _passThroughs)
                     {
-                        minWaitDepth = Math.Min(minWaitDepth, passThrough.Owner._waitDepthAndProgress.WholePart);
+                        Promise owner = passThrough.Owner;
+                        if (owner != null)
+                        {
+                            minWaitDepth = Math.Min(minWaitDepth, owner._waitDepthAndProgress.WholePart);
+                        }
                     }
 
                     // Expect the shortest chain to finish first.

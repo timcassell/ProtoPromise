@@ -710,14 +710,14 @@ namespace Proto.Promises
                     previous = _valueOrPrevious as Promise;
                     if (_secondPrevious)
                     {
-                        if (firstSubscribe)
+                        if (!firstSubscribe)
                         {
-                            // Subscribe this to the returned promise.
-                            progressListener = this;
+                            return false;
                         }
-                        return firstSubscribe;
+                        // Subscribe this to the returned promise.
+                        progressListener = this;
                     }
-                    return true;
+                    return previous != null;
                 }
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
@@ -825,14 +825,14 @@ namespace Proto.Promises
                     previous = _valueOrPrevious as Promise;
                     if (_secondPrevious)
                     {
-                        if (firstSubscribe)
+                        if (!firstSubscribe)
                         {
-                            // Subscribe this to the returned promise.
-                            progressListener = this;
+                            return false;
                         }
-                        return firstSubscribe;
+                        // Subscribe this to the returned promise.
+                        progressListener = this;
                     }
-                    return true;
+                    return previous != null;
                 }
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)

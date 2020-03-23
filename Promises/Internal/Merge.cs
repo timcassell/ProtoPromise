@@ -41,7 +41,6 @@ namespace Proto.Promises
                 public static MergePromise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved, int count, int skipFrames)
                 {
                     var promise = _pool.IsNotEmpty ? (MergePromise<T>) _pool.Pop() : new MergePromise<T>();
-                    promise._valueOrPrevious = ResolveContainer<T>.GetOrCreate(value);
 
                     foreach (var passThrough in promisePassThroughs)
                     {
@@ -52,9 +51,13 @@ namespace Proto.Promises
                     promise._onPromiseResolved = onPromiseResolved;
 
                     promise._waitCount = (uint) count;
-                    // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
+                    // Retain this until all promises resolve/reject/cancel.
+                    promise.RetainInternal();
 
+                    var container = ResolveContainer<T>.GetOrCreate(value);
+                    container.Retain();
+                    promise._valueOrPrevious = container;
                     return promise;
                 }
 
@@ -66,17 +69,20 @@ namespace Proto.Promises
                         {
                             _passThroughs.Pop().Release();
                         }
+                        ReleaseInternal();
                     }
                 }
 
                 void IMultiTreeHandleable.Handle(PromisePassThrough passThrough)
                 {
                     bool done = --_waitCount == 0;
+                    MaybeRelease(done);
                     if (_state == State.Pending)
                     {
                         IValueContainer valueContainer = passThrough.ValueContainer;
                         if (valueContainer.GetState() == State.Rejected)
                         {
+                            ((ResolveContainer<T>) _valueOrPrevious).Release();
                             RejectInternal(valueContainer);
                         }
                         else
@@ -84,8 +90,7 @@ namespace Proto.Promises
                             _onPromiseResolved.Invoke(valueContainer, (ResolveContainer<T>) _valueOrPrevious, passThrough._index);
                             if (done)
                             {
-                                _valueOrPrevious = ResolveContainerVoid.GetOrCreate();
-                                AddToHandleQueueFront(this);
+                                ResolveInternal();
                             }
                             else
                             {
@@ -93,17 +98,16 @@ namespace Proto.Promises
                             }
                         }
                     }
-                    MaybeRelease(done);
                 }
 
                 void IMultiTreeHandleable.Cancel(PromisePassThrough passThrough)
                 {
-                    bool done = --_waitCount == 0;
+                    MaybeRelease(--_waitCount == 0);
                     if (_state == State.Pending)
                     {
+                        ((ResolveContainer<T>) _valueOrPrevious).Release();
                         CancelInternal(passThrough.ValueContainer);
                     }
-                    MaybeRelease(done);
                 }
 
                 partial void IncrementProgress(PromisePassThrough passThrough);
@@ -138,9 +142,13 @@ namespace Proto.Promises
                         uint maxWaitDepth = 0;
                         foreach (var passThrough in _passThroughs)
                         {
-                            uint waitDepth = passThrough.Owner._waitDepthAndProgress.WholePart;
-                            expectedProgressCounter += waitDepth;
-                            maxWaitDepth = Math.Max(maxWaitDepth, waitDepth);
+                            Promise owner = passThrough.Owner;
+                            if (owner != null)
+                            {
+                                uint waitDepth = owner._waitDepthAndProgress.WholePart;
+                                expectedProgressCounter += waitDepth;
+                                maxWaitDepth = Math.Max(maxWaitDepth, waitDepth);
+                            }
                         }
                         _expected = expectedProgressCounter + _waitCount;
 

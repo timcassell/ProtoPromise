@@ -87,7 +87,7 @@ namespace Proto.Promises
 #endif
 
 #if PROMISE_DEBUG
-            public static PoolType ObjectPooling { get { return default(PoolType); } set { } }
+            public static PoolType ObjectPooling { get { return PoolType.Internal; } set { } }
 #else
             private static PoolType _objectPooling = PoolType.Internal;
             public static PoolType ObjectPooling { get { return _objectPooling; } set { _objectPooling = value; } }

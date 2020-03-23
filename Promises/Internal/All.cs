@@ -98,8 +98,9 @@ namespace Proto.Promises
                     promise._passThroughs = promisePassThroughs;
 
                     promise._waitCount = (uint) count;
-                    // Retain this until all promises resolve/reject/cancel
                     promise.Reset(skipFrames + 1);
+                    // Retain this until all promises resolve/reject/cancel.
+                    promise.RetainInternal();
 
                     return promise;
                 }
@@ -112,12 +113,14 @@ namespace Proto.Promises
                         {
                             _passThroughs.Pop().Release();
                         }
+                        ReleaseInternal();
                     }
                 }
 
                 void IMultiTreeHandleable.Handle(PromisePassThrough passThrough)
                 {
                     bool done = --_waitCount == 0;
+                    MaybeRelease(done);
                     if (_state == State.Pending)
                     {
                         IValueContainer valueContainer = passThrough.ValueContainer;
@@ -128,24 +131,22 @@ namespace Proto.Promises
                         else if (done)
                         {
                             _valueOrPrevious = ResolveContainerVoid.GetOrCreate();
-                            AddToHandleQueueFront(this);
+                            ResolveInternal();
                         }
                         else
                         {
                             IncrementProgress(passThrough);
                         }
                     }
-                    MaybeRelease(done);
                 }
 
                 void IMultiTreeHandleable.Cancel(PromisePassThrough passThrough)
                 {
-                    bool done = --_waitCount == 0;
+                    MaybeRelease(--_waitCount == 0);
                     if (_state == State.Pending)
                     {
                         CancelInternal(passThrough.ValueContainer);
                     }
-                    MaybeRelease(done);
                 }
 
                 partial void IncrementProgress(PromisePassThrough passThrough);
@@ -180,9 +181,13 @@ namespace Proto.Promises
                         uint maxWaitDepth = 0;
                         foreach (var passThrough in _passThroughs)
                         {
-                            uint waitDepth = passThrough.Owner._waitDepthAndProgress.WholePart;
-                            expectedProgressCounter += waitDepth;
-                            maxWaitDepth = Math.Max(maxWaitDepth, waitDepth);
+                            Promise owner = passThrough.Owner;
+                            if (owner != null)
+                            {
+                                uint waitDepth = owner._waitDepthAndProgress.WholePart;
+                                expectedProgressCounter += waitDepth;
+                                maxWaitDepth = Math.Max(maxWaitDepth, waitDepth);
+                            }
                         }
                         _expected = expectedProgressCounter + _waitCount;
 

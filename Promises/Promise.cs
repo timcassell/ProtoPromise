@@ -50,10 +50,12 @@ namespace Proto.Promises
         {
             ValidateOperation(this, 1);
 #if PROMISE_DEBUG
-            checked // If this fails, change _userRetainCounter to ulong.
+            // Make sure Retain doesn't overflow the ushort. 2 retains are reserved for internal use.
+            if (_userRetainCounter == ushort.MaxValue - 2)
             {
-                ++_userRetainCounter;
+                throw new OverflowException();
             }
+            ++_userRetainCounter;
 #endif
             RetainInternal();
         }
@@ -72,7 +74,13 @@ namespace Proto.Promises
             }
             --_userRetainCounter;
 #endif
-            ReleaseInternal();
+            if (ReleaseWithoutDisposeCheck() == 0)
+            {
+                // Set retain count to 1 and add to handle queue so this will be disposed asynchronously.
+                // This means the Promise object will still be usable until the next handle is ran.
+                _retainCounter = 1;
+                AddToHandleQueueFront(this);
+            }
         }
 
         /// <summary>
@@ -169,17 +177,7 @@ namespace Proto.Promises
             ValidateCancel(1);
             ValidateOperation(this, 1);
 
-            if (_state != State.Pending)
-            {
-                return;
-            }
-
-            _state = State.Canceled;
-            var cancelValue = Internal.CancelContainerVoid.GetOrCreate();
-            _valueOrPrevious = cancelValue;
-            OnCancel();
-            AddBranchesToCancelQueueBack(cancelValue);
-            CancelProgressListeners();
+            CancelDirectIfPending();
         }
 
         /// <summary>
@@ -194,18 +192,7 @@ namespace Proto.Promises
             ValidateCancel(1);
             ValidateOperation(this, 1);
 
-            if (_state != State.Pending)
-            {
-                return;
-            }
-
-            _state = State.Canceled;
-            var cancelValue = Internal.CancelContainer<TCancel>.GetOrCreate(reason);
-            cancelValue.Retain();
-            _valueOrPrevious = cancelValue;
-            OnCancel();
-            AddBranchesToCancelQueueBack(cancelValue);
-            CancelProgressListeners();
+            CancelDirectIfPending(reason);
         }
 
         /// <summary>

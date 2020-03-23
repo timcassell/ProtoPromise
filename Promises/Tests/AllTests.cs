@@ -39,11 +39,13 @@ namespace Proto.Promises.Tests
             Promise.All((Promise) deferred1.Promise, deferred2.Promise)
                 .Then(() => ++completed);
 
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(0, completed);
+
             deferred1.Resolve(1);
             deferred2.Resolve(2);
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(2, completed);
 
             // Clean up.
@@ -81,25 +83,15 @@ namespace Proto.Promises.Tests
         [Test]
         public void AllPromiseIsResolvedWhenAllPromisesAreAlreadyResolved()
         {
-            var promise1 = Promise.Resolved(1);
-            var promise2 = Promise.Resolved(1);
-
-            promise1.Retain();
-            promise2.Retain();
-            Promise.Manager.HandleCompletes();
-
             var completed = 0;
 
-            Promise.All(promise1, promise2)
+            Promise.All(Promise.Resolved(1), Promise.Resolved(1))
                 .Then(v => ++completed);
 
-            Promise.All((Promise) promise1, promise2)
+            Promise.All(Promise.Resolved(), Promise.Resolved())
                 .Then(() => ++completed);
 
-            promise1.Release();
-            promise2.Release();
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(2, completed);
 
             // Clean up.
@@ -453,6 +445,96 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(3f / 8f, progress, TestHelper.progressEpsilon);
 
             deferred2.Resolve(1);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(4f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred3.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(5f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred3.Resolve(1);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(6f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred4.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(7f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred4.Resolve(1);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(8f / 8f, progress, TestHelper.progressEpsilon);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void AllProgressIsNormalized2()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred3 = Promise.NewDeferred();
+            var deferred4 = Promise.NewDeferred();
+
+            float progress = float.NaN;
+
+            Promise.All(deferred1.Promise, Promise.Resolved(), deferred3.Promise, deferred4.Promise)
+                .Progress(p => progress = p);
+
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(2f, progress, 0f);
+
+            deferred1.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(3f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred1.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(4f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred3.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(5f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred3.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(6f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred4.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(7f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred4.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(8f / 8f, progress, TestHelper.progressEpsilon);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void AllProgressIsNormalized3()
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred3 = Promise.NewDeferred<int>();
+            var deferred4 = Promise.NewDeferred<int>();
+
+            float progress = float.NaN;
+
+            Promise.All(deferred1.Promise, Promise.Resolved(1), deferred3.Promise, deferred4.Promise)
+                .Progress(p => progress = p);
+
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(2f, progress, 0f);
+
+            deferred1.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(3f / 8f, progress, TestHelper.progressEpsilon);
+
+            deferred1.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(4f / 8f, progress, TestHelper.progressEpsilon);
 
