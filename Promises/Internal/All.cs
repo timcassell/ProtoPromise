@@ -91,10 +91,6 @@ namespace Proto.Promises
                 {
                     var promise = _pool.IsNotEmpty ? (AllPromise0) _pool.Pop() : new AllPromise0();
 
-                    foreach (var passThrough in promisePassThroughs)
-                    {
-                        passThrough.target = promise;
-                    }
                     promise._passThroughs = promisePassThroughs;
 
                     promise._waitCount = (uint) count;
@@ -102,11 +98,37 @@ namespace Proto.Promises
                     // Retain this until all promises resolve/reject/cancel.
                     promise.RetainInternal();
 
+                    foreach (var passThrough in promisePassThroughs)
+                    {
+                        passThrough.SetTargetAndAddToOwner(promise);
+                    }
+
                     return promise;
                 }
 
-                private void MaybeRelease(bool done)
+                protected override void Handle()
                 {
+                    HandleSelf();
+                }
+
+                bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, Promise owner, int index)
+                {
+                    bool done = --_waitCount == 0;
+                    bool handle = false;
+                    if (_valueOrPrevious == null)
+                    {
+                        owner._wasWaitedOn = true;
+                        if (owner._state != State.Resolved | done)
+                        {
+                            valueContainer.Retain();
+                            _valueOrPrevious = valueContainer;
+                            handle = true;
+                        }
+                        else
+                        {
+                            IncrementProgress(owner);
+                        }
+                    }
                     if (done)
                     {
                         while (_passThroughs.IsNotEmpty)
@@ -115,46 +137,15 @@ namespace Proto.Promises
                         }
                         ReleaseInternal();
                     }
+                    return handle;
                 }
-
-                void IMultiTreeHandleable.Handle(PromisePassThrough passThrough)
-                {
-                    bool done = --_waitCount == 0;
-                    MaybeRelease(done);
-                    if (_state == State.Pending)
-                    {
-                        IValueContainer valueContainer = passThrough.ValueContainer;
-                        if (valueContainer.GetState() == State.Rejected)
-                        {
-                            RejectInternal(valueContainer);
-                        }
-                        else if (done)
-                        {
-                            _valueOrPrevious = ResolveContainerVoid.GetOrCreate();
-                            ResolveInternal();
-                        }
-                        else
-                        {
-                            IncrementProgress(passThrough);
-                        }
-                    }
-                }
-
-                void IMultiTreeHandleable.Cancel(PromisePassThrough passThrough)
-                {
-                    MaybeRelease(--_waitCount == 0);
-                    if (_state == State.Pending)
-                    {
-                        CancelInternal(passThrough.ValueContainer);
-                    }
-                }
-
-                partial void IncrementProgress(PromisePassThrough passThrough);
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     _passThroughs.Push(passThrough);
                 }
+
+                partial void IncrementProgress(Promise feed);
             }
 
 #if PROMISE_PROGRESS
@@ -196,10 +187,10 @@ namespace Proto.Promises
                     }
                 }
 
-                partial void IncrementProgress(PromisePassThrough passThrough)
+                partial void IncrementProgress(Promise feed)
                 {
                     bool subscribedProgress = _progressListeners.IsNotEmpty;
-                    uint increment = subscribedProgress ? passThrough._progress.GetDifferenceToNextWholeAsUInt32() : passThrough._progress.GetIncrementedWholeTruncated().ToUInt32();
+                    uint increment = subscribedProgress ? feed._waitDepthAndProgress.GetDifferenceToNextWholeAsUInt32() : feed._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32();
                     IncrementProgress(increment);
                 }
 
@@ -241,6 +232,7 @@ namespace Proto.Promises
                     _currentAmount.Increment(amount);
                     if (!_invokingProgress & _state == State.Pending)
                     {
+                        RetainInternal();
                         _invokingProgress = true;
                         AddToFrontOfProgressQueue(this);
                     }
@@ -255,6 +247,7 @@ namespace Proto.Promises
                 {
                     if (_state != State.Pending | _suspended)
                     {
+                        ReleaseInternal();
                         return;
                     }
 
@@ -270,6 +263,8 @@ namespace Proto.Promises
                     {
                         progressListener.IncrementProgress(this, increment);
                     }
+
+                    ReleaseInternal();
                 }
             }
 #endif

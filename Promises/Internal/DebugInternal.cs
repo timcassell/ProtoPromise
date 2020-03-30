@@ -19,9 +19,16 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable CS0618 // Type or member is obsolete
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
+#pragma warning disable RECS0085 // When initializing explicitly typed local variable or array type, array creation expression can be replaced with array initializer.
 
 using System;
+using System.Collections.Generic;
 using Proto.Utils;
+
+#if PROMISE_DEBUG
+using System.Diagnostics;
+using System.Linq;
+#endif
 
 namespace Proto.Promises
 {
@@ -37,15 +44,28 @@ namespace Proto.Promises
         static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames);
 
         static partial void SetCreatedStacktrace(Internal.IStacktraceable stacktraceable, int skipFrames);
-        partial void SetOwnerAndRejectStacktrace(Internal.IRejectionContainer unhandledException, bool generateStacktrace);
+        partial void SetCreatedAndRejectedStacktrace(Internal.IRejectionContainer unhandledException, bool generateStacktrace);
         partial void SetNotDisposed();
+        static partial void SetCurrentInvoker(Internal.IStacktraceable current);
+        static partial void ClearCurrentInvoker();
 #if PROMISE_DEBUG
-        private ushort _userRetainCounter;
-        private string _createdStackTrace;
-        string Internal.IStacktraceable.Stacktrace { get { return _createdStackTrace; } set { _createdStackTrace = value; } }
-
         private static int idCounter;
         protected readonly int _id;
+
+        private ushort _userRetainCounter;
+
+        private static Internal.DeepStacktrace _currentStacktrace;
+        Internal.DeepStacktrace Internal.IStacktraceable.Stacktrace { get; set; }
+
+        static partial void SetCurrentInvoker(Internal.IStacktraceable current)
+        {
+            _currentStacktrace = current.Stacktrace;
+        }
+
+        static partial void ClearCurrentInvoker()
+        {
+            _currentStacktrace = null;
+        }
 
         private static object DisposedObject
         {
@@ -57,7 +77,7 @@ namespace Proto.Promises
 
         private static string GetFormattedStacktrace(Internal.IStacktraceable traceable)
         {
-            return FormatStackTrace(traceable.Stacktrace);
+            return traceable.Stacktrace.ToString();
         }
 
         partial void SetNotDisposed()
@@ -67,6 +87,32 @@ namespace Proto.Promises
 
         partial class Internal
         {
+            public class DeepStacktrace
+            {
+                private readonly StackTrace _stacktrace;
+                private readonly DeepStacktrace _next;
+
+                public DeepStacktrace(StackTrace stacktrace, DeepStacktrace higherStacktrace)
+                {
+                    _stacktrace = stacktrace;
+                    _next = higherStacktrace;
+                }
+
+                public override string ToString()
+                {
+                    if (_stacktrace == null)
+                    {
+                        return null;
+                    }
+                    List<StackTrace> stacktraces = new List<StackTrace>();
+                    for (DeepStacktrace current = _next; current != null; current = current._next)
+                    {
+                        stacktraces.Add(current._stacktrace);
+                    }
+                    return FormatStackTrace(stacktraces);
+                }
+            }
+
             // This allows us to re-use the reference field without having to add another bool field.
             public sealed class DisposedChecker
             {
@@ -78,50 +124,82 @@ namespace Proto.Promises
 
         static partial void SetCreatedStacktrace(Internal.IStacktraceable stacktraceable, int skipFrames)
         {
-            if (Config.DebugStacktraceGenerator == GeneratedStacktrace.All)
-            {
-                stacktraceable.Stacktrace = GetStackTrace(skipFrames + 1);
-            }
-        }
-
-        partial void SetOwnerAndRejectStacktrace(Internal.IRejectionContainer unhandledException, bool generateStacktrace)
-        {
-            string stacktrace = generateStacktrace & Config.DebugStacktraceGenerator != GeneratedStacktrace.None
-                ? new System.Diagnostics.StackTrace(1, true).ToString()
+            StackTrace stacktrace = Config.DebugStacktraceGenerator == GeneratedStacktrace.All
+                ? GetStackTrace(skipFrames + 1)
                 : null;
-            unhandledException.SetOwnerAndRejectedStacktrace(this, stacktrace);
+            stacktraceable.Stacktrace = new Internal.DeepStacktrace(stacktrace, _currentStacktrace);
         }
 
-        private static string GetStackTrace(int skipFrames)
+        partial void SetCreatedAndRejectedStacktrace(Internal.IRejectionContainer unhandledException, bool generateStacktrace)
         {
-            return new System.Diagnostics.StackTrace(skipFrames + 1, true).ToString();
+            StackTrace stacktrace = generateStacktrace & Config.DebugStacktraceGenerator != GeneratedStacktrace.None
+                ? GetStackTrace(1)
+                : null;
+            unhandledException.SetCreatedAndRejectedStacktrace(stacktrace, ((Internal.IStacktraceable) this).Stacktrace);
+        }
+
+        private static StackTrace GetStackTrace(int skipFrames)
+        {
+            return new StackTrace(skipFrames + 1, true);
         }
 
         private static string GetFormattedStacktrace(int skipFrames)
         {
-            return FormatStackTrace(GetStackTrace(skipFrames + 1));
+            return FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
         }
 
-        private static readonly System.Text.StringBuilder _stringBuilder = new System.Text.StringBuilder(128);
-
-        private static string FormatStackTrace(string stackTrace)
+        private static string FormatStackTrace(IEnumerable<StackTrace> stacktraces)
         {
-            if (string.IsNullOrEmpty(stackTrace))
+#if !CSHARP_7_OR_LATER
+            // Format stacktrace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
+            List<string> _stacktraces = new List<string>();
+            string[] separator = new string[1] { Environment.NewLine + " " };
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            foreach (StackTrace st in stacktraces)
             {
-                return stackTrace;
+                string stacktrace = st.ToString().Substring(1);
+                foreach (var trace in stacktrace.Split(separator, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (!trace.Contains("Proto.Promises"))
+                    {
+                        sb.Append(trace)
+                            .Replace(":line ", ":")
+                            .Replace("(", " (")
+                            .Replace(") in", ") [0x00000] in"); // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
+                        _stacktraces.Add(sb.ToString());
+                        sb.Length = 0;
+                    }
+                }
+            }
+            foreach (var trace in _stacktraces)
+            {
+                sb.Append(trace).Append(" " + Environment.NewLine);
+            }
+            sb.Append(" ");
+            return sb.ToString();
+#else
+            // StackTrace.ToString() format issue was fixed in the new runtime.
+            List<StackFrame> stackFrames = new List<StackFrame>();
+            foreach (StackTrace stacktrace in stacktraces)
+            {
+                stackFrames.AddRange(stacktrace.GetFrames());
             }
 
-            _stringBuilder.Length = 0;
-            _stringBuilder.Append(stackTrace);
+            var trace = stackFrames
+                .Where(frame =>
+                {
+                    // Remove all methods from this library.
+                    Type methodClassType = frame.GetMethod().DeclaringType;
+                    bool isInThisAssembly = methodClassType.Assembly == typeof(Promise).Assembly;
+                    // If method is in this assembly, check the name in case this library is used with raw source in the same assembly as user code.
+                    return !isInThisAssembly || !methodClassType.Namespace.StartsWith("Proto.Promises", StringComparison.Ordinal);
+                })
+                // Create a new StackTrace to get proper formatting.
+                .Select(frame => new StackTrace(frame).ToString());
 
-            // Format stacktrace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
-            return _stringBuilder.Remove(0, 1)
-                .Replace(":line ", ":")
-                .Replace("\n ", " \n")
-                .Replace("(", " (")
-                .Replace(") in", ") [0x00000] in") // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
-                .Append(" ")
-                .ToString();
+            return string.Join(Environment.NewLine, trace.ToArray());
+#endif
+
         }
 
         partial void ValidateReturn(Promise other)
@@ -140,7 +218,7 @@ namespace Proto.Promises
 
             // A promise cannot wait on itself.
 
-            // This allows us to check AllPromises and RacePromises iteratively.
+            // This allows us to check All/Race/First Promises iteratively.
             ValueLinkedStack<Internal.PromisePassThrough> passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>();
             var prev = other;
         Repeat:
@@ -148,7 +226,7 @@ namespace Proto.Promises
             {
                 if (prev == this)
                 {
-                    throw new InvalidReturnException("Circular Promise chain detected.", other._createdStackTrace);
+                    throw new InvalidReturnException("Circular Promise chain detected.", ((Internal.IStacktraceable) other).Stacktrace.ToString());
                 }
                 prev.BorrowPassthroughs(ref passThroughs);
             }
@@ -158,7 +236,7 @@ namespace Proto.Promises
                 // passThroughs are removed from their targets before adding to passThroughs. Add them back here.
                 var passThrough = passThroughs.Pop();
                 prev = passThrough.Owner;
-                passThrough.target.ReAdd(passThrough);
+                passThrough.Target.ReAdd(passThrough);
                 goto Repeat;
             }
         }
@@ -237,7 +315,7 @@ namespace Proto.Promises
             return string.Format("Type: Promise, Id: {0}, State: {1}", _id, _state);
         }
 #else
-        private static string GetFormattedStacktrace(int skipFrames)
+            private static string GetFormattedStacktrace(int skipFrames)
         {
             return null;
         }
@@ -266,28 +344,28 @@ namespace Proto.Promises
             public interface IStacktraceable
             {
 #if PROMISE_DEBUG
-                string Stacktrace { get; set; }
+                DeepStacktrace Stacktrace { get; set; }
 #endif
             }
 
             partial class FinallyDelegate : IStacktraceable
             {
 #if PROMISE_DEBUG
-                string IStacktraceable.Stacktrace { get; set; }
+                DeepStacktrace IStacktraceable.Stacktrace { get; set; }
 #endif
             }
 
             partial class FinallyDelegateCapture<TCapture> : IStacktraceable
             {
 #if PROMISE_DEBUG
-                string IStacktraceable.Stacktrace { get; set; }
+                DeepStacktrace IStacktraceable.Stacktrace { get; set; }
 #endif
             }
 
             partial class PotentialCancelation : IStacktraceable
             {
 #if PROMISE_DEBUG
-                string IStacktraceable.Stacktrace { get; set; }
+                DeepStacktrace IStacktraceable.Stacktrace { get; set; }
 #endif
             }
         }

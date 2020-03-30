@@ -43,6 +43,10 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(0, completed);
 
             deferred1.Resolve(1);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(0, completed);
+
             deferred2.Resolve(2);
 
             Promise.Manager.HandleCompletes();
@@ -50,7 +54,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -76,7 +80,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -96,7 +100,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -117,15 +121,18 @@ namespace Proto.Promises.Tests
                 .Catch<string>(e => { ++errors; });
 
             deferred1.Reject("Error!");
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, errors);
+
             deferred2.Resolve(2);
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(2, errors);
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -146,15 +153,18 @@ namespace Proto.Promises.Tests
                 .Catch<string>(e => { ++errors; });
 
             deferred1.Resolve(2);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(0, errors);
+
             deferred2.Reject("Error!");
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(2, errors);
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -163,6 +173,9 @@ namespace Proto.Promises.Tests
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
+
+            deferred1.Promise.Catch((string _) => { });
+            deferred2.Promise.Catch((string _) => { });
 
             var errors = 0;
 
@@ -175,18 +188,18 @@ namespace Proto.Promises.Tests
                 .Catch<string>(e => { ++errors; });
 
             deferred1.Reject("Error!");
-            deferred2.Reject("Error!");
-
-            deferred1.Promise.Catch((string _) => { });
-            deferred2.Promise.Catch((string _) => { });
 
             Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, errors);
 
+            deferred2.Reject("Error!");
+
+            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, errors);
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -219,15 +232,18 @@ namespace Proto.Promises.Tests
                 });
 
             deferred.Resolve(0);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, rejected);
+
             promise.Release();
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(2, rejected);
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -249,15 +265,18 @@ namespace Proto.Promises.Tests
                 .CatchCancelation<string>(e => { ++cancelations; });
 
             deferred1.Cancel("Cancel!");
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, cancelations);
+
             deferred2.Resolve(2);
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(2, cancelations);
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -278,15 +297,18 @@ namespace Proto.Promises.Tests
                 .CatchCancelation<string>(e => { ++cancelations; });
 
             deferred1.Resolve(2);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(0, cancelations);
+
             deferred2.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(2, cancelations);
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -307,22 +329,25 @@ namespace Proto.Promises.Tests
                 .CatchCancelation<string>(e => { ++cancelations; });
 
             deferred1.Cancel("Cancel!");
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, cancelations);
+
             deferred2.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(2, cancelations);
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
         [Test]
         public void AllPromiseIsCancelededWhenAnyPromiseIsAlreadyCanceled()
         {
-            int rejected = 0;
+            int cancelations = 0;
             string cancelation = "Cancel!";
 
             var deferred = Promise.NewDeferred<int>();
@@ -336,7 +361,7 @@ namespace Proto.Promises.Tests
                 .CatchCancelation<string>(ex =>
                 {
                     Assert.AreEqual(cancelation, ex);
-                    ++rejected;
+                    ++cancelations;
                 });
 
             Promise.All((Promise) deferred.Promise, promise)
@@ -344,19 +369,22 @@ namespace Proto.Promises.Tests
                 .CatchCancelation<string>(ex =>
                 {
                     Assert.AreEqual(cancelation, ex);
-                    ++rejected;
+                    ++cancelations;
                 });
 
             deferred.Resolve(0);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, cancelations);
+
             promise.Release();
 
             Promise.Manager.HandleCompletes();
-
-            Assert.AreEqual(2, rejected);
+            Assert.AreEqual(2, cancelations);
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 #endif
@@ -376,7 +404,7 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p);
 
             Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0f, progress, 0f);
+            Assert.AreEqual(0f / 8f, progress, 0f);
 
             deferred1.ReportProgress(0.5f);
             Promise.Manager.HandleCompletesAndProgress();
@@ -430,7 +458,7 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p);
 
             Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0f, progress, 0f);
+            Assert.AreEqual(0f / 8f, progress, 0f);
 
             deferred1.ReportProgress(0.5f);
             Promise.Manager.HandleCompletesAndProgress();
@@ -483,7 +511,7 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p);
 
             Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(2f, progress, 0f);
+            Assert.AreEqual(2f / 8f, progress, 0f);
 
             deferred1.ReportProgress(0.5f);
             Promise.Manager.HandleCompletesAndProgress();
@@ -528,7 +556,7 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p);
 
             Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(2f, progress, 0f);
+            Assert.AreEqual(2f / 8f, progress, 0f);
 
             deferred1.ReportProgress(0.5f);
             Promise.Manager.HandleCompletesAndProgress();

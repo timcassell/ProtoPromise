@@ -1,4 +1,10 @@
-﻿using System;
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+# endif
+
+using System;
 using Proto.Utils;
 
 namespace Proto.Promises
@@ -52,16 +58,16 @@ namespace Proto.Promises
         /// </summary>
         void CatchCancelation(Action onCanceled);
         /// <summary>
-        /// Add a cancel callback.
-        /// <para/>If this instance is canceled with any or no reason, <paramref name="onCanceled"/> will be invoked with <paramref name="captureValue"/>.
-        /// </summary>
-        void CatchCancelation<TCapture>(TCapture captureValue, Action<TCapture> onCanceled);
-        /// <summary>
         /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
         /// <para/>If/when this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with that reason.
         /// <para/>If/when this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
         /// </summary>
         IPotentialCancelation CatchCancelation<TCancel>(Action<TCancel> onCanceled);
+        /// <summary>
+        /// Add a cancel callback.
+        /// <para/>If this instance is canceled with any or no reason, <paramref name="onCanceled"/> will be invoked with <paramref name="captureValue"/>.
+        /// </summary>
+        void CatchCancelation<TCapture>(TCapture captureValue, Action<TCapture> onCanceled);
         /// <summary>
         /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
         /// <para/>If/when this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with <paramref name="captureValue"/> and that reason.
@@ -90,13 +96,12 @@ namespace Proto.Promises
                 State GetStateAndValueAs<U>(out U value);
                 bool TryGetValueAs<U>(out U value);
 
-                void SetNewOwner(Promise newOwner, bool appendStacktrace);
                 void ReleaseAndMaybeAddToUnhandledStack();
             }
 
             public interface IExceptionToContainer
             {
-                IValueContainer ToContainer();
+                IValueContainer ToContainer(IStacktraceable traceable);
             }
 
             public interface ICantHandleException
@@ -106,7 +111,9 @@ namespace Proto.Promises
 
             public interface IRejectionContainer : IValueContainer
             {
-                void SetOwnerAndRejectedStacktrace(Promise owner, string rejectedStacktrace);
+#if PROMISE_DEBUG
+                void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, DeepStacktrace createdStacktraces);
+#endif
             }
 
             public interface IDelegateResolve : IRetainable
@@ -130,8 +137,7 @@ namespace Proto.Promises
 
             public partial interface IMultiTreeHandleable : ITreeHandleable
             {
-                void Handle(PromisePassThrough passThrough);
-                void Cancel(PromisePassThrough passThrough);
+                bool Handle(IValueContainer valueContainer, Promise owner, int index);
                 void ReAdd(PromisePassThrough passThrough);
             }
         }

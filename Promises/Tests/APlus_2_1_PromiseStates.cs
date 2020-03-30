@@ -30,7 +30,7 @@ namespace Proto.Promises.Tests
 
                 // Clean up.
                 GC.Collect();
-                Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
         }
@@ -64,7 +64,7 @@ namespace Proto.Promises.Tests
 
                 // Clean up.
                 GC.Collect();
-                Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
 
@@ -104,7 +104,7 @@ namespace Proto.Promises.Tests
 
                 // Clean up.
                 GC.Collect();
-                Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
         }
@@ -138,7 +138,7 @@ namespace Proto.Promises.Tests
 
                 // Clean up.
                 GC.Collect();
-                Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
 
@@ -185,7 +185,7 @@ namespace Proto.Promises.Tests
 
                 // Clean up.
                 GC.Collect();
-                Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
 
@@ -228,7 +228,7 @@ namespace Proto.Promises.Tests
 
                 // Clean up.
                 GC.Collect();
-                Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
         }

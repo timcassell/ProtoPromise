@@ -318,9 +318,13 @@ namespace Proto.Promises
 
                 private RejectExceptionInternal() { }
 
-                public IValueContainer ToContainer()
+                public IValueContainer ToContainer(IStacktraceable traceable)
                 {
-                    return RejectionContainer<T>.GetOrCreate(Value);
+                    var rejection = CreateRejection(Value);
+#if PROMISE_DEBUG
+                    rejection.SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Stacktrace);
+#endif
+                    return rejection;
                 }
 
                 public void AddToUnhandledStack(IStacktraceable traceable)
@@ -341,7 +345,7 @@ namespace Proto.Promises
 
                 private CancelExceptionVoidInternal() { }
 
-                public IValueContainer ToContainer()
+                public IValueContainer ToContainer(IStacktraceable traceable)
                 {
                     return CancelContainerVoid.GetOrCreate();
                 }
@@ -362,7 +366,7 @@ namespace Proto.Promises
 
                 private CancelExceptionInternal() { }
 
-                public IValueContainer ToContainer()
+                public IValueContainer ToContainer(IStacktraceable traceable)
                 {
                     return CancelContainer<T>.GetOrCreate(Value);
                 }

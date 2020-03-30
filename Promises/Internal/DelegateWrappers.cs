@@ -38,6 +38,7 @@ namespace Proto.Promises
                 private void InvokeAndCatchAndDispose()
                 {
                     var callback = _onFinally;
+                    SetCurrentInvoker(this);
                     Dispose();
                     try
                     {
@@ -47,6 +48,7 @@ namespace Proto.Promises
                     {
                         AddRejectionToUnhandledStack(e, this);
                     }
+                    ClearCurrentInvoker();
                 }
 
                 void Dispose()
@@ -618,6 +620,7 @@ namespace Proto.Promises
                 {
                     var value = _capturedValue;
                     var callback = _onFinally;
+                    SetCurrentInvoker(this);
                     Dispose();
                     try
                     {
@@ -627,6 +630,7 @@ namespace Proto.Promises
                     {
                         AddRejectionToUnhandledStack(e, this);
                     }
+                    ClearCurrentInvoker();
                 }
 
                 void Dispose()

@@ -242,6 +242,7 @@ namespace Proto.Promises
         {
             try
             {
+                SetCurrentInvoker(this);
                 Execute();
             }
             catch (RethrowException)
@@ -261,7 +262,7 @@ namespace Proto.Promises
             {
                 if (_state == State.Pending)
                 {
-                    CancelInternal(((Internal.IExceptionToContainer) e).ToContainer());
+                    CancelInternal(((Internal.IExceptionToContainer) e).ToContainer(this));
                 }
                 else
                 {
@@ -291,7 +292,7 @@ namespace Proto.Promises
                 else
 #endif
                 {
-                    RejectInternal(((Internal.IExceptionToContainer) e).ToContainer());
+                    RejectInternal(((Internal.IExceptionToContainer) e).ToContainer(this));
                 }
             }
             catch (Exception e)
@@ -306,22 +307,20 @@ namespace Proto.Promises
 #endif
                 {
                     var rejection = CreateRejection(e);
-                    SetOwnerAndRejectStacktrace(rejection, false);
+                    SetCreatedAndRejectedStacktrace(rejection, false);
                     RejectInternal(rejection);
                 }
             }
-            finally
-            {
-                Internal._invokingResolved = false;
-                Internal._invokingRejected = false;
-            }
+            Internal._invokingResolved = false;
+            Internal._invokingRejected = false;
+            ClearCurrentInvoker();
         }
 
         private void RejectDirect<TReject>(TReject reason, bool generateStacktrace)
         {
             _state = State.Rejected;
             var rejection = CreateRejection(reason);
-            SetOwnerAndRejectStacktrace(rejection, generateStacktrace);
+            SetCreatedAndRejectedStacktrace(rejection, generateStacktrace);
             _valueOrPrevious = rejection;
             rejection.Retain();
             AddBranchesToHandleQueueBack(rejection);
@@ -333,23 +332,23 @@ namespace Proto.Promises
         {
             // Avoid boxing value types.
             Type type = typeof(TReject);
+            if (type.IsClass)
+            {
 #if CSHARP_7_OR_LATER
-            if (type.IsClass && ((object) reason) is Exception e)
-            {
-                // reason is a non-null Exception.
-                return Internal.RejectionContainer<Exception>.GetOrCreate(e);
-            }
+                if (((object) reason) is Exception e)
 #else
-            if (type.IsClass && reason is Exception)
-            {
-                // reason is a non-null Exception.
-                return Internal.RejectionContainer<Exception>.GetOrCreate(reason as Exception);
-            }
+                Exception e = reason as Exception;
+                if (e != null)
 #endif
-            if (typeof(Exception).IsAssignableFrom(type))
-            {
-                // reason is a null Exception, behave the same way .Net behaves if you throw null.
-                return Internal.RejectionContainer<Exception>.GetOrCreate(new NullReferenceException());
+                {
+                    // reason is a non-null Exception.
+                    return Internal.RejectionContainer<Exception>.GetOrCreate(e);
+                }
+                if (typeof(Exception).IsAssignableFrom(type))
+                {
+                    // reason is a null Exception, behave the same way .Net behaves if you throw null.
+                    return Internal.RejectionContainer<Exception>.GetOrCreate(new NullReferenceException());
+                }
             }
             return Internal.RejectionContainer<TReject>.GetOrCreate(reason);
         }
@@ -385,12 +384,16 @@ namespace Proto.Promises
         // Generate stacktrace if traceable is null.
         private static void AddRejectionToUnhandledStack<TReject>(TReject unhandledValue, Internal.IStacktraceable traceable)
         {
+#if PROMISE_DEBUG
             string stacktrace =
                 traceable != null
                     ? GetFormattedStacktrace(traceable)
                     : Config.DebugStacktraceGenerator != GeneratedStacktrace.None
-                        ? FormatStackTrace(new System.Diagnostics.StackTrace(1, true).ToString())
+                        ? FormatStackTrace(new System.Diagnostics.StackTrace[1] { GetStackTrace(1) })
                         : null;
+#else
+            string stacktrace = null;
+#endif
             string message;
             Exception innerException;
 #if CSHARP_7_OR_LATER
@@ -402,6 +405,14 @@ namespace Proto.Promises
             {
                 message = "An exception was not handled.";
                 innerException = e;
+            }
+            else if (typeof(Exception).IsAssignableFrom(typeof(TReject)))
+            {
+                // unhandledValue is a null Exception, behave the same way .Net behaves if you throw null.
+                message = "An exception was not handled.";
+                NullReferenceException nullRefEx = new NullReferenceException();
+                AddUnhandledException(new UnhandledException<NullReferenceException>(nullRefEx, message, stacktrace, nullRefEx));
+                return;
             }
             else
             {
@@ -760,7 +771,7 @@ namespace Proto.Promises
                 }
             }
 
-            #region Resolve Promises
+#region Resolve Promises
             // Individual types for more common .Then(onResolved) calls to be more efficient.
             public sealed class PromiseVoidResolve0 : PoolablePromise<PromiseVoidResolve0>
             {
@@ -1450,9 +1461,9 @@ namespace Proto.Promises
                     _onResolved = null;
                 }
             }
-            #endregion
+#endregion
 
-            #region Resolve or Reject Promises
+#region Resolve or Reject Promises
             // IDelegate to reduce the amount of classes I would have to write to handle catches (Composition Over Inheritance).
             // I'm less concerned about performance for catches since exceptions are expensive anyway, and they are expected to be used less often than .Then(onResolved).
             public sealed class PromiseResolveReject0 : PoolablePromise<PromiseResolveReject0>
@@ -1678,7 +1689,7 @@ namespace Proto.Promises
                     }
                 }
             }
-            #endregion
+#endregion
 
             public sealed partial class PromisePassThrough : ITreeHandleable, IRetainable, ILinked<PromisePassThrough>
             {
@@ -1692,12 +1703,10 @@ namespace Proto.Promises
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
 
-                private object _valueOrPrevious;
-                public IValueContainer ValueContainer { get { return (IValueContainer) _valueOrPrevious; } }
-                public Promise Owner { get { return _valueOrPrevious as Promise; } }
-                public IMultiTreeHandleable target;
-                public int _index;
+                public Promise Owner { get; private set; }
+                public IMultiTreeHandleable Target { get; private set; }
 
+                private int _index;
                 private uint _retainCounter;
 
                 public static PromisePassThrough GetOrCreate(Promise owner, int index, int skipFrames)
@@ -1706,50 +1715,47 @@ namespace Proto.Promises
                     ValidateOperation(owner, skipFrames + 1);
 
                     var passThrough = _pool.IsNotEmpty ? _pool.Pop() : new PromisePassThrough();
-                    passThrough._valueOrPrevious = owner;
+                    passThrough.Owner = owner;
                     passThrough._index = index;
-                    passThrough._retainCounter = 2u;
-                    owner.AddWaiter(passThrough);
+                    passThrough._retainCounter = 1u;
                     return passThrough;
                 }
 
                 private PromisePassThrough() { }
 
+                public void SetTargetAndAddToOwner(IMultiTreeHandleable target)
+                {
+                    Target = target;
+                    Owner.AddWaiter(this);
+                }
+
                 void ITreeHandleable.MakeReady(IValueContainer valueContainer,
                     ref ValueLinkedQueue<ITreeHandleable> handleQueue,
                     ref ValueLinkedQueue<ITreeHandleable> cancelQueue)
                 {
-                    Owner._wasWaitedOn = true;
-                    valueContainer.Retain();
-                    _valueOrPrevious = valueContainer;
-                    handleQueue.Push(this);
+                    var temp = Target;
+                    if (temp.Handle(valueContainer, Owner, _index))
+                    {
+                        handleQueue.Push(temp);
+                    }
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(IValueContainer valueContainer)
                 {
-                    Owner._wasWaitedOn = true;
-                    valueContainer.Retain();
-                    _valueOrPrevious = valueContainer;
+                    var temp = Target;
+                    if (temp.Handle(valueContainer, Owner, _index))
+                    {
 #if PROMISE_CANCEL
-                    if (valueContainer.GetState() == State.Canceled)
-                    {
-                        AddToCancelQueueBack(this);
-                    }
-                    else
+                        if (valueContainer.GetState() == State.Canceled)
+                        {
+                            AddToCancelQueueBack(temp);
+                        }
+                        else
 #endif
-                    {
-                        AddToHandleQueueBack(this);
+                        {
+                            AddToHandleQueueBack(temp);
+                        }
                     }
-                }
-
-                void ITreeHandleable.Handle()
-                {
-                    target.Handle(this);
-                }
-
-                void ITreeHandleable.Cancel()
-                {
-                    target.Cancel(this);
                 }
 
                 public void Retain()
@@ -1759,16 +1765,24 @@ namespace Proto.Promises
 
                 public void Release()
                 {
-                    if (--_retainCounter == 0)
+#if PROMISE_DEBUG
+                    checked
+#endif
                     {
-                        _valueOrPrevious = null;
-                        target = null;
-                        if (Config.ObjectPooling != PoolType.None)
+                        if (--_retainCounter == 0)
                         {
-                            _pool.Push(this);
+                            Owner = null;
+                            Target = null;
+                            if (Config.ObjectPooling != PoolType.None)
+                            {
+                                _pool.Push(this);
+                            }
                         }
                     }
                 }
+
+                void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
+                void ITreeHandleable.Cancel() { throw new System.InvalidOperationException(); }
             }
 
             public static ValueLinkedStack<PromisePassThrough> WrapInPassThroughs<TEnumerator>(TEnumerator promises, out int count, int skipFrames) where TEnumerator : IEnumerator<Promise>

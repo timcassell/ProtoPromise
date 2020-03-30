@@ -44,7 +44,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -69,7 +69,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -93,7 +93,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -117,7 +117,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -143,7 +143,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -170,7 +170,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -195,7 +195,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -219,7 +219,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -243,7 +243,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -270,7 +270,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 #endif
@@ -290,7 +290,7 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p);
 
             Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0f, progress, 0f);
+            Assert.AreEqual(0f / 8f, progress, 0f);
 
             deferred1.ReportProgress(0.5f);
             Promise.Manager.HandleCompletesAndProgress();
@@ -343,7 +343,7 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p);
 
             Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(2f, progress, TestHelper.progressEpsilon);
+            Assert.AreEqual(2f / 8f, progress, TestHelper.progressEpsilon);
 
             deferred1.ReportProgress(0.5f);
             Promise.Manager.HandleCompletesAndProgress();

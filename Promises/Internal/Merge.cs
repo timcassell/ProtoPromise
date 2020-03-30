@@ -33,8 +33,9 @@ namespace Proto.Promises
             public sealed partial class MergePromise<T> : PoolablePromise<T, MergePromise<T>>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
-                private uint _waitCount;
                 Action<IValueContainer, ResolveContainer<T>, int> _onPromiseResolved;
+                private uint _waitCount;
+                private bool _pending;
 
                 private MergePromise() { }
 
@@ -42,27 +43,60 @@ namespace Proto.Promises
                 {
                     var promise = _pool.IsNotEmpty ? (MergePromise<T>) _pool.Pop() : new MergePromise<T>();
 
-                    foreach (var passThrough in promisePassThroughs)
-                    {
-                        passThrough.target = promise;
-                    }
                     promise._passThroughs = promisePassThroughs;
-
                     promise._onPromiseResolved = onPromiseResolved;
 
                     promise._waitCount = (uint) count;
                     promise.Reset(skipFrames + 1);
+                    promise._pending = true;
                     // Retain this until all promises resolve/reject/cancel.
                     promise.RetainInternal();
 
                     var container = ResolveContainer<T>.GetOrCreate(value);
                     container.Retain();
                     promise._valueOrPrevious = container;
+
+                    foreach (var passThrough in promisePassThroughs)
+                    {
+                        passThrough.SetTargetAndAddToOwner(promise);
+                    }
                     return promise;
                 }
 
-                private void MaybeRelease(bool done)
+                protected override void Handle()
                 {
+                    HandleSelf();
+                }
+
+                bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, Promise owner, int index)
+                {
+                    bool done = --_waitCount == 0;
+                    bool handle = false;
+                    if (_pending)
+                    {
+                        owner._wasWaitedOn = true;
+                        if (owner._state != State.Resolved)
+                        {
+                            _pending = false;
+                            ((ResolveContainer<T>) _valueOrPrevious).Release();
+                            valueContainer.Retain();
+                            _valueOrPrevious = valueContainer;
+                            handle = true;
+                        }
+                        else
+                        {
+                            _onPromiseResolved.Invoke(valueContainer, (ResolveContainer<T>) _valueOrPrevious, index);
+                            if (done)
+                            {
+                                _pending = false;
+                                handle = true;
+                            }
+                            else
+                            {
+                                IncrementProgress(owner);
+                            }
+                        }
+                    }
                     if (done)
                     {
                         while (_passThroughs.IsNotEmpty)
@@ -71,51 +105,15 @@ namespace Proto.Promises
                         }
                         ReleaseInternal();
                     }
+                    return handle;
                 }
-
-                void IMultiTreeHandleable.Handle(PromisePassThrough passThrough)
-                {
-                    bool done = --_waitCount == 0;
-                    MaybeRelease(done);
-                    if (_state == State.Pending)
-                    {
-                        IValueContainer valueContainer = passThrough.ValueContainer;
-                        if (valueContainer.GetState() == State.Rejected)
-                        {
-                            ((ResolveContainer<T>) _valueOrPrevious).Release();
-                            RejectInternal(valueContainer);
-                        }
-                        else
-                        {
-                            _onPromiseResolved.Invoke(valueContainer, (ResolveContainer<T>) _valueOrPrevious, passThrough._index);
-                            if (done)
-                            {
-                                ResolveInternal();
-                            }
-                            else
-                            {
-                                IncrementProgress(passThrough);
-                            }
-                        }
-                    }
-                }
-
-                void IMultiTreeHandleable.Cancel(PromisePassThrough passThrough)
-                {
-                    MaybeRelease(--_waitCount == 0);
-                    if (_state == State.Pending)
-                    {
-                        ((ResolveContainer<T>) _valueOrPrevious).Release();
-                        CancelInternal(passThrough.ValueContainer);
-                    }
-                }
-
-                partial void IncrementProgress(PromisePassThrough passThrough);
 
                 void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
                 {
                     _passThroughs.Push(passThrough);
                 }
+
+                partial void IncrementProgress(Promise feed);
             }
 
 #if PROMISE_PROGRESS
@@ -157,10 +155,10 @@ namespace Proto.Promises
                     }
                 }
 
-                partial void IncrementProgress(PromisePassThrough passThrough)
+                partial void IncrementProgress(Promise feed)
                 {
                     bool subscribedProgress = _progressListeners.IsNotEmpty;
-                    uint increment = subscribedProgress ? passThrough._progress.GetDifferenceToNextWholeAsUInt32() : passThrough._progress.GetIncrementedWholeTruncated().ToUInt32();
+                    uint increment = subscribedProgress ? feed._waitDepthAndProgress.GetDifferenceToNextWholeAsUInt32() : feed._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32();
                     IncrementProgress(increment);
                 }
 
@@ -202,6 +200,7 @@ namespace Proto.Promises
                     _currentAmount.Increment(amount);
                     if (!_invokingProgress & _state == State.Pending)
                     {
+                        RetainInternal();
                         _invokingProgress = true;
                         AddToFrontOfProgressQueue(this);
                     }
@@ -216,6 +215,7 @@ namespace Proto.Promises
                 {
                     if (_state != State.Pending | _suspended)
                     {
+                        ReleaseInternal();
                         return;
                     }
 
@@ -231,6 +231,8 @@ namespace Proto.Promises
                     {
                         progressListener.IncrementProgress(this, increment);
                     }
+
+                    ReleaseInternal();
                 }
             }
 #endif

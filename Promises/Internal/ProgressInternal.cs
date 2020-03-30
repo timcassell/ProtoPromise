@@ -282,7 +282,7 @@ namespace Proto.Promises
                 var passThrough = passThroughs.Pop();
                 promise = passThrough.Owner;
                 progressListener = passThrough;
-                passThrough.target.ReAdd(passThrough);
+                passThrough.Target.ReAdd(passThrough);
                 goto Repeat;
             }
         }
@@ -463,7 +463,7 @@ namespace Proto.Promises
             public abstract class ProgressDelegateBase<T> : IProgressListener, ITreeHandleable, IInvokable, IStacktraceable where T : ProgressDelegateBase<T>
             {
 #if PROMISE_DEBUG
-                string IStacktraceable.Stacktrace { get; set; }
+                DeepStacktrace IStacktraceable.Stacktrace { get; set; }
 #endif
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
@@ -947,31 +947,21 @@ namespace Proto.Promises
 
                 void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
                 {
-                    target.IncrementProgress(amount.ToUInt32(), amount, Owner._waitDepthAndProgress);
+                    Target.IncrementProgress(amount.ToUInt32(), amount, Owner._waitDepthAndProgress);
                 }
 
                 void IProgressListener.IncrementProgress(Promise sender, uint amount)
                 {
-                    target.IncrementProgress(amount, sender._waitDepthAndProgress, Owner._waitDepthAndProgress);
+                    Target.IncrementProgress(amount, sender._waitDepthAndProgress, Owner._waitDepthAndProgress);
                 }
 
                 void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount)
                 {
-                    _progress = sender._waitDepthAndProgress;
-                    if (Owner != null)
-                    {
-                        target.IncrementProgress(amount, sender._waitDepthAndProgress, Owner._waitDepthAndProgress);
-                    }
                     Release();
                 }
 
                 void IProgressListener.CancelOrIncrementProgress(Promise sender, uint amount)
                 {
-                    _progress = sender._waitDepthAndProgress;
-                    if (Owner != null)
-                    {
-                        target.CancelOrIncrementProgress(amount, sender._waitDepthAndProgress, Owner._waitDepthAndProgress);
-                    }
                     Release();
                 }
             }

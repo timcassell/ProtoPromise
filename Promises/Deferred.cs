@@ -17,6 +17,8 @@
 #pragma warning disable CS0672 // Member overrides obsolete member
 #pragma warning disable CS0618 // Type or member is obsolete
 
+using System;
+
 namespace Proto.Promises
 {
     partial class Promise
