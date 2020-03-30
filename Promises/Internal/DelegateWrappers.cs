@@ -215,7 +215,7 @@ namespace Proto.Promises
                 private void TryReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
-                    if (valueContainer.GetStateAndValueAs(out arg) == State.Rejected)
+                    if (TryConvert(valueContainer, out arg))
                     {
                         ReleaseAndInvoke(arg, owner);
                     }
@@ -342,7 +342,7 @@ namespace Proto.Promises
                 private void TryReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
-                    if (valueContainer.GetStateAndValueAs(out arg) == State.Rejected)
+                    if (TryConvert(valueContainer, out arg))
                     {
                         ReleaseAndInvoke(arg, owner);
                     }
@@ -467,7 +467,7 @@ namespace Proto.Promises
                 void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
-                    if (valueContainer.GetStateAndValueAs(out arg) == State.Rejected)
+                    if (TryConvert(valueContainer, out arg))
                     {
                         ReleaseAndInvoke(arg, owner);
                     }
@@ -567,7 +567,7 @@ namespace Proto.Promises
                 void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
-                    if (valueContainer.GetStateAndValueAs(out arg) == State.Rejected)
+                    if (TryConvert(valueContainer, out arg))
                     {
                         ReleaseAndInvoke(arg, owner);
                     }
@@ -761,7 +761,7 @@ namespace Proto.Promises
                 private void TryReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
-                    if (valueContainer.GetStateAndValueAs(out arg) == State.Rejected)
+                    if (TryConvert(valueContainer, out arg))
                     {
                         ReleaseAndInvoke(arg, owner);
                     }
@@ -896,7 +896,7 @@ namespace Proto.Promises
                 private void TryReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
-                    if (valueContainer.GetStateAndValueAs(out arg) == State.Rejected)
+                    if (TryConvert(valueContainer, out arg))
                     {
                         ReleaseAndInvoke(arg, owner);
                     }
@@ -1029,7 +1029,7 @@ namespace Proto.Promises
                 void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
-                    if (valueContainer.GetStateAndValueAs(out arg) == State.Rejected)
+                    if (TryConvert(valueContainer, out arg))
                     {
                         ReleaseAndInvoke(arg, owner);
                     }
@@ -1137,7 +1137,7 @@ namespace Proto.Promises
                 void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
-                    if (valueContainer.GetStateAndValueAs(out arg) == State.Rejected)
+                    if (TryConvert(valueContainer, out arg))
                     {
                         ReleaseAndInvoke(arg, owner);
                     }

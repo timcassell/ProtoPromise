@@ -34,6 +34,22 @@ namespace Proto.Promises
             public sealed class RejectionContainer<T> : PoolableObject<RejectionContainer<T>>, IRejectionContainer, IValueContainer<T>
             {
                 public T Value { get; private set; }
+
+                object IValueContainer.Value { get { return Value; } }
+
+                Type IValueContainer.ValueType
+                {
+                    get
+                    {
+                        Type type = typeof(T);
+                        if (type.IsValueType || ReferenceEquals(Value, null))
+                        {
+                            return type;
+                        }
+                        return Value.GetType();
+                    }
+                }
+
                 private int _retainCounter;
 
 #if PROMISE_DEBUG
@@ -58,16 +74,6 @@ namespace Proto.Promises
                 public State GetState()
                 {
                     return State.Rejected;
-                }
-
-                public State GetStateAndValueAs<U>(out U value)
-                {
-                    return TryGetValueAs(out value) ? State.Rejected : State.Pending;
-                }
-
-                public bool TryGetValueAs<U>(out U value)
-                {
-                    return Config.ValueConverter.TryConvert(this, out value);
                 }
 
                 public void Retain()
@@ -109,6 +115,7 @@ namespace Proto.Promises
                 {
                     string message = null;
                     Exception innerException;
+                    bool valueIsNull = ReferenceEquals(Value, null);
 
                     if (typeof(T) == typeof(Exception))
                     {
@@ -121,7 +128,7 @@ namespace Proto.Promises
                         else
                         {
                             string innerStacktrace = FormatStackTrace(new System.Diagnostics.StackTrace[1] { _rejectedStacktrace });
-                            innerException = new InnerException<T>(message, innerStacktrace, e);
+                            innerException = new RejectionException(message, innerStacktrace, e);
                         }
 #else
                         innerException = e;
@@ -131,11 +138,11 @@ namespace Proto.Promises
                     else
                     {
                         Type type = typeof(T);
-                        message = "A rejected value was not handled, type: " + type + ", value: " + (ReferenceEquals(Value, null) ? "NULL" : Value.ToString());
+                        message = "A rejected value was not handled, type: " + type + ", value: " + (valueIsNull ? "NULL" : Value.ToString());
 #if PROMISE_DEBUG
-                        innerException = new InnerException<T>(message, FormatStackTrace(new System.Diagnostics.StackTrace[1] { _rejectedStacktrace }), null);
+                        innerException = new RejectionException(message, FormatStackTrace(new System.Diagnostics.StackTrace[1] { _rejectedStacktrace }), null);
 #else
-                        innerException = new InnerException<T>(message, null, null);
+                        innerException = new RejectionException(message, null, null);
 #endif
                     }
 #if PROMISE_DEBUG
@@ -146,7 +153,7 @@ namespace Proto.Promises
 #else
                     string outerStacktrace = null;
 #endif
-                    return new UnhandledException<T>(Value, message, outerStacktrace, innerException);
+                    return new UnhandledException(Value, valueIsNull ? typeof(T) : Value.GetType(), message, outerStacktrace, innerException);
                 }
             }
 
@@ -154,6 +161,21 @@ namespace Proto.Promises
             {
                 public T Value { get; private set; }
                 private int _retainCounter;
+
+                object IValueContainer.Value { get { return Value; } }
+
+                Type IValueContainer.ValueType
+                {
+                    get
+                    {
+                        Type type = typeof(T);
+                        if (type.IsValueType || ReferenceEquals(Value, null))
+                        {
+                            return type;
+                        }
+                        return Value.GetType();
+                    }
+                }
 
                 public static CancelContainer<T> GetOrCreate(T value)
                 {
@@ -165,16 +187,6 @@ namespace Proto.Promises
                 public State GetState()
                 {
                     return State.Canceled;
-                }
-
-                public State GetStateAndValueAs<U>(out U value)
-                {
-                    return TryGetValueAs(out value) ? State.Canceled : State.Pending;
-                }
-
-                public bool TryGetValueAs<U>(out U value)
-                {
-                    return Config.ValueConverter.TryConvert(this, out value);
                 }
 
                 public void SetNewOwner(Promise newOwner, bool appendStacktrace) { }
@@ -212,6 +224,10 @@ namespace Proto.Promises
                 // We can reuse the same object.
                 private static readonly CancelContainerVoid _instance = new CancelContainerVoid();
 
+                object IValueContainer.Value { get { return null; } }
+
+                Type IValueContainer.ValueType { get { return null; } }
+
                 public static CancelContainerVoid GetOrCreate()
                 {
                     return _instance;
@@ -220,18 +236,6 @@ namespace Proto.Promises
                 public State GetState()
                 {
                     return State.Canceled;
-                }
-
-                public State GetStateAndValueAs<U>(out U value)
-                {
-                    value = default(U);
-                    return State.Pending;
-                }
-
-                public bool TryGetValueAs<U>(out U value)
-                {
-                    value = default(U);
-                    return false;
                 }
 
                 public void SetNewOwner(Promise newOwner, bool appendStacktrace) { }
@@ -243,10 +247,27 @@ namespace Proto.Promises
                 public void ReleaseAndMaybeAddToUnhandledStack() { }
             }
 
-            public sealed class ResolveContainer<T> : PoolableObject<ResolveContainer<T>>, IValueContainer
+            public sealed class ResolveContainer<T> : PoolableObject<ResolveContainer<T>>, IValueContainer, IValueContainer<T>
             {
                 public T value;
                 private int _retainCounter;
+
+                T IValueContainer<T>.Value { get { return value; } }
+
+                object IValueContainer.Value { get { return value; } }
+
+                Type IValueContainer.ValueType
+                {
+                    get
+                    {
+                        Type type = typeof(T);
+                        if (type.IsValueType || ReferenceEquals(value, null))
+                        {
+                            return type;
+                        }
+                        return value.GetType();
+                    }
+                }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
                 public static ResolveContainer<T> GetOrCreate(in T value)
@@ -262,17 +283,6 @@ namespace Proto.Promises
                 public State GetState()
                 {
                     return State.Resolved;
-                }
-
-                public State GetStateAndValueAs<U>(out U value)
-                {
-                    value = (this as ResolveContainer<U>).value;
-                    return State.Resolved;
-                }
-
-                public bool TryGetValueAs<U>(out U value)
-                {
-                    throw new System.InvalidOperationException();
                 }
 
                 public void SetNewOwner(Promise newOwner, bool appendStacktrace) { }
@@ -310,6 +320,10 @@ namespace Proto.Promises
                 // We can reuse the same object.
                 private static readonly ResolveContainerVoid _instance = new ResolveContainerVoid();
 
+                object IValueContainer.Value { get { return null; } }
+
+                Type IValueContainer.ValueType { get { return null; } }
+
                 public static ResolveContainerVoid GetOrCreate()
                 {
                     return _instance;
@@ -318,16 +332,6 @@ namespace Proto.Promises
                 public State GetState()
                 {
                     return State.Resolved;
-                }
-
-                public State GetStateAndValueAs<U>(out U value)
-                {
-                    throw new System.InvalidOperationException();
-                }
-
-                public bool TryGetValueAs<U>(out U value)
-                {
-                    throw new System.InvalidOperationException();
                 }
 
                 public void SetNewOwner(Promise newOwner, bool appendStacktrace) { }

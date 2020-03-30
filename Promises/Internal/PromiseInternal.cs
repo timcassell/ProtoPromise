@@ -396,6 +396,8 @@ namespace Proto.Promises
 #endif
             string message;
             Exception innerException;
+            bool valueIsNull = ReferenceEquals(unhandledValue, null);
+
 #if CSHARP_7_OR_LATER
             if (((object) unhandledValue) is Exception e)
 #else
@@ -411,16 +413,16 @@ namespace Proto.Promises
                 // unhandledValue is a null Exception, behave the same way .Net behaves if you throw null.
                 message = "An exception was not handled.";
                 NullReferenceException nullRefEx = new NullReferenceException();
-                AddUnhandledException(new UnhandledException<NullReferenceException>(nullRefEx, message, stacktrace, nullRefEx));
+                AddUnhandledException(new UnhandledException(nullRefEx, typeof(NullReferenceException), message, stacktrace, nullRefEx));
                 return;
             }
             else
             {
                 Type type = typeof(TReject);
-                message = "A rejected value was not handled, type: " + type + ", value: " + (ReferenceEquals(unhandledValue, null) ? "NULL" : unhandledValue.ToString());
+                message = "A rejected value was not handled, type: " + type + ", value: " + (valueIsNull ? "NULL" : unhandledValue.ToString());
                 innerException = null;
             }
-            AddUnhandledException(new UnhandledException<TReject>(unhandledValue, message, stacktrace, innerException));
+            AddUnhandledException(new UnhandledException(unhandledValue, valueIsNull ? typeof(TReject) : unhandledValue.GetType(), message, stacktrace, innerException));
         }
 
         // Handle promises in a depth-first manner.
@@ -495,6 +497,30 @@ namespace Proto.Promises
             }
             cancelQueue.EnqueueAndClear(ref handleQueue);
             AddToCancelQueueBack(ref cancelQueue);
+        }
+
+        private static bool TryConvert<TConvert>(Internal.IValueContainer valueContainer, out TConvert converted)
+        {
+            // Avoid boxing value types.
+#if CSHARP_7_OR_LATER
+            if (valueContainer is IValueContainer<TConvert> directContainer)
+#else
+            var directContainer = valueContainer as IValueContainer<TConvert>;
+            if (directContainer != null)
+#endif
+            {
+                converted = directContainer.Value;
+                return true;
+            }
+
+            if (typeof(TConvert).IsAssignableFrom(valueContainer.ValueType))
+            {
+                converted = (TConvert) valueContainer.Value;
+                return true;
+            }
+
+            converted = default(TConvert);
+            return false;
         }
     }
 
@@ -828,11 +854,10 @@ namespace Proto.Promises
                 {
                     var callback = _onResolved;
                     _onResolved = null;
-                    TArg arg;
-                    State state = ((IValueContainer) _valueOrPrevious).GetStateAndValueAs(out arg);
-                    if (state == State.Resolved)
+                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
+                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
                         callback.Invoke(arg);
                         ResolveInternalIfNotCanceled();
                     }
@@ -903,11 +928,10 @@ namespace Proto.Promises
                 {
                     var callback = _onResolved;
                     _onResolved = null;
-                    TArg arg;
-                    State state = ((IValueContainer) _valueOrPrevious).GetStateAndValueAs(out arg);
-                    if (state == State.Resolved)
+                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
+                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
                         TResult result = callback.Invoke(arg);
                         ResolveInternalIfNotCanceled(result);
                     }
@@ -991,11 +1015,10 @@ namespace Proto.Promises
 
                     var callback = _onResolved;
                     _onResolved = null;
-                    TArg arg;
-                    State state = ((IValueContainer) _valueOrPrevious).GetStateAndValueAs(out arg);
-                    if (state == State.Resolved)
+                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
+                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
                         WaitFor(callback.Invoke(arg));
                     }
                     else
@@ -1078,11 +1101,10 @@ namespace Proto.Promises
 
                     var callback = _onResolved;
                     _onResolved = null;
-                    TArg arg;
-                    State state = ((IValueContainer) _valueOrPrevious).GetStateAndValueAs(out arg);
-                    if (state == State.Resolved)
+                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
+                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
                         WaitFor(callback.Invoke(arg));
                     }
                     else
@@ -1162,11 +1184,10 @@ namespace Proto.Promises
                     _capturedValue = default(TCapture);
                     var callback = _onResolved;
                     _onResolved = null;
-                    TArg arg;
-                    State state = ((IValueContainer) _valueOrPrevious).GetStateAndValueAs(out arg);
-                    if (state == State.Resolved)
+                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
+                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
                         callback.Invoke(value, arg);
                         ResolveInternalIfNotCanceled();
                     }
@@ -1247,11 +1268,10 @@ namespace Proto.Promises
                     _capturedValue = default(TCapture);
                     var callback = _onResolved;
                     _onResolved = null;
-                    TArg arg;
-                    State state = ((IValueContainer) _valueOrPrevious).GetStateAndValueAs(out arg);
-                    if (state == State.Resolved)
+                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
+                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
                         TResult result = callback.Invoke(value, arg);
                         ResolveInternalIfNotCanceled(result);
                     }
@@ -1345,11 +1365,10 @@ namespace Proto.Promises
                     _capturedValue = default(TCapture);
                     var callback = _onResolved;
                     _onResolved = null;
-                    TArg arg;
-                    State state = ((IValueContainer) _valueOrPrevious).GetStateAndValueAs(out arg);
-                    if (state == State.Resolved)
+                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
+                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
                         WaitFor(callback.Invoke(value, arg));
                     }
                     else
@@ -1442,11 +1461,10 @@ namespace Proto.Promises
                     _capturedValue = default(TCapture);
                     var callback = _onResolved;
                     _onResolved = null;
-                    TArg arg;
-                    State state = ((IValueContainer) _valueOrPrevious).GetStateAndValueAs(out arg);
-                    if (state == State.Resolved)
+                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
+                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
                         WaitFor(callback.Invoke(value, arg));
                     }
                     else

@@ -308,7 +308,7 @@ namespace Proto.Promises
                     IValueContainer valueContainer = (IValueContainer) _valueContainer;
                     Dispose();
                     T arg;
-                    if (valueContainer.TryGetValueAs(out arg))
+                    if (TryConvert(valueContainer, out arg))
                     {
                         valueContainer.Release();
                         try
@@ -510,7 +510,7 @@ namespace Proto.Promises
                     IValueContainer valueContainer = (IValueContainer) _valueContainer;
                     Dispose();
                     T arg;
-                    if (valueContainer.TryGetValueAs(out arg))
+                    if (TryConvert(valueContainer, out arg))
                     {
                         valueContainer.Release();
                         try

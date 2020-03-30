@@ -93,8 +93,8 @@ namespace Proto.Promises
                 void Retain();
                 void Release();
                 State GetState();
-                State GetStateAndValueAs<U>(out U value);
-                bool TryGetValueAs<U>(out U value);
+                Type ValueType { get; }
+                object Value { get; }
 
                 void ReleaseAndMaybeAddToUnhandledStack();
             }

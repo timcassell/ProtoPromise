@@ -26,7 +26,6 @@
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
 using System;
-using Proto.Utils;
 
 namespace Proto.Promises
 {
@@ -100,44 +99,10 @@ namespace Proto.Promises
             public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
 #endif
 
-            private static IValueConverter _valueConverter = new DefaultValueConverter();
-            /// <summary>
-            /// Value converter used to determine if a reject or cancel reason is convertible for a catch delegate expecting a reason.
-            /// <para/>The default implementation uses <see cref="Type.IsAssignableFrom(Type)"/>.
-            /// </summary>
-            public static IValueConverter ValueConverter { get { return _valueConverter; } set { _valueConverter = value; } }
-
             /// <summary>
             /// If this is not null, uncaught rejections get routed through this instead of being thrown.
             /// </summary>
             public static Action<UnhandledException> UncaughtRejectionHandler { get; set; }
-
-            private sealed class DefaultValueConverter : IValueConverter
-            {
-                bool IValueConverter.TryConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer, out TConvert converted)
-                {
-                    // Avoid boxing value types.
-#if CSHARP_7_OR_LATER
-                    if (valueContainer is IValueContainer<TConvert> casted)
-#else
-                    var casted = valueContainer as IValueContainer<TConvert>;
-                    if (casted != null)
-#endif
-                    {
-                        converted = casted.Value;
-                        return true;
-                    }
-                    // Can it be up-casted or down-casted, null or not?
-                    TOriginal value = valueContainer.Value;
-                    if (typeof(TConvert).IsAssignableFrom(typeof(TOriginal)) || value is TConvert)
-                    {
-                        converted = (TConvert) (object) value;
-                        return true;
-                    }
-                    converted = default(TConvert);
-                    return false;
-                }
-            }
         }
     }
 }

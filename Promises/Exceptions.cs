@@ -13,7 +13,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
-using Proto.Utils;
 
 namespace Proto.Promises
 {
@@ -47,7 +46,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace; } }
+        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
     public class ElementNullException : System.ArgumentNullException
@@ -58,7 +57,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace; } }
+        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
     public class PromiseDisposedException : ObjectDisposedException
@@ -69,7 +68,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace; } }
+        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
     public class InvalidReturnException : System.InvalidOperationException
@@ -80,7 +79,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace; } }
+        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
     public class UnhandledDeferredException : Exception
@@ -172,135 +171,79 @@ namespace Proto.Promises
         /// <summary>
         /// Exception that is thrown if a promise is rejected and that rejection is never handled.
         /// </summary>
-        public abstract class UnhandledException : Exception
+        public class UnhandledException : Exception
         {
-            protected UnhandledException(string message, string stacktrace, Exception innerException) : base(message, innerException)
+            private readonly object _value;
+            private readonly Type _type;
+            private readonly string _stackTrace;
+
+            public UnhandledException(object value, Type valueType, string message, string stacktrace, Exception innerException) : base(message, innerException)
             {
+                _value = value;
+                _type = valueType;
                 _stackTrace = stacktrace;
             }
 
-            public abstract object GetValue();
-            public abstract Type GetValueType();
-            public abstract bool TryGetValueAs<U>(out U value);
-
-            private readonly string _stackTrace;
             public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
-        }
 
-        /// <summary>
-        /// Exception that is thrown if a promise is rejected and that rejection is never handled.
-        /// </summary>
-        public sealed class UnhandledException<T> : UnhandledException, IValueContainer<T>
-        {
-            public T Value { get; private set; }
+            public Type ValueType { get { return _type; } }
 
-            public UnhandledException(T value, string message, string stacktrace, Exception innerException) : base(message, stacktrace, innerException)
+            public object Value { get { return _value; } }
+
+            public bool TryGetValueAs<T>(out T value)
             {
-                Value = value;
-            }
-
-            public override object GetValue()
-            {
-                return Value;
-            }
-
-            public override Type GetValueType()
-            {
-                Type type = typeof(T);
-                if (type.IsValueType)
+                if (typeof(T).IsAssignableFrom(_type))
                 {
-                    return type;
+                    value = (T) _value;
+                    return true;
                 }
-                return ReferenceEquals(Value, null) ? type : Value.GetType();
-            }
-
-            public override bool TryGetValueAs<U>(out U value)
-            {
-                return Config.ValueConverter.TryConvert(this, out value);
+                value = default(T);
+                return false;
             }
         }
 
         /// <summary>
         /// Exception that is thrown if an awaited promise is canceled.
         /// </summary>
-        public abstract class CanceledException : OperationCanceledException
+        public class CanceledException : OperationCanceledException
         {
-            protected CanceledException(string message) : base(message) { }
+            private readonly object _value;
+            private readonly Type _type;
 
-            public abstract object GetValue();
-            public abstract Type GetValueType();
-            public abstract bool TryGetValueAs<U>(out U value);
-        }
-
-        /// <summary>
-        /// Exception that is thrown if an awaited promise is canceled without a reason.
-        /// </summary>
-        public sealed class CanceledExceptionVoid : CanceledException
-        {
-            public CanceledExceptionVoid() : base("A Promise was canceled without a reason.") { }
-
-            public override bool TryGetValueAs<U>(out U value)
+            public CanceledException(object value, Type valueType, string message) : base(message)
             {
-                value = default(U);
-                return false;
+                _value = value;
+                _type = valueType;
             }
 
-            public override object GetValue()
-            {
-                return null;
-            }
+            public Type ValueType { get { return _type; } }
 
-            public override Type GetValueType()
-            {
-                return null;
-            }
-        }
+            public object Value { get { return _value; } }
 
-        /// <summary>
-        /// Exception that is thrown if an awaited promise is canceled with a reason.
-        /// </summary>
-        public sealed class CanceledException<T> : CanceledException, IValueContainer<T>
-        {
-            public T Value { get; private set; }
-
-            public CanceledException(T value) :
-                base("A Promise was canceled with a reason. Type: " + typeof(T) + ", Value: " + (ReferenceEquals(value, null) ? "NULL" : value.ToString()))
+            public bool TryGetValueAs<T>(out T value)
             {
-                Value = value;
-            }
-
-            public override bool TryGetValueAs<U>(out U value)
-            {
-                return Config.ValueConverter.TryConvert(this, out value);
-            }
-
-            public override object GetValue()
-            {
-                return Value;
-            }
-
-            public override Type GetValueType()
-            {
-                Type type = typeof(T);
-                if (type.IsValueType)
+                if (typeof(T).IsAssignableFrom(_type))
                 {
-                    return type;
+                    value = (T) _value;
+                    return true;
                 }
-                return ReferenceEquals(Value, null) ? type : Value.GetType();
+                value = default(T);
+                return false;
             }
         }
 
         partial class Internal
         {
-            public sealed class InnerException<T> : Exception
+            public sealed class RejectionException : Exception
             {
-                public InnerException(string message, string stacktrace, Exception innerException) : base(message, innerException)
+                private readonly string _stackTrace;
+
+                public RejectionException(string message, string stacktrace, Exception innerException) : base(message, innerException)
                 {
                     _stackTrace = stacktrace;
                 }
 
-                private readonly string _stackTrace;
-                public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+                public override string StackTrace { get { return _stackTrace; } }
             }
 
             public sealed class RejectExceptionInternal<T> : RejectException<T>, IExceptionToContainer, ICantHandleException
