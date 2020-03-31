@@ -116,6 +116,11 @@ namespace Proto.Promises
 #endif
             }
 
+            public interface IThrowable
+            {
+                Exception GetException();
+            }
+
             public interface IDelegateResolve : IRetainable
             {
                 void ReleaseAndInvoke(IValueContainer valueContainer, Promise owner);

@@ -31,7 +31,7 @@ namespace Proto.Promises
                 }
             }
 
-            public sealed class RejectionContainer<T> : PoolableObject<RejectionContainer<T>>, IRejectionContainer, IValueContainer<T>
+            public sealed class RejectionContainer<T> : PoolableObject<RejectionContainer<T>>, IRejectionContainer, IValueContainer<T>, IThrowable
             {
                 public T Value { get; private set; }
 
@@ -116,8 +116,14 @@ namespace Proto.Promises
                     string message = null;
                     Exception innerException;
                     bool valueIsNull = ReferenceEquals(Value, null);
+                    Type type = valueIsNull ? typeof(T) : Value.GetType();
 
-                    if (typeof(T) == typeof(Exception))
+#if PROMISE_DEBUG
+                    string innerStacktrace = _rejectedStacktrace == null ? null : FormatStackTrace(new System.Diagnostics.StackTrace[1] { _rejectedStacktrace });
+#else
+                    string innerStacktrace = null;
+#endif
+                    if (typeof(Exception).IsAssignableFrom(type))
                     {
                         Exception e = Value as Exception;
 #if PROMISE_DEBUG
@@ -127,7 +133,6 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            string innerStacktrace = FormatStackTrace(new System.Diagnostics.StackTrace[1] { _rejectedStacktrace });
                             innerException = new RejectionException(message, innerStacktrace, e);
                         }
 #else
@@ -137,13 +142,8 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        Type type = typeof(T);
                         message = "A rejected value was not handled, type: " + type + ", value: " + (valueIsNull ? "NULL" : Value.ToString());
-#if PROMISE_DEBUG
-                        innerException = new RejectionException(message, FormatStackTrace(new System.Diagnostics.StackTrace[1] { _rejectedStacktrace }), null);
-#else
-                        innerException = new RejectionException(message, null, null);
-#endif
+                        innerException = new RejectionException(message, innerStacktrace, null);
                     }
 #if PROMISE_DEBUG
                     string outerStacktrace = _stacktraces.ToString();
@@ -153,11 +153,16 @@ namespace Proto.Promises
 #else
                     string outerStacktrace = null;
 #endif
-                    return new UnhandledException(Value, valueIsNull ? typeof(T) : Value.GetType(), message, outerStacktrace, innerException);
+                    return new UnhandledException(Value, type, message, outerStacktrace, innerException);
+                }
+
+                Exception IThrowable.GetException()
+                {
+                    return ToException();
                 }
             }
 
-            public sealed class CancelContainer<T> : PoolableObject<CancelContainer<T>>, IValueContainer, IValueContainer<T>
+            public sealed class CancelContainer<T> : PoolableObject<CancelContainer<T>>, IValueContainer, IValueContainer<T>, IThrowable
             {
                 public T Value { get; private set; }
                 private int _retainCounter;
@@ -217,9 +222,23 @@ namespace Proto.Promises
                         _pool.Push(this);
                     }
                 }
+
+                Exception IThrowable.GetException()
+                {
+                    if (Value is OperationCanceledException)
+                    {
+                        return Value as OperationCanceledException;
+                    }
+
+                    bool valueIsNull = ReferenceEquals(Value, null);
+                    Type type = valueIsNull ? typeof(T) : Value.GetType();
+                    string message = "Promise was canceled with a reason, type: " + type + ", value: " + (valueIsNull ? "NULL" : Value.ToString());
+
+                    return new CanceledException(Value, type, message);
+                }
             }
 
-            public sealed class CancelContainerVoid : IValueContainer
+            public sealed class CancelContainerVoid : IValueContainer, IThrowable
             {
                 // We can reuse the same object.
                 private static readonly CancelContainerVoid _instance = new CancelContainerVoid();
@@ -245,6 +264,11 @@ namespace Proto.Promises
                 public void Release() { }
 
                 public void ReleaseAndMaybeAddToUnhandledStack() { }
+
+                Exception IThrowable.GetException()
+                {
+                    return new CanceledException(null, null, "Promise was canceled without a reason.");
+                }
             }
 
             public sealed class ResolveContainer<T> : PoolableObject<ResolveContainer<T>>, IValueContainer, IValueContainer<T>

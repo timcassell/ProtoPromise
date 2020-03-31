@@ -32,7 +32,7 @@ namespace Proto.Promises
         protected object _valueOrPrevious;
         private ushort _retainCounter;
         protected State _state;
-        private bool _wasWaitedOn;
+        protected bool _wasWaitedOn;
 
         Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
 

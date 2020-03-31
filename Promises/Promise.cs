@@ -50,8 +50,8 @@ namespace Proto.Promises
         {
             ValidateOperation(this, 1);
 #if PROMISE_DEBUG
-            // Make sure Retain doesn't overflow the ushort. 2 retains are reserved for internal use.
-            if (_userRetainCounter == ushort.MaxValue - 2)
+            // Make sure Retain doesn't overflow the ushort. 3 retains are reserved for internal use.
+            if (_userRetainCounter == ushort.MaxValue - 3)
             {
                 throw new OverflowException();
             }
