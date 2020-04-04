@@ -282,18 +282,18 @@ namespace Proto.Promises.Tests
 
             Action<Promise> callback = p =>
             {
-                p.CatchCancelation((string e) =>
+                p.CatchCancelation(reason =>
                 {
-                    Assert.AreEqual(expected, e);
+                    Assert.AreEqual(expected, reason.Value);
                     ++voidCancelations;
                 });
                 throw Promise.CancelException(expected);
             };
             Action<Promise> callbackT = p =>
             {
-                p.CatchCancelation((string e) =>
+                p.CatchCancelation(reason =>
                 {
-                    Assert.AreEqual(expected, e);
+                    Assert.AreEqual(expected, reason.Value);
                     ++intCancelations;
                 });
                 throw Promise.CancelException(expected);
@@ -368,18 +368,18 @@ namespace Proto.Promises.Tests
 
             Action<Promise> callback = p =>
             {
-                p.CatchCancelation((string e) =>
+                p.CatchCancelation(reason =>
                 {
-                    Assert.AreEqual(expected, e);
+                    Assert.AreEqual(expected, reason.Value);
                     ++voidCancelations;
                 });
                 throw Promise.CancelException(expected);
             };
             Action<Promise> callbackT = p =>
             {
-                p.CatchCancelation((string e) =>
+                p.CatchCancelation(reason =>
                 {
-                    Assert.AreEqual(expected, e);
+                    Assert.AreEqual(expected, reason.Value);
                     ++intCancelations;
                 });
                 throw Promise.CancelException(expected);
@@ -611,7 +611,7 @@ namespace Proto.Promises.Tests
             promise
                 .Then(() => resolved = true)
 #if PROMISE_CANCEL
-                .CatchCancelation(() => Assert.Fail("Promise was canceled when it should have been resolved"))
+                .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been resolved"))
 #endif
                 ;
 
@@ -638,7 +638,7 @@ namespace Proto.Promises.Tests
                     resolved = true;
                 })
 #if PROMISE_CANCEL
-                .CatchCancelation(() => Assert.Fail("Promise was canceled when it should have been resolved"))
+                .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been resolved"))
 #endif
                 ;
 
@@ -666,7 +666,7 @@ namespace Proto.Promises.Tests
                     rejected = true;
                 })
 #if PROMISE_CANCEL
-                .CatchCancelation(() => Assert.Fail("Promise was canceled when it should have been rejected"))
+                .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been rejected"))
 #endif
                 ;
 
@@ -694,7 +694,7 @@ namespace Proto.Promises.Tests
                     rejected = true;
                 })
 #if PROMISE_CANCEL
-                .CatchCancelation(() => Assert.Fail("Promise was canceled when it should have been rejected"))
+                .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been rejected"))
 #endif
                 ;
 
@@ -718,9 +718,9 @@ namespace Proto.Promises.Tests
             promise
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled"))
                 .Catch(() => Assert.Fail("Promise was rejected when it should have been canceled"))
-                .CatchCancelation((object reason) =>
+                .CatchCancelation(reason =>
                 {
-                    Assert.AreEqual(expected, reason);
+                    Assert.AreEqual(expected, reason.Value);
                     canceled = true;
                 });
 
@@ -743,9 +743,9 @@ namespace Proto.Promises.Tests
             promise
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled"))
                 .Catch(() => Assert.Fail("Promise was rejected when it should have been canceled"))
-                .CatchCancelation((object reason) =>
+                .CatchCancelation(reason =>
                 {
-                    Assert.AreEqual(expected, reason);
+                    Assert.AreEqual(expected, reason.Value);
                     canceled = true;
                 });
 

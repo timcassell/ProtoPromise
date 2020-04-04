@@ -239,11 +239,11 @@ namespace Proto.Promises.Tests
 
             Promise.First(deferred1.Promise, deferred2.Promise)
                 .Then(i => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(rej => { Assert.AreEqual(cancelation, rej); ++canceled; });
+                .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
 
             Promise.First((Promise) deferred1.Promise, deferred2.Promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(rej => { Assert.AreEqual(cancelation, rej); ++canceled; });
+                .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
 
             deferred1.Cancel("Different Cancel!");
 
@@ -338,11 +338,11 @@ namespace Proto.Promises.Tests
 
             Promise.First(deferred1.Promise, deferred2.Promise)
                 .Then(i => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation<string>(rej => { Assert.AreEqual(cancelation, rej); ++canceled; });
+                .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
 
             Promise.First((Promise) deferred1.Promise, deferred2.Promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation<string>(rej => { Assert.AreEqual(cancelation, rej); ++canceled; });
+                .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
 
             deferred1.Reject("Error!");
             deferred1.Promise.Catch((string _) => { });
@@ -372,11 +372,11 @@ namespace Proto.Promises.Tests
 
             Promise.First(deferred1.Promise, deferred2.Promise)
                 .Then(i => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(rej => { Assert.AreEqual(cancelation, rej); ++canceled; });
+                .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
 
             Promise.First((Promise) deferred1.Promise, deferred2.Promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(rej => { Assert.AreEqual(cancelation, rej); ++canceled; });
+                .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
 
             deferred2.Reject("Error!");
             deferred2.Promise.Catch((string _) => { });

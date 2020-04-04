@@ -257,12 +257,12 @@ namespace Proto.Promises.Tests
             var cancelations = 0;
 
             Promise.All(deferred1.Promise, deferred2.Promise)
-                .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(e => { ++cancelations; });
+                .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
+                .CatchCancelation(e => { ++cancelations; });
 
             Promise.All((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(e => { ++cancelations; });
+                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
+                .CatchCancelation(e => { ++cancelations; });
 
             deferred1.Cancel("Cancel!");
 
@@ -289,12 +289,12 @@ namespace Proto.Promises.Tests
             var cancelations = 0;
 
             Promise.All(deferred1.Promise, deferred2.Promise)
-                .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(e => { ++cancelations; });
+                .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
+                .CatchCancelation(e => { ++cancelations; });
 
             Promise.All((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(e => { ++cancelations; });
+                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
+                .CatchCancelation(e => { ++cancelations; });
 
             deferred1.Resolve(2);
 
@@ -321,12 +321,12 @@ namespace Proto.Promises.Tests
             var cancelations = 0;
 
             Promise.All(deferred1.Promise, deferred2.Promise)
-                .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(e => { ++cancelations; });
+                .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
+                .CatchCancelation(e => { ++cancelations; });
 
             Promise.All((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(e => { ++cancelations; });
+                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
+                .CatchCancelation(e => { ++cancelations; });
 
             deferred1.Cancel("Cancel!");
 
@@ -357,18 +357,18 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
 
             Promise.All(deferred.Promise, promise)
-                .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(ex =>
+                .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
+                .CatchCancelation(ex =>
                 {
-                    Assert.AreEqual(cancelation, ex);
+                    Assert.AreEqual(cancelation, ex.Value);
                     ++cancelations;
                 });
 
             Promise.All((Promise) deferred.Promise, promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(ex =>
+                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
+                .CatchCancelation(ex =>
                 {
-                    Assert.AreEqual(cancelation, ex);
+                    Assert.AreEqual(cancelation, ex.Value);
                     ++cancelations;
                 });
 

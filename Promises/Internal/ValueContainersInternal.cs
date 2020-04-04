@@ -225,9 +225,9 @@ namespace Proto.Promises
 
                 Exception IThrowable.GetException()
                 {
-                    if (Value is OperationCanceledException)
+                    if (Value is CanceledException)
                     {
-                        return Value as OperationCanceledException;
+                        return Value as CanceledException;
                     }
 
                     bool valueIsNull = ReferenceEquals(Value, null);

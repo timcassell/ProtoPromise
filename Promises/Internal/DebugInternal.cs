@@ -20,6 +20,7 @@
 #pragma warning disable CS0618 // Type or member is obsolete
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 #pragma warning disable RECS0085 // When initializing explicitly typed local variable or array type, array creation expression can be replaced with array initializer.
+#pragma warning disable IDE0041 // Use 'is null' check
 
 using System;
 using System.Collections.Generic;
@@ -48,7 +49,11 @@ namespace Proto.Promises
         partial void SetNotDisposed();
         static partial void SetCurrentInvoker(Internal.IStacktraceable current);
         static partial void ClearCurrentInvoker();
+        static partial void ValidateCancelContainer(object valueContainer, int skipFrames);
+        static partial void SetInvokingCancel();
 #if PROMISE_DEBUG
+        private static bool _invokingCancel;
+
         private static int idCounter;
         protected readonly int _id;
 
@@ -65,6 +70,20 @@ namespace Proto.Promises
         static partial void ClearCurrentInvoker()
         {
             _currentStacktrace = null;
+            _invokingCancel = false;
+        }
+
+        static partial void SetInvokingCancel()
+        {
+            _invokingCancel = true;
+        }
+
+        static partial void ValidateCancelContainer(object valueContainer, int skipFrames)
+        {
+            if (!_invokingCancel | ReferenceEquals(valueContainer, null))
+            {
+                throw new InvalidOperationException("An instance of Promise.CancelContainer is only valid during the invocation of an onCanceled delegate.", GetFormattedStacktrace(skipFrames + 1));
+            }
         }
 
         private static object DisposedObject
@@ -362,7 +381,14 @@ namespace Proto.Promises
 #endif
             }
 
-            partial class PotentialCancelation : IStacktraceable
+            partial class CancelDelegate : IStacktraceable
+            {
+#if PROMISE_DEBUG
+                DeepStacktrace IStacktraceable.Stacktrace { get; set; }
+#endif
+            }
+
+            partial class CancelDelegateCapture<TCapture> : IStacktraceable
             {
 #if PROMISE_DEBUG
                 DeepStacktrace IStacktraceable.Stacktrace { get; set; }

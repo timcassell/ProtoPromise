@@ -71,11 +71,11 @@ namespace Proto.Promises.Tests
                 deferred.Promise
                     .Then(() => { ++resolved; })
                     .Catch(() => Assert.Fail("Promise was rejected when it was already resolved."))
-                    .CatchCancelation(() => Assert.Fail("Promise was canceled when it was already resolved."));
+                    .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already resolved."));
                 deferredInt.Promise
                     .Then(v => { ++resolved; })
                     .Catch(() => Assert.Fail("Promise was rejected when it was already resolved."))
-                    .CatchCancelation(() => Assert.Fail("Promise was canceled when it was already resolved."));
+                    .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already resolved."));
 
                 deferred.Resolve();
                 deferredInt.Resolve(0);
@@ -123,11 +123,11 @@ namespace Proto.Promises.Tests
                 deferred.Promise
                     .Then(() => Assert.Fail("Promise was resolved when it was already rejected."))
                     .Catch(() => { ++rejected; })
-                    .CatchCancelation(() => Assert.Fail("Promise was canceled when it was already rejected."));
+                    .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already rejected."));
                 deferredInt.Promise
                     .Then(() => Assert.Fail("Promise was resolved when it was already rejected."))
                     .Catch(() => { ++rejected; })
-                    .CatchCancelation(() => Assert.Fail("Promise was canceled when it was already rejected."));
+                    .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already rejected."));
 
                 deferred.Reject("Fail Value");
                 deferredInt.Reject("Fail Value");
@@ -175,11 +175,11 @@ namespace Proto.Promises.Tests
                 deferred.Promise
                     .Then(() => Assert.Fail("Promise was resolved when it was already canceled."))
                     .Catch(() => Assert.Fail("Promise was rejected when it was already canceled."))
-                    .CatchCancelation(() => { ++canceled; });
+                    .CatchCancelation(e => { ++canceled; });
                 deferredInt.Promise
                     .Then(v => Assert.Fail("Promise was resolved when it was already canceled."))
                     .Catch(() => Assert.Fail("Promise was rejected when it was already canceled."))
-                    .CatchCancelation(() => { ++canceled; });
+                    .CatchCancelation(e => { ++canceled; });
 
                 deferred.Cancel("Cancel Value");
                 deferredInt.Cancel("Cancel Value");
@@ -215,7 +215,7 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
 
                 deferred.Retain();
-                string cancelation = null;
+                object cancelation = null;
                 string expected = "Cancel Value";
 
                 Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
@@ -225,7 +225,7 @@ namespace Proto.Promises.Tests
                     onResolve: resolveAssert,
                     onReject: failValue => rejectAssert(),
                     onUnknownRejection: rejectAssert);
-                deferred.Promise.CatchCancelation<string>(cancelValue => { cancelation = cancelValue; Assert.AreEqual(expected, cancelValue); });
+                deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
                 deferred.Cancel(expected);
                 Promise.Manager.HandleCompletes();
 
@@ -235,7 +235,7 @@ namespace Proto.Promises.Tests
                     onResolve: resolveAssert,
                     onReject: failValue => rejectAssert(),
                     onUnknownRejection: rejectAssert);
-                deferred.Promise.CatchCancelation<string>(cancelValue => { cancelation = cancelValue; Assert.AreEqual(expected, cancelValue); });
+                deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
 
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
 
@@ -259,7 +259,7 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
 
                 deferred.Retain();
-                string cancelation = null;
+                object cancelation = null;
                 string expected = "Cancel Value";
 
                 Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
@@ -269,7 +269,7 @@ namespace Proto.Promises.Tests
                     onResolve: _ => resolveAssert(),
                     onReject: _ => rejectAssert(),
                     onUnknownRejection: rejectAssert);
-                deferred.Promise.CatchCancelation<string>(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue));
+                deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
                 deferred.Cancel(expected);
                 Promise.Manager.HandleCompletes();
 
@@ -279,8 +279,7 @@ namespace Proto.Promises.Tests
                     onResolve: _ => resolveAssert(),
                     onReject: _ => rejectAssert(),
                     onUnknownRejection: rejectAssert);
-                deferred.Promise.CatchCancelation<string>(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue));
-                deferred.Promise.CatchCancelation<string>(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue));
+                deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
 
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
 
@@ -307,11 +306,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.CatchCancelation(default(Action));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferred.Promise.CatchCancelation(default(Action<int>));
+                deferred.Promise.CatchCancelation(default(Action<Promise.CancelReason>));
             });
 
             deferred.Cancel();
@@ -321,11 +316,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.CatchCancelation(default(Action));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferredInt.Promise.CatchCancelation(default(Action<Exception>));
+                deferredInt.Promise.CatchCancelation(default(Action<Promise.CancelReason>));
             });
 
             deferredInt.Cancel(0);
@@ -346,9 +337,9 @@ namespace Proto.Promises.Tests
                 var canceled = false;
                 var deferred = Promise.NewDeferred();
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
-                deferred.Promise.CatchCancelation<string>(r =>
+                deferred.Promise.CatchCancelation(r =>
                 {
-                    Assert.AreEqual(cancelReason, r);
+                    Assert.AreEqual(cancelReason, r.Value);
                     canceled = true;
                 });
                 deferred.Cancel(cancelReason);
@@ -369,13 +360,9 @@ namespace Proto.Promises.Tests
                 var canceled = false;
                 var deferred = Promise.NewDeferred();
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
-                deferred.Promise.CatchCancelation(() =>
+                deferred.Promise.CatchCancelation(r =>
                 {
-                    canceled = true;
-                });
-                deferred.Promise.CatchCancelation<string>(r =>
-                {
-                    Assert.AreEqual(cancelReason, r);
+                    Assert.AreEqual(cancelReason, r.Value);
                     canceled = true;
                 });
                 Promise.Manager.HandleCompletes();
@@ -400,8 +387,7 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
                 deferred.Retain();
                 var cancelCount = 0;
-                deferred.Promise.CatchCancelation(() => ++cancelCount);
-                deferred.Promise.CatchCancelation<string>(r => ++cancelCount);
+                deferred.Promise.CatchCancelation(r => ++cancelCount);
                 deferred.Cancel("Cancel value");
                 Promise.Manager.HandleCompletes();
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
@@ -409,7 +395,7 @@ namespace Proto.Promises.Tests
                 deferred.Release();
                 Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(2, cancelCount);
+                Assert.AreEqual(1, cancelCount);
 
                 // Clean up.
                 GC.Collect();
@@ -425,7 +411,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(Promise.State.Pending, deferred.State);
 
             bool canceled = false;
-            deferred.Promise.CatchCancelation(() => canceled = true);
+            deferred.Promise.CatchCancelation(e => canceled = true);
             deferred.Cancel("Cancel value");
             Assert.False(canceled);
 
@@ -439,65 +425,24 @@ namespace Proto.Promises.Tests
             LogAssert.NoUnexpectedReceived();
         }
 
-        public class CatchCancelationMayBeCalledMultipleTimesOnTheSameIPotentialCancelation
+        public class CatchCancelationMayBeCalledMultipleTimesOnTheSamePromise
         {
             [Test]
-            public void IfWhenIPotentialCancelationIsCanceledAllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation()
+            public void IfWhenPromiseCancelationIsCanceledAllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation()
             {
                 var deferred = Promise.NewDeferred();
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
 
                 int counter = 0;
 
-                deferred.Promise.CatchCancelation(() => Assert.AreEqual(0, counter++));
-                deferred.Promise.CatchCancelation(() => Assert.AreEqual(1, counter++));
-                deferred.Promise.CatchCancelation(() => Assert.AreEqual(2, counter++));
+                deferred.Promise.CatchCancelation(e => Assert.AreEqual(0, counter++));
+                deferred.Promise.CatchCancelation(e => Assert.AreEqual(1, counter++));
+                deferred.Promise.CatchCancelation(e => Assert.AreEqual(2, counter++));
 
                 deferred.Cancel();
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(3, counter);
-
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
-            }
-        }
-
-        public class CatchCancelationMayReturnAnIPotentialCancelation
-        {
-            [Test]
-            public void IfIPotentialCancelationIsCanceledAndItsReasonIsNotCompatibleWithOnCanceledItMustNotBeInvoked()
-            {
-                var deferred = Promise.NewDeferred();
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-                deferred.Promise.CatchCancelation((string v) => Assert.Fail("onCanceled was invoked with a string when the promise was canceled with an integer"));
-
-                deferred.Cancel(100);
-                Promise.Manager.HandleCompletes();
-
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
-            }
-
-            [Test]
-            public void IfIPotentialCancelationIsCanceledAndItsReasonIsNotCompatibleWithOnCanceledTheReturnedIPotentialCancelationMustBeCanceledWithTheSameReason()
-            {
-                var deferred = Promise.NewDeferred();
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-                int expected = 100;
-
-                deferred.Promise
-                    .CatchCancelation((string v) => Assert.Fail("onCanceled was invoked with a string when the promise was canceled with an integer"))
-                    .CatchCancelation((int v) => Assert.AreEqual(expected, v));
-
-                deferred.Cancel(expected);
-                Promise.Manager.HandleCompletes();
 
                 // Clean up.
                 GC.Collect();
@@ -570,7 +515,7 @@ namespace Proto.Promises.Tests
 
             deferred.Promise
                 .Then(() => { })
-                .CatchCancelation(() => invoked = true);
+                .CatchCancelation(e => invoked = true);
 
             deferred.Cancel();
             Promise.Manager.HandleCompletes();
@@ -591,13 +536,18 @@ namespace Proto.Promises.Tests
 
             bool invoked = false;
 
+            object cancelValue = "Cancel";
+
             var cancelable = deferred.Promise
                 .ThenDuplicate();
             cancelable
-                .CatchCancelation<int>(val => Assert.Fail("Promise was canceled with an integer when it should have been canceled with a string."))
-                .CatchCancelation<string>(val => invoked = true);
+                .CatchCancelation(reason =>
+                {
+                    Assert.AreEqual(cancelValue, reason.Value);
+                    invoked = true;
+                });
 
-            cancelable.Cancel("Cancel val");
+            cancelable.Cancel(cancelValue);
             deferred.Cancel(100);
             Promise.Manager.HandleCompletes();
 
@@ -618,7 +568,7 @@ namespace Proto.Promises.Tests
                 promise
                     .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
                         () => Assert.Fail("Promise was rejected when it should have been canceled."))
-                    .CatchCancelation<string>(val => Assert.AreEqual(cancelValue, val));
+                    .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value));
                 Promise.Manager.HandleCompletes();
             };
 
@@ -699,7 +649,7 @@ namespace Proto.Promises.Tests
                 promise
                     .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
                         () => Assert.Fail("Promise was rejected when it should have been canceled."))
-                    .CatchCancelation<string>(val => Assert.AreEqual(cancelValue, val));
+                    .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value));
                 Promise.Manager.HandleCompletes();
             };
 
@@ -785,7 +735,7 @@ namespace Proto.Promises.Tests
                 promise
                     .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
                         () => Assert.Fail("Promise was rejected when it should have been canceled."))
-                    .CatchCancelation<string>(val => Assert.AreEqual(cancelValue, val));
+                    .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value));
                 Promise.Manager.HandleCompletes();
             };
 
@@ -821,7 +771,7 @@ namespace Proto.Promises.Tests
                 promise
                     .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
                         () => Assert.Fail("Promise was rejected when it should have been canceled."))
-                    .CatchCancelation<string>(val => Assert.AreEqual(cancelValue, val));
+                    .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value));
                 // Rejecting a deferred whose promise is not pending adds that rejection to the unhandled rejections stack.
                 Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
             };
@@ -858,7 +808,7 @@ namespace Proto.Promises.Tests
                 promise
                     .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
                         () => Assert.Fail("Promise was rejected when it should have been canceled."))
-                    .CatchCancelation<string>(val => Assert.AreEqual(cancelValue, val));
+                    .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value));
                 Promise.Manager.HandleCompletes();
             };
 

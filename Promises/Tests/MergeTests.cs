@@ -185,7 +185,7 @@ namespace Proto.Promises.Tests
 
             Promise.Merge(deferred1.Promise, deferred2.Promise)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(e => canceled = true);
+                .CatchCancelation(e => canceled = true);
 
             deferred1.Cancel("Cancel!");
             deferred2.Resolve("Success");
@@ -209,7 +209,7 @@ namespace Proto.Promises.Tests
 
             Promise.Merge(deferred1.Promise, deferred2.Promise)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(e => canceled = true);
+                .CatchCancelation(e => canceled = true);
 
             deferred1.Resolve(2);
             deferred2.Cancel("Cancel!");
@@ -233,7 +233,7 @@ namespace Proto.Promises.Tests
 
             Promise.Merge(deferred1.Promise, deferred2.Promise)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(e => canceled = true);
+                .CatchCancelation(e => canceled = true);
 
             deferred1.Cancel("Cancel!");
             deferred2.Cancel("Cancel!");
@@ -257,9 +257,9 @@ namespace Proto.Promises.Tests
 
             Promise.Merge(deferred.Promise, Promise.Canceled<int, string>(cancelation))
                 .Then(v => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation<string>(ex =>
+                .CatchCancelation(reason =>
                 {
-                    Assert.AreEqual(cancelation, ex);
+                    Assert.AreEqual(cancelation, reason.Value);
                     canceled = true;
                 });
 

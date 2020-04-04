@@ -35,12 +35,13 @@ namespace Proto.Promises
 
         /// <summary>
         /// Capture a value and add a cancel callback.
-        /// <para/>If this instance is canceled with any or no reason, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/>.
+        /// If this instance is canceled, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and the cancelation reason.
+        /// Returns this.
         /// </summary>
 #if !PROMISE_CANCEL
         [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
-        public void CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel> onCanceled)
+        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, CancelReason> onCanceled)
         {
             ValidateCancel(1);
             ValidateOperation(this, 1);
@@ -48,42 +49,21 @@ namespace Proto.Promises
 
             if (_state == State.Pending | _state == State.Canceled)
             {
-                AddWaiter(Internal.CancelDelegateAnyCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled, 1));
-            }
-        }
-
-        /// <summary>
-        /// Capture a value and add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
-        /// <para/>If/when this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and that reason.
-        /// <para/>If/when this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
-        /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
-        public IPotentialCancelation CatchCancelation<TCaptureCancel, TCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, TCancel> onCanceled)
-        {
-            ValidateCancel(1);
-            ValidateOperation(this, 1);
-            ValidateArgument(onCanceled, "onCanceled", 1);
-
-            if (_state == State.Pending | _state == State.Canceled)
-            {
-                var cancelation = Internal.CancelDelegateCapture<TCaptureCancel, TCancel>.GetOrCreate(cancelCaptureValue, onCanceled, 1);
-                AddWaiter(cancelation);
-                return cancelation;
+                AddWaiter(Internal.CancelDelegateCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled, 1));
             }
             return this;
         }
 
         /// <summary>
-        /// Capture a value and add a finally callback. It will be invoked with <paramref name="finallyCaptureValue"/> when this resolves, rejects, or cancels. Returns this.
+        /// Capture a value and add a finally callback. It will be invoked with <paramref name="finallyCaptureValue"/> when this resolves, rejects, or cancels.
+        /// Returns this.
         /// </summary>
         public Promise Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(finallyCaptureValue, onFinally, this, 1));
+            AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(finallyCaptureValue, onFinally, 1));
             return this;
         }
 
@@ -1368,14 +1348,36 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a finally callback. It will be invoked with <paramref name="finallyCaptureValue"/> when this is resolved, rejected, or canceled. Returns this.
+        /// Capture a value and add a cancel callback.
+        /// If this instance is canceled, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and the cancelation reason.
+        /// Returns this.
+        /// </summary>
+#if !PROMISE_CANCEL
+        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
+#endif
+        public new Promise<T> CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, CancelReason> onCanceled)
+        {
+            ValidateCancel(1);
+            ValidateOperation(this, 1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
+
+            if (_state == State.Pending | _state == State.Canceled)
+            {
+                AddWaiter(Internal.CancelDelegateCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled, 1));
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Capture a value and add a finally callback. It will be invoked with <paramref name="finallyCaptureValue"/> when this is resolved, rejected, or canceled.
+        /// Returns this.
         /// </summary>
         public new Promise<T> Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(finallyCaptureValue, onFinally, this, 1));
+            AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(finallyCaptureValue, onFinally, 1));
             return this;
         }
 

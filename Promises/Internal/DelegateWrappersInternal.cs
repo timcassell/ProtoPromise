@@ -27,7 +27,7 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                public static FinallyDelegate GetOrCreate(Action onFinally, Promise owner, int skipFrames)
+                public static FinallyDelegate GetOrCreate(Action onFinally, int skipFrames)
                 {
                     var del = _pool.IsNotEmpty ? (FinallyDelegate) _pool.Pop() : new FinallyDelegate();
                     del._onFinally = onFinally;
@@ -607,7 +607,7 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                public static FinallyDelegateCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture> onFinally, Promise owner, int skipFrames)
+                public static FinallyDelegateCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture> onFinally, int skipFrames)
                 {
                     var del = _pool.IsNotEmpty ? (FinallyDelegateCapture<TCapture>) _pool.Pop() : new FinallyDelegateCapture<TCapture>();
                     del._capturedValue = capturedValue;

@@ -29,7 +29,7 @@ namespace Proto.Promises
     /// which registers callbacks to be invoked when the <see cref="Promise"/> is resolved,
     /// or the reason why the <see cref="Promise"/> cannot be resolved.
     /// </summary>
-    public abstract partial class Promise : ICancelableAny, IRetainable, IPotentialCancelation
+    public abstract partial class Promise : ICancelableAny, IRetainable
     {
         public enum State : byte
         {
@@ -125,12 +125,13 @@ namespace Proto.Promises
 
         /// <summary>
         /// Add a cancel callback.
-        /// <para/>If this instance is canceled with any or no reason, <paramref name="onCanceled"/> will be invoked.
+        /// If this instance is canceled, <paramref name="onCanceled"/> will be invoked with the cancelation reason.
+        /// Returns this.
         /// </summary>
 #if !PROMISE_CANCEL
         [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
-        public void CatchCancelation(Action onCanceled)
+        public Promise CatchCancelation(Action<CancelReason> onCanceled)
         {
             ValidateCancel(1);
             ValidateOperation(this, 1);
@@ -138,29 +139,7 @@ namespace Proto.Promises
 
             if (_state == State.Pending | _state == State.Canceled)
             {
-                AddWaiter(Internal.CancelDelegateAny.GetOrCreate(onCanceled, 1));
-            }
-        }
-
-        /// <summary>
-        /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
-        /// <para/>If/when this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with that reason.
-        /// <para/>If/when this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
-        /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
-        public IPotentialCancelation CatchCancelation<TCancel>(Action<TCancel> onCanceled)
-        {
-            ValidateCancel(1);
-            ValidateOperation(this, 1);
-            ValidateArgument(onCanceled, "onCanceled", 1);
-
-            if (_state == State.Pending | _state == State.Canceled)
-            {
-                var cancelation = Internal.CancelDelegate<TCancel>.GetOrCreate(onCanceled, 1);
-                AddWaiter(cancelation);
-                return cancelation;
+                AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled, 1));
             }
             return this;
         }
@@ -196,14 +175,15 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a finally callback. It will be invoked when this is resolved, rejected, or canceled. Returns this.
+        /// Add a finally callback. It will be invoked when this is resolved, rejected, or canceled.
+        /// Returns this.
         /// </summary>
         public Promise Finally(Action onFinally)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, this, 1));
+            AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, 1));
             return this;
         }
 
@@ -815,14 +795,36 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a finally callback. It will be invoked when this is resolved, rejected, or canceled. Returns this.
+        /// Add a cancel callback.
+        /// If this instance is canceled, <paramref name="onCanceled"/> will be invoked with the cancelation reason.
+        /// Returns this.
+        /// </summary>
+#if !PROMISE_CANCEL
+        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
+#endif
+        public new Promise<T> CatchCancelation(Action<CancelReason> onCanceled)
+        {
+            ValidateCancel(1);
+            ValidateOperation(this, 1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
+
+            if (_state == State.Pending | _state == State.Canceled)
+            {
+                AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled, 1));
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Add a finally callback. It will be invoked when this is resolved, rejected, or canceled.
+        /// Returns this.
         /// </summary>
         public new Promise<T> Finally(Action onFinally)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, this, 1));
+            AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, 1));
             return this;
         }
 

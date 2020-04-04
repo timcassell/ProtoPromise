@@ -66,11 +66,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.CatchCancelation(100, default(Action<int>));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferred.Promise.CatchCancelation(true, default(Action<bool, int>));
+                deferred.Promise.CatchCancelation(100, default(Action<int, Promise.CancelReason>));
             });
 
             deferred.Cancel();
@@ -80,11 +76,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.CatchCancelation(100, default(Action<int>));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferredInt.Promise.CatchCancelation(true, default(Action<bool, Exception>));
+                deferredInt.Promise.CatchCancelation(100, default(Action<int, Promise.CancelReason>));
             });
 
             deferredInt.Cancel();
@@ -635,18 +627,14 @@ namespace Proto.Promises.Tests
             var deferred = Promise.NewDeferred();
 
             string expected = "expected";
+            int cancelValue = 50;
             bool invoked = false;
 
             deferred.Promise
-                .CatchCancelation(expected, cv =>
+                .CatchCancelation(expected, (cv, reason) =>
                 {
                     Assert.AreEqual(expected, cv);
-                    invoked = true;
-                });
-            deferred.Promise
-                .CatchCancelation(expected, (string cv, int cancelValue) =>
-                {
-                    Assert.AreEqual(expected, cv);
+                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
 
@@ -655,19 +643,14 @@ namespace Proto.Promises.Tests
             var deferredInt = Promise.NewDeferred<int>();
 
             deferredInt.Promise
-                .CatchCancelation(expected, cv =>
+                .CatchCancelation(expected, (cv, reason) =>
                 {
                     Assert.AreEqual(expected, cv);
-                    invoked = true;
-                });
-            deferredInt.Promise
-                .CatchCancelation(expected, (string cv, int cancelValue) =>
-                {
-                    Assert.AreEqual(expected, cv);
+                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
 
-            deferredInt.Cancel(50);
+            deferredInt.Cancel(cancelValue);
 
             Promise.Manager.HandleCompletes();
 

@@ -26,6 +26,7 @@ namespace Proto.Promises.Async.CompilerServices
     public struct PromiseMethodBuilder
     {
         private Promise.Deferred _deferred;
+        private Action _continuation;
 
         [DebuggerHidden]
         public Promise Task { get; private set; }
@@ -88,15 +89,9 @@ namespace Proto.Promises.Async.CompilerServices
             {
                 _deferred = Promise.NewDeferred();
                 Task = _deferred.Promise;
+                _continuation = stateMachine.MoveNext;
             }
-            if (awaiter is Promise p)
-            {
-                p.Finally(stateMachine, sm => sm.MoveNext());
-            }
-            else
-            {
-                awaiter.OnCompleted(stateMachine.MoveNext);
-            }
+            awaiter.OnCompleted(_continuation);
         }
 
         [DebuggerHidden]
@@ -109,15 +104,9 @@ namespace Proto.Promises.Async.CompilerServices
             {
                 _deferred = Promise.NewDeferred();
                 Task = _deferred.Promise;
+                _continuation = stateMachine.MoveNext;
             }
-            if (awaiter is Promise p)
-            {
-                p.Finally(stateMachine, sm => sm.MoveNext());
-            }
-            else
-            {
-                awaiter.UnsafeOnCompleted(stateMachine.MoveNext);
-            }
+            awaiter.UnsafeOnCompleted(_continuation);
         }
 
         [DebuggerHidden]
@@ -137,6 +126,7 @@ namespace Proto.Promises.Async.CompilerServices
     public struct PromiseMethodBuilder<T>
     {
         private Promise<T>.Deferred _deferred;
+        private Action _continuation;
 
         [DebuggerHidden]
         public Promise<T> Task { get; private set; }
@@ -199,15 +189,9 @@ namespace Proto.Promises.Async.CompilerServices
             {
                 _deferred = Promise.NewDeferred<T>();
                 Task = _deferred.Promise;
+                _continuation = stateMachine.MoveNext;
             }
-            if (awaiter is Promise p)
-            {
-                p.Finally(stateMachine, sm => sm.MoveNext());
-            }
-            else
-            {
-                awaiter.OnCompleted(stateMachine.MoveNext);
-            }
+            awaiter.OnCompleted(_continuation);
         }
 
         [DebuggerHidden]
@@ -220,15 +204,9 @@ namespace Proto.Promises.Async.CompilerServices
             {
                 _deferred = Promise.NewDeferred<T>();
                 Task = _deferred.Promise;
+                _continuation = stateMachine.MoveNext;
             }
-            if (awaiter is Promise p)
-            {
-                p.Finally(stateMachine, sm => sm.MoveNext());
-            }
-            else
-            {
-                awaiter.UnsafeOnCompleted(stateMachine.MoveNext);
-            }
+            awaiter.UnsafeOnCompleted(_continuation);
         }
 
         [DebuggerHidden]

@@ -218,7 +218,7 @@ namespace Proto.Promises.Tests
 
             Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation<string>(e => ++cancelations);
+                .CatchCancelation(e => ++cancelations);
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, cancelations);
@@ -249,7 +249,7 @@ namespace Proto.Promises.Tests
 
             Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation<string>(e => ++cancelations);
+                .CatchCancelation(e => ++cancelations);
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, cancelations);
@@ -312,9 +312,9 @@ namespace Proto.Promises.Tests
 
             Promise.Sequence(() => deferred.Promise, () => Promise.Canceled<int, string>(cancelation))
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation<string>(ex =>
+                .CatchCancelation(reason =>
                 {
-                    Assert.AreEqual(cancelation, ex);
+                    Assert.AreEqual(cancelation, reason.Value);
                     ++canceled;
                 });
 

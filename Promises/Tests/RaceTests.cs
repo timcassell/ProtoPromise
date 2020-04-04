@@ -143,11 +143,11 @@ namespace Proto.Promises.Tests
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
                 .Then(i => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation<string>(rej => { Assert.AreEqual(expected, rej); ++invoked; });
+                .CatchCancelation(reason => { Assert.AreEqual(expected, reason.Value); ++invoked; });
 
             Promise.Race((Promise) deferred1.Promise, deferred2.Promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation<string>(rej => { Assert.AreEqual(expected, rej); ++invoked; });
+                .CatchCancelation(reason => { Assert.AreEqual(expected, reason.Value); ++invoked; });
 
             deferred1.Cancel(expected);
 
@@ -173,11 +173,11 @@ namespace Proto.Promises.Tests
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
                 .Then(i => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation<string>(rej => { Assert.AreEqual(expected, rej); ++invoked; });
+                .CatchCancelation(reason => { Assert.AreEqual(expected, reason.Value); ++invoked; });
 
             Promise.Race((Promise) deferred1.Promise, deferred2.Promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation<string>(rej => { Assert.AreEqual(expected, rej); ++invoked; });
+                .CatchCancelation(reason => { Assert.AreEqual(expected, reason.Value); ++invoked; });
 
             deferred2.Cancel(expected);
 
