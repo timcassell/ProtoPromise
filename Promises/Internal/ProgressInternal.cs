@@ -499,6 +499,7 @@ namespace Proto.Promises
 
                 private void InvokeAndCatch(float progress)
                 {
+                    SetCurrentInvoker(this);
                     try
                     {
                         Invoke(progress);
@@ -507,6 +508,7 @@ namespace Proto.Promises
                     {
                         AddRejectionToUnhandledStack(e, this);
                     }
+                    ClearCurrentInvoker();
                 }
 
                 void IInvokable.Invoke()

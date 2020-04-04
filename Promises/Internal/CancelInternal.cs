@@ -198,11 +198,9 @@ namespace Proto.Promises
                     SetCurrentInvoker(this);
                     var callback = _onCanceled;
                     var container = (IValueContainer) _valueContainer;
-                    SetCurrentInvoker(this);
                     Dispose();
                     try
                     {
-                        SetInvokingCancel();
                         callback.Invoke(new CancelReason(container));
                     }
                     catch (Exception e)
@@ -286,11 +284,9 @@ namespace Proto.Promises
                     var value = _capturedValue;
                     var callback = _onCanceled;
                     var container = (IValueContainer) _valueContainer;
-                    SetCurrentInvoker(this);
                     Dispose();
                     try
                     {
-                        SetInvokingCancel();
                         callback.Invoke(value, new CancelReason(container));
                     }
                     catch (Exception e)

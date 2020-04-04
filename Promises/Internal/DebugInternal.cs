@@ -49,10 +49,8 @@ namespace Proto.Promises
         partial void SetNotDisposed();
         static partial void SetCurrentInvoker(Internal.IStacktraceable current);
         static partial void ClearCurrentInvoker();
-        static partial void ValidateCancelContainer(object valueContainer, int skipFrames);
-        static partial void SetInvokingCancel();
 #if PROMISE_DEBUG
-        private static bool _invokingCancel;
+        private static ulong _invokeId;
 
         private static int idCounter;
         protected readonly int _id;
@@ -70,20 +68,7 @@ namespace Proto.Promises
         static partial void ClearCurrentInvoker()
         {
             _currentStacktrace = null;
-            _invokingCancel = false;
-        }
-
-        static partial void SetInvokingCancel()
-        {
-            _invokingCancel = true;
-        }
-
-        static partial void ValidateCancelContainer(object valueContainer, int skipFrames)
-        {
-            if (!_invokingCancel | ReferenceEquals(valueContainer, null))
-            {
-                throw new InvalidOperationException("An instance of Promise.CancelContainer is only valid during the invocation of an onCanceled delegate.", GetFormattedStacktrace(skipFrames + 1));
-            }
+            ++_invokeId;
         }
 
         private static object DisposedObject
