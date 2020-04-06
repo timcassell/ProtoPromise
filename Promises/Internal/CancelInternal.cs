@@ -119,7 +119,31 @@ namespace Proto.Promises
             else
             {
                 _state = State.Canceled;
-                var cancelValue = Internal.CancelContainer<TCancel>.GetOrCreate(reason);
+                Internal.IValueContainer cancelValue;
+                if (reason is OperationCanceledException)
+                {
+                    cancelValue = reason as Internal.IValueContainer;
+#if CSHARP_7_OR_LATER
+                    if (reason is Internal.IExceptionToContainer e)
+#else
+                    Internal.IExceptionToContainer e = reason as Internal.IExceptionToContainer;
+                    if (e != null)
+#endif
+                    {
+                        // reason is an internal cancelation object (CancelException), convert it to a container instead of wrapping it.
+                        cancelValue = e.ToContainer(this);
+                    }
+                    else if (cancelValue == null)
+                    {
+                        // Don't wrap OperationCanceledException.
+                        cancelValue = Internal.CancelContainerVoid.GetOrCreate();
+                    }
+                    // else reason is an internal cancelation object (CanceledException), use it directly instead of wrapping it.
+                }
+                else
+                {
+                    cancelValue = Internal.CancelContainer<TCancel>.GetOrCreate(reason);
+                }
                 cancelValue.Retain();
                 _valueOrPrevious = cancelValue;
                 AddBranchesToCancelQueueBack(cancelValue);
@@ -141,6 +165,7 @@ namespace Proto.Promises
 
         partial class Internal
         {
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed partial class CancelDelegate : ITreeHandleable
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
@@ -148,7 +173,7 @@ namespace Proto.Promises
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
                 private Action<CancelReason> _onCanceled;
-                private object _valueContainer;
+                private IValueContainer _valueContainer;
 
                 private CancelDelegate() { }
 
@@ -197,7 +222,7 @@ namespace Proto.Promises
                 {
                     SetCurrentInvoker(this);
                     var callback = _onCanceled;
-                    var container = (IValueContainer) _valueContainer;
+                    var container = _valueContainer;
                     Dispose();
                     try
                     {
@@ -214,7 +239,7 @@ namespace Proto.Promises
                 void Dispose()
                 {
                     _onCanceled = null;
-                    _valueContainer = DisposedObject;
+                    _valueContainer = null;
                     if (Config.ObjectPooling != PoolType.None)
                     {
                         _pool.Push(this);
@@ -224,6 +249,7 @@ namespace Proto.Promises
                 void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed partial class CancelDelegateCapture<TCapture> : ITreeHandleable
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
@@ -232,7 +258,7 @@ namespace Proto.Promises
 
                 private TCapture _capturedValue;
                 private Action<TCapture, CancelReason> _onCanceled;
-                private object _valueContainer;
+                private IValueContainer _valueContainer;
 
                 private CancelDelegateCapture() { }
 
@@ -283,7 +309,7 @@ namespace Proto.Promises
                     SetCurrentInvoker(this);
                     var value = _capturedValue;
                     var callback = _onCanceled;
-                    var container = (IValueContainer) _valueContainer;
+                    var container = _valueContainer;
                     Dispose();
                     try
                     {
@@ -301,7 +327,7 @@ namespace Proto.Promises
                 {
                     _capturedValue = default(TCapture);
                     _onCanceled = null;
-                    _valueContainer = DisposedObject;
+                    _valueContainer = null;
                     if (Config.ObjectPooling != PoolType.None)
                     {
                         _pool.Push(this);

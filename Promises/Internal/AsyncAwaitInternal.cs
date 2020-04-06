@@ -1,10 +1,27 @@
-﻿#if CSHARP_7_OR_LATER
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+#if !PROTO_PROMISE_CANCEL_DISABLE
+#define PROMISE_CANCEL
+#else
+#undef PROMISE_CANCEL
+#endif
+#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+#endif
+
+#if CSHARP_7_OR_LATER
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
+using System.Security;
 using Proto.Promises.Await;
 
 namespace Proto.Promises.Await
@@ -138,6 +155,268 @@ namespace Proto.Promises
             _wasWaitedOn = true;
             ReleaseInternal();
             throw exception;
+        }
+    }
+}
+
+namespace System.Runtime.CompilerServices
+{
+    internal sealed class AsyncMethodBuilderAttribute : Attribute
+    {
+        public Type BuilderType { get; }
+
+        public AsyncMethodBuilderAttribute(Type builderType)
+        {
+            BuilderType = builderType;
+        }
+    }
+}
+
+namespace Proto.Promises.Async.CompilerServices
+{
+    /// <summary>
+    /// This type and its members are intended for use by the compiler.
+    /// </summary>
+    public struct PromiseMethodBuilder
+    {
+        private Promise.Deferred _deferred;
+        private Action _continuation;
+
+        [DebuggerHidden]
+        public Promise Task { get; private set; }
+
+        [DebuggerHidden]
+        public static PromiseMethodBuilder Create()
+        {
+            return new PromiseMethodBuilder();
+        }
+
+        [DebuggerHidden]
+        public void SetException(Exception exception)
+        {
+#if PROMISE_CANCEL
+            if (exception is OperationCanceledException ex)
+            {
+                if (_deferred == null)
+                {
+                    Task = Promise.Canceled(ex);
+                }
+                else
+                {
+                    _deferred.Cancel(ex);
+                    _deferred = null;
+                }
+            }
+            else
+#endif
+            {
+                if (_deferred == null)
+                {
+                    Task = Promise.Rejected(exception);
+                }
+                else
+                {
+                    _deferred.Reject(exception);
+                    _deferred = null;
+                }
+            }
+        }
+
+        [DebuggerHidden]
+        public void SetResult()
+        {
+            if (_deferred == null)
+            {
+                Task = Promise.Resolved();
+            }
+            else
+            {
+                _deferred.Resolve();
+                _deferred = null;
+            }
+        }
+
+        [DebuggerHidden]
+        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            where TAwaiter : INotifyCompletion
+            where TStateMachine : IAsyncStateMachine
+        {
+            SetContinuation(ref stateMachine);
+            awaiter.OnCompleted(_continuation);
+        }
+
+        [DebuggerHidden]
+        [SecuritySafeCritical]
+        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            where TAwaiter : ICriticalNotifyCompletion
+            where TStateMachine : IAsyncStateMachine
+        {
+            SetContinuation(ref stateMachine);
+            awaiter.UnsafeOnCompleted(_continuation);
+        }
+
+        [DebuggerHidden]
+        public void Start<TStateMachine>(ref TStateMachine stateMachine)
+            where TStateMachine : IAsyncStateMachine
+        {
+            Promise.SetInvokingAsyncFunctionInternal(true);
+            try
+            {
+                stateMachine.MoveNext();
+            }
+            finally
+            {
+                Promise.SetInvokingAsyncFunctionInternal(false);
+            }
+        }
+
+        [DebuggerHidden]
+        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
+
+        [DebuggerHidden]
+        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
+        {
+            if (_continuation == null)
+            {
+                _deferred = Promise.NewDeferred();
+                Task = _deferred.Promise;
+                var sm = stateMachine;
+                _continuation = () =>
+                {
+                    Promise.SetInvokingAsyncFunctionInternal(true);
+                    try
+                    {
+                        sm.MoveNext();
+                    }
+                    finally
+                    {
+                        Promise.SetInvokingAsyncFunctionInternal(false);
+                    }
+                };
+            }
+        }
+    }
+
+    /// <summary>
+    /// This type and its members are intended for use by the compiler.
+    /// </summary>
+    public struct PromiseMethodBuilder<T>
+    {
+        private Promise<T>.Deferred _deferred;
+        private Action _continuation;
+
+        [DebuggerHidden]
+        public Promise<T> Task { get; private set; }
+
+        [DebuggerHidden]
+        public static PromiseMethodBuilder<T> Create()
+        {
+            return new PromiseMethodBuilder<T>();
+        }
+
+        [DebuggerHidden]
+        public void SetException(Exception exception)
+        {
+#if PROMISE_CANCEL
+            if (exception is OperationCanceledException ex)
+            {
+                if (_deferred == null)
+                {
+                    Task = Promise.Canceled<T, OperationCanceledException>(ex);
+                }
+                else
+                {
+                    _deferred.Cancel(ex);
+                    _deferred = null;
+                }
+            }
+            else
+#endif
+            {
+                if (_deferred == null)
+                {
+                    Task = Promise.Rejected<T, Exception>(exception);
+                }
+                else
+                {
+                    _deferred.Reject(exception);
+                    _deferred = null;
+                }
+            }
+        }
+
+        [DebuggerHidden]
+        public void SetResult(T result)
+        {
+            if (_deferred == null)
+            {
+                Task = Promise.Resolved(result);
+            }
+            else
+            {
+                _deferred.Resolve(result);
+                _deferred = null;
+            }
+        }
+
+        [DebuggerHidden]
+        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            where TAwaiter : INotifyCompletion
+            where TStateMachine : IAsyncStateMachine
+        {
+            SetContinuation(ref stateMachine);
+            awaiter.OnCompleted(_continuation);
+        }
+
+        [DebuggerHidden]
+        [SecuritySafeCritical]
+        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            where TAwaiter : ICriticalNotifyCompletion
+            where TStateMachine : IAsyncStateMachine
+        {
+            SetContinuation(ref stateMachine);
+            awaiter.UnsafeOnCompleted(_continuation);
+        }
+
+        [DebuggerHidden]
+        public void Start<TStateMachine>(ref TStateMachine stateMachine)
+            where TStateMachine : IAsyncStateMachine
+        {
+            Promise.SetInvokingAsyncFunctionInternal(true);
+            try
+            {
+                stateMachine.MoveNext();
+            }
+            finally
+            {
+                Promise.SetInvokingAsyncFunctionInternal(false);
+            }
+        }
+
+        [DebuggerHidden]
+        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
+
+        [DebuggerHidden]
+        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
+        {
+            if (_continuation == null)
+            {
+                _deferred = Promise.NewDeferred<T>();
+                Task = _deferred.Promise;
+                var sm = stateMachine;
+                _continuation = () =>
+                {
+                    Promise.SetInvokingAsyncFunctionInternal(true);
+                    try
+                    {
+                        sm.MoveNext();
+                    }
+                    finally
+                    {
+                        Promise.SetInvokingAsyncFunctionInternal(false);
+                    }
+                };
+            }
         }
     }
 }

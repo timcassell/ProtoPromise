@@ -31,21 +31,18 @@ namespace Proto.Promises
 {
     partial class Promise
     {
-        public enum GeneratedStacktrace : byte
+        public enum TraceLevel : byte
         {
             /// <summary>
-            /// Don't generate any extra stack traces.
+            /// Don't track any causality traces.
             /// </summary>
             None,
             /// <summary>
-            /// Generate stack traces when Deferred.Reject is called.
-            /// If Reject is called with an exception, the generated stack trace is appended to the exception's stacktrace.
+            /// Track causality only when Deferred.Reject is called.
             /// </summary>
             Rejections,
             /// <summary>
-            /// Generate stack traces when Deferred.Reject is called.
-            /// Also generate stack traces every time a promise is created (i.e. with .Then). This can help debug where an invalid object was returned from a .Then delegate.
-            /// If a .Then/.Catch callback throws an exception, the generated stack trace is appended to the exception's stacktrace.
+            /// Track causality when Deferred.Reject is called and every time a promise is created or a delegate is added to a promise (i.e. with .Then or .Progress).
             /// <para/>
             /// NOTE: This can be extremely expensive, so you should only enable this if you ran into an error and you are not sure where it came from.
             /// </summary>
@@ -71,6 +68,7 @@ namespace Proto.Promises
         /// <summary>
         /// Promise configuration. Configuration settings affect the global behaviour of promises.
         /// </summary>
+        [System.Diagnostics.DebuggerStepThrough]
         public static class Config
         {
 #if PROMISE_PROGRESS
@@ -93,16 +91,26 @@ namespace Proto.Promises
 #endif
 
 #if PROMISE_DEBUG
-            private static GeneratedStacktrace _debugStacktraceGenerator = GeneratedStacktrace.Rejections;
-            public static GeneratedStacktrace DebugStacktraceGenerator { get { return _debugStacktraceGenerator; } set { _debugStacktraceGenerator = value; } }
+            private static TraceLevel _debugCausalityTracer = TraceLevel.Rejections;
+            /// <summary>
+            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
+            /// </summary>
+            public static TraceLevel DebugCausalityTracer { get { return _debugCausalityTracer; } set { _debugCausalityTracer = value; } }
 #else
-            public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
+            /// <summary>
+            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
+            /// </summary>
+            public static TraceLevel DebugCausalityTracer { get { return default(TraceLevel); } set { } }
 #endif
 
             /// <summary>
             /// If this is not null, uncaught rejections get routed through this instead of being thrown.
             /// </summary>
             public static Action<UnhandledException> UncaughtRejectionHandler { get; set; }
+#if UNITY_2019_2_OR_NEWER
+                // Unity changed AggregateException logging to not include the InnerException, so make the default rejection handler route to UnityEngine.Debug.LogException.
+                = UnityEngine.Debug.LogException;
+#endif
         }
     }
 }

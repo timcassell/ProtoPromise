@@ -18,8 +18,34 @@ namespace Proto.Promises.Tests
 {
     public class CancelationTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = null;
+        }
+
+        [TearDown]
+        public void Teardown()
+        {
+            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+        }
+
         public class WhenPendingAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void MayTransitionToEitherTheFulfilledOrRejectedOrCanceledState()
             {
@@ -57,6 +83,19 @@ namespace Proto.Promises.Tests
 
         public class WhenFulfilledAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void MustNotTransitionToAnyOtherState()
             {
@@ -109,6 +148,19 @@ namespace Proto.Promises.Tests
 
         public class WhenRejectedAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void MustNotTransitionToAnyOtherState()
             {
@@ -161,6 +213,19 @@ namespace Proto.Promises.Tests
 
         public class WhenCanceledAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void MustNotTransitionToAnyOtherState()
             {
@@ -330,6 +395,19 @@ namespace Proto.Promises.Tests
 
         public class IfOnCanceledIsAFunction
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void ItMustBeCalledAfterPromiseIsCanceledWithPromisesReasonAsItsFirstArgument()
             {
@@ -427,6 +505,19 @@ namespace Proto.Promises.Tests
 
         public class CatchCancelationMayBeCalledMultipleTimesOnTheSamePromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void IfWhenPromiseCancelationIsCanceledAllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation()
             {

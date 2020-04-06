@@ -19,6 +19,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable CS0618 // Type or member is obsolete
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
+#pragma warning disable IDE0041 // Use 'is null' check
 
 using System;
 using System.Collections.Generic;
@@ -26,7 +27,7 @@ using Proto.Utils;
 
 namespace Proto.Promises
 {
-    partial class Promise : Promise.Internal.ITreeHandleable, Promise.Internal.IStacktraceable
+    partial class Promise : Promise.Internal.ITreeHandleable, Promise.Internal.ITraceable
     {
         private ValueLinkedStack<Internal.ITreeHandleable> _nextBranches;
         protected object _valueOrPrevious;
@@ -269,6 +270,18 @@ namespace Proto.Promises
                     ReleaseInternal();
                 }
             }
+            catch (Internal.CanceledExceptionInternal e)
+            {
+                if (_state == State.Pending)
+                {
+                    // reason is an internal cancelation object (CanceledException), don't wrap it.
+                    CancelInternal(e);
+                }
+                else
+                {
+                    ReleaseInternal();
+                }
+            }
             catch (OperationCanceledException) // Built-in system cancelation (or Task cancelation)
             {
                 if (_state == State.Pending)
@@ -311,9 +324,12 @@ namespace Proto.Promises
                     RejectInternal(rejection);
                 }
             }
-            Internal._invokingResolved = false;
-            Internal._invokingRejected = false;
-            ClearCurrentInvoker();
+            finally
+            {
+                Internal._invokingResolved = false;
+                Internal._invokingRejected = false;
+                ClearCurrentInvoker();
+            }
         }
 
         private void RejectDirect<TReject>(TReject reason, bool generateStacktrace)
@@ -321,8 +337,8 @@ namespace Proto.Promises
             _state = State.Rejected;
             var rejection = CreateRejection(reason);
             SetCreatedAndRejectedStacktrace(rejection, generateStacktrace);
-            _valueOrPrevious = rejection;
             rejection.Retain();
+            _valueOrPrevious = rejection;
             AddBranchesToHandleQueueBack(rejection);
             CancelProgressListeners();
             AddToHandleQueueFront(this);
@@ -330,6 +346,17 @@ namespace Proto.Promises
 
         protected static Internal.IRejectionContainer CreateRejection<TReject>(TReject reason)
         {
+#if CSHARP_7_OR_LATER
+            if (((object) reason) is Internal.IRejectionContainer internalReason)
+#else
+            Internal.IRejectionContainer internalReason = reason as Internal.IRejectionContainer;
+            if (internalReason != null)
+#endif
+            {
+                // reason is an internal rejection object (UnhandledException), use it directly instead of wrapping it.
+                return internalReason;
+            }
+
             // Avoid boxing value types.
             Type type = typeof(TReject);
             if (type.IsClass)
@@ -382,13 +409,19 @@ namespace Proto.Promises
         }
 
         // Generate stacktrace if traceable is null.
-        private static void AddRejectionToUnhandledStack<TReject>(TReject unhandledValue, Internal.IStacktraceable traceable)
+        private static void AddRejectionToUnhandledStack<TReject>(TReject unhandledValue, Internal.ITraceable traceable)
         {
+            if (unhandledValue is UnhandledException)
+            {
+                AddUnhandledException(unhandledValue as UnhandledException);
+                return;
+            }
+
 #if PROMISE_DEBUG
             string stacktrace =
                 traceable != null
                     ? GetFormattedStacktrace(traceable)
-                    : Config.DebugStacktraceGenerator != GeneratedStacktrace.None
+                    : Config.DebugCausalityTracer != TraceLevel.None
                         ? FormatStackTrace(new System.Diagnostics.StackTrace[1] { GetStackTrace(1) })
                         : null;
 #else
@@ -398,22 +431,17 @@ namespace Proto.Promises
             Exception innerException;
             bool valueIsNull = ReferenceEquals(unhandledValue, null);
 
-#if CSHARP_7_OR_LATER
-            if (((object) unhandledValue) is Exception e)
-#else
-            Exception e = unhandledValue as Exception;
-            if (e != null)
-#endif
+            if (unhandledValue is Exception)
             {
                 message = "An exception was not handled.";
-                innerException = e;
+                innerException = unhandledValue as Exception;
             }
             else if (typeof(Exception).IsAssignableFrom(typeof(TReject)))
             {
                 // unhandledValue is a null Exception, behave the same way .Net behaves if you throw null.
                 message = "An exception was not handled.";
                 NullReferenceException nullRefEx = new NullReferenceException();
-                AddUnhandledException(new UnhandledException(nullRefEx, typeof(NullReferenceException), message, stacktrace, nullRefEx));
+                AddUnhandledException(new Internal.UnhandledExceptionInternal(nullRefEx, typeof(NullReferenceException), message, stacktrace, nullRefEx));
                 return;
             }
             else
@@ -422,7 +450,7 @@ namespace Proto.Promises
                 message = "A rejected value was not handled, type: " + type + ", value: " + (valueIsNull ? "NULL" : unhandledValue.ToString());
                 innerException = null;
             }
-            AddUnhandledException(new UnhandledException(unhandledValue, valueIsNull ? typeof(TReject) : unhandledValue.GetType(), message, stacktrace, innerException));
+            AddUnhandledException(new Internal.UnhandledExceptionInternal(unhandledValue, valueIsNull ? typeof(TReject) : unhandledValue.GetType(), message, stacktrace, innerException));
         }
 
         // Handle promises in a depth-first manner.
@@ -522,6 +550,14 @@ namespace Proto.Promises
             converted = default(TConvert);
             return false;
         }
+
+        /// <summary>
+        /// DON"T CALL THIS FUNCTION IN USER CODE!
+        /// </summary>
+        internal static void SetInvokingAsyncFunctionInternal(bool invoking)
+        {
+            Internal._invokingResolved = invoking;
+        }
     }
 
     partial class Promise<T>
@@ -545,6 +581,7 @@ namespace Proto.Promises
 
             internal static Action OnClearPool;
 
+            [System.Diagnostics.DebuggerStepThrough]
             public abstract class PoolablePromise<TPromise> : Promise where TPromise : PoolablePromise<TPromise>
             {
                 protected static ValueLinkedStack<ITreeHandleable> _pool;
@@ -564,6 +601,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public abstract class PoolablePromise<T, TPromise> : Promise<T> where TPromise : PoolablePromise<T, TPromise>
             {
                 protected static ValueLinkedStack<ITreeHandleable> _pool;
@@ -583,6 +621,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public abstract partial class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitPromise<TPromise>
             {
                 public void WaitFor(Promise other)
@@ -609,6 +648,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public abstract partial class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitPromise<T, TPromise>
             {
                 public void WaitFor(Promise other)
@@ -635,6 +675,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed partial class DeferredPromise0 : PoolablePromise<DeferredPromise0>
             {
                 public readonly DeferredInternal0 deferred;
@@ -661,6 +702,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed partial class DeferredPromise<T> : PoolablePromise<T, DeferredPromise<T>>
             {
                 public readonly DeferredInternal<T> deferred;
@@ -687,6 +729,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class SettledPromise : Promise
             {
                 private SettledPromise() { }
@@ -705,6 +748,7 @@ namespace Proto.Promises
                 protected override void Dispose() { }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class LitePromise0 : PoolablePromise<LitePromise0>
             {
                 private LitePromise0() { }
@@ -732,6 +776,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class LitePromise<T> : PoolablePromise<T, LitePromise<T>>
             {
                 private LitePromise() { }
@@ -763,6 +808,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DuplicatePromise0 : PoolablePromise<DuplicatePromise0>
             {
                 private DuplicatePromise0() { }
@@ -780,6 +826,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DuplicatePromise<T> : PoolablePromise<T, DuplicatePromise<T>>
             {
                 private DuplicatePromise() { }
@@ -799,6 +846,7 @@ namespace Proto.Promises
 
 #region Resolve Promises
             // Individual types for more common .Then(onResolved) calls to be more efficient.
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseVoidResolve0 : PoolablePromise<PromiseVoidResolve0>
             {
                 private Action _onResolved;
@@ -836,6 +884,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseArgResolve<TArg> : PoolablePromise<PromiseArgResolve<TArg>>
             {
                 private Action<TArg> _onResolved;
@@ -873,6 +922,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseVoidResolve<TResult> : PoolablePromise<TResult, PromiseVoidResolve<TResult>>
             {
                 private Func<TResult> _onResolved;
@@ -910,6 +960,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseArgResolve<TArg, TResult> : PoolablePromise<TResult, PromiseArgResolve<TArg, TResult>>
             {
                 private Func<TArg, TResult> _onResolved;
@@ -947,6 +998,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseVoidResolvePromise0 : PromiseWaitPromise<PromiseVoidResolvePromise0>
             {
                 private Func<Promise> _onResolved;
@@ -990,6 +1042,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseArgResolvePromise<TArg> : PromiseWaitPromise<PromiseArgResolvePromise<TArg>>
             {
                 private Func<TArg, Promise> _onResolved;
@@ -1033,6 +1086,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseVoidResolvePromise<TPromise> : PromiseWaitPromise<TPromise, PromiseVoidResolvePromise<TPromise>>
             {
                 private Func<Promise<TPromise>> _onResolved;
@@ -1076,6 +1130,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseArgResolvePromise<TArg, TPromise> : PromiseWaitPromise<TPromise, PromiseArgResolvePromise<TArg, TPromise>>
             {
                 private Func<TArg, Promise<TPromise>> _onResolved;
@@ -1120,6 +1175,7 @@ namespace Proto.Promises
             }
 
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseCaptureVoidResolve<TCapture> : PoolablePromise<PromiseCaptureVoidResolve<TCapture>>
             {
                 private TCapture _capturedValue;
@@ -1162,6 +1218,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseCaptureArgResolve<TCapture, TArg> : PoolablePromise<PromiseCaptureArgResolve<TCapture, TArg>>
             {
                 private TCapture _capturedValue;
@@ -1204,6 +1261,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseCaptureVoidResolve<TCapture, TResult> : PoolablePromise<TResult, PromiseCaptureVoidResolve<TCapture, TResult>>
             {
                 private TCapture _capturedValue;
@@ -1246,6 +1304,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseCaptureArgResolve<TCapture, TArg, TResult> : PoolablePromise<TResult, PromiseCaptureArgResolve<TCapture, TArg, TResult>>
             {
                 private TCapture _capturedValue;
@@ -1288,6 +1347,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseCaptureVoidResolvePromise<TCapture> : PromiseWaitPromise<PromiseCaptureVoidResolvePromise<TCapture>>
             {
                 private TCapture _capturedValue;
@@ -1336,6 +1396,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseCaptureArgResolvePromise<TCapture, TArg> : PromiseWaitPromise<PromiseCaptureArgResolvePromise<TCapture, TArg>>
             {
                 private TCapture _capturedValue;
@@ -1384,6 +1445,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseCaptureVoidResolvePromise<TCapture, TPromise> : PromiseWaitPromise<TPromise, PromiseCaptureVoidResolvePromise<TCapture, TPromise>>
             {
                 private TCapture _capturedValue;
@@ -1432,6 +1494,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise> : PromiseWaitPromise<TPromise, PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise>>
             {
                 private TCapture _capturedValue;
@@ -1484,6 +1547,7 @@ namespace Proto.Promises
 #region Resolve or Reject Promises
             // IDelegate to reduce the amount of classes I would have to write to handle catches (Composition Over Inheritance).
             // I'm less concerned about performance for catches since exceptions are expensive anyway, and they are expected to be used less often than .Then(onResolved).
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseResolveReject0 : PoolablePromise<PromiseResolveReject0>
             {
                 private IDelegateResolve _onResolved;
@@ -1535,6 +1599,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseResolveReject<T> : PoolablePromise<T, PromiseResolveReject<T>>
             {
                 private IDelegateResolve _onResolved;
@@ -1586,6 +1651,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseResolveRejectPromise0 : PromiseWaitPromise<PromiseResolveRejectPromise0>
             {
                 private IDelegateResolvePromise _onResolved;
@@ -1647,6 +1713,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class PromiseResolveRejectPromise<TPromise> : PromiseWaitPromise<TPromise, PromiseResolveRejectPromise<TPromise>>
             {
                 private IDelegateResolvePromise _onResolved;
@@ -1709,6 +1776,7 @@ namespace Proto.Promises
             }
 #endregion
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed partial class PromisePassThrough : ITreeHandleable, IRetainable, ILinked<PromisePassThrough>
             {
                 private static ValueLinkedStack<PromisePassThrough> _pool;

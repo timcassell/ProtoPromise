@@ -26,6 +26,7 @@ namespace Proto.Promises
         /// <summary>
         /// Deferred base. An instance of this can be used to handle the state of the attached <see cref="Promise"/>, except resolve. You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to handle resolve.
         /// </summary>
+        [System.Diagnostics.DebuggerStepThrough]
         public abstract class DeferredBase : ICancelableAny, IRetainable
         {
             public State State { get; protected set; }
@@ -133,6 +134,7 @@ namespace Proto.Promises
         /// <summary>
         /// An instance of this is used to handle the state of the <see cref="DeferredBase.Promise"/>.
         /// </summary>
+        [System.Diagnostics.DebuggerStepThrough]
         public abstract class Deferred : DeferredBase
         {
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
@@ -152,7 +154,8 @@ namespace Proto.Promises
         /// <summary>
         /// An instance of this is used to handle the state of the <see cref="Promise"/>.
         /// </summary>
-		public abstract new class Deferred : DeferredBase
+        [System.Diagnostics.DebuggerStepThrough]
+        public abstract new class Deferred : DeferredBase
         {
             /// <summary>
             /// The <see cref="Promise{T}"/> that this controls.
@@ -175,6 +178,7 @@ namespace Proto.Promises
     {
         partial class Internal
         {
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DeferredInternal0 : Deferred
             {
                 public DeferredInternal0(Promise target)
@@ -240,6 +244,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DeferredInternal<T> : Promise<T>.Deferred
             {
                 public DeferredInternal(Promise<T> target)

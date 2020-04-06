@@ -18,6 +18,19 @@ namespace Proto.Promises.Tests
 {
     public class AllTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = null;
+        }
+
+        [TearDown]
+        public void Teardown()
+        {
+            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+        }
+
         [Test]
         public void AllPromiseIsResolvedWhenAllPromisesAreResolved()
         {

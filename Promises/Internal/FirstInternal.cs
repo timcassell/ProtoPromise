@@ -55,6 +55,7 @@ namespace Proto.Promises
                 return FirstPromise<T>.GetOrCreate(passThroughs, count, skipFrames + 1);
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed partial class FirstPromise0 : PoolablePromise<FirstPromise0>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
@@ -92,6 +93,7 @@ namespace Proto.Promises
                     bool handle = _valueOrPrevious == null & (owner._state == State.Resolved | done);
                     if (handle)
                     {
+                        owner._wasWaitedOn = true;
                         valueContainer.Retain();
                         _valueOrPrevious = valueContainer;
                     }
@@ -112,6 +114,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed partial class FirstPromise<T> : PoolablePromise<T, FirstPromise<T>>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
@@ -149,6 +152,7 @@ namespace Proto.Promises
                     bool handle = _valueOrPrevious == null & (owner._state == State.Resolved | done);
                     if (handle)
                     {
+                        owner._wasWaitedOn = true;
                         valueContainer.Retain();
                         _valueOrPrevious = valueContainer;
                     }

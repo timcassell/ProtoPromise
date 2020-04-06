@@ -1182,7 +1182,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Get a <see cref="CancelExceptionVoid"/> that can be thrown to cancel the promise without a reason from an onResolved or onRejected callback.
+        /// Get a <see cref="CancelException"/> that can be thrown to cancel the promise without a reason from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.CancelException();"
         /// <para/>
         /// If this is called while not inside an onResolved or onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
@@ -1191,7 +1191,7 @@ namespace Proto.Promises
 #if !PROMISE_CANCEL
         [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
-        public static CancelExceptionVoid CancelException()
+        public static CancelException CancelException()
         {
             ValidateCancel(1);
 #if !PROMISE_CANCEL
@@ -1202,12 +1202,12 @@ namespace Proto.Promises
             {
                 return Internal.CancelExceptionVoidInternal.GetOrCreate();
             }
-            throw new InvalidOperationException("CancelException can only be accessed inside an onResolved or onRejected callback.", GetFormattedStacktrace(1));
+            throw new InvalidOperationException("CancelException can only be accessed inside an onResolved or onRejected callback, or in an async Promise function.", GetFormattedStacktrace(1));
 #endif
         }
 
         /// <summary>
-        /// Get a <see cref="Promises.CancelException{T}"/> that can be thrown to cancel the promise with the provided reason from an onResolved or onRejected callback.
+        /// Get a <see cref="Promises.CancelException"/> that can be thrown to cancel the promise with the provided reason from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.CancelException(value);"
         /// <para/>
         /// If this is called while not inside an onResolved or onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
@@ -1216,7 +1216,7 @@ namespace Proto.Promises
 #if !PROMISE_CANCEL
         [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
-        public static CancelException<T> CancelException<T>(T value)
+        public static CancelException CancelException<T>(T value)
         {
 #if !PROMISE_CANCEL
             ThrowCancelException(1);
@@ -1226,24 +1226,24 @@ namespace Proto.Promises
             {
                 return Internal.CancelExceptionInternal<T>.GetOrCreate(value);
             }
-            throw new InvalidOperationException("CancelException can only be accessed inside an onResolved or onRejected callback.", GetFormattedStacktrace(1));
+            throw new InvalidOperationException("CancelException can only be accessed inside an onResolved or onRejected callback, or in an async Promise function.", GetFormattedStacktrace(1));
 #endif
         }
 
         /// <summary>
-        /// Get a <see cref="Promises.RejectException{T}"/> that can be thrown to reject the promise from an onResolved or onRejected callback.
+        /// Get a <see cref="Promises.RejectException"/> that can be thrown to reject the promise from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.RejectException(value);"
         /// <para/>
         /// If this is called while not inside an onResolved or onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
         /// </summary>
         /// <exception cref="InvalidOperationException"/>
-        public static RejectException<T> RejectException<T>(T value)
+        public static RejectException RejectException<T>(T value)
         {
             if (Internal._invokingResolved | Internal._invokingRejected)
             {
                 return Internal.RejectExceptionInternal<T>.GetOrCreate(value);
             }
-            throw new InvalidOperationException("RejectException can only be accessed inside an onResolved or onRejected callback.", GetFormattedStacktrace(1));
+            throw new InvalidOperationException("RejectException can only be accessed inside an onResolved or onRejected callback, or in an async Promise function.", GetFormattedStacktrace(1));
         }
     }
 }

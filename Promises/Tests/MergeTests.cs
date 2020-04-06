@@ -10,7 +10,6 @@
 #endif
 
 using System;
-using System.Linq;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
@@ -18,6 +17,19 @@ namespace Proto.Promises.Tests
 {
     public class MergeTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = null;
+        }
+
+        [TearDown]
+        public void Teardown()
+        {
+            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+        }
+
         [Test]
         public void MergePromiseIsResolvedWhenAllPromisesAreResolved()
         {

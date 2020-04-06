@@ -64,18 +64,18 @@ namespace Proto.Promises
 
             public interface IExceptionToContainer
             {
-                IValueContainer ToContainer(IStacktraceable traceable);
+                IValueContainer ToContainer(ITraceable traceable);
             }
 
             public interface ICantHandleException
             {
-                void AddToUnhandledStack(IStacktraceable traceable);
+                void AddToUnhandledStack(ITraceable traceable);
             }
 
             public interface IRejectionContainer : IValueContainer
             {
 #if PROMISE_DEBUG
-                void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, DeepStacktrace createdStacktraces);
+                void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, CausalityTrace createdStacktraces);
 #endif
             }
 

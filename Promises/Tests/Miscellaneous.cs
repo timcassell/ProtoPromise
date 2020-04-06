@@ -12,6 +12,19 @@ namespace Proto.Promises.Tests
 {
     public class Miscellaneous
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = null;
+        }
+
+        [TearDown]
+        public void Teardown()
+        {
+            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+        }
+
         [Test]
         public void AccessingCancelExceptionOrRejectExceptionInNormalCodeThrows()
         {

@@ -9,6 +9,7 @@ namespace Proto
     {
         public static Action<string> logWarning = UnityEngine.Debug.LogWarning;
 
+        [System.Diagnostics.DebuggerHidden]
         public static void LogWarning(string message)
         {
             var temp = logWarning;

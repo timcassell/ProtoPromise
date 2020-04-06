@@ -12,6 +12,7 @@ namespace Proto.Promises
     {
         partial class Internal
         {
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed partial class FinallyDelegate : ITreeHandleable
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
@@ -82,6 +83,7 @@ namespace Proto.Promises
             }
 
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegatePassthrough : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private static readonly DelegatePassthrough _instance = new DelegatePassthrough();
@@ -117,6 +119,7 @@ namespace Proto.Promises
                 void IRetainable.Release() { }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateVoidVoid0 : PoolableObject<DelegateVoidVoid0>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Action _callback;
@@ -177,6 +180,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateArgVoid<TArg> : PoolableObject<DelegateArgVoid<TArg>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Action<TArg> _callback;
@@ -253,6 +257,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateVoidResult<TResult> : PoolableObject<DelegateVoidResult<TResult>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Func<TResult> _callback;
@@ -313,6 +318,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateArgResult<TArg, TResult> : PoolableObject<DelegateArgResult<TArg, TResult>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Func<TArg, TResult> _callback;
@@ -381,6 +387,7 @@ namespace Proto.Promises
             }
 
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateVoidPromise0 : PoolableObject<DelegateVoidPromise0>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Func<Promise> _callback;
@@ -430,6 +437,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateArgPromise<TArg> : PoolableObject<DelegateArgPromise<TArg>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Func<TArg, Promise> _callback;
@@ -490,6 +498,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateVoidPromiseT<TPromise> : PoolableObject<DelegateVoidPromiseT<TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Func<Promise<TPromise>> _callback;
@@ -539,6 +548,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateArgPromiseT<TArg, TPromise> : PoolableObject<DelegateArgPromiseT<TArg, TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Func<TArg, Promise<TPromise>> _callback;
@@ -591,6 +601,7 @@ namespace Proto.Promises
             }
 
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed partial class FinallyDelegateCapture<TCapture> : ITreeHandleable
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
@@ -665,6 +676,7 @@ namespace Proto.Promises
             }
 
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateCaptureVoidVoid<TCapture> : PoolableObject<DelegateCaptureVoidVoid<TCapture>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private TCapture _capturedValue;
@@ -729,6 +741,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateCaptureArgVoid<TCapture, TArg> : PoolableObject<DelegateCaptureArgVoid<TCapture, TArg>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private TCapture _capturedValue;
@@ -800,6 +813,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateCaptureVoidResult<TCapture, TResult> : PoolableObject<DelegateCaptureVoidResult<TCapture, TResult>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private TCapture _capturedValue;
@@ -864,6 +878,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateCaptureArgResult<TCapture, TArg, TResult> : PoolableObject<DelegateCaptureArgResult<TCapture, TArg, TResult>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private TCapture _capturedValue;
@@ -936,6 +951,7 @@ namespace Proto.Promises
             }
 
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateCaptureVoidPromise<TCapture> : PoolableObject<DelegateCaptureVoidPromise<TCapture>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private TCapture _capturedValue;
@@ -989,6 +1005,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateCaptureArgPromise<TCapture, TArg> : PoolableObject<DelegateCaptureArgPromise<TCapture, TArg>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private TCapture _capturedValue;
@@ -1053,6 +1070,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateCaptureVoidPromiseT<TCapture, TPromise> : PoolableObject<DelegateCaptureVoidPromiseT<TCapture, TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private TCapture _capturedValue;
@@ -1106,6 +1124,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> : PoolableObject<DelegateCaptureArgPromiseT<TCapture, TArg, TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private TCapture _capturedValue;

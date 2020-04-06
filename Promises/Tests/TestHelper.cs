@@ -16,6 +16,8 @@ namespace Proto.Promises.Tests
     // These help test all Then/Catch functions at once.
     public static class TestHelper
     {
+        public static Action<UnhandledException> cachedRejectionHandler;
+
 #if PROMISE_PROGRESS
         public static readonly double progressEpsilon = 1d / Math.Pow(2d, Promise.Config.ProgressDecimalBits);
 #endif

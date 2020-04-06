@@ -29,6 +29,7 @@ namespace Proto.Promises
 {
     partial class Promise
     {
+        [System.Diagnostics.DebuggerStepThrough]
         partial class Internal
         {
             public static Promise _All<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
@@ -80,6 +81,7 @@ namespace Proto.Promises
                 }, count, skipFrames + 1);
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed partial class AllPromise0 : PoolablePromise<AllPromise0>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;

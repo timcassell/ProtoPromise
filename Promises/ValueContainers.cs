@@ -14,6 +14,7 @@ namespace Proto.Promises
         /// Used to get the value of a <see cref="Promise"/> cancelation.
         /// An instance of <see cref="CancelReason"/> is only valid during the invocation of the onCanceled delegate it is passed into.
         /// </summary>
+        [System.Diagnostics.DebuggerStepThrough]
         public partial struct CancelReason
         {
             private readonly Internal.IValueContainer _valueContainer;

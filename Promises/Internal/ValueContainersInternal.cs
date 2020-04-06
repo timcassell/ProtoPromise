@@ -19,6 +19,7 @@ namespace Proto.Promises
     {
         partial class Internal
         {
+            [System.Diagnostics.DebuggerStepThrough]
             public abstract class PoolableObject<T> : ILinked<T> where T : PoolableObject<T>
             {
                 T ILinked<T>.Next { get; set; }
@@ -31,6 +32,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class RejectionContainer<T> : PoolableObject<RejectionContainer<T>>, IRejectionContainer, IValueContainer<T>, IThrowable
             {
                 public T Value { get; private set; }
@@ -55,9 +57,9 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                 System.Diagnostics.StackTrace _rejectedStacktrace;
                 // Stack traces of recursive promises.
-                private DeepStacktrace _stacktraces;
+                private CausalityTrace _stacktraces;
 
-                public void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, DeepStacktrace createdStacktraces)
+                public void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, CausalityTrace createdStacktraces)
                 {
                     _rejectedStacktrace = rejectedStacktrace;
                     _stacktraces = createdStacktraces;
@@ -91,9 +93,9 @@ namespace Proto.Promises
 
                 public void ReleaseAndMaybeAddToUnhandledStack()
                 {
+                    AddUnhandledException(ToException());
                     if (--_retainCounter == 0)
                     {
-                        AddUnhandledException(ToException());
                         Dispose();
                     }
                 }
@@ -147,13 +149,13 @@ namespace Proto.Promises
                     }
 #if PROMISE_DEBUG
                     string outerStacktrace = _stacktraces.ToString();
-                    message += Config.DebugStacktraceGenerator == GeneratedStacktrace.All
-                        ? " -- This exception contains the deep recursive stacktraces of all async callbacks that ran."
-                        : " -- Set Proto.Promises.Promise.Config.DebugStacktraceGenerator to GeneratedStacktrace.All to get a deep recursive stacktrace.";
+                    message += Config.DebugCausalityTracer == TraceLevel.All
+                        ? " -- This exception's Stacktrace contains the causality trace of all async callbacks that ran."
+                        : " -- Set Proto.Promises.Promise.Config.DebugCausalityTracer to Proto.Promises.Promise.TraceLevel.All to get a causality trace.";
 #else
                     string outerStacktrace = null;
 #endif
-                    return new UnhandledException(Value, type, message, outerStacktrace, innerException);
+                    return new UnhandledExceptionInternal(Value, type, message, outerStacktrace, innerException);
                 }
 
                 Exception IThrowable.GetException()
@@ -162,6 +164,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class CancelContainer<T> : PoolableObject<CancelContainer<T>>, IValueContainer, IValueContainer<T>, IThrowable
             {
                 public T Value { get; private set; }
@@ -225,19 +228,15 @@ namespace Proto.Promises
 
                 Exception IThrowable.GetException()
                 {
-                    if (Value is CanceledException)
-                    {
-                        return Value as CanceledException;
-                    }
-
                     bool valueIsNull = ReferenceEquals(Value, null);
                     Type type = valueIsNull ? typeof(T) : Value.GetType();
                     string message = "Promise was canceled with a reason, type: " + type + ", value: " + (valueIsNull ? "NULL" : Value.ToString());
 
-                    return new CanceledException(Value, type, message);
+                    return new CanceledExceptionInternal(Value, type, message);
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class CancelContainerVoid : IValueContainer, IThrowable
             {
                 // We can reuse the same object.
@@ -267,10 +266,11 @@ namespace Proto.Promises
 
                 Exception IThrowable.GetException()
                 {
-                    return new CanceledException(null, null, "Promise was canceled without a reason.");
+                    return new CanceledExceptionInternal(null, null, "Promise was canceled without a reason.");
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class ResolveContainer<T> : PoolableObject<ResolveContainer<T>>, IValueContainer, IValueContainer<T>
             {
                 public T value;
@@ -339,6 +339,7 @@ namespace Proto.Promises
                 }
             }
 
+            [System.Diagnostics.DebuggerStepThrough]
             public sealed class ResolveContainerVoid : IValueContainer
             {
                 // We can reuse the same object.

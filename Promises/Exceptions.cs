@@ -98,6 +98,72 @@ namespace Proto.Promises
         private UnreleasedObjectException(string message) : base(message) { }
     }
 
+
+    /// <summary>
+    /// Exception that is thrown if a promise is rejected and that rejection is never handled.
+    /// </summary>
+    public abstract class UnhandledException : Exception
+    {
+        private readonly object _value;
+        private readonly Type _type;
+        private readonly string _stackTrace;
+
+        protected UnhandledException(object value, Type valueType, string message, string stacktrace, Exception innerException) : base(message, innerException)
+        {
+            _value = value;
+            _type = valueType;
+            _stackTrace = stacktrace;
+        }
+
+        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+
+        public Type ValueType { get { return _type; } }
+
+        public object Value { get { return _value; } }
+
+        public bool TryGetValueAs<T>(out T value)
+        {
+            if (typeof(T).IsAssignableFrom(_type))
+            {
+                value = (T) _value;
+                return true;
+            }
+            value = default(T);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Exception that is thrown if an awaited promise is canceled.
+    /// </summary>
+    public abstract class CanceledException : OperationCanceledException
+    {
+        private readonly object _value;
+        private readonly Type _type;
+
+        protected CanceledException(object value, Type valueType, string message) : base(message)
+        {
+            _value = value;
+            _type = valueType;
+        }
+
+        public Type ValueType { get { return _type; } }
+
+        public object Value { get { return _value; } }
+
+        public bool TryGetValueAs<T>(out T value)
+        {
+            if (typeof(T).IsAssignableFrom(_type))
+            {
+                value = (T) _value;
+                return true;
+            }
+            value = default(T);
+            return false;
+        }
+    }
+
+
     /// <summary>
     /// Special Exception that is used to rethrow a rejection from a Promise onRejected callback.
     /// </summary>
@@ -125,14 +191,6 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// Special Exception that is used to reject a Promise with a reason from an onResolved or onRejected callback.
-    /// </summary>
-    public abstract class RejectException<T> : RejectException
-    {
-        protected RejectException() { }
-    }
-
-    /// <summary>
     /// Special Exception that is used to cancel a Promise from an onResolved or onRejected callback.
     /// </summary>
     public abstract class CancelException : OperationCanceledException
@@ -149,91 +207,57 @@ namespace Proto.Promises
     }
 
 
-    /// <summary>
-    /// Special Exception that is used to cancel a Promise without a reason from an onResolved or onRejected callback.
-    /// </summary>
-    public abstract class CancelExceptionVoid : CancelException
-    {
-        protected CancelExceptionVoid() { }
-    }
-
-
-    /// <summary>
-    /// Special Exception that is used to cancel a Promise with a reason from an onResolved or onRejected callback.
-    /// </summary>
-    public abstract class CancelException<T> : CancelException
-    {
-        protected CancelException() { }
-    }
-
     partial class Promise
     {
-        /// <summary>
-        /// Exception that is thrown if a promise is rejected and that rejection is never handled.
-        /// </summary>
-        public class UnhandledException : Exception
-        {
-            private readonly object _value;
-            private readonly Type _type;
-            private readonly string _stackTrace;
-
-            public UnhandledException(object value, Type valueType, string message, string stacktrace, Exception innerException) : base(message, innerException)
-            {
-                _value = value;
-                _type = valueType;
-                _stackTrace = stacktrace;
-            }
-
-            public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
-
-            public Type ValueType { get { return _type; } }
-
-            public object Value { get { return _value; } }
-
-            public bool TryGetValueAs<T>(out T value)
-            {
-                if (typeof(T).IsAssignableFrom(_type))
-                {
-                    value = (T) _value;
-                    return true;
-                }
-                value = default(T);
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Exception that is thrown if an awaited promise is canceled.
-        /// </summary>
-        public class CanceledException : OperationCanceledException
-        {
-            private readonly object _value;
-            private readonly Type _type;
-
-            public CanceledException(object value, Type valueType, string message) : base(message)
-            {
-                _value = value;
-                _type = valueType;
-            }
-
-            public Type ValueType { get { return _type; } }
-
-            public object Value { get { return _value; } }
-
-            public bool TryGetValueAs<T>(out T value)
-            {
-                if (typeof(T).IsAssignableFrom(_type))
-                {
-                    value = (T) _value;
-                    return true;
-                }
-                value = default(T);
-                return false;
-            }
-        }
-
         partial class Internal
         {
+            public sealed class UnhandledExceptionInternal : UnhandledException, IValueContainer, IRejectionContainer, IThrowable
+            {
+                public UnhandledExceptionInternal(object value, Type valueType, string message, string stacktrace, Exception innerException) :
+                    base(value, valueType, message, stacktrace, innerException)
+                { }
+
+                State IValueContainer.GetState()
+                {
+                    return State.Rejected;
+                }
+
+                void IValueContainer.Retain() { }
+                void IValueContainer.Release() { }
+                void IValueContainer.ReleaseAndMaybeAddToUnhandledStack()
+                {
+                    AddUnhandledException(this);
+                }
+
+                Exception IThrowable.GetException()
+                {
+                    return this;
+                }
+
+                void IRejectionContainer.SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces) { }
+            }
+
+            public sealed class CanceledExceptionInternal : CanceledException, IValueContainer, IThrowable
+            {
+                public CanceledExceptionInternal(object value, Type valueType, string message) :
+                    base(value, valueType, message)
+                { }
+
+                State IValueContainer.GetState()
+                {
+                    return State.Canceled;
+                }
+
+                void IValueContainer.Retain() { }
+                void IValueContainer.Release() { }
+                void IValueContainer.ReleaseAndMaybeAddToUnhandledStack() { }
+
+                Exception IThrowable.GetException()
+                {
+                    return this;
+                }
+            }
+
             public sealed class RejectionException : Exception
             {
                 private readonly string _stackTrace;
@@ -246,7 +270,7 @@ namespace Proto.Promises
                 public override string StackTrace { get { return _stackTrace; } }
             }
 
-            public sealed class RejectExceptionInternal<T> : RejectException<T>, IExceptionToContainer, ICantHandleException
+            public sealed class RejectExceptionInternal<T> : RejectException, IExceptionToContainer, ICantHandleException
             {
                 // We can reuse the same object.
                 private static readonly RejectExceptionInternal<T> _instance = new RejectExceptionInternal<T>();
@@ -261,22 +285,22 @@ namespace Proto.Promises
 
                 private RejectExceptionInternal() { }
 
-                public IValueContainer ToContainer(IStacktraceable traceable)
+                public IValueContainer ToContainer(ITraceable traceable)
                 {
                     var rejection = CreateRejection(Value);
 #if PROMISE_DEBUG
-                    rejection.SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Stacktrace);
+                    rejection.SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
 #endif
                     return rejection;
                 }
 
-                public void AddToUnhandledStack(IStacktraceable traceable)
+                public void AddToUnhandledStack(ITraceable traceable)
                 {
                     AddRejectionToUnhandledStack(Value, traceable);
                 }
             }
 
-            public sealed class CancelExceptionVoidInternal : CancelExceptionVoid, IExceptionToContainer
+            public sealed class CancelExceptionVoidInternal : CancelException, IExceptionToContainer
             {
                 // We can reuse the same object.
                 private static readonly CancelExceptionVoidInternal _instance = new CancelExceptionVoidInternal();
@@ -288,13 +312,13 @@ namespace Proto.Promises
 
                 private CancelExceptionVoidInternal() { }
 
-                public IValueContainer ToContainer(IStacktraceable traceable)
+                public IValueContainer ToContainer(ITraceable traceable)
                 {
                     return CancelContainerVoid.GetOrCreate();
                 }
             }
 
-            public sealed class CancelExceptionInternal<T> : CancelException<T>, IExceptionToContainer
+            public sealed class CancelExceptionInternal<T> : CancelException, IExceptionToContainer
             {
                 // We can reuse the same object.
                 private static readonly CancelExceptionInternal<T> _instance = new CancelExceptionInternal<T>();
@@ -309,8 +333,17 @@ namespace Proto.Promises
 
                 private CancelExceptionInternal() { }
 
-                public IValueContainer ToContainer(IStacktraceable traceable)
+                public IValueContainer ToContainer(ITraceable traceable)
                 {
+#if CSHARP_7_OR_LATER
+                    if (((object) Value) is CanceledExceptionInternal e)
+#else
+                    CanceledExceptionInternal e = Value as CanceledExceptionInternal;
+                    if (e != null)
+#endif
+                    {
+                        return e;
+                    }
                     return CancelContainer<T>.GetOrCreate(Value);
                 }
             }

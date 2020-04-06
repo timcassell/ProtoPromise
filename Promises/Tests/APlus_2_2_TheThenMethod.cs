@@ -12,10 +12,36 @@ namespace Proto.Promises.Tests
 {
     public class APlus_2_2_TheThenMethod
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = null;
+        }
+
+        [TearDown]
+        public void Teardown()
+        {
+            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+        }
+
 #if PROMISE_DEBUG
         // These will only pass in DEBUG mode.
         public class _2_2_1_BothOnResolveAndOnRejectedAreOptionalArgument
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void _2_2_1_1_IfOnFulfilledIsNullThrow()
             {
@@ -436,6 +462,19 @@ namespace Proto.Promises.Tests
 
         public class IfOnFulfilledIsAFunction_2_2_2
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void _2_2_2_1_ItMustBeCalledAfterPromiseIsFulfilledWithPromisesValueAsItsFirstArgument()
             {
@@ -559,6 +598,19 @@ namespace Proto.Promises.Tests
 
         public class _2_2_3_IfOnRejectedIsAFunction
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void _2_2_3_1_ItMustBeCalledAfterPromiseIsRejectedWithPromisesReasonAsItsFirstArgument()
             {
@@ -745,6 +797,19 @@ namespace Proto.Promises.Tests
 
         public class _2_2_6_ThenMayBeCalledMultipleTimesOnTheSamePromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void _2_2_6_1_IfWhenPromiseIsFulfilledAllRespectiveOnFulfilledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToThen()
             {
@@ -894,6 +959,19 @@ namespace Proto.Promises.Tests
 
         public class ThenMustReturnAPromise_2_2_7
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             // 2.2.7.1 Promise Resolution Procedure in 2.3
 
             [Test]

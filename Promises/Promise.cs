@@ -29,6 +29,7 @@ namespace Proto.Promises
     /// which registers callbacks to be invoked when the <see cref="Promise"/> is resolved,
     /// or the reason why the <see cref="Promise"/> cannot be resolved.
     /// </summary>
+    [System.Diagnostics.DebuggerStepThrough]
     public abstract partial class Promise : ICancelableAny, IRetainable
     {
         public enum State : byte
@@ -50,8 +51,8 @@ namespace Proto.Promises
         {
             ValidateOperation(this, 1);
 #if PROMISE_DEBUG
-            // Make sure Retain doesn't overflow the ushort. 3 retains are reserved for internal use.
-            if (_userRetainCounter == ushort.MaxValue - 3)
+            // Make sure Retain doesn't overflow the ushort. 4 retains are reserved for internal use.
+            if (_userRetainCounter == ushort.MaxValue - 4)
             {
                 throw new OverflowException();
             }
@@ -764,6 +765,7 @@ namespace Proto.Promises
     /// which registers callbacks to be invoked with its resolve value when the <see cref="Promise{T}"/> is resolved,
     /// or the reason why the <see cref="Promise{T}"/> cannot be resolved.
     /// </summary>
+    [System.Diagnostics.DebuggerStepThrough]
     public abstract partial class Promise<T> : Promise
     {
         /// <summary>

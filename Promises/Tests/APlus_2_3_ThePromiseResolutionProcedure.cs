@@ -12,6 +12,19 @@ namespace Proto.Promises.Tests
 {
     public class APlus_2_3_ThePromiseResolutionProcedure
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = null;
+        }
+
+        [TearDown]
+        public void Teardown()
+        {
+            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+        }
+
 #if PROMISE_DEBUG
         [Test]
         public void _2_3_1_IfPromiseAndXReferToTheSameObjectRejectPromiseWithInvalidReturnExceptionAsTheReason()
@@ -111,6 +124,19 @@ namespace Proto.Promises.Tests
 
         public class _2_3_2_IfXIsAPromiseAdoptItsState
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void _2_3_2_1_IfXIsPendingPromiseMustRemainPendingUntilXIsFulfilledOrRejected()
             {

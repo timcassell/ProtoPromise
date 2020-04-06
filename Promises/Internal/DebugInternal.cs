@@ -44,10 +44,10 @@ namespace Proto.Promises
         static partial void ValidatePotentialOperation(object valueContainer, int skipFrames);
         static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames);
 
-        static partial void SetCreatedStacktrace(Internal.IStacktraceable stacktraceable, int skipFrames);
+        static partial void SetCreatedStacktrace(Internal.ITraceable stacktraceable, int skipFrames);
         partial void SetCreatedAndRejectedStacktrace(Internal.IRejectionContainer unhandledException, bool generateStacktrace);
         partial void SetNotDisposed();
-        static partial void SetCurrentInvoker(Internal.IStacktraceable current);
+        static partial void SetCurrentInvoker(Internal.ITraceable current);
         static partial void ClearCurrentInvoker();
 #if PROMISE_DEBUG
         private static ulong _invokeId;
@@ -57,17 +57,17 @@ namespace Proto.Promises
 
         private ushort _userRetainCounter;
 
-        private static Internal.DeepStacktrace _currentStacktrace;
-        Internal.DeepStacktrace Internal.IStacktraceable.Stacktrace { get; set; }
+        private static Internal.CausalityTrace _currentTrace;
+        Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
 
-        static partial void SetCurrentInvoker(Internal.IStacktraceable current)
+        static partial void SetCurrentInvoker(Internal.ITraceable current)
         {
-            _currentStacktrace = current.Stacktrace;
+            _currentTrace = current.Trace;
         }
 
         static partial void ClearCurrentInvoker()
         {
-            _currentStacktrace = null;
+            _currentTrace = null;
             ++_invokeId;
         }
 
@@ -79,9 +79,9 @@ namespace Proto.Promises
             }
         }
 
-        private static string GetFormattedStacktrace(Internal.IStacktraceable traceable)
+        private static string GetFormattedStacktrace(Internal.ITraceable traceable)
         {
-            return traceable.Stacktrace.ToString();
+            return traceable.Trace.ToString();
         }
 
         partial void SetNotDisposed()
@@ -91,12 +91,13 @@ namespace Proto.Promises
 
         partial class Internal
         {
-            public class DeepStacktrace
+            [DebuggerStepThrough]
+            public class CausalityTrace
             {
                 private readonly StackTrace _stacktrace;
-                private readonly DeepStacktrace _next;
+                private readonly CausalityTrace _next;
 
-                public DeepStacktrace(StackTrace stacktrace, DeepStacktrace higherStacktrace)
+                public CausalityTrace(StackTrace stacktrace, CausalityTrace higherStacktrace)
                 {
                     _stacktrace = stacktrace;
                     _next = higherStacktrace;
@@ -109,7 +110,7 @@ namespace Proto.Promises
                         return null;
                     }
                     List<StackTrace> stacktraces = new List<StackTrace>();
-                    for (DeepStacktrace current = _next; current != null; current = current._next)
+                    for (CausalityTrace current = _next; current != null; current = current._next)
                     {
                         stacktraces.Add(current._stacktrace);
                     }
@@ -118,6 +119,7 @@ namespace Proto.Promises
             }
 
             // This allows us to re-use the reference field without having to add another bool field.
+            [DebuggerStepThrough]
             public sealed class DisposedChecker
             {
                 public static readonly DisposedChecker instance = new DisposedChecker();
@@ -126,20 +128,20 @@ namespace Proto.Promises
             }
         }
 
-        static partial void SetCreatedStacktrace(Internal.IStacktraceable stacktraceable, int skipFrames)
+        static partial void SetCreatedStacktrace(Internal.ITraceable stacktraceable, int skipFrames)
         {
-            StackTrace stacktrace = Config.DebugStacktraceGenerator == GeneratedStacktrace.All
+            StackTrace stacktrace = Config.DebugCausalityTracer == TraceLevel.All
                 ? GetStackTrace(skipFrames + 1)
                 : null;
-            stacktraceable.Stacktrace = new Internal.DeepStacktrace(stacktrace, _currentStacktrace);
+            stacktraceable.Trace = new Internal.CausalityTrace(stacktrace, _currentTrace);
         }
 
         partial void SetCreatedAndRejectedStacktrace(Internal.IRejectionContainer unhandledException, bool generateStacktrace)
         {
-            StackTrace stacktrace = generateStacktrace & Config.DebugStacktraceGenerator != GeneratedStacktrace.None
+            StackTrace stacktrace = generateStacktrace & Config.DebugCausalityTracer != TraceLevel.None
                 ? GetStackTrace(1)
                 : null;
-            unhandledException.SetCreatedAndRejectedStacktrace(stacktrace, ((Internal.IStacktraceable) this).Stacktrace);
+            unhandledException.SetCreatedAndRejectedStacktrace(stacktrace, ((Internal.ITraceable) this).Trace);
         }
 
         private static StackTrace GetStackTrace(int skipFrames)
@@ -230,7 +232,7 @@ namespace Proto.Promises
             {
                 if (prev == this)
                 {
-                    throw new InvalidReturnException("Circular Promise chain detected.", ((Internal.IStacktraceable) other).Stacktrace.ToString());
+                    throw new InvalidReturnException("Circular Promise chain detected.", ((Internal.ITraceable) other).Trace.ToString());
                 }
                 prev.BorrowPassthroughs(ref passThroughs);
             }
@@ -324,7 +326,7 @@ namespace Proto.Promises
             return null;
         }
 
-        private static string GetFormattedStacktrace(Internal.IStacktraceable traceable)
+        private static string GetFormattedStacktrace(Internal.ITraceable traceable)
         {
             return null;
         }
@@ -345,38 +347,38 @@ namespace Proto.Promises
 
         partial class Internal
         {
-            public interface IStacktraceable
+            public interface ITraceable
             {
 #if PROMISE_DEBUG
-                DeepStacktrace Stacktrace { get; set; }
+                CausalityTrace Trace { get; set; }
 #endif
             }
 
-            partial class FinallyDelegate : IStacktraceable
+            partial class FinallyDelegate : ITraceable
             {
 #if PROMISE_DEBUG
-                DeepStacktrace IStacktraceable.Stacktrace { get; set; }
+                CausalityTrace ITraceable.Trace { get; set; }
 #endif
             }
 
-            partial class FinallyDelegateCapture<TCapture> : IStacktraceable
+            partial class FinallyDelegateCapture<TCapture> : ITraceable
             {
 #if PROMISE_DEBUG
-                DeepStacktrace IStacktraceable.Stacktrace { get; set; }
+                CausalityTrace ITraceable.Trace { get; set; }
 #endif
             }
 
-            partial class CancelDelegate : IStacktraceable
+            partial class CancelDelegate : ITraceable
             {
 #if PROMISE_DEBUG
-                DeepStacktrace IStacktraceable.Stacktrace { get; set; }
+                CausalityTrace ITraceable.Trace { get; set; }
 #endif
             }
 
-            partial class CancelDelegateCapture<TCapture> : IStacktraceable
+            partial class CancelDelegateCapture<TCapture> : ITraceable
             {
 #if PROMISE_DEBUG
-                DeepStacktrace IStacktraceable.Stacktrace { get; set; }
+                CausalityTrace ITraceable.Trace { get; set; }
 #endif
             }
         }
