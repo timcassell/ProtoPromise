@@ -91,7 +91,7 @@ namespace Proto.Promises
         {
             ValidateOperation(this, 1);
 
-            var yield = InternalYieldInstruction.GetOrCreate(this);
+            var yield = Internal.YieldInstructionVoid.GetOrCreate(this);
             AddWaiter(yield);
             return yield;
         }
@@ -768,6 +768,18 @@ namespace Proto.Promises
     [System.Diagnostics.DebuggerStepThrough]
     public abstract partial class Promise<T> : Promise
     {
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}.YieldInstruction"/> that can be yielded in a coroutine to wait until this is settled.
+        /// </summary>
+        public new YieldInstruction ToYieldInstruction()
+        {
+            ValidateOperation(this, 1);
+            
+            var yield = Internal.YieldInstruction<T>.GetOrCreate(this);
+            AddWaiter(yield);
+            return yield;
+        }
+
         /// <summary>
         /// Returns a new <see cref="Promise{T}"/> that adopts the state of this. This is mostly useful for branches that you expect might be canceled, and you don't want all branches to be canceled.
         /// </summary>

@@ -41,7 +41,7 @@ namespace Proto.Promises
         static partial void ValidateArgument(object arg, string argName, int skipFrames);
         partial void ValidateReturn(Promise other);
         static partial void ValidateReturn(Delegate other);
-        static partial void ValidatePotentialOperation(object valueContainer, int skipFrames);
+        static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames);
         static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames);
 
         static partial void SetCreatedStacktrace(Internal.ITraceable stacktraceable, int skipFrames);
@@ -194,11 +194,11 @@ namespace Proto.Promises
             var trace = stackFrames
                 .Where(frame =>
                 {
-                    // Remove all methods from this library.
-                    Type methodClassType = frame.GetMethod().DeclaringType;
-                    bool isInThisAssembly = methodClassType.Assembly == typeof(Promise).Assembly;
-                    // If method is in this assembly, check the name in case this library is used with raw source in the same assembly as user code.
-                    return !isInThisAssembly || !methodClassType.Namespace.StartsWith("Proto.Promises", StringComparison.Ordinal);
+                    // Ignore DebuggerStepThrough and DebuggerHidden.
+                    var methodType = frame.GetMethod();
+                    return !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false)
+                        && !methodType.IsDefined(typeof(DebuggerStepThroughAttribute), false)
+                        && !methodType.DeclaringType.IsDefined(typeof(DebuggerStepThroughAttribute), false);
                 })
                 // Create a new StackTrace to get proper formatting.
                 .Select(frame => new StackTrace(frame).ToString());
@@ -280,7 +280,7 @@ namespace Proto.Promises
             }
         }
 
-        static partial void ValidatePotentialOperation(object valueContainer, int skipFrames)
+        static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames)
         {
             ValidateNotDisposed(valueContainer, skipFrames + 1);
         }
@@ -387,6 +387,7 @@ namespace Proto.Promises
     partial class Promise<T>
     {
         // Calls to these get compiled away in RELEASE mode
+        static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames);
         static partial void ValidateOperation(Promise<T> promise, int skipFrames);
         static partial void ValidateArgument(object arg, string argName, int skipFrames);
         static partial void ValidateProgress(float progress, int skipFrames);
@@ -394,6 +395,11 @@ namespace Proto.Promises
         static partial void ValidateProgress(float progress, int skipFrames)
         {
             ValidateProgressValue(progress, skipFrames + 1);
+        }
+
+        static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames)
+        {
+            ValidateNotDisposed(valueContainer, skipFrames + 1);
         }
 
         static partial void ValidateOperation(Promise<T> promise, int skipFrames)
