@@ -50,7 +50,7 @@ namespace Proto.Promises
         static partial void SetCurrentInvoker(Internal.ITraceable current);
         static partial void ClearCurrentInvoker();
 #if PROMISE_DEBUG
-        private static ulong _invokeId;
+        protected static ulong _invokeId;
 
         private static int idCounter;
         protected readonly int _id;
@@ -149,7 +149,7 @@ namespace Proto.Promises
             return new StackTrace(skipFrames + 1, true);
         }
 
-        private static string GetFormattedStacktrace(int skipFrames)
+        protected static string GetFormattedStacktrace(int skipFrames)
         {
             return FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
         }
@@ -321,7 +321,7 @@ namespace Proto.Promises
             return string.Format("Type: Promise, Id: {0}, State: {1}", _id, _state);
         }
 #else
-            private static string GetFormattedStacktrace(int skipFrames)
+        protected static string GetFormattedStacktrace(int skipFrames)
         {
             return null;
         }

@@ -4,6 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable CS0618 // Type or member is obsolete
+
 using System;
 using NUnit.Framework;
 using UnityEngine.TestTools;
@@ -58,7 +60,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { p.Catch(catcher); return p; },
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p; }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(resolveDeferred.Promise,
+            TestHelper.AddContinueCallbacks<int, string>(resolveDeferred.Promise,
                 promiseToPromise: p => { p.Catch(catcher); return p; },
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p; }
             );
@@ -74,7 +76,7 @@ namespace Proto.Promises.Tests
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p; },
                 promiseToPromiseT: p => { p.Catch(catcher); return p; }
             );
-            TestHelper.AddCompleteCallbacks<bool, string>(resolveDeferredInt.Promise,
+            TestHelper.AddContinueCallbacks<int, bool, string>(resolveDeferredInt.Promise,
                 promiseToPromise: p => { p.Catch(catcher); return p; },
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p; }
             );
@@ -84,7 +86,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { p.Catch(catcher); return p; },
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p; }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(rejectDeferred.Promise,
+            TestHelper.AddContinueCallbacks<int, string>(rejectDeferred.Promise,
                 promiseToPromise: p => { p.Catch(catcher); return p; },
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p; }
             );
@@ -95,7 +97,7 @@ namespace Proto.Promises.Tests
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p; },
                 promiseToPromiseT: p => { p.Catch(catcher); return p; }
             );
-            TestHelper.AddCompleteCallbacks<bool, string>(rejectDeferredInt.Promise,
+            TestHelper.AddContinueCallbacks<int, bool, string>(rejectDeferredInt.Promise,
                 promiseToPromise: p => { p.Catch(catcher); return p; },
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p; }
             );
@@ -112,7 +114,8 @@ namespace Proto.Promises.Tests
                 TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                 TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
                 TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                (TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks) * 4,
+                (TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks +
+                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2,
                 exceptionCounter);
 
             // Clean up.
@@ -167,12 +170,12 @@ namespace Proto.Promises.Tests
                 TestHelper.AddResolveCallbacks<int, string>(resolveDeferred.Promise,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
@@ -181,24 +184,24 @@ namespace Proto.Promises.Tests
                     onUnknownRejection: rejectAssert,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(resolveDeferred.Promise,
+                TestHelper.AddContinueCallbacks<int, string>(resolveDeferred.Promise,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
@@ -206,12 +209,12 @@ namespace Proto.Promises.Tests
                 TestHelper.AddResolveCallbacks<int, string>(resolveDeferred.Promise,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
@@ -220,24 +223,24 @@ namespace Proto.Promises.Tests
                     onUnknownRejection: rejectAssert,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(resolveDeferred.Promise,
+                TestHelper.AddContinueCallbacks<int, string>(resolveDeferred.Promise,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
@@ -250,12 +253,12 @@ namespace Proto.Promises.Tests
                 TestHelper.AddResolveCallbacks<int, int, string>(resolveDeferredInt.Promise,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
@@ -264,24 +267,24 @@ namespace Proto.Promises.Tests
                     onUnknownRejection: rejectAssert,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(resolveDeferredInt.Promise,
+                TestHelper.AddContinueCallbacks<int, string>(resolveDeferredInt.Promise,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
@@ -289,12 +292,12 @@ namespace Proto.Promises.Tests
                 TestHelper.AddResolveCallbacks<int, int, string>(resolveDeferredInt.Promise,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
@@ -303,29 +306,29 @@ namespace Proto.Promises.Tests
                     onUnknownRejection: rejectAssert,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferredInt.Promise;
                     },
                     promiseToPromiseT: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(resolveDeferredInt.Promise,
+                TestHelper.AddContinueCallbacks<int, string>(resolveDeferredInt.Promise,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
@@ -339,24 +342,24 @@ namespace Proto.Promises.Tests
                     onResolve: resolveAssert,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(rejectDeferred.Promise,
+                TestHelper.AddContinueCallbacks<int, string>(rejectDeferred.Promise,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
@@ -365,24 +368,24 @@ namespace Proto.Promises.Tests
                     onResolve: resolveAssert,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(rejectDeferred.Promise,
+                TestHelper.AddContinueCallbacks<int, string>(rejectDeferred.Promise,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
@@ -396,29 +399,29 @@ namespace Proto.Promises.Tests
                     onResolve: _ => resolveAssert(),
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferredInt.Promise;
                     },
                     promiseToPromiseT: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(rejectDeferredInt.Promise,
+                TestHelper.AddContinueCallbacks<int, int, string>(rejectDeferredInt.Promise,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
@@ -427,29 +430,29 @@ namespace Proto.Promises.Tests
                     onResolve: _ => resolveAssert(),
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferredInt.Promise;
                     },
                     promiseToPromiseT: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(rejectDeferredInt.Promise,
+                TestHelper.AddContinueCallbacks<int, int, string>(rejectDeferredInt.Promise,
                     promiseToPromise: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferred.Promise;
                     },
                     promiseToPromiseConvert: p =>
                     {
-                        p.Complete(() => ++completeCounter);
+                        p.ContinueWith(r => ++completeCounter);
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
@@ -463,7 +466,7 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
                 expectedCompleteCount += TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveTPromiseVoidCallbacks +
                     TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectTPromiseVoidCallbacks +
-                    (TestHelper.completePromiseVoidCallbacks * 4);
+                    ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueTPromiseVoidCallbacks) * 2);
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
@@ -471,7 +474,7 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
                 expectedCompleteCount += TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                     TestHelper.rejectVoidPromiseConvertCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                    (TestHelper.completePromiseConvertCallbacks * 4);
+                    (TestHelper.continueVoidPromiseConvertCallbacks * 4);
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
@@ -479,7 +482,7 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
                 expectedCompleteCount += TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveTPromiseVoidCallbacks +
                     TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectTPromiseVoidCallbacks +
-                    (TestHelper.completePromiseVoidCallbacks * 4);
+                    ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueTPromiseVoidCallbacks) * 2);
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
@@ -487,7 +490,7 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
                 expectedCompleteCount += TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                     TestHelper.rejectVoidPromiseConvertCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                    (TestHelper.completePromiseConvertCallbacks * 4);
+                    (TestHelper.continueVoidPromiseConvertCallbacks * 4);
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                 // Clean up.
@@ -559,7 +562,7 @@ namespace Proto.Promises.Tests
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(resolveDeferred.Promise,
+                TestHelper.AddContinueCallbacks<int, string>(resolveDeferred.Promise,
                     promiseToPromiseConvert: p =>
                     {
                         p.Then(onResolved);
@@ -592,7 +595,7 @@ namespace Proto.Promises.Tests
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(resolveDeferredInt.Promise,
+                TestHelper.AddContinueCallbacks<int, string>(resolveDeferredInt.Promise,
                     promiseToPromiseConvert: p =>
                     {
                         p.Then(onResolved);
@@ -609,7 +612,7 @@ namespace Proto.Promises.Tests
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(rejectDeferred.Promise,
+                TestHelper.AddContinueCallbacks<int, string>(rejectDeferred.Promise,
                     promiseToPromiseConvert: p =>
                     {
                         p.Then(onResolved);
@@ -630,7 +633,7 @@ namespace Proto.Promises.Tests
                         return resolveWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(rejectDeferredInt.Promise,
+                TestHelper.AddContinueCallbacks<int, string>(rejectDeferredInt.Promise,
                     promiseToPromiseConvert: p =>
                     {
                         p.Then(onResolved);
@@ -647,7 +650,7 @@ namespace Proto.Promises.Tests
                     Promise.Manager.HandleCompletes();
 
                     Assert.AreEqual(TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                        TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks + (TestHelper.completePromiseConvertCallbacks * 4),
+                        TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks + (TestHelper.continueVoidPromiseConvertCallbacks * 4),
                         resolveCounter);
                     firstRun = false;
                     goto RunAgain;
@@ -656,7 +659,7 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                    TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks + (TestHelper.completePromiseConvertCallbacks * 4),
+                    TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks + (TestHelper.continueVoidPromiseConvertCallbacks * 4),
                     resolveCounter);
 
                 resolveDeferred.Release();
@@ -748,7 +751,7 @@ namespace Proto.Promises.Tests
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(resolveDeferred.Promise,
+                TestHelper.AddContinueCallbacks<int, string>(resolveDeferred.Promise,
                     promiseToPromise: p =>
                     {
                         p.Catch(onRejected);
@@ -792,7 +795,7 @@ namespace Proto.Promises.Tests
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(resolveDeferredInt.Promise,
+                TestHelper.AddContinueCallbacks<int, int, string>(resolveDeferredInt.Promise,
                     promiseToPromise: p =>
                     {
                         p.Catch(onRejected);
@@ -819,7 +822,7 @@ namespace Proto.Promises.Tests
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(rejectDeferred.Promise,
+                TestHelper.AddContinueCallbacks<int, string>(rejectDeferred.Promise,
                     promiseToPromise: p =>
                     {
                         p.Catch(onRejected);
@@ -850,7 +853,7 @@ namespace Proto.Promises.Tests
                         return rejectWaitDeferredInt.Promise;
                     }
                 );
-                TestHelper.AddCompleteCallbacks<int, string>(rejectDeferredInt.Promise,
+                TestHelper.AddContinueCallbacks<int, int, string>(rejectDeferredInt.Promise,
                     promiseToPromise: p =>
                     {
                         p.Catch(onRejected);
@@ -876,7 +879,9 @@ namespace Proto.Promises.Tests
                         TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                         TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
                         TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks +
-                        TestHelper.rejectTPromiseTCallbacks + ((TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks) * 4),
+                        TestHelper.rejectTPromiseTCallbacks +
+                        ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks +
+                        TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2),
                         rejectCounter);
                     firstRun = false;
                     goto RunAgain;
@@ -888,7 +893,7 @@ namespace Proto.Promises.Tests
                     TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                     TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
                     TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks +
-                    TestHelper.rejectTPromiseTCallbacks + ((TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks) * 4),
+                    TestHelper.rejectTPromiseTCallbacks + ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 4),
                     rejectCounter);
 
                 resolveDeferred.Release();
@@ -936,7 +941,7 @@ namespace Proto.Promises.Tests
                 onUnknownRejection: rejectAssert,
                 promiseToVoid: callback
             );
-            TestHelper.AddCompleteCallbacks<string, string>(resolveDeferred.Promise,
+            TestHelper.AddContinueCallbacks<string, string>(resolveDeferred.Promise,
                 promiseToVoid: callback
             );
 
@@ -948,7 +953,7 @@ namespace Proto.Promises.Tests
                 onUnknownRejection: rejectAssert,
                 promiseToVoid: callback
             );
-            TestHelper.AddCompleteCallbacks<string, string>(resolveDeferredInt.Promise,
+            TestHelper.AddContinueCallbacks<int, string, string>(resolveDeferredInt.Promise,
                 promiseToVoid: callback
             );
 
@@ -956,7 +961,7 @@ namespace Proto.Promises.Tests
                 onResolve: resolveAssert,
                 promiseToVoid: callback
             );
-            TestHelper.AddCompleteCallbacks<string, string>(rejectDeferred.Promise,
+            TestHelper.AddContinueCallbacks<string, string>(rejectDeferred.Promise,
                 promiseToVoid: callback
             );
 
@@ -964,7 +969,7 @@ namespace Proto.Promises.Tests
                 onResolve: _ => resolveAssert(),
                 promiseToVoid: callback
             );
-            TestHelper.AddCompleteCallbacks<string, string>(rejectDeferredInt.Promise,
+            TestHelper.AddContinueCallbacks<int, string, string>(rejectDeferredInt.Promise,
                 promiseToVoid: callback
             );
 
@@ -979,7 +984,7 @@ namespace Proto.Promises.Tests
                 TestHelper.resolveTVoidCallbacks +
                 TestHelper.rejectVoidVoidCallbacks +
                 TestHelper.rejectTVoidCallbacks +
-                (TestHelper.completeVoidCallbacks * 4),
+                ((TestHelper.continueVoidVoidCallbacks + TestHelper.continueTVoidCallbacks) * 2),
                 resolveCounter);
 
             // Clean up.
@@ -1025,7 +1030,7 @@ namespace Proto.Promises.Tests
                 onUnknownRejection: rejectAssert,
                 promiseToConvert: callback
             );
-            TestHelper.AddCompleteCallbacks<int, string>(resolveDeferred.Promise,
+            TestHelper.AddContinueCallbacks<int, string>(resolveDeferred.Promise,
                 promiseToConvert: callback
             );
 
@@ -1037,7 +1042,7 @@ namespace Proto.Promises.Tests
                 onUnknownRejection: rejectAssert,
                 promiseToConvert: callback
             );
-            TestHelper.AddCompleteCallbacks<int, string>(resolveDeferredInt.Promise,
+            TestHelper.AddContinueCallbacks<int, string>(resolveDeferredInt.Promise,
                 promiseToConvert: callback
             );
 
@@ -1045,7 +1050,7 @@ namespace Proto.Promises.Tests
                 onResolve: resolveAssert,
                 promiseToConvert: callback
             );
-            TestHelper.AddCompleteCallbacks<int, string>(rejectDeferred.Promise,
+            TestHelper.AddContinueCallbacks<int, string>(rejectDeferred.Promise,
                 promiseToConvert: callback
             );
 
@@ -1054,7 +1059,7 @@ namespace Proto.Promises.Tests
                 promiseToConvert: callback,
                 promiseToT: callback
             );
-            TestHelper.AddCompleteCallbacks<int, string>(rejectDeferredInt.Promise,
+            TestHelper.AddContinueCallbacks<int, string>(rejectDeferredInt.Promise,
                 promiseToConvert: callback
             );
 
@@ -1069,7 +1074,7 @@ namespace Proto.Promises.Tests
                 TestHelper.resolveTConvertCallbacks +
                 TestHelper.rejectVoidConvertCallbacks +
                 TestHelper.rejectTConvertCallbacks + TestHelper.rejectTTCallbacks +
-                (TestHelper.completeConvertCallbacks * 4),
+                (TestHelper.continueVoidConvertCallbacks * 4),
                 resolveCounter);
 
             // Clean up.
@@ -1116,7 +1121,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(resolveDeferred.Promise,
+            TestHelper.AddContinueCallbacks<int, string>(resolveDeferred.Promise,
                 promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
@@ -1132,7 +1137,7 @@ namespace Proto.Promises.Tests
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => false); },
                 promiseToPromiseT: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
-            TestHelper.AddCompleteCallbacks<bool, string>(resolveDeferredInt.Promise,
+            TestHelper.AddContinueCallbacks<int, bool, string>(resolveDeferredInt.Promise,
                 promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => false); }
             );
@@ -1142,7 +1147,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(rejectDeferred.Promise,
+            TestHelper.AddContinueCallbacks<int, string>(rejectDeferred.Promise,
                 promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
@@ -1153,7 +1158,7 @@ namespace Proto.Promises.Tests
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => false); },
                 promiseToPromiseT: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => 0); }
             );
-            TestHelper.AddCompleteCallbacks<bool, string>(rejectDeferredInt.Promise,
+            TestHelper.AddContinueCallbacks<int, bool, string>(rejectDeferredInt.Promise,
                 promiseToPromise: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => { }); },
                 promiseToPromiseConvert: p => { p.Catch(catcher); return p.ThenDuplicate().ThenDuplicate().Catch(() => false); }
             );
@@ -1170,7 +1175,8 @@ namespace Proto.Promises.Tests
                 TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                 TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
                 TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                (TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks) * 4,
+                (TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks +
+                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2,
                 exceptionCounter);
 
             // Clean up.

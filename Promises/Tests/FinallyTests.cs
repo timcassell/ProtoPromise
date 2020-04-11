@@ -9,14 +9,13 @@
 #undef PROMISE_CANCEL
 #endif
 
-#if PROMISE_CANCEL
 using System;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
 namespace Proto.Promises.Tests
 {
-    public class CompleteAndFinallyTests
+    public class FinallyTests
     {
         [SetUp]
         public void Setup()
@@ -47,53 +46,6 @@ namespace Proto.Promises.Tests
                 deferredInt.Promise.Finally(default(Action));
             });
 
-            deferred.Resolve();
-            deferredInt.Resolve(0);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void IfOnCompleteIsNullThrow()
-        {
-            var deferred = Promise.NewDeferred();
-            var deferredInt = Promise.NewDeferred<int>();
-
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferred.Promise.Complete(default(Action));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferred.Promise.Complete(default(Func<int>));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferred.Promise.Complete(default(Func<Promise>));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferred.Promise.Complete(default(Func<Promise<int>>));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferredInt.Promise.Complete(default(Action));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferredInt.Promise.Complete(default(Func<int>));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferredInt.Promise.Complete(default(Func<Promise>));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferredInt.Promise.Complete(default(Func<Promise<int>>));
-            });
             deferred.Resolve();
             deferredInt.Resolve(0);
 
@@ -158,6 +110,7 @@ namespace Proto.Promises.Tests
             LogAssert.NoUnexpectedReceived();
         }
 
+#if PROMISE_CANCEL
         [Test]
         public void OnFinallyIsInvokedWhenPromiseIsCanceled()
         {
@@ -195,79 +148,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
-
-        [Test]
-        public void OnCompleteIsInvokedWhenPromiseIsResolved()
-        {
-            var deferred = Promise.NewDeferred();
-
-            int voidFinallyFired = 0;
-
-            TestHelper.AddCompleteCallbacks<int, string>(deferred.Promise,
-                onComplete: () => ++voidFinallyFired
-            );
-
-            deferred.Resolve();
-
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(TestHelper.completeCallbacks, voidFinallyFired);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void OnCompleteIsInvokedWhenPromiseIsRejected()
-        {
-            var deferred = Promise.NewDeferred();
-
-            int voidFinallyFired = 0;
-
-            TestHelper.AddCompleteCallbacks<int, string>(deferred.Promise,
-                onComplete: () => ++voidFinallyFired
-            );
-            deferred.Promise.Catch(() => { });
-
-            deferred.Reject("Reject");
-
-
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(TestHelper.completeCallbacks, voidFinallyFired);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void OnCompleteIsNotInvokedWhenPromiseIsCanceled()
-        {
-            var deferred = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-
-            int voidFinallyFired = 0;
-
-            TestHelper.AddCompleteCallbacks<int, string>(deferred.Promise,
-                onComplete: () => ++voidFinallyFired
-            );
-            TestHelper.AddCompleteCallbacks<int, string>(deferred2.Promise,
-                onComplete: () => ++voidFinallyFired
-            );
-
-            deferred.Cancel();
-            deferred2.Cancel("Cancel");
-
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, voidFinallyFired);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
+#endif
     }
 }
-#endif

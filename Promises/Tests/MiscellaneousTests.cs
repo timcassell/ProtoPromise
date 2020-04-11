@@ -163,7 +163,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { callback(p); return Promise.Resolved(); },
                 promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(promise1,
+            TestHelper.AddContinueCallbacks<int, string>(promise1,
                 promiseToVoid: callback,
                 promiseToConvert: p => { callback(p); return 0; },
                 promiseToPromise: p => { callback(p); return Promise.Resolved(); },
@@ -182,7 +182,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
                 promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(false); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(promise2,
+            TestHelper.AddContinueCallbacks<int, int, string>(promise2,
                 promiseToVoid: callbackT,
                 promiseToConvert: p => { callbackT(p); return 0; },
                 promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
@@ -193,13 +193,13 @@ namespace Proto.Promises.Tests
 
             Assert.AreEqual(TestHelper.resolveVoidVoidCallbacks + TestHelper.resolveVoidConvertCallbacks +
                 TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                TestHelper.completeVoidCallbacks + TestHelper.completeConvertCallbacks +
-                TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks,
+                TestHelper.continueVoidVoidCallbacks + TestHelper.continueVoidConvertCallbacks +
+                TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks,
                 voidRejections);
             Assert.AreEqual(TestHelper.resolveTVoidCallbacks + TestHelper.resolveTConvertCallbacks +
                 TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                TestHelper.completeVoidCallbacks + TestHelper.completeConvertCallbacks +
-                TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks,
+                TestHelper.continueTVoidCallbacks + TestHelper.continueTConvertCallbacks +
+                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks,
                 intRejections);
 
             // Clean up.
@@ -243,7 +243,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { callback(p); return Promise.Resolved(); },
                 promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(promise1,
+            TestHelper.AddContinueCallbacks<int, string>(promise1,
                 promiseToVoid: callback,
                 promiseToConvert: p => { callback(p); return 0; },
                 promiseToPromise: p => { callback(p); return Promise.Resolved(); },
@@ -256,7 +256,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
                 promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(false); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(promise2,
+            TestHelper.AddContinueCallbacks<int, int, string>(promise2,
                 promiseToVoid: callbackT,
                 promiseToConvert: p => { callbackT(p); return 0; },
                 promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
@@ -267,13 +267,13 @@ namespace Proto.Promises.Tests
 
             Assert.AreEqual(TestHelper.rejectVoidVoidCallbacks + TestHelper.rejectVoidConvertCallbacks +
                 TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                TestHelper.completeVoidCallbacks + TestHelper.completeConvertCallbacks +
-                TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks,
+                TestHelper.continueVoidVoidCallbacks + TestHelper.continueVoidConvertCallbacks +
+                TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks,
                 voidRejections);
             Assert.AreEqual(TestHelper.rejectTVoidCallbacks + TestHelper.rejectTConvertCallbacks +
                 TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks +
-                TestHelper.completeVoidCallbacks + TestHelper.completeConvertCallbacks +
-                TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks,
+                TestHelper.continueTVoidCallbacks + TestHelper.continueTConvertCallbacks +
+                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks,
                 intRejections);
 
             // Clean up.
@@ -324,7 +324,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { callback(p); return Promise.Resolved(); },
                 promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(promise1,
+            TestHelper.AddContinueCallbacks<int, string>(promise1,
                 promiseToVoid: callback,
                 promiseToConvert: p => { callback(p); return 0; },
                 promiseToPromise: p => { callback(p); return Promise.Resolved(); },
@@ -343,7 +343,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
                 promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(false); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(promise2,
+            TestHelper.AddContinueCallbacks<int, int, string>(promise2,
                 promiseToVoid: callbackT,
                 promiseToConvert: p => { callbackT(p); return 0; },
                 promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
@@ -354,13 +354,13 @@ namespace Proto.Promises.Tests
 
             Assert.AreEqual(TestHelper.resolveVoidVoidCallbacks + TestHelper.resolveVoidConvertCallbacks +
                 TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                TestHelper.completeVoidCallbacks + TestHelper.completeConvertCallbacks +
-                TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks,
+                TestHelper.continueVoidVoidCallbacks + TestHelper.continueVoidConvertCallbacks +
+                TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks,
                 voidCancelations);
             Assert.AreEqual(TestHelper.resolveTVoidCallbacks + TestHelper.resolveTConvertCallbacks +
                 TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                TestHelper.completeVoidCallbacks + TestHelper.completeConvertCallbacks +
-                TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks,
+                TestHelper.continueTVoidCallbacks + TestHelper.continueTConvertCallbacks +
+                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks,
                 intCancelations);
 
             // Clean up.
@@ -404,7 +404,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { callback(p); return Promise.Resolved(); },
                 promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(promise1,
+            TestHelper.AddContinueCallbacks<int, string>(promise1,
                 promiseToVoid: callback,
                 promiseToConvert: p => { callback(p); return 0; },
                 promiseToPromise: p => { callback(p); return Promise.Resolved(); },
@@ -417,7 +417,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
                 promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(false); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(promise2,
+            TestHelper.AddContinueCallbacks<int, int, string>(promise2,
                 promiseToVoid: callbackT,
                 promiseToConvert: p => { callbackT(p); return 0; },
                 promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
@@ -428,13 +428,13 @@ namespace Proto.Promises.Tests
 
             Assert.AreEqual(TestHelper.rejectVoidVoidCallbacks + TestHelper.rejectVoidConvertCallbacks +
                 TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                TestHelper.completeVoidCallbacks + TestHelper.completeConvertCallbacks +
-                TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks,
+                TestHelper.continueVoidVoidCallbacks + TestHelper.continueVoidConvertCallbacks +
+                TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks,
                 voidCancelations);
             Assert.AreEqual(TestHelper.rejectTVoidCallbacks + TestHelper.rejectTConvertCallbacks +
                 TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks +
-                TestHelper.completeVoidCallbacks + TestHelper.completeConvertCallbacks +
-                TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks,
+                TestHelper.continueTVoidCallbacks + TestHelper.continueTConvertCallbacks +
+                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks,
                 intCancelations);
 
             // Clean up.
@@ -495,7 +495,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { callback(p); return Promise.Resolved(); },
                 promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(promise1,
+            TestHelper.AddContinueCallbacks<int, string>(promise1,
                 promiseToVoid: callback,
                 promiseToConvert: p => { callback(p); return 0; },
                 promiseToPromise: p => { callback(p); return Promise.Resolved(); },
@@ -514,7 +514,7 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
                 promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(false); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(promise2,
+            TestHelper.AddContinueCallbacks<int, int, string>(promise2,
                 promiseToVoid: callbackT,
                 promiseToConvert: p => { callbackT(p); return 0; },
                 promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
@@ -525,13 +525,13 @@ namespace Proto.Promises.Tests
 
             Assert.AreEqual(TestHelper.resolveVoidVoidCallbacks + TestHelper.resolveVoidConvertCallbacks +
                 TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                TestHelper.completeVoidCallbacks + TestHelper.completeConvertCallbacks +
-                TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks,
+                TestHelper.continueVoidVoidCallbacks + TestHelper.continueVoidConvertCallbacks +
+                TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks,
                 voidErrors);
             Assert.AreEqual(TestHelper.resolveTVoidCallbacks + TestHelper.resolveTConvertCallbacks +
                 TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                TestHelper.completeVoidCallbacks + TestHelper.completeConvertCallbacks +
-                TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks,
+                TestHelper.continueTVoidCallbacks + TestHelper.continueTConvertCallbacks +
+                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks,
                 intErrors);
 
             // Clean up.
@@ -576,12 +576,6 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { callback(p); return Promise.Resolved(); },
                 promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
 
             TestHelper.AddCallbacks<int, bool, object, string>(promise2,
                 promiseToVoid: callbackT,
@@ -589,24 +583,14 @@ namespace Proto.Promises.Tests
                 promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
                 promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(false); }
             );
-            TestHelper.AddCompleteCallbacks<int, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return 0; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(0); }
-            );
 
             Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(TestHelper.rejectVoidVoidCallbacks + TestHelper.rejectVoidConvertCallbacks +
-                TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                TestHelper.completeVoidCallbacks + TestHelper.completeConvertCallbacks +
-                TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks,
+                TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks,
                 voidRejections);
             Assert.AreEqual(TestHelper.rejectTVoidCallbacks + TestHelper.rejectTConvertCallbacks +
-                TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks +
-                TestHelper.completeVoidCallbacks + TestHelper.completeConvertCallbacks +
-                TestHelper.completePromiseVoidCallbacks + TestHelper.completePromiseConvertCallbacks,
+                TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks,
                 intRejections);
 
             // Clean up.

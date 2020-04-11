@@ -95,87 +95,77 @@ namespace Proto.Promises
                     return _instance;
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     owner.ResolveInternal();
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     owner.RejectInternal();
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     owner.ResolveInternal();
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     owner.RejectInternal();
                 }
 
-                void IRetainable.Retain() { }
-                void IRetainable.Release() { }
+                void IDisposable.Dispose() { }
             }
 
             [System.Diagnostics.DebuggerStepThrough]
-            public sealed class DelegateVoidVoid0 : PoolableObject<DelegateVoidVoid0>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public sealed class DelegateVoidVoid : PoolableObject<DelegateVoidVoid>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Action _callback;
-                private int _retainCounter;
 
-                private DelegateVoidVoid0() { }
+                private DelegateVoidVoid() { }
 
-                public static DelegateVoidVoid0 GetOrCreate(Action callback)
+                public static DelegateVoidVoid GetOrCreate(Action callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidVoid0();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidVoid();
                     del._callback = callback;
                     return del;
                 }
 
-                private void ReleaseAndInvoke(Promise owner)
+                private void DisposeAndInvoke(Promise owner)
                 {
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     temp.Invoke();
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                public void Retain()
+                public void Dispose()
                 {
-                    ++_retainCounter;
-                }
-
-                public void Release()
-                {
-                    if (--_retainCounter == 0)
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -194,7 +184,7 @@ namespace Proto.Promises
 
                 private DelegateArgVoid() { }
 
-                private void ReleaseAndInvoke(TArg arg, Promise owner)
+                private void DisposeAndInvoke(TArg arg, Promise owner)
                 {
                     var temp = _callback;
                     Dispose();
@@ -202,52 +192,41 @@ namespace Proto.Promises
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                public void Dispose()
+                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    ReleaseAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                private void TryReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                private void TryDisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        ReleaseAndInvoke(arg, owner);
+                        DisposeAndInvoke(arg, owner);
                     }
                     else
                     {
-                        Release();
+                        Dispose();
                         owner.RejectInternal();
                     }
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    TryReleaseAndInvoke(valueContainer, owner);
+                    TryDisposeAndInvoke(valueContainer, owner);
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    TryReleaseAndInvoke(valueContainer, owner);
+                    TryDisposeAndInvoke(valueContainer, owner);
                 }
 
-                void IRetainable.Retain() { }
-
-                public void Release()
+                public void Dispose()
                 {
                     _callback = null;
                     if (Config.ObjectPooling != PoolType.None)
@@ -261,7 +240,6 @@ namespace Proto.Promises
             public sealed class DelegateVoidResult<TResult> : PoolableObject<DelegateVoidResult<TResult>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Func<TResult> _callback;
-                private int _retainCounter;
 
                 public static DelegateVoidResult<TResult> GetOrCreate(Func<TResult> callback)
                 {
@@ -272,48 +250,40 @@ namespace Proto.Promises
 
                 private DelegateVoidResult() { }
 
-                private void ReleaseAndInvoke(Promise owner)
+                private void DisposeAndInvoke(Promise owner)
                 {
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     TResult result = temp.Invoke();
                     owner.ResolveInternalIfNotCanceled(result);
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                public void Retain()
+                public void Dispose()
                 {
-                    ++_retainCounter;
-                }
-
-                public void Release()
-                {
-                    if (--_retainCounter == 0)
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -332,51 +302,49 @@ namespace Proto.Promises
 
                 private DelegateArgResult() { }
 
-                private void ReleaseAndInvoke(TArg arg, Promise owner)
+                private void DisposeAndInvoke(TArg arg, Promise owner)
                 {
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     TResult result = temp.Invoke(arg);
                     owner.ResolveInternalIfNotCanceled(result);
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                private void TryReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                private void TryDisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        ReleaseAndInvoke(arg, owner);
+                        DisposeAndInvoke(arg, owner);
                     }
                     else
                     {
-                        Release();
+                        Dispose();
                         owner.RejectInternal();
                     }
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    TryReleaseAndInvoke(valueContainer, owner);
+                    TryDisposeAndInvoke(valueContainer, owner);
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    TryReleaseAndInvoke(valueContainer, owner);
+                    TryDisposeAndInvoke(valueContainer, owner);
                 }
 
-                void IRetainable.Retain() { }
-
-                public void Release()
+                public void Dispose()
                 {
                     _callback = null;
                     if (Config.ObjectPooling != PoolType.None)
@@ -388,51 +356,42 @@ namespace Proto.Promises
 
 
             [System.Diagnostics.DebuggerStepThrough]
-            public sealed class DelegateVoidPromise0 : PoolableObject<DelegateVoidPromise0>, IDelegateResolvePromise, IDelegateRejectPromise
+            public sealed class DelegateVoidPromise : PoolableObject<DelegateVoidPromise>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Func<Promise> _callback;
-                private int _retainCounter;
 
-                private DelegateVoidPromise0() { }
+                private DelegateVoidPromise() { }
 
-                public static DelegateVoidPromise0 GetOrCreate(Func<Promise> callback)
+                public static DelegateVoidPromise GetOrCreate(Func<Promise> callback)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidPromise0();
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidPromise();
                     del._callback = callback;
                     return del;
                 }
 
-                private void ReleaseAndInvoke(Promise owner)
+                private void DisposeAndInvoke(Promise owner)
                 {
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke());
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                public void Retain()
+                public void Dispose()
                 {
-                    ++_retainCounter;
-                }
-
-                public void Release()
-                {
-                    if (--_retainCounter == 0)
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -451,44 +410,33 @@ namespace Proto.Promises
 
                 private DelegateArgPromise() { }
 
-                private void ReleaseAndInvoke(TArg arg, Promise owner)
+                private void DisposeAndInvoke(TArg arg, Promise owner)
                 {
                     var temp = _callback;
                     Dispose();
                     ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(arg));
                 }
 
-                public void Dispose()
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    ReleaseAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        ReleaseAndInvoke(arg, owner);
+                        DisposeAndInvoke(arg, owner);
                     }
                     else
                     {
-                        Release();
+                        Dispose();
                         owner.RejectInternal();
                     }
                 }
 
-                void IRetainable.Retain() { }
-
-                public void Release()
+                public void Dispose()
                 {
                     _callback = null;
                     if (Config.ObjectPooling != PoolType.None)
@@ -502,7 +450,6 @@ namespace Proto.Promises
             public sealed class DelegateVoidPromiseT<TPromise> : PoolableObject<DelegateVoidPromiseT<TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private Func<Promise<TPromise>> _callback;
-                private int _retainCounter;
 
                 public static DelegateVoidPromiseT<TPromise> GetOrCreate(Func<Promise<TPromise>> callback)
                 {
@@ -513,37 +460,29 @@ namespace Proto.Promises
 
                 private DelegateVoidPromiseT() { }
 
-                private void ReleaseAndInvoke(Promise owner)
+                private void DisposeAndInvoke(Promise owner)
                 {
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke());
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                public void Retain()
+                public void Dispose()
                 {
-                    ++_retainCounter;
-                }
-
-                public void Release()
-                {
-                    if (--_retainCounter == 0)
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -562,35 +501,158 @@ namespace Proto.Promises
 
                 private DelegateArgPromiseT() { }
 
-                private void ReleaseAndInvoke(TArg arg, Promise owner)
+                private void DisposeAndInvoke(TArg arg, Promise owner)
                 {
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(arg));
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        ReleaseAndInvoke(arg, owner);
+                        DisposeAndInvoke(arg, owner);
                     }
                     else
                     {
-                        Release();
+                        Dispose();
                         owner.RejectInternal();
                     }
                 }
 
-                void IRetainable.Retain() { }
+                public void Dispose()
+                {
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
 
-                public void Release()
+
+            [System.Diagnostics.DebuggerStepThrough]
+            public sealed class DelegateContinueVoidVoid : PoolableObject<DelegateContinueVoidVoid>, IDelegateContinue
+            {
+                private Action<ResultContainer> _callback;
+
+                public static DelegateContinueVoidVoid GetOrCreate(Action<ResultContainer> callback)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueVoidVoid();
+                    del._callback = callback;
+                    return del;
+                }
+                
+                private DelegateContinueVoidVoid() { }
+
+                void IDelegateContinue.DisposeAndInvoke(IValueContainer valueContainer)
+                {
+                    var callback = _callback;
+                    Dispose();
+                    callback.Invoke(new ResultContainer(valueContainer));
+                }
+
+                public void Dispose()
+                {
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerStepThrough]
+            public sealed class DelegateContinueVoidResult<TResult> : PoolableObject<DelegateContinueVoidResult<TResult>>, IDelegateContinue<TResult>
+            {
+                private Func<ResultContainer, TResult> _callback;
+
+                public static DelegateContinueVoidResult<TResult> GetOrCreate(Func<ResultContainer, TResult> callback)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueVoidResult<TResult>();
+                    del._callback = callback;
+                    return del;
+                }
+
+                private DelegateContinueVoidResult() { }
+
+                TResult IDelegateContinue<TResult>.DisposeAndInvoke(IValueContainer valueContainer)
+                {
+                    var callback = _callback;
+                    Dispose();
+                    return callback.Invoke(new ResultContainer(valueContainer));
+                }
+
+                public void Dispose()
+                {
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerStepThrough]
+            public sealed class DelegateContinueArgVoid<TArg> : PoolableObject<DelegateContinueArgVoid<TArg>>, IDelegateContinue
+            {
+                private Action<Promise<TArg>.ResultContainer> _callback;
+
+                public static DelegateContinueArgVoid<TArg> GetOrCreate(Action<Promise<TArg>.ResultContainer> callback)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueArgVoid<TArg>();
+                    del._callback = callback;
+                    return del;
+                }
+
+                private DelegateContinueArgVoid() { }
+
+                void IDelegateContinue.DisposeAndInvoke(IValueContainer valueContainer)
+                {
+                    var callback = _callback;
+                    Dispose();
+                    callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
+                }
+
+                public void Dispose()
+                {
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerStepThrough]
+            public sealed class DelegateContinueArgResult<TArg, TResult> : PoolableObject<DelegateContinueArgResult<TArg, TResult>>, IDelegateContinue<TResult>
+            {
+                private Func<Promise<TArg>.ResultContainer, TResult> _callback;
+
+                public static DelegateContinueArgResult<TArg, TResult> GetOrCreate(Func<Promise<TArg>.ResultContainer, TResult> callback)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueArgResult<TArg, TResult>();
+                    del._callback = callback;
+                    return del;
+                }
+
+                private DelegateContinueArgResult() { }
+
+                TResult IDelegateContinue<TResult>.DisposeAndInvoke(IValueContainer valueContainer)
+                {
+                    var callback = _callback;
+                    Dispose();
+                    return callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
+                }
+
+                public void Dispose()
                 {
                     _callback = null;
                     if (Config.ObjectPooling != PoolType.None)
@@ -681,7 +743,6 @@ namespace Proto.Promises
             {
                 private TCapture _capturedValue;
                 private Action<TCapture> _callback;
-                private int _retainCounter;
 
                 public static DelegateCaptureVoidVoid<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture> callback)
                 {
@@ -693,50 +754,42 @@ namespace Proto.Promises
 
                 private DelegateCaptureVoidVoid() { }
 
-                private void ReleaseAndInvoke(Promise owner)
+                private void DisposeAndInvoke(Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     temp.Invoke(value);
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                public void Retain()
+                public void Dispose()
                 {
-                    ++_retainCounter;
-                }
-
-                public void Release()
-                {
-                    if (--_retainCounter == 0)
+                    _capturedValue = default(TCapture);
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _capturedValue = default(TCapture);
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -757,18 +810,18 @@ namespace Proto.Promises
 
                 private DelegateCaptureArgVoid() { }
 
-                private void ReleaseAndInvoke(TArg arg, Promise owner)
+                private void DisposeAndInvoke(TArg arg, Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     temp.Invoke(value, arg);
                     owner.ResolveInternalIfNotCanceled();
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
                 private void TryReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
@@ -776,33 +829,31 @@ namespace Proto.Promises
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        ReleaseAndInvoke(arg, owner);
+                        DisposeAndInvoke(arg, owner);
                     }
                     else
                     {
-                        Release();
+                        Dispose();
                         owner.RejectInternal();
                     }
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TryReleaseAndInvoke(valueContainer, owner);
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TryReleaseAndInvoke(valueContainer, owner);
                 }
 
-                void IRetainable.Retain() { }
-
-                public void Release()
+                public void Dispose()
                 {
                     _capturedValue = default(TCapture);
                     _callback = null;
@@ -818,7 +869,6 @@ namespace Proto.Promises
             {
                 private TCapture _capturedValue;
                 private Func<TCapture, TResult> _callback;
-                private int _retainCounter;
 
                 public static DelegateCaptureVoidResult<TCapture, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, TResult> callback)
                 {
@@ -830,50 +880,42 @@ namespace Proto.Promises
 
                 private DelegateCaptureVoidResult() { }
 
-                private void ReleaseAndInvoke(Promise owner)
+                private void DisposeAndInvoke(Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     TResult result = temp.Invoke(value);
                     owner.ResolveInternalIfNotCanceled(result);
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                public void Retain()
+                public void Dispose()
                 {
-                    ++_retainCounter;
-                }
-
-                public void Release()
-                {
-                    if (--_retainCounter == 0)
+                    _capturedValue = default(TCapture);
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _capturedValue = default(TCapture);
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -894,52 +936,50 @@ namespace Proto.Promises
 
                 private DelegateCaptureArgResult() { }
 
-                private void ReleaseAndInvoke(TArg arg, Promise owner)
+                private void DisposeAndInvoke(TArg arg, Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     TResult result = temp.Invoke(value, arg);
                     owner.ResolveInternalIfNotCanceled(result);
                 }
 
-                void IDelegateResolve.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                private void TryReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                private void TryDisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        ReleaseAndInvoke(arg, owner);
+                        DisposeAndInvoke(arg, owner);
                     }
                     else
                     {
-                        Release();
+                        Dispose();
                         owner.RejectInternal();
                     }
                 }
 
-                void IDelegateReject.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    TryReleaseAndInvoke(valueContainer, owner);
+                    TryDisposeAndInvoke(valueContainer, owner);
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    TryReleaseAndInvoke(valueContainer, owner);
+                    TryDisposeAndInvoke(valueContainer, owner);
                 }
 
-                void IRetainable.Retain() { }
-
-                public void Release()
+                public void Dispose()
                 {
                     _capturedValue = default(TCapture);
                     _callback = null;
@@ -956,7 +996,6 @@ namespace Proto.Promises
             {
                 private TCapture _capturedValue;
                 private Func<TCapture, Promise> _callback;
-                private int _retainCounter;
 
                 private DelegateCaptureVoidPromise() { }
 
@@ -968,39 +1007,31 @@ namespace Proto.Promises
                     return del;
                 }
 
-                private void ReleaseAndInvoke(Promise owner)
+                private void DisposeAndInvoke(Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(value));
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                public void Retain()
+                public void Dispose()
                 {
-                    ++_retainCounter;
-                }
-
-                public void Release()
-                {
-                    if (--_retainCounter == 0)
+                    _capturedValue = default(TCapture);
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _capturedValue = default(TCapture);
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -1021,7 +1052,7 @@ namespace Proto.Promises
 
                 private DelegateCaptureArgPromise() { }
 
-                private void ReleaseAndInvoke(TArg arg, Promise owner)
+                private void DisposeAndInvoke(TArg arg, Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
@@ -1029,37 +1060,26 @@ namespace Proto.Promises
                     ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(value, arg));
                 }
 
-                public void Dispose()
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    ReleaseAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        ReleaseAndInvoke(arg, owner);
+                        DisposeAndInvoke(arg, owner);
                     }
                     else
                     {
-                        Release();
+                        Dispose();
                         owner.RejectInternal();
                     }
                 }
 
-                void IRetainable.Retain() { }
-
-                public void Release()
+                public void Dispose()
                 {
                     _capturedValue = default(TCapture);
                     _callback = null;
@@ -1075,7 +1095,6 @@ namespace Proto.Promises
             {
                 private TCapture _capturedValue;
                 private Func<TCapture, Promise<TPromise>> _callback;
-                private int _retainCounter;
 
                 public static DelegateCaptureVoidPromiseT<TCapture, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise<TPromise>> callback)
                 {
@@ -1087,39 +1106,31 @@ namespace Proto.Promises
 
                 private DelegateCaptureVoidPromiseT() { }
 
-                private void ReleaseAndInvoke(Promise owner)
+                private void DisposeAndInvoke(Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(value));
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(owner);
+                    DisposeAndInvoke(owner);
                 }
 
-                public void Retain()
+                public void Dispose()
                 {
-                    ++_retainCounter;
-                }
-
-                public void Release()
-                {
-                    if (--_retainCounter == 0)
+                    _capturedValue = default(TCapture);
+                    _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
                     {
-                        _capturedValue = default(TCapture);
-                        _callback = null;
-                        if (Config.ObjectPooling != PoolType.None)
-                        {
-                            _pool.Push(this);
-                        }
+                        _pool.Push(this);
                     }
                 }
             }
@@ -1140,39 +1151,177 @@ namespace Proto.Promises
 
                 private DelegateCaptureArgPromiseT() { }
 
-                private void ReleaseAndInvoke(TArg arg, Promise owner)
+                private void DisposeAndInvoke(TArg arg, Promise owner)
                 {
                     var value = _capturedValue;
                     var temp = _callback;
-                    Release();
+                    Dispose();
                     ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(value, arg));
                 }
 
-                void IDelegateResolvePromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    ReleaseAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateRejectPromise.ReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        ReleaseAndInvoke(arg, owner);
+                        DisposeAndInvoke(arg, owner);
                     }
                     else
                     {
-                        Release();
+                        Dispose();
                         owner.RejectInternal();
                     }
                 }
 
-                void IRetainable.Retain() { }
-
-                public void Release()
+                public void Dispose()
                 {
                     _capturedValue = default(TCapture);
                     _callback = null;
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
+
+
+            [System.Diagnostics.DebuggerStepThrough]
+            public sealed class DelegateContinueCaptureVoidVoid<TCapture> : PoolableObject<DelegateContinueCaptureVoidVoid<TCapture>>, IDelegateContinue
+            {
+                private TCapture _capturedValue;
+                private Action<TCapture, ResultContainer> _callback;
+
+                public static DelegateContinueCaptureVoidVoid<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture, ResultContainer> callback)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueCaptureVoidVoid<TCapture>();
+                    del._capturedValue = capturedValue;
+                    del._callback = callback;
+                    return del;
+                }
+
+                private DelegateContinueCaptureVoidVoid() { }
+
+                void IDelegateContinue.DisposeAndInvoke(IValueContainer valueContainer)
+                {
+                    var callback = _callback;
+                    var value = _capturedValue;
+                    Dispose();
+                    callback.Invoke(value, new ResultContainer(valueContainer));
+                }
+
+                public void Dispose()
+                {
+                    _callback = null;
+                    _capturedValue = default(TCapture);
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerStepThrough]
+            public sealed class DelegateContinueCaptureVoidResult<TCapture, TResult> : PoolableObject<DelegateContinueCaptureVoidResult<TCapture, TResult>>, IDelegateContinue<TResult>
+            {
+                private TCapture _capturedValue;
+                private Func<TCapture, ResultContainer, TResult> _callback;
+
+                public static DelegateContinueCaptureVoidResult<TCapture, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, ResultContainer, TResult> callback)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueCaptureVoidResult<TCapture, TResult>();
+                    del._capturedValue = capturedValue;
+                    del._callback = callback;
+                    return del;
+                }
+
+                private DelegateContinueCaptureVoidResult() { }
+
+                TResult IDelegateContinue<TResult>.DisposeAndInvoke(IValueContainer valueContainer)
+                {
+                    var callback = _callback;
+                    var value = _capturedValue;
+                    Dispose();
+                    return callback.Invoke(value, new ResultContainer(valueContainer));
+                }
+
+                public void Dispose()
+                {
+                    _callback = null;
+                    _capturedValue = default(TCapture);
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerStepThrough]
+            public sealed class DelegateContinueCaptureArgVoid<TCapture, TArg> : PoolableObject<DelegateContinueCaptureArgVoid<TCapture, TArg>>, IDelegateContinue
+            {
+                private TCapture _capturedValue;
+                private Action<TCapture, Promise<TArg>.ResultContainer> _callback;
+
+                public static DelegateContinueCaptureArgVoid<TCapture, TArg> GetOrCreate(TCapture capturedValue, Action<TCapture, Promise<TArg>.ResultContainer> callback)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueCaptureArgVoid<TCapture, TArg>();
+                    del._capturedValue = capturedValue;
+                    del._callback = callback;
+                    return del;
+                }
+
+                private DelegateContinueCaptureArgVoid() { }
+
+                void IDelegateContinue.DisposeAndInvoke(IValueContainer valueContainer)
+                {
+                    var callback = _callback;
+                    var value = _capturedValue;
+                    Dispose();
+                    callback.Invoke(value, new Promise<TArg>.ResultContainer(valueContainer));
+                }
+
+                public void Dispose()
+                {
+                    _callback = null;
+                    _capturedValue = default(TCapture);
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerStepThrough]
+            public sealed class DelegateContinueCaptureArgResult<TCapture, TArg, TResult> : PoolableObject<DelegateContinueCaptureArgResult<TCapture, TArg, TResult>>, IDelegateContinue<TResult>
+            {
+                private TCapture _capturedValue;
+                private Func<TCapture, Promise<TArg>.ResultContainer, TResult> _callback;
+
+                public static DelegateContinueCaptureArgResult<TCapture, TArg, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, TResult> callback)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueCaptureArgResult<TCapture, TArg, TResult>();
+                    del._callback = callback;
+                    return del;
+                }
+
+                private DelegateContinueCaptureArgResult() { }
+
+                TResult IDelegateContinue<TResult>.DisposeAndInvoke(IValueContainer valueContainer)
+                {
+                    var callback = _callback;
+                    var value = _capturedValue;
+                    Dispose();
+                    return callback.Invoke(value, new Promise<TArg>.ResultContainer(valueContainer));
+                }
+
+                public void Dispose()
+                {
+                    _callback = null;
+                    _capturedValue = default(TCapture);
                     if (Config.ObjectPooling != PoolType.None)
                     {
                         _pool.Push(this);

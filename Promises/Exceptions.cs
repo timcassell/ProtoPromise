@@ -7,6 +7,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable RECS0108 // Warns about static fields in generic types
+#pragma warning disable CS0618 // Type or member is obsolete
 
 using System;
 using System.Collections.Generic;
@@ -229,12 +230,19 @@ namespace Proto.Promises
                     AddUnhandledException(this);
                 }
 
+                void IValueContainer.ReleaseAndAddToUnhandledStack()
+                {
+                    AddUnhandledException(this);
+                }
+
                 Exception IThrowable.GetException()
                 {
                     return this;
                 }
 
+#if PROMISE_DEBUG
                 void IRejectionContainer.SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces) { }
+#endif
             }
 
             public sealed class CanceledExceptionInternal : CanceledException, IValueContainer, IThrowable
@@ -251,6 +259,7 @@ namespace Proto.Promises
                 void IValueContainer.Retain() { }
                 void IValueContainer.Release() { }
                 void IValueContainer.ReleaseAndMaybeAddToUnhandledStack() { }
+                void IValueContainer.ReleaseAndAddToUnhandledStack() { }
 
                 Exception IThrowable.GetException()
                 {

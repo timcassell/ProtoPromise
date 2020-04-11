@@ -79,7 +79,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.CatchCancelation(100, default(Action<int, Promise.CancelReason>));
+                deferred.Promise.CatchCancelation(100, default(Action<int, Promise.ReasonContainer>));
             });
 
             deferred.Cancel();
@@ -89,7 +89,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.CatchCancelation(100, default(Action<int, Promise.CancelReason>));
+                deferredInt.Promise.CatchCancelation(100, default(Action<int, Promise.ReasonContainer>));
             });
 
             deferredInt.Cancel();
@@ -126,42 +126,42 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void IfOnCompleteIsNullThrow()
+        public void IfOnContinueIsNullThrow()
         {
             var deferred = Promise.NewDeferred();
             var deferredInt = Promise.NewDeferred<int>();
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.Complete(100, default(Action<int>));
+                deferred.Promise.ContinueWith(100, default(Action<int, Promise.ResultContainer>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.Complete(100, default(Func<int, bool>));
+                deferred.Promise.ContinueWith(100, default(Func<int, Promise.ResultContainer, bool>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.Complete(100, default(Func<int, Promise>));
+                deferred.Promise.ContinueWith(100, default(Func<int, Promise.ResultContainer, Promise>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.Complete(100, default(Func<int, Promise<bool>>));
+                deferred.Promise.ContinueWith(100, default(Func<int, Promise.ResultContainer, Promise<bool>>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.Complete(100, default(Action<int>));
+                deferredInt.Promise.ContinueWith(100, default(Action<int, Promise<int>.ResultContainer>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.Complete(100, default(Func<int, bool>));
+                deferredInt.Promise.ContinueWith(100, default(Func<int, Promise<int>.ResultContainer, bool>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.Complete(100, default(Func<int, Promise>));
+                deferredInt.Promise.ContinueWith(100, default(Func<int, Promise<int>.ResultContainer, Promise>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.Complete(100, default(Func<int, Promise<bool>>));
+                deferredInt.Promise.ContinueWith(100, default(Func<int, Promise<int>.ResultContainer, Promise<bool>>));
             });
             deferred.Resolve();
             deferredInt.Resolve(0);
@@ -805,16 +805,16 @@ namespace Proto.Promises.Tests
 #endif
 
         [Test]
-        public void OnCompleteWillBeInvokedWithCapturedValue0()
+        public void OnContinueWillBeInvokedWithCapturedValue0()
         {
             var deferred = Promise.NewDeferred();
 
             string expected = "expected";
             bool invoked = false;
 
-            TestHelper.AddCompleteCallbacks<int, string>(deferred.Promise,
+            TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 captureValue: expected,
-                onCompleteCapture: cv =>
+                onContinueCapture: (cv, r) =>
                 {
                     Assert.AreEqual(expected, cv);
                     invoked = true;
@@ -833,16 +833,16 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void OnCompleteWillBeInvokedWithCapturedValue1()
+        public void OnContinueWillBeInvokedWithCapturedValue1()
         {
             var deferred = Promise.NewDeferred();
 
             string expected = "expected";
             bool invoked = false;
 
-            TestHelper.AddCompleteCallbacks<int, string>(deferred.Promise,
+            TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 captureValue: expected,
-                onCompleteCapture: cv =>
+                onContinueCapture: (cv, r) =>
                 {
                     Assert.AreEqual(expected, cv);
                     invoked = true;

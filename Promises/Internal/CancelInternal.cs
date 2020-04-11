@@ -19,6 +19,7 @@
 #pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable CS0618 // Type or member is obsolete
 
 using System;
 using Proto.Utils;
@@ -79,7 +80,25 @@ namespace Proto.Promises
         {
             if (_state == State.Pending)
             {
-                CancelInternal();
+                HandleCancel();
+            }
+            else
+            {
+                ReleaseInternal();
+            }
+        }
+
+        private void MaybeReleaseContainer()
+        {
+            // Handle edge case where the promise is pending with a value container and is canceled before it's handled.
+#if CSHARP_7_OR_LATER
+            if (_valueOrPrevious is Internal.IValueContainer container)
+#else
+            Internal.IValueContainer container = _valueOrPrevious as Internal.IValueContainer;
+            if (container != null)
+#endif
+            {
+                container.ReleaseAndMaybeAddToUnhandledStack();
             }
         }
 
@@ -95,6 +114,7 @@ namespace Proto.Promises
             else
             {
                 _state = State.Canceled;
+                MaybeReleaseContainer();
                 var cancelValue = Internal.CancelContainerVoid.GetOrCreate();
                 _valueOrPrevious = cancelValue;
                 AddBranchesToCancelQueueBack(cancelValue);
@@ -119,6 +139,7 @@ namespace Proto.Promises
             else
             {
                 _state = State.Canceled;
+                MaybeReleaseContainer();
                 Internal.IValueContainer cancelValue;
                 if (reason is OperationCanceledException)
                 {
@@ -152,7 +173,7 @@ namespace Proto.Promises
             }
         }
 #else
-        static protected void ThrowCancelException(int skipFrames)
+                static protected void ThrowCancelException(int skipFrames)
         {
             throw new InvalidOperationException("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", GetFormattedStacktrace(skipFrames + 1));
         }
@@ -172,7 +193,7 @@ namespace Proto.Promises
 
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
-                private Action<CancelReason> _onCanceled;
+                private Action<ReasonContainer> _onCanceled;
                 private IValueContainer _valueContainer;
 
                 private CancelDelegate() { }
@@ -182,7 +203,7 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                public static CancelDelegate GetOrCreate(Action<CancelReason> onCanceled, int skipFrames)
+                public static CancelDelegate GetOrCreate(Action<ReasonContainer> onCanceled, int skipFrames)
                 {
                     var del = _pool.IsNotEmpty ? (CancelDelegate) _pool.Pop() : new CancelDelegate();
                     del._onCanceled = onCanceled;
@@ -226,7 +247,7 @@ namespace Proto.Promises
                     Dispose();
                     try
                     {
-                        callback.Invoke(new CancelReason(container));
+                        callback.Invoke(new ReasonContainer(container));
                     }
                     catch (Exception e)
                     {
@@ -257,7 +278,7 @@ namespace Proto.Promises
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
                 private TCapture _capturedValue;
-                private Action<TCapture, CancelReason> _onCanceled;
+                private Action<TCapture, ReasonContainer> _onCanceled;
                 private IValueContainer _valueContainer;
 
                 private CancelDelegateCapture() { }
@@ -267,7 +288,7 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                public static CancelDelegateCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture, CancelReason> onCanceled, int skipFrames)
+                public static CancelDelegateCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture, ReasonContainer> onCanceled, int skipFrames)
                 {
                     var del = _pool.IsNotEmpty ? (CancelDelegateCapture<TCapture>) _pool.Pop() : new CancelDelegateCapture<TCapture>();
                     del._onCanceled = onCanceled;
@@ -313,7 +334,7 @@ namespace Proto.Promises
                     Dispose();
                     try
                     {
-                        callback.Invoke(value, new CancelReason(container));
+                        callback.Invoke(value, new ReasonContainer(container));
                     }
                     catch (Exception e)
                     {

@@ -371,7 +371,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.CatchCancelation(default(Action<Promise.CancelReason>));
+                deferred.Promise.CatchCancelation(default(Action<Promise.ReasonContainer>));
             });
 
             deferred.Cancel();
@@ -381,7 +381,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.CatchCancelation(default(Action<Promise.CancelReason>));
+                deferredInt.Promise.CatchCancelation(default(Action<Promise.ReasonContainer>));
             });
 
             deferredInt.Cancel(0);
@@ -695,37 +695,45 @@ namespace Proto.Promises.Tests
             cancelPromise = Promise.Resolved().Then(() => { cancel(); return Promise.Resolved(0); }, (string failValue) => Promise.Resolved(0));
             validate(cancelPromise);
 
-            cancelPromise = Promise.Rejected("Reject").Then(() => { }, () => cancel());
+            Promise rejected = Promise.Rejected("Reject");
+            // Suppress exception.
+            rejected.Catch(() => { });
+            rejected.Retain();
+
+            cancelPromise = rejected.Then(() => { }, () => cancel());
             validate(cancelPromise);
-            cancelPromise = Promise.Rejected("Reject").Then(() => { }, (string failValue) => cancel());
+            cancelPromise = rejected.Then(() => { }, (string failValue) => cancel());
             validate(cancelPromise);
 
-            cancelPromise = Promise.Rejected("Reject").Then(() => 0, () => { cancel(); return 0; });
+            cancelPromise = rejected.Then(() => 0, () => { cancel(); return 0; });
             validate(cancelPromise);
-            cancelPromise = Promise.Rejected("Reject").Then(() => 0, (string failValue) => { cancel(); return 0; });
-            validate(cancelPromise);
-
-            cancelPromise = Promise.Rejected("Reject").Then(() => Promise.Resolved(), () => { cancel(); return Promise.Resolved(); });
-            validate(cancelPromise);
-            cancelPromise = Promise.Rejected("Reject").Then(() => Promise.Resolved(), (string failValue) => { cancel(); return Promise.Resolved(); });
+            cancelPromise = rejected.Then(() => 0, (string failValue) => { cancel(); return 0; });
             validate(cancelPromise);
 
-            cancelPromise = Promise.Rejected("Reject").Then(() => Promise.Resolved(0), () => { cancel(); return Promise.Resolved(0); });
+            cancelPromise = rejected.Then(() => Promise.Resolved(), () => { cancel(); return Promise.Resolved(); });
             validate(cancelPromise);
-            cancelPromise = Promise.Rejected("Reject").Then(() => Promise.Resolved(0), (string failValue) => { cancel(); return Promise.Resolved(0); });
-            validate(cancelPromise);
-
-            cancelPromise = Promise.Rejected("Reject").Catch(() => cancel());
-            validate(cancelPromise);
-            cancelPromise = Promise.Rejected("Reject").Catch((string failValue) => cancel());
+            cancelPromise = rejected.Then(() => Promise.Resolved(), (string failValue) => { cancel(); return Promise.Resolved(); });
             validate(cancelPromise);
 
-            cancelPromise = Promise.Rejected("Reject").Catch(() => { cancel(); return Promise.Resolved(); });
+            cancelPromise = rejected.Then(() => Promise.Resolved(0), () => { cancel(); return Promise.Resolved(0); });
             validate(cancelPromise);
-            cancelPromise = Promise.Rejected("Reject").Catch((string failValue) => { cancel(); return Promise.Resolved(); });
+            cancelPromise = rejected.Then(() => Promise.Resolved(0), (string failValue) => { cancel(); return Promise.Resolved(0); });
             validate(cancelPromise);
+
+            cancelPromise = rejected.Catch(() => cancel());
+            validate(cancelPromise);
+            cancelPromise = rejected.Catch((string failValue) => cancel());
+            validate(cancelPromise);
+
+            cancelPromise = rejected.Catch(() => { cancel(); return Promise.Resolved(); });
+            validate(cancelPromise);
+            cancelPromise = rejected.Catch((string failValue) => { cancel(); return Promise.Resolved(); });
+            validate(cancelPromise);
+
+            rejected.Release();
 
             // Clean up.
+            Promise.Manager.HandleCompletesAndProgress();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -776,37 +784,45 @@ namespace Proto.Promises.Tests
             cancelPromise = Promise.Resolved(0).Then(_ => { cancel(); return Promise.Resolved(0); }, (string failValue) => Promise.Resolved(0));
             validate(cancelPromise);
 
-            cancelPromise = Promise.Rejected<int, string>("Reject").Then(_ => { }, () => cancel());
+            Promise<int> rejected = Promise.Rejected<int, string>("Reject");
+            // Suppress exception.
+            rejected.Catch(() => { });
+            rejected.Retain();
+
+            cancelPromise = rejected.Then(_ => { }, () => cancel());
             validate(cancelPromise);
-            cancelPromise = Promise.Rejected<int, string>("Reject").Then(_ => { }, (string failValue) => cancel());
+            cancelPromise = rejected.Then(_ => { }, (string failValue) => cancel());
             validate(cancelPromise);
 
-            cancelPromise = Promise.Rejected<int, string>("Reject").Then(_ => 0, () => { cancel(); return 0; });
+            cancelPromise = rejected.Then(_ => 0, () => { cancel(); return 0; });
             validate(cancelPromise);
-            cancelPromise = Promise.Rejected<int, string>("Reject").Then(_ => 0, (string failValue) => { cancel(); return 0; });
-            validate(cancelPromise);
-
-            cancelPromise = Promise.Rejected<int, string>("Reject").Then(_ => Promise.Resolved(), () => { cancel(); return Promise.Resolved(); });
-            validate(cancelPromise);
-            cancelPromise = Promise.Rejected<int, string>("Reject").Then(_ => Promise.Resolved(), (string failValue) => { cancel(); return Promise.Resolved(); });
+            cancelPromise = rejected.Then(_ => 0, (string failValue) => { cancel(); return 0; });
             validate(cancelPromise);
 
-            cancelPromise = Promise.Rejected<int, string>("Reject").Then(_ => Promise.Resolved(0), () => { cancel(); return Promise.Resolved(0); });
+            cancelPromise = rejected.Then(_ => Promise.Resolved(), () => { cancel(); return Promise.Resolved(); });
             validate(cancelPromise);
-            cancelPromise = Promise.Rejected<int, string>("Reject").Then(_ => Promise.Resolved(0), (string failValue) => { cancel(); return Promise.Resolved(0); });
-            validate(cancelPromise);
-
-            cancelPromise = Promise.Rejected<int, string>("Reject").Catch(() => cancel());
-            validate(cancelPromise);
-            cancelPromise = Promise.Rejected<int, string>("Reject").Catch((string failValue) => cancel());
+            cancelPromise = rejected.Then(_ => Promise.Resolved(), (string failValue) => { cancel(); return Promise.Resolved(); });
             validate(cancelPromise);
 
-            cancelPromise = Promise.Rejected<int, string>("Reject").Catch(() => { cancel(); return Promise.Resolved(); });
+            cancelPromise = rejected.Then(_ => Promise.Resolved(0), () => { cancel(); return Promise.Resolved(0); });
             validate(cancelPromise);
-            cancelPromise = Promise.Rejected<int, string>("Reject").Catch((string failValue) => { cancel(); return Promise.Resolved(); });
+            cancelPromise = rejected.Then(_ => Promise.Resolved(0), (string failValue) => { cancel(); return Promise.Resolved(0); });
             validate(cancelPromise);
+
+            cancelPromise = rejected.Catch(() => cancel());
+            validate(cancelPromise);
+            cancelPromise = rejected.Catch((string failValue) => cancel());
+            validate(cancelPromise);
+
+            cancelPromise = rejected.Catch(() => { cancel(); return Promise.Resolved(); });
+            validate(cancelPromise);
+            cancelPromise = rejected.Catch((string failValue) => { cancel(); return Promise.Resolved(); });
+            validate(cancelPromise);
+
+            rejected.Release();
 
             // Clean up.
+            Promise.Manager.HandleCompletesAndProgress();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();

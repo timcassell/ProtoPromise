@@ -9,6 +9,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
 #pragma warning disable IDE0041 // Use 'is null' check
+#pragma warning disable CS0618 // Type or member is obsolete
 
 using System;
 using Proto.Utils;
@@ -92,6 +93,15 @@ namespace Proto.Promises
                 }
 
                 public void ReleaseAndMaybeAddToUnhandledStack()
+                {
+                    if (--_retainCounter == 0)
+                    {
+                        AddUnhandledException(ToException());
+                        Dispose();
+                    }
+                }
+
+                public void ReleaseAndAddToUnhandledStack()
                 {
                     AddUnhandledException(ToException());
                     if (--_retainCounter == 0)
@@ -217,6 +227,11 @@ namespace Proto.Promises
                     Release();
                 }
 
+                public void ReleaseAndAddToUnhandledStack()
+                {
+                    Release();
+                }
+
                 private void Dispose()
                 {
                     Value = default(T);
@@ -257,12 +272,10 @@ namespace Proto.Promises
                 }
 
                 public void SetNewOwner(Promise newOwner, bool appendStacktrace) { }
-
                 public void Retain() { }
-
                 public void Release() { }
-
                 public void ReleaseAndMaybeAddToUnhandledStack() { }
+                public void ReleaseAndAddToUnhandledStack() { }
 
                 Exception IThrowable.GetException()
                 {
@@ -329,6 +342,11 @@ namespace Proto.Promises
                     Release();
                 }
 
+                public void ReleaseAndAddToUnhandledStack()
+                {
+                    Release();
+                }
+
                 private void Dispose()
                 {
                     value = default(T);
@@ -360,12 +378,10 @@ namespace Proto.Promises
                 }
 
                 public void SetNewOwner(Promise newOwner, bool appendStacktrace) { }
-
                 public void Retain() { }
-
                 public void Release() { }
-
                 public void ReleaseAndMaybeAddToUnhandledStack() { }
+                public void ReleaseAndAddToUnhandledStack() { }
             }
         }
     }

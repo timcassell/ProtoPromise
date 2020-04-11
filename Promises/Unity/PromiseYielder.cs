@@ -11,7 +11,7 @@ namespace Proto.Promises
     partial class Promise
     {
         /// <summary>
-        /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise"/> it came from is complete.
+        /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise"/> it came from has settled.
         /// An instance of this should be disposed when you are finished with it.
         /// </summary>
         [System.Diagnostics.DebuggerStepThrough]
@@ -60,7 +60,12 @@ namespace Proto.Promises
             {
                 ValidateYieldInstructionOperation(_value, 1);
 
-                if (State == State.Resolved)
+                if (_state == State.Pending)
+                {
+                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", GetFormattedStacktrace(1));
+                }
+
+                if (_state == State.Resolved)
                 {
                     return;
                 }
@@ -110,7 +115,7 @@ namespace Proto.Promises
     partial class Promise<T>
     {
         /// <summary>
-        /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise{T}"/> it came from is complete.
+        /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise{T}"/> it came from has settled.
         /// An instance of this should be disposed when you are finished with it.
         /// </summary>
         [System.Diagnostics.DebuggerStepThrough]
@@ -127,7 +132,12 @@ namespace Proto.Promises
             {
                 ValidateYieldInstructionOperation(_value, 1);
 
-                if (State == State.Resolved)
+                if (_state == State.Pending)
+                {
+                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", GetFormattedStacktrace(1));
+                }
+
+                if (_state == State.Resolved)
                 {
                     return ((Internal.ResolveContainer<T>) _value).value;
                 }

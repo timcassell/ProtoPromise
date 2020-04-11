@@ -58,7 +58,7 @@ namespace Proto.Promises
                 else
                 {
                     // Rejection maybe wasn't caught.
-                    ((Internal.IValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack();
+                    ((Internal.IValueContainer) _valueOrPrevious).ReleaseAndAddToUnhandledStack();
                 }
                 // Promise wasn't released.
                 AddRejectionToUnhandledStack(UnreleasedObjectException.instance, this);
@@ -160,7 +160,7 @@ namespace Proto.Promises
                 else
                 {
                     // Rejection maybe wasn't caught.
-                    ((Internal.IValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack();
+                    ((Internal.IValueContainer) _valueOrPrevious).ReleaseAndAddToUnhandledStack();
                 }
             }
             _valueOrPrevious = DisposedObject;
@@ -168,19 +168,24 @@ namespace Proto.Promises
 
         void Internal.ITreeHandleable.Handle()
         {
-            if (_state != State.Pending)
+            if (_state == State.Pending)
             {
-                ReleaseInternal();
+                Handle();
             }
             else
             {
-                Handle();
+                ReleaseInternal();
             }
         }
 
         protected virtual Promise GetDuplicate()
         {
             return Internal.DuplicatePromise0.GetOrCreate(2);
+        }
+
+        protected virtual void HandleCancel()
+        {
+            CancelInternal();
         }
 
         protected void CancelInternal(Internal.IValueContainer cancelValue)
@@ -249,13 +254,24 @@ namespace Proto.Promises
             catch (RethrowException)
             {
 #if PROMISE_CANCEL
-                if (_state != State.Canceled)
-#endif
+                if (_state == State.Pending)
                 {
-                    _state = State.Rejected;
-                    HandleBranches();
+                    _state = ((Internal.IValueContainer) _valueOrPrevious).GetState();
+                    if (_state == State.Rejected)
+                    {
+                        HandleBranches();
+                    }
+                    else
+                    {
+                        CancelBranches();
+                    }
                     CancelProgressListeners();
                 }
+#else
+                _state = State.Rejected;
+                HandleBranches();
+                CancelProgressListeners();
+#endif
                 ReleaseInternal();
             }
 #if PROMISE_CANCEL
@@ -651,7 +667,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerStepThrough]
             public abstract partial class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitPromise<T, TPromise>
             {
-                public void WaitFor(Promise other)
+                public void WaitFor(Promise<T> other)
                 {
                     ValidateReturn(other);
 #if PROMISE_CANCEL
@@ -1558,8 +1574,6 @@ namespace Proto.Promises
                 public static PromiseResolveReject0 GetOrCreate(IDelegateResolve onResolved, IDelegateReject onRejected, int skipFrames)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseResolveReject0) _pool.Pop() : new PromiseResolveReject0();
-                    onResolved.Retain();
-                    onRejected.Retain();
                     promise._onResolved = onResolved;
                     promise._onRejected = onRejected;
                     promise.Reset(skipFrames + 1);
@@ -1575,15 +1589,15 @@ namespace Proto.Promises
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     if (valueContainer.GetState() == State.Resolved)
                     {
-                        rejectCallback.Release();
+                        rejectCallback.Dispose();
                         _invokingResolved = true;
-                        resolveCallback.ReleaseAndInvoke(valueContainer, this);
+                        resolveCallback.DisposeAndInvoke(valueContainer, this);
                     }
                     else
                     {
-                        resolveCallback.Release();
+                        resolveCallback.Dispose();
                         _invokingRejected = true;
-                        rejectCallback.ReleaseAndInvoke(valueContainer, this);
+                        rejectCallback.DisposeAndInvoke(valueContainer, this);
                     }
                 }
 
@@ -1591,9 +1605,9 @@ namespace Proto.Promises
                 {
                     if (_onResolved != null)
                     {
-                        _onResolved.Release();
+                        _onResolved.Dispose();
                         _onResolved = null;
-                        _onRejected.Release();
+                        _onRejected.Dispose();
                         _onRejected = null;
                     }
                 }
@@ -1610,8 +1624,6 @@ namespace Proto.Promises
                 public static PromiseResolveReject<T> GetOrCreate(IDelegateResolve onResolved, IDelegateReject onRejected, int skipFrames)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseResolveReject<T>) _pool.Pop() : new PromiseResolveReject<T>();
-                    onResolved.Retain();
-                    onRejected.Retain();
                     promise._onResolved = onResolved;
                     promise._onRejected = onRejected;
                     promise.Reset(skipFrames + 1);
@@ -1627,15 +1639,15 @@ namespace Proto.Promises
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     if (valueContainer.GetState() == State.Resolved)
                     {
-                        rejectCallback.Release();
+                        rejectCallback.Dispose();
                         _invokingResolved = true;
-                        resolveCallback.ReleaseAndInvoke(valueContainer, this);
+                        resolveCallback.DisposeAndInvoke(valueContainer, this);
                     }
                     else
                     {
-                        resolveCallback.Release();
+                        resolveCallback.Dispose();
                         _invokingRejected = true;
-                        rejectCallback.ReleaseAndInvoke(valueContainer, this);
+                        rejectCallback.DisposeAndInvoke(valueContainer, this);
                     }
                 }
 
@@ -1643,9 +1655,9 @@ namespace Proto.Promises
                 {
                     if (_onResolved != null)
                     {
-                        _onResolved.Release();
+                        _onResolved.Dispose();
                         _onResolved = null;
-                        _onRejected.Release();
+                        _onRejected.Dispose();
                         _onRejected = null;
                     }
                 }
@@ -1662,8 +1674,6 @@ namespace Proto.Promises
                 public static PromiseResolveRejectPromise0 GetOrCreate(IDelegateResolvePromise onResolved, IDelegateRejectPromise onRejected, int skipFrames)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise0) _pool.Pop() : new PromiseResolveRejectPromise0();
-                    onResolved.Retain();
-                    onRejected.Retain();
                     promise._onResolved = onResolved;
                     promise._onRejected = onRejected;
                     promise.Reset(skipFrames + 1);
@@ -1686,18 +1696,18 @@ namespace Proto.Promises
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     if (valueContainer.GetState() == State.Resolved)
                     {
-                        rejectCallback.Release();
+                        rejectCallback.Dispose();
                         _invokingResolved = true;
-                        resolveCallback.ReleaseAndInvoke(valueContainer, this);
+                        resolveCallback.DisposeAndInvoke(valueContainer, this);
                     }
                     else
                     {
-                        resolveCallback.Release();
+                        resolveCallback.Dispose();
                         _invokingRejected = true;
 #if PROMISE_PROGRESS
                         _suspended = true;
 #endif
-                        rejectCallback.ReleaseAndInvoke(valueContainer, this);
+                        rejectCallback.DisposeAndInvoke(valueContainer, this);
                     }
                 }
 
@@ -1705,9 +1715,9 @@ namespace Proto.Promises
                 {
                     if (_onResolved != null)
                     {
-                        _onResolved.Release();
+                        _onResolved.Dispose();
                         _onResolved = null;
-                        _onRejected.Release();
+                        _onRejected.Dispose();
                         _onRejected = null;
                     }
                 }
@@ -1724,8 +1734,6 @@ namespace Proto.Promises
                 public static PromiseResolveRejectPromise<TPromise> GetOrCreate(IDelegateResolvePromise onResolved, IDelegateRejectPromise onRejected, int skipFrames)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise<TPromise>) _pool.Pop() : new PromiseResolveRejectPromise<TPromise>();
-                    onResolved.Retain();
-                    onRejected.Retain();
                     promise._onResolved = onResolved;
                     promise._onRejected = onRejected;
                     promise.Reset(skipFrames + 1);
@@ -1748,18 +1756,18 @@ namespace Proto.Promises
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     if (valueContainer.GetState() == State.Resolved)
                     {
-                        rejectCallback.Release();
+                        rejectCallback.Dispose();
                         _invokingResolved = true;
-                        resolveCallback.ReleaseAndInvoke(valueContainer, this);
+                        resolveCallback.DisposeAndInvoke(valueContainer, this);
                     }
                     else
                     {
-                        resolveCallback.Release();
+                        resolveCallback.Dispose();
                         _invokingRejected = true;
 #if PROMISE_PROGRESS
                         _suspended = true;
 #endif
-                        rejectCallback.ReleaseAndInvoke(valueContainer, this);
+                        rejectCallback.DisposeAndInvoke(valueContainer, this);
                     }
                 }
 
@@ -1767,14 +1775,150 @@ namespace Proto.Promises
                 {
                     if (_onResolved != null)
                     {
-                        _onResolved.Release();
+                        _onResolved.Dispose();
                         _onResolved = null;
-                        _onRejected.Release();
+                        _onRejected.Dispose();
                         _onRejected = null;
                     }
                 }
             }
-#endregion
+            #endregion
+
+            #region Continue Promises
+            [System.Diagnostics.DebuggerStepThrough]
+            public sealed class PromiseContinue0 : PoolablePromise<PromiseContinue0>
+            {
+                private IDelegateContinue _onContinue;
+
+                private PromiseContinue0() { }
+
+                public static PromiseContinue0 GetOrCreate(IDelegateContinue onContinue, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseContinue0) _pool.Pop() : new PromiseContinue0();
+                    promise._onContinue = onContinue;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Execute()
+                {
+                    var callback = _onContinue;
+                    _onContinue = null;
+                    _invokingResolved = true;
+                    callback.DisposeAndInvoke((IValueContainer) _valueOrPrevious);
+                    ResolveInternalIfNotCanceled();
+                }
+
+                protected override void HandleCancel()
+                {
+                    Handle();
+                }
+            }
+
+            [System.Diagnostics.DebuggerStepThrough]
+            public sealed class PromiseContinue<T> : PoolablePromise<T, PromiseContinue<T>>
+            {
+                private IDelegateContinue<T> _onContinue;
+
+                private PromiseContinue() { }
+
+                public static PromiseContinue<T> GetOrCreate(IDelegateContinue<T> onContinue, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseContinue<T>) _pool.Pop() : new PromiseContinue<T>();
+                    promise._onContinue = onContinue;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Execute()
+                {
+                    var callback = _onContinue;
+                    _onContinue = null;
+                    _invokingResolved = true;
+                    T result = callback.DisposeAndInvoke((IValueContainer) _valueOrPrevious);
+                    ResolveInternalIfNotCanceled(result);
+                }
+
+                protected override void HandleCancel()
+                {
+                    Handle();
+                }
+            }
+
+            [System.Diagnostics.DebuggerStepThrough]
+            public sealed class PromiseContinuePromise0 : PromiseWaitPromise<PromiseContinuePromise0>
+            {
+                private IDelegateContinue<Promise> _onContinue;
+
+                private PromiseContinuePromise0() { }
+
+                public static PromiseContinuePromise0 GetOrCreate(IDelegateContinue<Promise> onContinue, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseContinuePromise0) _pool.Pop() : new PromiseContinuePromise0();
+                    promise._onContinue = onContinue;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Execute()
+                {
+                    if (_onContinue == null)
+                    {
+                        // The returned promise is handling this.
+                        HandleSelf();
+                        return;
+                    }
+
+                    var callback = _onContinue;
+                    _onContinue = null;
+                    _invokingResolved = true;
+                    Promise result = callback.DisposeAndInvoke((IValueContainer) _valueOrPrevious);
+                    WaitFor(result);
+                }
+
+                protected override void HandleCancel()
+                {
+                    Handle();
+                }
+            }
+
+            [System.Diagnostics.DebuggerStepThrough]
+            public sealed class PromiseContinuePromise<TPromise> : PromiseWaitPromise<TPromise, PromiseContinuePromise<TPromise>>
+            {
+                private IDelegateContinue<Promise<TPromise>> _onContinue;
+
+                private PromiseContinuePromise() { }
+
+                public static PromiseContinuePromise<TPromise> GetOrCreate(IDelegateContinue<Promise<TPromise>> onContinue, int skipFrames)
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseContinuePromise<TPromise>) _pool.Pop() : new PromiseContinuePromise<TPromise>();
+                    promise._onContinue = onContinue;
+                    promise.Reset(skipFrames + 1);
+                    return promise;
+                }
+
+                protected override void Execute()
+                {
+                    if (_onContinue == null)
+                    {
+                        // The returned promise is handling this.
+                        HandleSelf();
+                        return;
+                    }
+
+                    var callback = _onContinue;
+                    _onContinue = null;
+                    _invokingResolved = true;
+                    Promise<TPromise> result = callback.DisposeAndInvoke((IValueContainer) _valueOrPrevious);
+                    WaitFor(result);
+                }
+
+                protected override void HandleCancel()
+                {
+                    Handle();
+                }
+            }
+            #endregion
 
             [System.Diagnostics.DebuggerStepThrough]
             public sealed partial class PromisePassThrough : ITreeHandleable, IRetainable, ILinked<PromisePassThrough>

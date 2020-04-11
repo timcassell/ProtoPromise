@@ -59,6 +59,7 @@ namespace Proto.Promises
                 Type ValueType { get; }
                 object Value { get; }
 
+                void ReleaseAndAddToUnhandledStack();
                 void ReleaseAndMaybeAddToUnhandledStack();
             }
 
@@ -84,23 +85,33 @@ namespace Proto.Promises
                 Exception GetException();
             }
 
-            public interface IDelegateResolve : IRetainable
+            public interface IDelegateResolve : IDisposable
             {
-                void ReleaseAndInvoke(IValueContainer valueContainer, Promise owner);
+                void DisposeAndInvoke(IValueContainer valueContainer, Promise owner);
             }
-            public interface IDelegateResolvePromise : IRetainable
+            public interface IDelegateResolvePromise : IDisposable
             {
-                void ReleaseAndInvoke(IValueContainer valueContainer, Promise owner);
-            }
-
-            public interface IDelegateReject : IRetainable
-            {
-                void ReleaseAndInvoke(IValueContainer valueContainer, Promise owner);
+                void DisposeAndInvoke(IValueContainer valueContainer, Promise owner);
             }
 
-            public interface IDelegateRejectPromise : IRetainable
+            public interface IDelegateReject : IDisposable
             {
-                void ReleaseAndInvoke(IValueContainer valueContainer, Promise owner);
+                void DisposeAndInvoke(IValueContainer valueContainer, Promise owner);
+            }
+
+            public interface IDelegateRejectPromise : IDisposable
+            {
+                void DisposeAndInvoke(IValueContainer valueContainer, Promise owner);
+            }
+
+            public interface IDelegateContinue
+            {
+                void DisposeAndInvoke(IValueContainer valueContainer);
+            }
+
+            public interface IDelegateContinue<T>
+            {
+                T DisposeAndInvoke(IValueContainer valueContainer);
             }
 
             public partial interface IMultiTreeHandleable : ITreeHandleable
