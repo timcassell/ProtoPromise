@@ -55,7 +55,7 @@ namespace Proto.Promises
                 return RacePromise<T>.GetOrCreate(passThroughs, count, skipFrames + 1);
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed partial class RacePromise0 : PoolablePromise<RacePromise0>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
@@ -118,7 +118,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed partial class RacePromise<T> : PoolablePromise<T, RacePromise<T>>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;

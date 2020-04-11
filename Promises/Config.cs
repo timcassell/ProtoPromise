@@ -68,7 +68,7 @@ namespace Proto.Promises
         /// <summary>
         /// Promise configuration. Configuration settings affect the global behaviour of promises.
         /// </summary>
-        [System.Diagnostics.DebuggerStepThrough]
+        [System.Diagnostics.DebuggerNonUserCode]
         public static class Config
         {
 #if PROMISE_PROGRESS

@@ -91,7 +91,7 @@ namespace Proto.Promises
 
         partial class Internal
         {
-            [DebuggerStepThrough]
+            [DebuggerNonUserCode]
             public class CausalityTrace
             {
                 private readonly StackTrace _stacktrace;
@@ -119,7 +119,7 @@ namespace Proto.Promises
             }
 
             // This allows us to re-use the reference field without having to add another bool field.
-            [DebuggerStepThrough]
+            [DebuggerNonUserCode]
             public sealed class DisposedChecker
             {
                 public static readonly DisposedChecker instance = new DisposedChecker();
@@ -194,9 +194,11 @@ namespace Proto.Promises
             var trace = stackFrames
                 .Where(frame =>
                 {
-                    // Ignore DebuggerStepThrough and DebuggerHidden.
+                    // Ignore DebuggerStepThrough and DebuggerHidden and DebuggerNonUserCode.
                     var methodType = frame.GetMethod();
                     return !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false)
+                        && !methodType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
+                        && !methodType.DeclaringType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
                         && !methodType.IsDefined(typeof(DebuggerStepThroughAttribute), false)
                         && !methodType.DeclaringType.IsDefined(typeof(DebuggerStepThroughAttribute), false);
                 })

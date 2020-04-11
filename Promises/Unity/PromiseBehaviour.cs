@@ -19,7 +19,7 @@ namespace Proto.Promises
     }
 
     // I would have nested this within Promise, but you can only change the execution order of un-nested behaviours.
-    [System.Diagnostics.DebuggerStepThrough]
+    [System.Diagnostics.DebuggerNonUserCode]
     public sealed class PromiseBehaviour : MonoBehaviour
     {
         private static PromiseBehaviour _instance;

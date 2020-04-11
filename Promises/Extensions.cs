@@ -5,6 +5,7 @@ using Proto.Promises.Await;
 
 namespace Proto.Promises
 {
+    [System.Diagnostics.DebuggerNonUserCode]
     public static class Extensions
     {
 #if CSHARP_7_OR_LATER

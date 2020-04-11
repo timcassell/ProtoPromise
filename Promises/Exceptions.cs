@@ -17,6 +17,7 @@ using System.Globalization;
 
 namespace Proto.Promises
 {
+    [DebuggerNonUserCode]
     public class InvalidOperationException : System.InvalidOperationException
     {
         public InvalidOperationException(string message, string stackTrace = null) : base(message)
@@ -28,6 +29,7 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+    [DebuggerNonUserCode]
     public class EmptyArgumentException : ArgumentException
     {
         public EmptyArgumentException(string paramName, string message, string stackTrace = null) : base(message, paramName)
@@ -39,6 +41,7 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+    [DebuggerNonUserCode]
     public class ArgumentNullException : System.ArgumentNullException
     {
         public ArgumentNullException(string paramName, string message, string stackTrace = null) : base(paramName, message)
@@ -50,6 +53,7 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+    [DebuggerNonUserCode]
     public class ElementNullException : System.ArgumentNullException
     {
         public ElementNullException(string paramName, string message, string stackTrace = null) : base(paramName, message)
@@ -61,6 +65,7 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+    [DebuggerNonUserCode]
     public class PromiseDisposedException : ObjectDisposedException
     {
         public PromiseDisposedException(string message, string stackTrace = null) : base(message, default(Exception))
@@ -72,6 +77,7 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+    [DebuggerNonUserCode]
     public class InvalidReturnException : System.InvalidOperationException
     {
         public InvalidReturnException(string message, string stackTrace = null, Exception innerException = null) : base(message, innerException)
@@ -83,6 +89,7 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+    [DebuggerNonUserCode]
     public class UnhandledDeferredException : Exception
     {
         public static readonly UnhandledDeferredException instance =
@@ -91,6 +98,7 @@ namespace Proto.Promises
         private UnhandledDeferredException(string message) : base(message) { }
     }
 
+    [DebuggerNonUserCode]
     public class UnreleasedObjectException : Exception
     {
         public static readonly UnreleasedObjectException instance =
@@ -103,6 +111,7 @@ namespace Proto.Promises
     /// <summary>
     /// Exception that is thrown if a promise is rejected and that rejection is never handled.
     /// </summary>
+    [DebuggerNonUserCode]
     public abstract class UnhandledException : Exception
     {
         private readonly object _value;
@@ -137,6 +146,7 @@ namespace Proto.Promises
     /// <summary>
     /// Exception that is thrown if an awaited promise is canceled.
     /// </summary>
+    [DebuggerNonUserCode]
     public abstract class CanceledException : OperationCanceledException
     {
         private readonly object _value;
@@ -168,6 +178,7 @@ namespace Proto.Promises
     /// <summary>
     /// Special Exception that is used to rethrow a rejection from a Promise onRejected callback.
     /// </summary>
+    [DebuggerNonUserCode]
     public sealed class RethrowException : Exception
     {
         public static readonly RethrowException instance = new RethrowException();
@@ -178,6 +189,7 @@ namespace Proto.Promises
     /// <summary>
     /// Special Exception that is used to reject a Promise from an onResolved or onRejected callback.
     /// </summary>
+    [DebuggerNonUserCode]
     public abstract class RejectException : Exception
     {
         protected RejectException() { }
@@ -194,6 +206,7 @@ namespace Proto.Promises
     /// <summary>
     /// Special Exception that is used to cancel a Promise from an onResolved or onRejected callback.
     /// </summary>
+    [DebuggerNonUserCode]
     public abstract class CancelException : OperationCanceledException
     {
         protected CancelException() { }
@@ -212,6 +225,7 @@ namespace Proto.Promises
     {
         partial class Internal
         {
+            [DebuggerNonUserCode]
             public sealed class UnhandledExceptionInternal : UnhandledException, IValueContainer, IRejectionContainer, IThrowable
             {
                 public UnhandledExceptionInternal(object value, Type valueType, string message, string stacktrace, Exception innerException) :
@@ -245,6 +259,7 @@ namespace Proto.Promises
 #endif
             }
 
+            [DebuggerNonUserCode]
             public sealed class CanceledExceptionInternal : CanceledException, IValueContainer, IThrowable
             {
                 public CanceledExceptionInternal(object value, Type valueType, string message) :
@@ -267,6 +282,7 @@ namespace Proto.Promises
                 }
             }
 
+            [DebuggerNonUserCode]
             public sealed class RejectionException : Exception
             {
                 private readonly string _stackTrace;
@@ -279,6 +295,7 @@ namespace Proto.Promises
                 public override string StackTrace { get { return _stackTrace; } }
             }
 
+            [DebuggerNonUserCode]
             public sealed class RejectExceptionInternal<T> : RejectException, IExceptionToContainer, ICantHandleException
             {
                 // We can reuse the same object.
@@ -309,6 +326,7 @@ namespace Proto.Promises
                 }
             }
 
+            [DebuggerNonUserCode]
             public sealed class CancelExceptionVoidInternal : CancelException, IExceptionToContainer
             {
                 // We can reuse the same object.
@@ -327,6 +345,7 @@ namespace Proto.Promises
                 }
             }
 
+            [DebuggerNonUserCode]
             public sealed class CancelExceptionInternal<T> : CancelException, IExceptionToContainer
             {
                 // We can reuse the same object.

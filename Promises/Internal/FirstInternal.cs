@@ -55,7 +55,7 @@ namespace Proto.Promises
                 return FirstPromise<T>.GetOrCreate(passThroughs, count, skipFrames + 1);
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed partial class FirstPromise0 : PoolablePromise<FirstPromise0>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
@@ -114,7 +114,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed partial class FirstPromise<T> : PoolablePromise<T, FirstPromise<T>>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;

@@ -14,7 +14,7 @@ namespace Proto.Promises
         /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise"/> it came from has settled.
         /// An instance of this should be disposed when you are finished with it.
         /// </summary>
-        [System.Diagnostics.DebuggerStepThrough]
+        [System.Diagnostics.DebuggerNonUserCode]
         public abstract class YieldInstruction : CustomYieldInstruction, IDisposable, Internal.ITreeHandleable
         {
             Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
@@ -118,7 +118,7 @@ namespace Proto.Promises
         /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise{T}"/> it came from has settled.
         /// An instance of this should be disposed when you are finished with it.
         /// </summary>
-        [System.Diagnostics.DebuggerStepThrough]
+        [System.Diagnostics.DebuggerNonUserCode]
         public abstract new class YieldInstruction : Promise.YieldInstruction
         {
             internal YieldInstruction() { }
@@ -151,7 +151,7 @@ namespace Proto.Promises
     {
         partial class Internal
         {
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class YieldInstructionVoid : YieldInstruction
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
@@ -180,7 +180,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, ITreeHandleable
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
@@ -214,7 +214,7 @@ namespace Proto.Promises
     /// <summary>
     /// Yielder used to wait for a yield instruction to complete in the form of a Promise, using Unity's coroutines.
     /// </summary>
-    [System.Diagnostics.DebuggerStepThrough]
+    [System.Diagnostics.DebuggerNonUserCode]
     public sealed class PromiseYielder : MonoBehaviour
     {
         static Action _onClearObjects;

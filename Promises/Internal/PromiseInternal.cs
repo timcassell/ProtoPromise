@@ -597,7 +597,7 @@ namespace Proto.Promises
 
             internal static Action OnClearPool;
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public abstract class PoolablePromise<TPromise> : Promise where TPromise : PoolablePromise<TPromise>
             {
                 protected static ValueLinkedStack<ITreeHandleable> _pool;
@@ -617,7 +617,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public abstract class PoolablePromise<T, TPromise> : Promise<T> where TPromise : PoolablePromise<T, TPromise>
             {
                 protected static ValueLinkedStack<ITreeHandleable> _pool;
@@ -637,7 +637,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public abstract partial class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitPromise<TPromise>
             {
                 public void WaitFor(Promise other)
@@ -664,7 +664,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public abstract partial class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitPromise<T, TPromise>
             {
                 public void WaitFor(Promise<T> other)
@@ -691,7 +691,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed partial class DeferredPromise0 : PoolablePromise<DeferredPromise0>
             {
                 public readonly DeferredInternal0 deferred;
@@ -718,7 +718,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed partial class DeferredPromise<T> : PoolablePromise<T, DeferredPromise<T>>
             {
                 public readonly DeferredInternal<T> deferred;
@@ -745,7 +745,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class SettledPromise : Promise
             {
                 private SettledPromise() { }
@@ -764,7 +764,7 @@ namespace Proto.Promises
                 protected override void Dispose() { }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class LitePromise0 : PoolablePromise<LitePromise0>
             {
                 private LitePromise0() { }
@@ -792,7 +792,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class LitePromise<T> : PoolablePromise<T, LitePromise<T>>
             {
                 private LitePromise() { }
@@ -824,7 +824,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class DuplicatePromise0 : PoolablePromise<DuplicatePromise0>
             {
                 private DuplicatePromise0() { }
@@ -842,7 +842,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class DuplicatePromise<T> : PoolablePromise<T, DuplicatePromise<T>>
             {
                 private DuplicatePromise() { }
@@ -862,7 +862,7 @@ namespace Proto.Promises
 
 #region Resolve Promises
             // Individual types for more common .Then(onResolved) calls to be more efficient.
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseVoidResolve0 : PoolablePromise<PromiseVoidResolve0>
             {
                 private Action _onResolved;
@@ -900,7 +900,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseArgResolve<TArg> : PoolablePromise<PromiseArgResolve<TArg>>
             {
                 private Action<TArg> _onResolved;
@@ -938,7 +938,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseVoidResolve<TResult> : PoolablePromise<TResult, PromiseVoidResolve<TResult>>
             {
                 private Func<TResult> _onResolved;
@@ -976,7 +976,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseArgResolve<TArg, TResult> : PoolablePromise<TResult, PromiseArgResolve<TArg, TResult>>
             {
                 private Func<TArg, TResult> _onResolved;
@@ -1014,7 +1014,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseVoidResolvePromise0 : PromiseWaitPromise<PromiseVoidResolvePromise0>
             {
                 private Func<Promise> _onResolved;
@@ -1058,7 +1058,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseArgResolvePromise<TArg> : PromiseWaitPromise<PromiseArgResolvePromise<TArg>>
             {
                 private Func<TArg, Promise> _onResolved;
@@ -1102,7 +1102,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseVoidResolvePromise<TPromise> : PromiseWaitPromise<TPromise, PromiseVoidResolvePromise<TPromise>>
             {
                 private Func<Promise<TPromise>> _onResolved;
@@ -1146,7 +1146,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseArgResolvePromise<TArg, TPromise> : PromiseWaitPromise<TPromise, PromiseArgResolvePromise<TArg, TPromise>>
             {
                 private Func<TArg, Promise<TPromise>> _onResolved;
@@ -1191,7 +1191,7 @@ namespace Proto.Promises
             }
 
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseCaptureVoidResolve<TCapture> : PoolablePromise<PromiseCaptureVoidResolve<TCapture>>
             {
                 private TCapture _capturedValue;
@@ -1234,7 +1234,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseCaptureArgResolve<TCapture, TArg> : PoolablePromise<PromiseCaptureArgResolve<TCapture, TArg>>
             {
                 private TCapture _capturedValue;
@@ -1277,7 +1277,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseCaptureVoidResolve<TCapture, TResult> : PoolablePromise<TResult, PromiseCaptureVoidResolve<TCapture, TResult>>
             {
                 private TCapture _capturedValue;
@@ -1320,7 +1320,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseCaptureArgResolve<TCapture, TArg, TResult> : PoolablePromise<TResult, PromiseCaptureArgResolve<TCapture, TArg, TResult>>
             {
                 private TCapture _capturedValue;
@@ -1363,7 +1363,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseCaptureVoidResolvePromise<TCapture> : PromiseWaitPromise<PromiseCaptureVoidResolvePromise<TCapture>>
             {
                 private TCapture _capturedValue;
@@ -1412,7 +1412,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseCaptureArgResolvePromise<TCapture, TArg> : PromiseWaitPromise<PromiseCaptureArgResolvePromise<TCapture, TArg>>
             {
                 private TCapture _capturedValue;
@@ -1461,7 +1461,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseCaptureVoidResolvePromise<TCapture, TPromise> : PromiseWaitPromise<TPromise, PromiseCaptureVoidResolvePromise<TCapture, TPromise>>
             {
                 private TCapture _capturedValue;
@@ -1510,7 +1510,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise> : PromiseWaitPromise<TPromise, PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise>>
             {
                 private TCapture _capturedValue;
@@ -1563,7 +1563,7 @@ namespace Proto.Promises
 #region Resolve or Reject Promises
             // IDelegate to reduce the amount of classes I would have to write to handle catches (Composition Over Inheritance).
             // I'm less concerned about performance for catches since exceptions are expensive anyway, and they are expected to be used less often than .Then(onResolved).
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseResolveReject0 : PoolablePromise<PromiseResolveReject0>
             {
                 private IDelegateResolve _onResolved;
@@ -1613,7 +1613,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseResolveReject<T> : PoolablePromise<T, PromiseResolveReject<T>>
             {
                 private IDelegateResolve _onResolved;
@@ -1663,7 +1663,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseResolveRejectPromise0 : PromiseWaitPromise<PromiseResolveRejectPromise0>
             {
                 private IDelegateResolvePromise _onResolved;
@@ -1723,7 +1723,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseResolveRejectPromise<TPromise> : PromiseWaitPromise<TPromise, PromiseResolveRejectPromise<TPromise>>
             {
                 private IDelegateResolvePromise _onResolved;
@@ -1785,7 +1785,7 @@ namespace Proto.Promises
             #endregion
 
             #region Continue Promises
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseContinue0 : PoolablePromise<PromiseContinue0>
             {
                 private IDelegateContinue _onContinue;
@@ -1815,7 +1815,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseContinue<T> : PoolablePromise<T, PromiseContinue<T>>
             {
                 private IDelegateContinue<T> _onContinue;
@@ -1845,7 +1845,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseContinuePromise0 : PromiseWaitPromise<PromiseContinuePromise0>
             {
                 private IDelegateContinue<Promise> _onContinue;
@@ -1882,7 +1882,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseContinuePromise<TPromise> : PromiseWaitPromise<TPromise, PromiseContinuePromise<TPromise>>
             {
                 private IDelegateContinue<Promise<TPromise>> _onContinue;
@@ -1920,7 +1920,7 @@ namespace Proto.Promises
             }
             #endregion
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed partial class PromisePassThrough : ITreeHandleable, IRetainable, ILinked<PromisePassThrough>
             {
                 private static ValueLinkedStack<PromisePassThrough> _pool;

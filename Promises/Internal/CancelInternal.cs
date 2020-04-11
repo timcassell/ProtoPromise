@@ -186,7 +186,7 @@ namespace Proto.Promises
 
         partial class Internal
         {
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed partial class CancelDelegate : ITreeHandleable
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
@@ -270,7 +270,7 @@ namespace Proto.Promises
                 void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed partial class CancelDelegateCapture<TCapture> : ITreeHandleable
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }

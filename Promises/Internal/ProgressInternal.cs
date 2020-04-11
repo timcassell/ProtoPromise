@@ -364,7 +364,7 @@ namespace Proto.Promises
             /// Max Whole Number: 2^(32-<see cref="Config.ProgressDecimalBits"/>)
             /// Precision: 1/(2^<see cref="Config.ProgressDecimalBits"/>)
             /// </summary>
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public struct UnsignedFixed32
             {
                 private const uint DecimalMax = 1u << Config.ProgressDecimalBits;
@@ -461,7 +461,7 @@ namespace Proto.Promises
                 void CancelOrIncrementProgress(uint increment, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount);
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public abstract class ProgressDelegateBase<T> : IProgressListener, ITreeHandleable, IInvokable, ITraceable where T : ProgressDelegateBase<T>
             {
 #if PROMISE_DEBUG
@@ -635,7 +635,7 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReadyFromSettled(IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class ProgressDelegate : ProgressDelegateBase<ProgressDelegate>
             {
                 private Action<float> _onProgress;
@@ -662,7 +662,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class ProgressDelegateCapture<TCapture> : ProgressDelegateBase<ProgressDelegateCapture<TCapture>>
             {
                 TCapture _capturedValue;

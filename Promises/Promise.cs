@@ -1,4 +1,4 @@
-// define PROTO_PROMISE_DEBUG_ENABLE to enable debugging options in RELEASE mode. define PROTO_PROMISE_DEBUG_DISABLE to disable debugging options in DEBUG mode.
+﻿// define PROTO_PROMISE_DEBUG_ENABLE to enable debugging options in RELEASE mode. define PROTO_PROMISE_DEBUG_DISABLE to disable debugging options in DEBUG mode.
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
@@ -29,7 +29,7 @@ namespace Proto.Promises
     /// which registers callbacks to be invoked when the <see cref="Promise"/> is resolved,
     /// or the reason why the <see cref="Promise"/> cannot be resolved.
     /// </summary>
-    [System.Diagnostics.DebuggerStepThrough]
+    [System.Diagnostics.DebuggerNonUserCode]
     public abstract partial class Promise : ICancelableAny, IRetainable
     {
         public enum State : byte
@@ -752,7 +752,7 @@ namespace Proto.Promises
     /// which registers callbacks to be invoked with its resolve value when the <see cref="Promise{T}"/> is resolved,
     /// or the reason why the <see cref="Promise{T}"/> cannot be resolved.
     /// </summary>
-    [System.Diagnostics.DebuggerStepThrough]
+    [System.Diagnostics.DebuggerNonUserCode]
     public abstract partial class Promise<T> : Promise
     {
         /// <summary>

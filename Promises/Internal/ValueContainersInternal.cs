@@ -20,7 +20,7 @@ namespace Proto.Promises
     {
         partial class Internal
         {
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public abstract class PoolableObject<T> : ILinked<T> where T : PoolableObject<T>
             {
                 T ILinked<T>.Next { get; set; }
@@ -33,7 +33,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class RejectionContainer<T> : PoolableObject<RejectionContainer<T>>, IRejectionContainer, IValueContainer<T>, IThrowable
             {
                 public T Value { get; private set; }
@@ -174,7 +174,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class CancelContainer<T> : PoolableObject<CancelContainer<T>>, IValueContainer, IValueContainer<T>, IThrowable
             {
                 public T Value { get; private set; }
@@ -251,7 +251,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class CancelContainerVoid : IValueContainer, IThrowable
             {
                 // We can reuse the same object.
@@ -283,7 +283,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class ResolveContainer<T> : PoolableObject<ResolveContainer<T>>, IValueContainer, IValueContainer<T>
             {
                 public T value;
@@ -357,7 +357,7 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class ResolveContainerVoid : IValueContainer
             {
                 // We can reuse the same object.

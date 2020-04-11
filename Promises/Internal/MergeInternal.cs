@@ -30,7 +30,7 @@ namespace Proto.Promises
     {
         partial class Internal
         {
-            [System.Diagnostics.DebuggerStepThrough]
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed partial class MergePromise<T> : PoolablePromise<T, MergePromise<T>>, IMultiTreeHandleable
             {
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;

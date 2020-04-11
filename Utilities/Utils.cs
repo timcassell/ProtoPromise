@@ -17,7 +17,7 @@ namespace Proto.Utils
         T Next { get; set; }
     }
 
-    [System.Diagnostics.DebuggerStepThrough]
+    [System.Diagnostics.DebuggerNonUserCode]
     public struct Enumerator<T> : IEnumerator<T> where T : class, ILinked<T>
     {
         private T _current;
@@ -65,7 +65,7 @@ namespace Proto.Utils
     /// <summary>
     /// This structure is unsuitable for general purpose.
     /// </summary>
-    [System.Diagnostics.DebuggerStepThrough]
+    [System.Diagnostics.DebuggerNonUserCode]
     public struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
     {
         T _first;
@@ -132,7 +132,7 @@ namespace Proto.Utils
     /// <summary>
     /// This structure is unsuitable for general purpose.
     /// </summary>
-    [System.Diagnostics.DebuggerStepThrough]
+    [System.Diagnostics.DebuggerNonUserCode]
     public struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
     {
         T _first;
@@ -289,7 +289,7 @@ namespace Proto.Utils
     /// <summary>
     /// Reusable value container. Use <see cref="New(T)"/> to reuse a pooled instance or create a new instance, use <see cref="Dispose"/> to add the instance back to the pool.
     /// </summary>
-    [System.Diagnostics.DebuggerStepThrough]
+    [System.Diagnostics.DebuggerNonUserCode]
     public sealed class ReusableValueContainer<T> : IValueContainer<T>, IDisposable, ILinked<ReusableValueContainer<T>>
     {
 #pragma warning disable RECS0108 // Warns about static fields in generic types
@@ -334,7 +334,7 @@ namespace Proto.Utils
         }
     }
 
-    [System.Diagnostics.DebuggerStepThrough]
+    [System.Diagnostics.DebuggerNonUserCode]
     public struct ValueLinkedStackZeroGC<T> : IEnumerable<T>
     {
         public struct Enumerator : IEnumerator<T>
@@ -429,7 +429,7 @@ namespace Proto.Utils
         }
     }
 
-    [System.Diagnostics.DebuggerStepThrough]
+    [System.Diagnostics.DebuggerNonUserCode]
     public struct ValueLinkedQueueZeroGC<T> : IEnumerable<T>
     {
         public struct Enumerator : IEnumerator<T>
@@ -566,7 +566,7 @@ namespace Proto.Utils
     /// <summary>
     /// Generic Array enumerator. Use this instead of the default <see cref="Array.GetEnumerator"/> for passing it around as an <see cref="IEnumerator{T}"/>.
     /// </summary>
-    [System.Diagnostics.DebuggerStepThrough]
+    [System.Diagnostics.DebuggerNonUserCode]
     public struct ArrayEnumerator<T> : IEnumerator<T>
     {
         private T[] collection;
@@ -603,7 +603,7 @@ namespace Proto.Utils
         }
     }
 
-    [System.Diagnostics.DebuggerStepThrough]
+    [System.Diagnostics.DebuggerNonUserCode]
     public static class ArrayExtensions
     {
         /// <summary>
