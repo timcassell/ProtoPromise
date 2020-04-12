@@ -207,14 +207,9 @@ namespace Proto.Promises
 
         protected void ResolveInternal(Internal.IValueContainer container)
         {
+            _state = State.Resolved;
             container.Retain();
             _valueOrPrevious = container;
-            ResolveInternal();
-        }
-
-        protected void ResolveInternal()
-        {
-            _state = State.Resolved;
             HandleBranches();
             ResolveProgressListeners();
 
@@ -223,14 +218,9 @@ namespace Proto.Promises
 
         protected void RejectInternal(Internal.IValueContainer container)
         {
+            _state = State.Rejected;
             container.Retain();
             _valueOrPrevious = container;
-            RejectInternal();
-        }
-
-        protected void RejectInternal()
-        {
-            _state = State.Rejected;
             HandleBranches();
             CancelProgressListeners();
 
@@ -244,19 +234,23 @@ namespace Proto.Promises
             AddWaiter(newPromise);
         }
 
-        protected virtual void Handle()
+        private void Handle()
         {
+            Internal.IValueContainer container = (Internal.IValueContainer) _valueOrPrevious;
+            _valueOrPrevious = null;
             try
             {
                 SetCurrentInvoker(this);
-                Execute();
+                Execute(container);
             }
             catch (RethrowException)
             {
 #if PROMISE_CANCEL
                 if (_state == State.Pending)
                 {
-                    _state = ((Internal.IValueContainer) _valueOrPrevious).GetState();
+                    _state = container.GetState();
+                    container.Retain();
+                    _valueOrPrevious = container;
                     if (_state == State.Rejected)
                     {
                         HandleBranches();
@@ -269,6 +263,8 @@ namespace Proto.Promises
                 }
 #else
                 _state = State.Rejected;
+                container.Retain();
+                _valueOrPrevious = container;
                 HandleBranches();
                 CancelProgressListeners();
 #endif
@@ -345,6 +341,7 @@ namespace Proto.Promises
                 Internal._invokingResolved = false;
                 Internal._invokingRejected = false;
                 ClearCurrentInvoker();
+                container.Release();
             }
         }
 
@@ -396,9 +393,11 @@ namespace Proto.Promises
             return Internal.RejectionContainer<TReject>.GetOrCreate(reason);
         }
 
-        protected void HandleSelf()
+        protected void HandleSelf(Internal.IValueContainer valueContainer)
         {
-            _state = ((Internal.IValueContainer) _valueOrPrevious).GetState();
+            _state = valueContainer.GetState();
+            valueContainer.Retain();
+            _valueOrPrevious = valueContainer;
 
             HandleBranches();
             if (_state == State.Resolved)
@@ -413,7 +412,7 @@ namespace Proto.Promises
             ReleaseInternal();
         }
 
-        protected virtual void Execute() { }
+        protected virtual void Execute(Internal.IValueContainer valueContainer) { }
 
         protected virtual void OnCancel() { }
 
@@ -836,9 +835,9 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Handle()
+                protected override void Execute(IValueContainer valueContainer)
                 {
-                    HandleSelf();
+                    HandleSelf(valueContainer);
                 }
             }
 
@@ -854,9 +853,9 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Handle()
+                protected override void Execute(IValueContainer valueContainer)
                 {
-                    HandleSelf();
+                    HandleSelf(valueContainer);
                 }
             }
 
@@ -877,11 +876,11 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     var callback = _onResolved;
                     _onResolved = null;
-                    State state = ((IValueContainer) _valueOrPrevious).GetState();
+                    State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
                         _invokingResolved = true;
@@ -890,7 +889,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -915,20 +914,20 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     var callback = _onResolved;
                     _onResolved = null;
-                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
+                    if (valueContainer.GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
+                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                         callback.Invoke(arg);
                         ResolveInternalIfNotCanceled();
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -953,11 +952,11 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     var callback = _onResolved;
                     _onResolved = null;
-                    State state = ((IValueContainer) _valueOrPrevious).GetState();
+                    State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
                         _invokingResolved = true;
@@ -966,7 +965,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -991,20 +990,20 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     var callback = _onResolved;
                     _onResolved = null;
-                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
+                    if (valueContainer.GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
+                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                         TResult result = callback.Invoke(arg);
                         ResolveInternalIfNotCanceled(result);
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1029,18 +1028,18 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     if (_onResolved == null)
                     {
                         // The returned promise is handling this.
-                        HandleSelf();
+                        HandleSelf(valueContainer);
                         return;
                     }
 
                     var callback = _onResolved;
                     _onResolved = null;
-                    State state = ((IValueContainer) _valueOrPrevious).GetState();
+                    State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
                         _invokingResolved = true;
@@ -1048,7 +1047,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1073,26 +1072,26 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     if (_onResolved == null)
                     {
                         // The returned promise is handling this.
-                        HandleSelf();
+                        HandleSelf(valueContainer);
                         return;
                     }
 
                     var callback = _onResolved;
                     _onResolved = null;
-                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
+                    if (valueContainer.GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
+                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                         WaitFor(callback.Invoke(arg));
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1117,18 +1116,18 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     if (_onResolved == null)
                     {
                         // The returned promise is handling this.
-                        HandleSelf();
+                        HandleSelf(valueContainer);
                         return;
                     }
 
                     var callback = _onResolved;
                     _onResolved = null;
-                    State state = ((IValueContainer) _valueOrPrevious).GetState();
+                    State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
                         _invokingResolved = true;
@@ -1136,7 +1135,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1161,26 +1160,26 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     if (_onResolved == null)
                     {
                         // The returned promise is handling this.
-                        HandleSelf();
+                        HandleSelf(valueContainer);
                         return;
                     }
 
                     var callback = _onResolved;
                     _onResolved = null;
-                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
+                    if (valueContainer.GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
+                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                         WaitFor(callback.Invoke(arg));
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1208,13 +1207,13 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     var value = _capturedValue;
                     _capturedValue = default(TCapture);
                     var callback = resolveHandler;
                     resolveHandler = null;
-                    State state = ((IValueContainer) _valueOrPrevious).GetState();
+                    State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
                         _invokingResolved = true;
@@ -1223,7 +1222,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1251,22 +1250,22 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     var value = _capturedValue;
                     _capturedValue = default(TCapture);
                     var callback = _onResolved;
                     _onResolved = null;
-                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
+                    if (valueContainer.GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
+                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                         callback.Invoke(value, arg);
                         ResolveInternalIfNotCanceled();
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1294,13 +1293,13 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     var value = _capturedValue;
                     _capturedValue = default(TCapture);
                     var callback = _onResolved;
                     _onResolved = null;
-                    State state = ((IValueContainer) _valueOrPrevious).GetState();
+                    State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
                         _invokingResolved = true;
@@ -1309,7 +1308,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1337,22 +1336,22 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     var value = _capturedValue;
                     _capturedValue = default(TCapture);
                     var callback = _onResolved;
                     _onResolved = null;
-                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
+                    if (valueContainer.GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
+                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                         TResult result = callback.Invoke(value, arg);
                         ResolveInternalIfNotCanceled(result);
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1380,12 +1379,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     if (_onResolved == null)
                     {
                         // The returned promise is handling this.
-                        HandleSelf();
+                        HandleSelf(valueContainer);
                         return;
                     }
 
@@ -1393,7 +1392,7 @@ namespace Proto.Promises
                     _capturedValue = default(TCapture);
                     var callback = _onResolved;
                     _onResolved = null;
-                    State state = ((IValueContainer) _valueOrPrevious).GetState();
+                    State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
                         _invokingResolved = true;
@@ -1401,7 +1400,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1429,12 +1428,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     if (_onResolved == null)
                     {
                         // The returned promise is handling this.
-                        HandleSelf();
+                        HandleSelf(valueContainer);
                         return;
                     }
 
@@ -1442,15 +1441,15 @@ namespace Proto.Promises
                     _capturedValue = default(TCapture);
                     var callback = _onResolved;
                     _onResolved = null;
-                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
+                    if (valueContainer.GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
+                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                         WaitFor(callback.Invoke(value, arg));
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1478,12 +1477,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     if (_onResolved == null)
                     {
                         // The returned promise is handling this.
-                        HandleSelf();
+                        HandleSelf(valueContainer);
                         return;
                     }
 
@@ -1491,7 +1490,7 @@ namespace Proto.Promises
                     _capturedValue = default(TCapture);
                     var callback = _onResolved;
                     _onResolved = null;
-                    State state = ((IValueContainer) _valueOrPrevious).GetState();
+                    State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
                         _invokingResolved = true;
@@ -1499,7 +1498,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1527,12 +1526,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     if (_onResolved == null)
                     {
                         // The returned promise is handling this.
-                        HandleSelf();
+                        HandleSelf(valueContainer);
                         return;
                     }
 
@@ -1540,15 +1539,15 @@ namespace Proto.Promises
                     _capturedValue = default(TCapture);
                     var callback = _onResolved;
                     _onResolved = null;
-                    if (((IValueContainer) _valueOrPrevious).GetState() == State.Resolved)
+                    if (valueContainer.GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) _valueOrPrevious).value;
+                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                         WaitFor(callback.Invoke(value, arg));
                     }
                     else
                     {
-                        RejectInternal();
+                        RejectInternal(valueContainer);
                     }
                 }
 
@@ -1580,13 +1579,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     var resolveCallback = _onResolved;
                     _onResolved = null;
                     var rejectCallback = _onRejected;
                     _onRejected = null;
-                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     if (valueContainer.GetState() == State.Resolved)
                     {
                         rejectCallback.Dispose();
@@ -1630,13 +1628,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     var resolveCallback = _onResolved;
                     _onResolved = null;
                     var rejectCallback = _onRejected;
                     _onRejected = null;
-                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     if (valueContainer.GetState() == State.Resolved)
                     {
                         rejectCallback.Dispose();
@@ -1680,12 +1677,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     if (_onResolved == null)
                     {
                         // The returned promise is handling this.
-                        HandleSelf();
+                        HandleSelf(valueContainer);
                         return;
                     }
 
@@ -1693,7 +1690,6 @@ namespace Proto.Promises
                     _onResolved = null;
                     var rejectCallback = _onRejected;
                     _onRejected = null;
-                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     if (valueContainer.GetState() == State.Resolved)
                     {
                         rejectCallback.Dispose();
@@ -1740,12 +1736,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     if (_onResolved == null)
                     {
                         // The returned promise is handling this.
-                        HandleSelf();
+                        HandleSelf(valueContainer);
                         return;
                     }
 
@@ -1753,7 +1749,6 @@ namespace Proto.Promises
                     _onResolved = null;
                     var rejectCallback = _onRejected;
                     _onRejected = null;
-                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     if (valueContainer.GetState() == State.Resolved)
                     {
                         rejectCallback.Dispose();
@@ -1800,12 +1795,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     var callback = _onContinue;
                     _onContinue = null;
                     _invokingResolved = true;
-                    callback.DisposeAndInvoke((IValueContainer) _valueOrPrevious);
+                    callback.DisposeAndInvoke(valueContainer);
                     ResolveInternalIfNotCanceled();
                 }
 
@@ -1830,12 +1825,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     var callback = _onContinue;
                     _onContinue = null;
                     _invokingResolved = true;
-                    T result = callback.DisposeAndInvoke((IValueContainer) _valueOrPrevious);
+                    T result = callback.DisposeAndInvoke(valueContainer);
                     ResolveInternalIfNotCanceled(result);
                 }
 
@@ -1860,19 +1855,19 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     if (_onContinue == null)
                     {
                         // The returned promise is handling this.
-                        HandleSelf();
+                        HandleSelf(valueContainer);
                         return;
                     }
 
                     var callback = _onContinue;
                     _onContinue = null;
                     _invokingResolved = true;
-                    Promise result = callback.DisposeAndInvoke((IValueContainer) _valueOrPrevious);
+                    Promise result = callback.DisposeAndInvoke(valueContainer);
                     WaitFor(result);
                 }
 
@@ -1897,19 +1892,19 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute()
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     if (_onContinue == null)
                     {
                         // The returned promise is handling this.
-                        HandleSelf();
+                        HandleSelf(valueContainer);
                         return;
                     }
 
                     var callback = _onContinue;
                     _onContinue = null;
                     _invokingResolved = true;
-                    Promise<TPromise> result = callback.DisposeAndInvoke((IValueContainer) _valueOrPrevious);
+                    Promise<TPromise> result = callback.DisposeAndInvoke(valueContainer);
                     WaitFor(result);
                 }
 

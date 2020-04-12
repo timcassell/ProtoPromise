@@ -82,9 +82,9 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Handle()
+                protected override void Execute(IValueContainer valueContainer)
                 {
-                    HandleSelf();
+                    HandleSelf(valueContainer);
                 }
 
                 bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, Promise owner, int index)
@@ -145,9 +145,9 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Handle()
+                protected override void Execute(IValueContainer valueContainer)
                 {
-                    HandleSelf();
+                    HandleSelf(valueContainer);
                 }
 
                 bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, Promise owner, int index)

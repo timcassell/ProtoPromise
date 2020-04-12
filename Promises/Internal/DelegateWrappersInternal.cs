@@ -97,22 +97,22 @@ namespace Proto.Promises
 
                 void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    owner.ResolveInternal();
+                    owner.ResolveInternal(valueContainer);
                 }
 
                 void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    owner.RejectInternal();
+                    owner.RejectInternal(valueContainer);
                 }
 
                 void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    owner.ResolveInternal();
+                    owner.ResolveInternal(valueContainer);
                 }
 
                 void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    owner.RejectInternal();
+                    owner.RejectInternal(valueContainer);
                 }
 
                 void IDisposable.Dispose() { }
@@ -207,7 +207,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal();
+                        owner.RejectInternal(valueContainer);
                     }
                 }
 
@@ -325,7 +325,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal();
+                        owner.RejectInternal(valueContainer);
                     }
                 }
 
@@ -432,7 +432,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal();
+                        owner.RejectInternal(valueContainer);
                     }
                 }
 
@@ -523,7 +523,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal();
+                        owner.RejectInternal(valueContainer);
                     }
                 }
 
@@ -834,7 +834,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal();
+                        owner.RejectInternal(valueContainer);
                     }
                 }
 
@@ -960,7 +960,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal();
+                        owner.RejectInternal(valueContainer);
                     }
                 }
 
@@ -1075,7 +1075,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal();
+                        owner.RejectInternal(valueContainer);
                     }
                 }
 
@@ -1174,7 +1174,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal();
+                        owner.RejectInternal(valueContainer);
                     }
                 }
 
