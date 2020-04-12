@@ -181,7 +181,7 @@ namespace Proto.Promises
     [DebuggerNonUserCode]
     public sealed class RethrowException : Exception
     {
-        public static readonly RethrowException instance = new RethrowException();
+        internal static readonly RethrowException instance = new RethrowException();
 
         private RethrowException() { }
     }
