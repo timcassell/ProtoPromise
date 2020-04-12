@@ -8,6 +8,7 @@ namespace Proto.Promises
         /// <summary>
         /// Promise manager. This can be used to cleared pooled objects (if enabled) or manually handle promises (not recommended for RELEASE builds).
         /// </summary>
+        [System.Diagnostics.DebuggerNonUserCode]
         public static class Manager
         {
             private static bool _willThrow;
@@ -116,29 +117,20 @@ namespace Proto.Promises
                 }
 
                 var unhandledExceptions = _unhandledExceptions;
-                _unhandledExceptions.Clear();
-                if (Config.UncaughtRejectionHandler != null)
+                _unhandledExceptions.ClearAndDontRepool();
+                Action<UnhandledException> handler = Config.UncaughtRejectionHandler;
+                if (handler != null)
                 {
-                    // Reset handled flag.
-                    foreach (Internal.UnhandledExceptionInternal unhandled in unhandledExceptions)
+                    foreach (UnhandledException unhandled in unhandledExceptions)
                     {
-                        unhandled.handled = false;
-                        // Allow to re-use.
-                        unhandled.Release();
-                        Config.UncaughtRejectionHandler.Invoke(unhandled);
+                        handler.Invoke(unhandled);
                     }
+                    unhandledExceptions.Clear();
                     return;
                 }
 
-                // Reset handled flag.
-                foreach (Internal.UnhandledExceptionInternal unhandled in unhandledExceptions)
-                {
-                    unhandled.handled = false;
-                    // Allow to re-use.
-                    unhandled.Release();
-                }
-
 #if CSHARP_7_OR_LATER
+                unhandledExceptions.Clear();
                 throw new AggregateException(unhandledExceptions);
 #else
                 // .Net 3.5 dumb compiler can't convert IEnumerable<UnhandledExceptionInternal> to IEnumerable<Exception>
@@ -147,6 +139,7 @@ namespace Proto.Promises
                 {
                     exceptions.Add(ex);
                 }
+                unhandledExceptions.Clear();
                 throw new AggregateException(exceptions);
 #endif
             }

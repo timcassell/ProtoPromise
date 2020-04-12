@@ -6,8 +6,34 @@ namespace Proto.Promises.Tests
 {
     public class APlus_2_1_PromiseStates
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = null;
+        }
+
+        [TearDown]
+        public void Teardown()
+        {
+            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+        }
+
         public class _2_1_1_WhenPendingAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void _2_1_1_1_MayTransitionToEitherTheFulfilledOrRejectedState()
             {
@@ -30,13 +56,26 @@ namespace Proto.Promises.Tests
 
                 // Clean up.
                 GC.Collect();
-                Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
         }
 
         public class _2_1_2_WhenFulfilledAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void _2_1_2_1_MustNotTransitionToAnyOtherState()
             {
@@ -64,7 +103,7 @@ namespace Proto.Promises.Tests
 
                 // Clean up.
                 GC.Collect();
-                Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
 
@@ -104,13 +143,26 @@ namespace Proto.Promises.Tests
 
                 // Clean up.
                 GC.Collect();
-                Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
         }
 
         public class _2_1_3_WhenRejectedAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
             [Test]
             public void _2_1_3_1_MustNotTransitionToAnyOtherState()
             {
@@ -138,7 +190,7 @@ namespace Proto.Promises.Tests
 
                 // Clean up.
                 GC.Collect();
-                Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
 
@@ -185,7 +237,7 @@ namespace Proto.Promises.Tests
 
                 // Clean up.
                 GC.Collect();
-                Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
 
@@ -228,7 +280,7 @@ namespace Proto.Promises.Tests
 
                 // Clean up.
                 GC.Collect();
-                Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
         }

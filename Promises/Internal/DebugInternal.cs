@@ -19,116 +19,194 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable CS0618 // Type or member is obsolete
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
+#pragma warning disable RECS0085 // When initializing explicitly typed local variable or array type, array creation expression can be replaced with array initializer.
+#pragma warning disable IDE0041 // Use 'is null' check
 
 using System;
+using System.Collections.Generic;
 using Proto.Utils;
+
+#if PROMISE_DEBUG
+using System.Diagnostics;
+using System.Linq;
+#endif
 
 namespace Proto.Promises
 {
     partial class Promise
     {
-        protected static void _SetStackTraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException)
-        {
-            SetStacktraceFromCreated(stacktraceable, unhandledException);
-        }
-
         // Calls to these get compiled away in RELEASE mode
         static partial void ValidateOperation(Promise promise, int skipFrames);
         static partial void ValidateProgress(float progress, int skipFrames);
         static partial void ValidateArgument(object arg, string argName, int skipFrames);
         partial void ValidateReturn(Promise other);
         static partial void ValidateReturn(Delegate other);
-        static partial void ValidatePotentialOperation(Internal.IValueContainerOrPrevious valueContainer, int skipFrames);
+        static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames);
         static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames);
 
-        static partial void SetCreatedStacktrace(Internal.IStacktraceable stacktraceable, int skipFrames);
-        static partial void SetStacktraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException);
-        static partial void SetRejectStacktrace(Internal.UnhandledExceptionInternal unhandledException, int skipFrames);
-        static partial void SetNotDisposed(ref Internal.IValueContainerOrPrevious valueContainer);
+        static partial void SetCreatedStacktrace(Internal.ITraceable stacktraceable, int skipFrames);
+        partial void SetCreatedAndRejectedStacktrace(Internal.IRejectionContainer unhandledException, bool generateStacktrace);
+        partial void SetNotDisposed();
+        static partial void SetCurrentInvoker(Internal.ITraceable current);
+        static partial void ClearCurrentInvoker();
 #if PROMISE_DEBUG
-        private uint _userRetainCounter;
-        private string _createdStackTrace;
-        string Internal.IStacktraceable.Stacktrace { get { return _createdStackTrace; } set { _createdStackTrace = value; } }
+        protected static ulong _invokeId;
 
         private static int idCounter;
         protected readonly int _id;
 
-        private static void SetDisposed(ref Internal.IValueContainerOrPrevious valueContainer)
+        private ushort _userRetainCounter;
+
+        private static Internal.CausalityTrace _currentTrace;
+        Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
+
+        static partial void SetCurrentInvoker(Internal.ITraceable current)
         {
-            valueContainer = Internal.DisposedChecker.instance;
+            _currentTrace = current.Trace;
         }
 
-        static partial void SetNotDisposed(ref Internal.IValueContainerOrPrevious valueContainer)
+        static partial void ClearCurrentInvoker()
         {
-            valueContainer = null;
+            _currentTrace = null;
+            ++_invokeId;
+        }
+
+        private static object DisposedObject
+        {
+            get
+            {
+                return Internal.DisposedChecker.instance;
+            }
+        }
+
+        private static string GetFormattedStacktrace(Internal.ITraceable traceable)
+        {
+            return traceable.Trace.ToString();
+        }
+
+        partial void SetNotDisposed()
+        {
+            _valueOrPrevious = null;
         }
 
         partial class Internal
         {
+            [DebuggerNonUserCode]
+            public class CausalityTrace
+            {
+                private readonly StackTrace _stacktrace;
+                private readonly CausalityTrace _next;
+
+                public CausalityTrace(StackTrace stacktrace, CausalityTrace higherStacktrace)
+                {
+                    _stacktrace = stacktrace;
+                    _next = higherStacktrace;
+                }
+
+                public override string ToString()
+                {
+                    if (_stacktrace == null)
+                    {
+                        return null;
+                    }
+                    List<StackTrace> stacktraces = new List<StackTrace>();
+                    for (CausalityTrace current = _next; current != null; current = current._next)
+                    {
+                        stacktraces.Add(current._stacktrace);
+                    }
+                    return FormatStackTrace(stacktraces);
+                }
+            }
+
             // This allows us to re-use the reference field without having to add another bool field.
-            public sealed class DisposedChecker : IValueContainerOrPrevious
+            [DebuggerNonUserCode]
+            public sealed class DisposedChecker
             {
                 public static readonly DisposedChecker instance = new DisposedChecker();
 
                 private DisposedChecker() { }
-
-                bool IValueContainerOrPrevious.TryGetValueAs<U>(out U value) { throw new System.InvalidOperationException(); }
-                void IValueContainerOrPrevious.Release() { throw new System.InvalidOperationException(); }
-                void IValueContainerOrPrevious.Retain() { throw new System.InvalidOperationException(); }
             }
         }
 
-        static partial void SetCreatedStacktrace(Internal.IStacktraceable stacktraceable, int skipFrames)
+        static partial void SetCreatedStacktrace(Internal.ITraceable stacktraceable, int skipFrames)
         {
-            if (Config.DebugStacktraceGenerator == GeneratedStacktrace.All)
-            {
-                stacktraceable.Stacktrace = GetStackTrace(skipFrames + 1);
-            }
+            stacktraceable.Trace = Config.DebugCausalityTracer == TraceLevel.All
+                ? new Internal.CausalityTrace(GetStackTrace(skipFrames + 1), _currentTrace)
+                : null;
         }
 
-        static partial void SetStacktraceFromCreated(Internal.IStacktraceable stacktraceable, Internal.UnhandledExceptionInternal unhandledException)
+        partial void SetCreatedAndRejectedStacktrace(Internal.IRejectionContainer unhandledException, bool generateStacktrace)
         {
-            unhandledException.SetStackTrace(FormatStackTrace(stacktraceable.Stacktrace));
+            StackTrace stacktrace = generateStacktrace & Config.DebugCausalityTracer != TraceLevel.None
+                ? GetStackTrace(1)
+                : null;
+            unhandledException.SetCreatedAndRejectedStacktrace(stacktrace, ((Internal.ITraceable) this).Trace);
         }
 
-        static partial void SetRejectStacktrace(Internal.UnhandledExceptionInternal unhandledException, int skipFrames)
+        private static StackTrace GetStackTrace(int skipFrames)
         {
-            if (Config.DebugStacktraceGenerator != GeneratedStacktrace.None)
-            {
-                unhandledException.SetStackTrace(GetFormattedStacktrace(skipFrames + 1));
-            }
+            return new StackTrace(skipFrames + 1, true);
         }
 
-        private static string GetStackTrace(int skipFrames)
+        protected static string GetFormattedStacktrace(int skipFrames)
         {
-            return new System.Diagnostics.StackTrace(skipFrames + 1, true).ToString();
+            return FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
         }
 
-        private static string GetFormattedStacktrace(int skipFrames)
+        private static string FormatStackTrace(IEnumerable<StackTrace> stacktraces)
         {
-            return FormatStackTrace(GetStackTrace(skipFrames + 1));
-        }
-
-        private static System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(128);
-
-        private static string FormatStackTrace(string stackTrace)
-        {
-            if (string.IsNullOrEmpty(stackTrace))
-            {
-                return stackTrace;
-            }
-
-            stringBuilder.Length = 0;
-            stringBuilder.Append(stackTrace);
-
+#if !CSHARP_7_OR_LATER
             // Format stacktrace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
-            return stringBuilder.Remove(0, 1)
-                .Replace(":line ", ":")
-                .Replace("\n ", " \n")
-                .Replace("(", " (")
-                .Replace(") in", ") [0x00000] in") // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
-                .Append(" ")
-                .ToString();
+            List<string> _stacktraces = new List<string>();
+            string[] separator = new string[1] { Environment.NewLine + " " };
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            foreach (StackTrace st in stacktraces)
+            {
+                string stacktrace = st.ToString().Substring(1);
+                foreach (var trace in stacktrace.Split(separator, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (!trace.Contains("Proto.Promises"))
+                    {
+                        sb.Append(trace)
+                            .Replace(":line ", ":")
+                            .Replace("(", " (")
+                            .Replace(") in", ") [0x00000] in"); // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
+                        _stacktraces.Add(sb.ToString());
+                        sb.Length = 0;
+                    }
+                }
+            }
+            foreach (var trace in _stacktraces)
+            {
+                sb.Append(trace).Append(" " + Environment.NewLine);
+            }
+            sb.Append(" ");
+            return sb.ToString();
+#else
+            // StackTrace.ToString() format issue was fixed in the new runtime.
+            List<StackFrame> stackFrames = new List<StackFrame>();
+            foreach (StackTrace stacktrace in stacktraces)
+            {
+                stackFrames.AddRange(stacktrace.GetFrames());
+            }
+
+            var trace = stackFrames
+                .Where(frame =>
+                {
+                    // Ignore DebuggerStepThrough and DebuggerHidden and DebuggerNonUserCode.
+                    var methodType = frame.GetMethod();
+                    return !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false)
+                        && !methodType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
+                        && !methodType.DeclaringType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
+                        && !methodType.IsDefined(typeof(DebuggerStepThroughAttribute), false)
+                        && !methodType.DeclaringType.IsDefined(typeof(DebuggerStepThroughAttribute), false);
+                })
+                // Create a new StackTrace to get proper formatting.
+                .Select(frame => new StackTrace(frame).ToString());
+
+            return string.Join(Environment.NewLine, trace.ToArray());
+#endif
+
         }
 
         partial void ValidateReturn(Promise other)
@@ -140,22 +218,22 @@ namespace Proto.Promises
             }
 
             // Validate returned promise as not disposed.
-            if (IsDisposed(other._rejectedOrCanceledValueOrPrevious))
+            if (IsDisposed(other._valueOrPrevious))
             {
                 throw new InvalidReturnException("A disposed promise was returned.");
             }
 
             // A promise cannot wait on itself.
 
-            // This allows us to check AllPromises and RacePromises iteratively.
+            // This allows us to check All/Race/First Promises iteratively.
             ValueLinkedStack<Internal.PromisePassThrough> passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>();
             var prev = other;
         Repeat:
-            for (; prev != null; prev = prev._rejectedOrCanceledValueOrPrevious as Promise)
+            for (; prev != null; prev = prev._valueOrPrevious as Promise)
             {
                 if (prev == this)
                 {
-                    throw new InvalidReturnException("Circular Promise chain detected.", other._createdStackTrace);
+                    throw new InvalidReturnException("Circular Promise chain detected.", ((Internal.ITraceable) other).Trace.ToString());
                 }
                 prev.BorrowPassthroughs(ref passThroughs);
             }
@@ -165,7 +243,7 @@ namespace Proto.Promises
                 // passThroughs are removed from their targets before adding to passThroughs. Add them back here.
                 var passThrough = passThroughs.Pop();
                 prev = passThrough.Owner;
-                passThrough.target.ReAdd(passThrough);
+                passThrough.Target.ReAdd(passThrough);
                 goto Repeat;
             }
         }
@@ -188,12 +266,12 @@ namespace Proto.Promises
             }
         }
 
-        private static bool IsDisposed(Internal.IValueContainerOrPrevious valueContainer)
+        private static bool IsDisposed(object valueContainer)
         {
             return ReferenceEquals(valueContainer, Internal.DisposedChecker.instance);
         }
 
-        static protected void ValidateNotDisposed(Internal.IValueContainerOrPrevious valueContainer, int skipFrames)
+        static protected void ValidateNotDisposed(object valueContainer, int skipFrames)
         {
             if (IsDisposed(valueContainer))
             {
@@ -203,14 +281,14 @@ namespace Proto.Promises
             }
         }
 
-        static partial void ValidatePotentialOperation(Internal.IValueContainerOrPrevious valueContainer, int skipFrames)
+        static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames)
         {
             ValidateNotDisposed(valueContainer, skipFrames + 1);
         }
 
         static partial void ValidateOperation(Promise promise, int skipFrames)
         {
-            ValidateNotDisposed(promise._rejectedOrCanceledValueOrPrevious, skipFrames + 1);
+            ValidateNotDisposed(promise._valueOrPrevious, skipFrames + 1);
         }
 
         static partial void ValidateProgress(float progress, int skipFrames)
@@ -244,15 +322,22 @@ namespace Proto.Promises
             return string.Format("Type: Promise, Id: {0}, State: {1}", _id, _state);
         }
 #else
-        private static string GetFormattedStacktrace(int skipFrames)
+        protected static string GetFormattedStacktrace(int skipFrames)
         {
             return null;
         }
 
-        private static void SetDisposed(ref Internal.IValueContainerOrPrevious valueContainer)
+        private static string GetFormattedStacktrace(Internal.ITraceable traceable)
         {
-            // Allow GC to clean up the object if necessary.
-            valueContainer = null;
+            return null;
+        }
+
+        private static object DisposedObject
+        {
+            get
+            {
+                return null;
+            }
         }
 
         public override string ToString()
@@ -263,31 +348,38 @@ namespace Proto.Promises
 
         partial class Internal
         {
-            public interface IStacktraceable
+            public interface ITraceable
             {
 #if PROMISE_DEBUG
-                string Stacktrace { get; set; }
+                CausalityTrace Trace { get; set; }
 #endif
             }
 
-            partial class FinallyDelegate : IStacktraceable
+            partial class FinallyDelegate : ITraceable
             {
 #if PROMISE_DEBUG
-                string IStacktraceable.Stacktrace { get; set; }
+                CausalityTrace ITraceable.Trace { get; set; }
 #endif
             }
 
-            partial class FinallyDelegateCapture<TCapture> : IStacktraceable
+            partial class FinallyDelegateCapture<TCapture> : ITraceable
             {
 #if PROMISE_DEBUG
-                string IStacktraceable.Stacktrace { get; set; }
+                CausalityTrace ITraceable.Trace { get; set; }
 #endif
             }
 
-            partial class PotentialCancelation : IStacktraceable
+            partial class CancelDelegate : ITraceable
             {
 #if PROMISE_DEBUG
-                string IStacktraceable.Stacktrace { get; set; }
+                CausalityTrace ITraceable.Trace { get; set; }
+#endif
+            }
+
+            partial class CancelDelegateCapture<TCapture> : ITraceable
+            {
+#if PROMISE_DEBUG
+                CausalityTrace ITraceable.Trace { get; set; }
 #endif
             }
         }
@@ -296,6 +388,7 @@ namespace Proto.Promises
     partial class Promise<T>
     {
         // Calls to these get compiled away in RELEASE mode
+        static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames);
         static partial void ValidateOperation(Promise<T> promise, int skipFrames);
         static partial void ValidateArgument(object arg, string argName, int skipFrames);
         static partial void ValidateProgress(float progress, int skipFrames);
@@ -305,9 +398,14 @@ namespace Proto.Promises
             ValidateProgressValue(progress, skipFrames + 1);
         }
 
+        static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames)
+        {
+            ValidateNotDisposed(valueContainer, skipFrames + 1);
+        }
+
         static partial void ValidateOperation(Promise<T> promise, int skipFrames)
         {
-            ValidateNotDisposed(promise._rejectedOrCanceledValueOrPrevious, skipFrames + 1);
+            ValidateNotDisposed(promise._valueOrPrevious, skipFrames + 1);
         }
 
         static partial void ValidateArgument(object arg, string argName, int skipFrames)

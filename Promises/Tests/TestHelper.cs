@@ -16,6 +16,8 @@ namespace Proto.Promises.Tests
     // These help test all Then/Catch functions at once.
     public static class TestHelper
     {
+        public static Action<UnhandledException> cachedRejectionHandler;
+
 #if PROMISE_PROGRESS
         public static readonly double progressEpsilon = 1d / Math.Pow(2d, Promise.Config.ProgressDecimalBits);
 #endif
@@ -48,11 +50,17 @@ namespace Proto.Promises.Tests
         public const int rejectVoidKnownCallbacks = 36;
         public const int rejectTKnownCallbacks = 36;
 
-        public const int completeCallbacks = 8;
-        public const int completeVoidCallbacks = 2;
-        public const int completeConvertCallbacks = 2;
-        public const int completePromiseVoidCallbacks = 2;
-        public const int completePromiseConvertCallbacks = 2;
+        public const int continueVoidCallbacks = 8;
+        public const int continueVoidVoidCallbacks = 2;
+        public const int continueVoidConvertCallbacks = 2;
+        public const int continueVoidPromiseVoidCallbacks = 2;
+        public const int continueVoidPromiseConvertCallbacks = 2;
+
+        public const int continueTCallbacks = 8;
+        public const int continueTVoidCallbacks = 2;
+        public const int continueTConvertCallbacks = 2;
+        public const int continueTPromiseVoidCallbacks = 2;
+        public const int continueTPromiseConvertCallbacks = 2;
 
         public static void AddResolveCallbacks<TConvert, TCapture>(Promise promise,
             Action onResolve = null, TConvert convertValue = default(TConvert),
@@ -687,14 +695,14 @@ namespace Proto.Promises.Tests
             onCallbackAddedConvert(p72);
         }
 
-        public static void AddCompleteCallbacks<TConvert, TCapture>(Promise promise, Action onComplete = null, TConvert convertValue = default(TConvert),
-            Action<TCapture> onCompleteCapture = null, TCapture captureValue = default(TCapture),
+        public static void AddContinueCallbacks<TConvert, TCapture>(Promise promise, Action<Promise.ResultContainer> onContinue = null, TConvert convertValue = default(TConvert),
+            Action<TCapture, Promise.ResultContainer> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
         {
             // Add empty delegate so no need for null check.
-            onComplete += () => { };
-            onCompleteCapture += _ => { };
+            onContinue += _ => { };
+            onContinueCapture += (_, __) => { };
             promiseToVoid += _ => { };
             if (promiseToConvert == null)
             {
@@ -710,22 +718,63 @@ namespace Proto.Promises.Tests
             }
 
             Promise p1 = null;
-            p1 = promise.Complete(() => { onComplete(); promiseToVoid(p1); });
+            p1 = promise.ContinueWith(r => { onContinue(r); promiseToVoid(p1); });
             Promise<TConvert> p2 = null;
-            p2 = promise.Complete(() => { onComplete(); return promiseToConvert(p2); });
+            p2 = promise.ContinueWith(r => { onContinue(r); return promiseToConvert(p2); });
             Promise p3 = null;
-            p3 = promise.Complete(() => { onComplete(); return promiseToPromise(p3); });
+            p3 = promise.ContinueWith(r => { onContinue(r); return promiseToPromise(p3); });
             Promise<TConvert> p4 = null;
-            p4 = promise.Complete(() => { onComplete(); return promiseToPromiseConvert(p4); });
+            p4 = promise.ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); });
 
             Promise p5 = null;
-            p5 = promise.Complete(captureValue, cv => { onCompleteCapture(cv); onComplete(); promiseToVoid(p5); });
+            p5 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); promiseToVoid(p5); });
             Promise<TConvert> p6 = null;
-            p6 = promise.Complete(captureValue, cv => { onCompleteCapture(cv); onComplete(); return promiseToConvert(p6); });
+            p6 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToConvert(p6); });
             Promise p7 = null;
-            p7 = promise.Complete(captureValue, cv => { onCompleteCapture(cv); onComplete(); return promiseToPromise(p7); });
+            p7 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); });
             Promise<TConvert> p8 = null;
-            p8 = promise.Complete(captureValue, cv => { onCompleteCapture(cv); onComplete(); return promiseToPromiseConvert(p8); });
+            p8 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); });
+        }
+
+        public static void AddContinueCallbacks<T, TConvert, TCapture>(Promise<T> promise, Action<Promise<T>.ResultContainer> onContinue = null, TConvert convertValue = default(TConvert),
+            Action<TCapture, Promise<T>.ResultContainer> onContinueCapture = null, TCapture captureValue = default(TCapture),
+            Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
+            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
+        {
+            // Add empty delegate so no need for null check.
+            onContinue += _ => { };
+            onContinueCapture += (_, __) => { };
+            promiseToVoid += _ => { };
+            if (promiseToConvert == null)
+            {
+                promiseToConvert += _ => convertValue;
+            }
+            if (promiseToPromise == null)
+            {
+                promiseToPromise = _ => Promise.Resolved();
+            }
+            if (promiseToPromiseConvert == null)
+            {
+                promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
+            }
+
+            Promise p1 = null;
+            p1 = promise.ContinueWith(r => { onContinue(r); promiseToVoid(p1); });
+            Promise<TConvert> p2 = null;
+            p2 = promise.ContinueWith((Func<Promise<T>.ResultContainer, TConvert>) (r => { onContinue(r); return promiseToConvert(p2); }));
+            Promise p3 = null;
+            p3 = promise.ContinueWith((Func<Promise<T>.ResultContainer, Promise>) (r => { onContinue(r); return promiseToPromise(p3); }));
+            Promise<TConvert> p4 = null;
+            p4 = promise.ContinueWith((Func<Promise<T>.ResultContainer, Promise<TConvert>>) (r => { onContinue(r); return promiseToPromiseConvert(p4); }));
+
+            Promise p5 = null;
+            p5 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); promiseToVoid(p5); });
+            Promise<TConvert> p6 = null;
+            p6 = promise.ContinueWith(captureValue, (Func<TCapture, Promise<T>.ResultContainer, TConvert>) ((cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToConvert(p6); }));
+            Promise p7 = null;
+            p7 = promise.ContinueWith(captureValue, (Func<TCapture, Promise<T>.ResultContainer, Promise>) ((cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }));
+            Promise<TConvert> p8 = null;
+            p8 = promise.ContinueWith(captureValue, (Func<TCapture, Promise<T>.ResultContainer, Promise<TConvert>>) ((cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }));
         }
     }
 }

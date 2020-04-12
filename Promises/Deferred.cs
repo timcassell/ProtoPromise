@@ -26,6 +26,7 @@ namespace Proto.Promises
         /// <summary>
         /// Deferred base. An instance of this can be used to handle the state of the attached <see cref="Promise"/>, except resolve. You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to handle resolve.
         /// </summary>
+        [System.Diagnostics.DebuggerNonUserCode]
         public abstract class DeferredBase : ICancelableAny, IRetainable
         {
             public State State { get; protected set; }
@@ -45,9 +46,7 @@ namespace Proto.Promises
                 if (State == State.Pending)
                 {
                     // Deferred wasn't handled.
-                    var exception = Internal.UnhandledExceptionException.GetOrCreate(UnhandledDeferredException.instance);
-                    SetStacktraceFromCreated(Promise, exception);
-                    AddRejectionToUnhandledStack(exception);
+                    AddRejectionToUnhandledStack(UnhandledDeferredException.instance, Promise);
                 }
             }
 
@@ -57,7 +56,7 @@ namespace Proto.Promises
             /// </summary>
             public void Retain()
             {
-                Promise.RetainInternal();
+                Promise.Retain();
             }
 
             /// <summary>
@@ -66,7 +65,7 @@ namespace Proto.Promises
             /// </summary>
             public void Release()
             {
-                Promise.ReleaseInternal();
+                Promise.Release();
             }
 
             /// <summary>
@@ -98,8 +97,8 @@ namespace Proto.Promises
                 if (State == State.Pending)
                 {
                     State = State.Canceled;
-                    promise.Cancel();
-                    promise.ReleaseInternal();
+                    promise.ReleaseWithoutDisposeCheck();
+                    promise.CancelDirectIfPending();
                 }
                 else
                 {
@@ -122,8 +121,8 @@ namespace Proto.Promises
                 if (State == State.Pending)
                 {
                     State = State.Canceled;
-                    promise.Cancel(reason);
-                    promise.ReleaseInternal();
+                    promise.ReleaseWithoutDisposeCheck();
+                    promise.CancelDirectIfPending(reason);
                 }
                 else
                 {
@@ -135,6 +134,7 @@ namespace Proto.Promises
         /// <summary>
         /// An instance of this is used to handle the state of the <see cref="DeferredBase.Promise"/>.
         /// </summary>
+        [System.Diagnostics.DebuggerNonUserCode]
         public abstract class Deferred : DeferredBase
         {
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
@@ -154,7 +154,8 @@ namespace Proto.Promises
         /// <summary>
         /// An instance of this is used to handle the state of the <see cref="Promise"/>.
         /// </summary>
-		public abstract new class Deferred : DeferredBase
+        [System.Diagnostics.DebuggerNonUserCode]
+        public abstract new class Deferred : DeferredBase
         {
             /// <summary>
             /// The <see cref="Promise{T}"/> that this controls.
@@ -177,6 +178,7 @@ namespace Proto.Promises
     {
         partial class Internal
         {
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class DeferredInternal0 : Deferred
             {
                 public DeferredInternal0(Promise target)
@@ -187,12 +189,6 @@ namespace Proto.Promises
                 public void Reset()
                 {
                     State = State.Pending;
-                }
-
-                public void ReleaseDirect()
-                {
-                    State = State.Canceled; // Stop the finalizer from thinking this was not handled.
-                    Promise.ReleaseInternal();
                 }
 
                 public override void ReportProgress(float progress)
@@ -219,8 +215,8 @@ namespace Proto.Promises
                     if (State == State.Pending)
                     {
                         State = State.Resolved;
+                        promise.ReleaseWithoutDisposeCheck();
                         promise.ResolveDirectIfNotCanceled();
-                        promise.ReleaseInternal();
                     }
                     else
                     {
@@ -234,51 +230,31 @@ namespace Proto.Promises
                     var promise = Promise;
                     ValidateOperation(promise, 1);
 
-                    var rejection = CreateRejection(reason, 1);
-
                     if (State == State.Pending)
                     {
                         State = State.Rejected;
-                        promise.RejectDirectIfNotCanceled(rejection);
-                        promise.ReleaseInternal();
+                        promise.ReleaseWithoutDisposeCheck();
+                        promise.RejectDirectIfNotCanceled(reason, true);
                     }
                     else
                     {
-                        AddRejectionToUnhandledStack(rejection);
+                        AddRejectionToUnhandledStack(reason, null);
                         Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
-                    }
-                }
-
-                public void RejectWithPromiseStacktrace(Exception exception)
-                {
-                    var promise = Promise;
-                    var rejection = UnhandledExceptionException.GetOrCreate(exception);
-                    _SetStackTraceFromCreated(promise, rejection);
-
-                    if (State == State.Pending)
-                    {
-                        State = State.Rejected;
-                        promise.RejectDirectIfNotCanceled(rejection);
-                        promise.ReleaseInternal();
-                    }
-                    else
-                    {
-                        AddRejectionToUnhandledStack(rejection);
                     }
                 }
             }
 
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed class DeferredInternal<T> : Promise<T>.Deferred
             {
+                public DeferredInternal(Promise<T> target)
+                {
+                    Promise = target;
+                }
+
                 public void Reset()
                 {
                     State = State.Pending;
-                }
-
-                public void ReleaseDirect()
-                {
-                    State = State.Canceled; // Stop the finalizer from thinking this was not handled.
-                    Promise.ReleaseInternal();
                 }
 
                 public override void ReportProgress(float progress)
@@ -296,21 +272,17 @@ namespace Proto.Promises
 
                     promise.ReportProgress(progress);
                 }
-                public DeferredInternal(Promise<T> target)
-                {
-                    Promise = target;
-                }
 
                 public override void Resolve(T value)
                 {
-                    var promise = (PromiseInternal<T>) Promise;
+                    var promise = Promise;
                     ValidateOperation(promise, 1);
 
                     if (State == State.Pending)
                     {
                         State = State.Resolved;
+                        promise.ReleaseWithoutDisposeCheck();
                         promise.ResolveDirectIfNotCanceled(value);
-                        promise.ReleaseInternal();
                     }
                     else
                     {
@@ -324,36 +296,16 @@ namespace Proto.Promises
                     var promise = Promise;
                     ValidateOperation(promise, 1);
 
-                    var rejection = CreateRejection(reason, 1);
-
                     if (State == State.Pending)
                     {
                         State = State.Rejected;
-                        promise.RejectDirectIfNotCanceled(rejection);
-                        promise.ReleaseInternal();
+                        promise.ReleaseWithoutDisposeCheck();
+                        promise.RejectDirectIfNotCanceled(reason, true);
                     }
                     else
                     {
-                        AddRejectionToUnhandledStack(rejection);
+                        AddRejectionToUnhandledStack(reason, null);
                         Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
-                    }
-                }
-
-                public void RejectWithPromiseStacktrace(Exception exception)
-                {
-                    var promise = Promise;
-                    var rejection = UnhandledExceptionException.GetOrCreate(exception);
-                    _SetStackTraceFromCreated(promise, rejection);
-
-                    if (State == State.Pending)
-                    {
-                        State = State.Rejected;
-                        promise.RejectDirectIfNotCanceled(rejection);
-                        promise.ReleaseInternal();
-                    }
-                    else
-                    {
-                        AddRejectionToUnhandledStack(rejection);
                     }
                 }
             }

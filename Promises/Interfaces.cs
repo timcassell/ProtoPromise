@@ -1,16 +1,14 @@
-﻿using System;
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+# endif
+
+using System;
 using Proto.Utils;
 
 namespace Proto.Promises
 {
-    public interface IValueConverter
-    {
-        /// <summary>
-        /// Tries to convert valueContainer.Value to <typeparamref name="TConvert"/>. Returns true if successful, false otherwise.
-        /// </summary>
-        bool TryConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer, out TConvert converted);
-    }
-
     public interface ICancelable
     {
         /// <summary>
@@ -41,35 +39,6 @@ namespace Proto.Promises
         void Release();
     }
 
-    /// <summary>
-    /// Potential cancelation interface used to subscribe multiple cancelation callbacks accepting different types.
-    /// </summary>
-    public interface IPotentialCancelation : IRetainable
-    {
-        /// <summary>
-        /// Add a cancel callback.
-        /// <para/>If this instance is canceled with any or no reason, <paramref name="onCanceled"/> will be invoked.
-        /// </summary>
-        void CatchCancelation(Action onCanceled);
-        /// <summary>
-        /// Add a cancel callback.
-        /// <para/>If this instance is canceled with any or no reason, <paramref name="onCanceled"/> will be invoked with <paramref name="captureValue"/>.
-        /// </summary>
-        void CatchCancelation<TCapture>(TCapture captureValue, Action<TCapture> onCanceled);
-        /// <summary>
-        /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
-        /// <para/>If/when this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with that reason.
-        /// <para/>If/when this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
-        /// </summary>
-        IPotentialCancelation CatchCancelation<TCancel>(Action<TCancel> onCanceled);
-        /// <summary>
-        /// Add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
-        /// <para/>If/when this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with <paramref name="captureValue"/> and that reason.
-        /// <para/>If/when this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
-        /// </summary>
-        IPotentialCancelation CatchCancelation<TCapture, TCancel>(TCapture captureValue, Action<TCapture, TCancel> onCanceled);
-    }
-
     partial class Promise
     {
         partial class Internal
@@ -78,43 +47,76 @@ namespace Proto.Promises
             {
                 void Handle();
                 void Cancel();
+                void MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue, ref ValueLinkedQueue<ITreeHandleable> cancelQueue);
+                void MakeReadyFromSettled(IValueContainer valueContainer);
             }
 
-            public interface IValueContainerOrPrevious
+            public interface IValueContainer
             {
-                bool TryGetValueAs<U>(out U value);
                 void Retain();
                 void Release();
+                State GetState();
+                Type ValueType { get; }
+                object Value { get; }
+
+                void ReleaseAndAddToUnhandledStack();
+                void ReleaseAndMaybeAddToUnhandledStack();
             }
 
-            public interface IValueContainerContainer : IValueContainerOrPrevious
+            public interface IExceptionToContainer
             {
-                IValueContainerOrPrevious ValueContainerOrPrevious { get; }
+                IValueContainer ToContainer(ITraceable traceable);
             }
 
-            public interface IDelegateResolve : IRetainable
+            public interface ICantHandleException
             {
-                void ReleaseAndInvoke(Promise feed, Promise owner);
-            }
-            public interface IDelegateResolvePromise : IRetainable
-            {
-                void ReleaseAndInvoke(Promise feed, Promise owner);
+                void AddToUnhandledStack(ITraceable traceable);
             }
 
-            public interface IDelegateReject : IRetainable
+            public interface IRejectionContainer : IValueContainer
             {
-                void ReleaseAndInvoke(Promise feed, Promise owner);
+#if PROMISE_DEBUG
+                void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, CausalityTrace createdStacktraces);
+#endif
             }
 
-            public interface IDelegateRejectPromise : IRetainable
+            public interface IThrowable
             {
-                void ReleaseAndInvoke(Promise feed, Promise owner);
+                Exception GetException();
+            }
+
+            public interface IDelegateResolve : IDisposable
+            {
+                void DisposeAndInvoke(IValueContainer valueContainer, Promise owner);
+            }
+            public interface IDelegateResolvePromise : IDisposable
+            {
+                void DisposeAndInvoke(IValueContainer valueContainer, Promise owner);
+            }
+
+            public interface IDelegateReject : IDisposable
+            {
+                void DisposeAndInvoke(IValueContainer valueContainer, Promise owner);
+            }
+
+            public interface IDelegateRejectPromise : IDisposable
+            {
+                void DisposeAndInvoke(IValueContainer valueContainer, Promise owner);
+            }
+
+            public interface IDelegateContinue
+            {
+                void DisposeAndInvoke(IValueContainer valueContainer);
+            }
+
+            public interface IDelegateContinue<T>
+            {
+                T DisposeAndInvoke(IValueContainer valueContainer);
             }
 
             public partial interface IMultiTreeHandleable : ITreeHandleable
             {
-                void Handle(Promise feed, int index);
-                void Cancel(IValueContainerOrPrevious cancelValue);
+                bool Handle(IValueContainer valueContainer, Promise owner, int index);
                 void ReAdd(PromisePassThrough passThrough);
             }
         }

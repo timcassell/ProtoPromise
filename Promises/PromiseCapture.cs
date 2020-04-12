@@ -21,8 +21,8 @@ namespace Proto.Promises
     public abstract partial class Promise
     {
         /// <summary>
-        /// Capture a value and add a progress listener. <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
-        /// Returns this.
+        /// Capture a value and add a progress listener. Returns this.
+        /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
         /// </summary>
 #if !PROMISE_PROGRESS
         [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
@@ -34,13 +34,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a cancel callback.
-        /// <para/>If this instance is canceled with any or no reason, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/>.
+        /// Capture a value and add a cancel callback. Returns this.
+        /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and the cancelation reason.
         /// </summary>
 #if !PROMISE_CANCEL
         [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
-        public void CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel> onCanceled)
+        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, ReasonContainer> onCanceled)
         {
             ValidateCancel(1);
             ValidateOperation(this, 1);
@@ -48,44 +48,21 @@ namespace Proto.Promises
 
             if (_state == State.Pending | _state == State.Canceled)
             {
-                AddWaiter(Internal.CancelDelegateAnyCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled, 1));
-                ReleaseWithoutDisposeCheck(); // No need to keep this retained.
-            }
-        }
-
-        /// <summary>
-        /// Capture a value and add a cancel callback. Returns an <see cref="IPotentialCancelation"/> object.
-        /// <para/>If/when this is canceled with any reason that is convertible to <typeparamref name="TCancel"/>, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and that reason.
-        /// <para/>If/when this is canceled with any other reason or no reason, the returned <see cref="IPotentialCancelation"/> will be canceled with the same reason.
-        /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
-        public IPotentialCancelation CatchCancelation<TCaptureCancel, TCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, TCancel> onCanceled)
-        {
-            ValidateCancel(1);
-            ValidateOperation(this, 1);
-            ValidateArgument(onCanceled, "onCanceled", 1);
-
-            if (_state == State.Pending | _state == State.Canceled)
-            {
-                var cancelation = Internal.CancelDelegateCapture<TCaptureCancel, TCancel>.GetOrCreate(cancelCaptureValue, onCanceled, this, 1);
-                AddWaiter(cancelation);
-                return cancelation;
+                AddWaiter(Internal.CancelDelegateCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled, 1));
             }
             return this;
         }
 
         /// <summary>
-        /// Capture a value and add a finally callback. It will be invoked with <paramref name="finallyCaptureValue"/> when this resolves, rejects, or cancels. Returns this.
+        /// Capture a value and add a finally callback. Returns this.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onFinally"/> will be invoked with <paramref name="finallyCaptureValue"/>.
         /// </summary>
         public Promise Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(finallyCaptureValue, onFinally, this, 1));
-            ReleaseWithoutDisposeCheck(); // No need to keep this retained.
+            AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(finallyCaptureValue, onFinally, 1));
             return this;
         }
 
@@ -255,7 +232,7 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateVoidVoid0.GetOrCreate(onRejected);
+            var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
             var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
             return promise;
@@ -275,7 +252,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidVoid0.GetOrCreate(onResolved);
+            var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
             var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
@@ -340,7 +317,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidVoid0.GetOrCreate(onResolved);
+            var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
             var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
@@ -513,7 +490,7 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateVoidPromise0.GetOrCreate(onRejected);
+            var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
             var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
             return promise;
@@ -533,7 +510,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidPromise0.GetOrCreate(onResolved);
+            var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
             var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
@@ -598,7 +575,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidPromise0.GetOrCreate(onResolved);
+            var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
             var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
@@ -771,7 +748,7 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateVoidPromise0.GetOrCreate(onRejected);
+            var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
             var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
             return promise;
@@ -791,7 +768,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidVoid0.GetOrCreate(onResolved);
+            var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
             var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
@@ -856,7 +833,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidVoid0.GetOrCreate(onResolved);
+            var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
             var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
@@ -1029,7 +1006,7 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateVoidVoid0.GetOrCreate(onRejected);
+            var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
             var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
             return promise;
@@ -1049,7 +1026,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidPromise0.GetOrCreate(onResolved);
+            var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
             var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
@@ -1114,7 +1091,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidPromise0.GetOrCreate(onResolved);
+            var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
             var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
@@ -1273,75 +1250,63 @@ namespace Proto.Promises
         }
         #endregion
 
-        #region Complete Callbacks
+        #region Continue Callbacks
         /// <summary>
-        /// Capture a value and add a resolve-or-reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If/when this is resolved or rejected with any reason, <paramref name="onResolvedOrRejected"/> will be invoked with <paramref name="completeCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// <para/>Note: Functionally the same as Then(completeCaptureValue, onResolvedOrRejected, completeCaptureValue, onResolvedOrRejected), but more efficient.
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
         /// </summary>
-        public Promise Complete<TCapture>(TCapture completeCaptureValue, Action<TCapture> onResolvedOrRejected)
+        public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, Action<TCapture, ResultContainer> onContinue)
         {
             ValidateOperation(this, 1);
-            ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
+            ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateCaptureVoidVoid<TCapture>.GetOrCreate(completeCaptureValue, onResolvedOrRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(del, del, 1);
+            var del = Internal.DelegateContinueCaptureVoidVoid<TCapture>.GetOrCreate(continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinue0.GetOrCreate(del, 1);
             HookupNewPromise(promise);
             return promise;
         }
 
         /// <summary>
-        /// Capture a value and add a resolve-or-reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If/when this is resolved or rejected with any reason, <paramref name="onResolvedOrRejected"/> will be invoked with <paramref name="completeCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
-        /// <para/>Note: Functionally the same as Then(completeCaptureValue, onResolvedOrRejected, completeCaptureValue, onResolvedOrRejected), but more efficient.
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved with the returned value.
         /// </summary>
-        public Promise<TResult> Complete<TCapture, TResult>(TCapture completeCaptureValue, Func<TCapture, TResult> onResolvedOrRejected)
+        public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, TResult> onContinue)
         {
             ValidateOperation(this, 1);
-            ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
+            ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateCaptureVoidResult<TCapture, TResult>.GetOrCreate(completeCaptureValue, onResolvedOrRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(del, del, 1);
+            var del = Internal.DelegateContinueCaptureVoidResult<TCapture, TResult>.GetOrCreate(continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinue<TResult>.GetOrCreate(del, 1);
             HookupNewPromise(promise);
             return promise;
         }
 
         /// <summary>
-        /// Capture a value and add a resolve-or-reject callback. Returns a new <see cref="Promise"/>.
-        /// <para/>If/when this is resolved or rejected with any reason, <paramref name="onResolvedOrRejected"/> will be invoked with <paramref name="completeCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
-        /// <para/>Note: Functionally the same as Then(completeCaptureValue, onResolvedOrRejected, completeCaptureValue, onResolvedOrRejected), but more efficient.
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// </summary>
-        public Promise Complete<TCapture>(TCapture completeCaptureValue, Func<TCapture, Promise> onResolvedOrRejected)
+        public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, Promise> onContinue)
         {
             ValidateOperation(this, 1);
-            ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
+            ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateCaptureVoidPromise<TCapture>.GetOrCreate(completeCaptureValue, onResolvedOrRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(del, del, 1);
+            var del = Internal.DelegateContinueCaptureVoidResult<TCapture, Promise>.GetOrCreate(continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinuePromise0.GetOrCreate(del, 1);
             HookupNewPromise(promise);
             return promise;
         }
 
         /// <summary>
-        /// Capture a value and add a resolve-or-reject callback. Returns a new <see cref="Promise{T}"/>.
-        /// <para/>If/when this is resolved or rejected with any reason, <paramref name="onResolvedOrRejected"/> will be invoked with <paramref name="completeCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
-        /// <para/>Note: Functionally the same as Then(completeCaptureValue, onResolvedOrRejected, completeCaptureValue, onResolvedOrRejected), but more efficient.
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// </summary>
-        public Promise<TResult> Complete<TCapture, TResult>(TCapture completeCaptureValue, Func<TCapture, Promise<TResult>> onResolvedOrRejected)
+        public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, Promise<TResult>> onContinue)
         {
             ValidateOperation(this, 1);
-            ValidateArgument(onResolvedOrRejected, "onResolvedOrRejected", 1);
+            ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateCaptureVoidPromiseT<TCapture, TResult>.GetOrCreate(completeCaptureValue, onResolvedOrRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(del, del, 1);
+            var del = Internal.DelegateContinueCaptureVoidResult<TCapture, Promise<TResult>>.GetOrCreate(continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinuePromise<TResult>.GetOrCreate(del, 1);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1357,8 +1322,8 @@ namespace Proto.Promises
     public abstract partial class Promise<T> : Promise
     {
         /// <summary>
-        /// Capture a value and add a progress listener. <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
-        /// Returns this.
+        /// Capture a value and add a progress listener. Returns this.
+        /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
         /// </summary>
 #if !PROMISE_PROGRESS
         [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
@@ -1370,15 +1335,35 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a finally callback. It will be invoked with <paramref name="finallyCaptureValue"/> when this is resolved, rejected, or canceled. Returns this.
+        /// Capture a value and add a cancel callback. Returns this.
+        /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and the cancelation reason.
+        /// </summary>
+#if !PROMISE_CANCEL
+        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
+#endif
+        public new Promise<T> CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, ReasonContainer> onCanceled)
+        {
+            ValidateCancel(1);
+            ValidateOperation(this, 1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
+
+            if (_state == State.Pending | _state == State.Canceled)
+            {
+                AddWaiter(Internal.CancelDelegateCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled, 1));
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Capture a value and add a finally callback. Returns this.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onFinally"/> will be invoked with <paramref name="finallyCaptureValue"/>.
         /// </summary>
         public new Promise<T> Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
         {
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(finallyCaptureValue, onFinally, this, 1));
-            ReleaseWithoutDisposeCheck(); // No need to keep this retained.
+            AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(finallyCaptureValue, onFinally, 1));
             return this;
         }
 
@@ -1548,7 +1533,7 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateVoidVoid0.GetOrCreate(onRejected);
+            var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
             var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
             return promise;
@@ -1807,7 +1792,7 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateVoidPromise0.GetOrCreate(onRejected);
+            var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
             var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
             return promise;
@@ -2065,7 +2050,7 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateVoidPromise0.GetOrCreate(onRejected);
+            var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
             var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
             return promise;
@@ -2324,7 +2309,7 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateVoidVoid0.GetOrCreate(onRejected);
+            var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
             var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
             HookupNewPromise(promise);
             return promise;
@@ -2563,6 +2548,68 @@ namespace Proto.Promises
             var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
             var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+        #endregion
+
+        #region Continue Callbacks
+        /// <summary>
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// </summary>
+        public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, Action<TCapture, ResultContainer> onContinue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onContinue, "onContinue", 1);
+
+            var del = Internal.DelegateContinueCaptureArgVoid<TCapture, T>.GetOrCreate(continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinue0.GetOrCreate(del, 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved with the returned value.
+        /// </summary>
+        public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, TResult> onContinue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onContinue, "onContinue", 1);
+
+            var del = Internal.DelegateContinueCaptureArgResult<TCapture, T, TResult>.GetOrCreate(continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinue<TResult>.GetOrCreate(del, 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// </summary>
+        public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, Promise> onContinue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onContinue, "onContinue", 1);
+
+            var del = Internal.DelegateContinueCaptureArgResult<TCapture, T, Promise>.GetOrCreate(continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinuePromise0.GetOrCreate(del, 1);
+            HookupNewPromise(promise);
+            return promise;
+        }
+
+        /// <summary>
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// </summary>
+        public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, Promise<TResult>> onContinue)
+        {
+            ValidateOperation(this, 1);
+            ValidateArgument(onContinue, "onContinue", 1);
+
+            var del = Internal.DelegateContinueCaptureArgResult<TCapture, T, Promise<TResult>>.GetOrCreate(continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinuePromise<TResult>.GetOrCreate(del, 1);
             HookupNewPromise(promise);
             return promise;
         }

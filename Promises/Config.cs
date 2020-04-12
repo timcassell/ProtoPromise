@@ -26,27 +26,23 @@
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
 using System;
-using Proto.Utils;
 
 namespace Proto.Promises
 {
     partial class Promise
     {
-        public enum GeneratedStacktrace : byte
+        public enum TraceLevel : byte
         {
             /// <summary>
-            /// Don't generate any extra stack traces.
+            /// Don't track any causality traces.
             /// </summary>
             None,
             /// <summary>
-            /// Generate stack traces when Deferred.Reject is called.
-            /// If Reject is called with an exception, the generated stack trace is appended to the exception's stacktrace.
+            /// Track causality only when Deferred.Reject is called.
             /// </summary>
             Rejections,
             /// <summary>
-            /// Generate stack traces when Deferred.Reject is called.
-            /// Also generate stack traces every time a promise is created (i.e. with .Then). This can help debug where an invalid object was returned from a .Then delegate.
-            /// If a .Then/.Catch callback throws an exception, the generated stack trace is appended to the exception's stacktrace.
+            /// Track causality when Deferred.Reject is called and every time a promise is created or a delegate is added to a promise (i.e. with .Then or .Progress).
             /// <para/>
             /// NOTE: This can be extremely expensive, so you should only enable this if you ran into an error and you are not sure where it came from.
             /// </summary>
@@ -72,6 +68,7 @@ namespace Proto.Promises
         /// <summary>
         /// Promise configuration. Configuration settings affect the global behaviour of promises.
         /// </summary>
+        [System.Diagnostics.DebuggerNonUserCode]
         public static class Config
         {
 #if PROMISE_PROGRESS
@@ -87,57 +84,33 @@ namespace Proto.Promises
 #endif
 
 #if PROMISE_DEBUG
-            public static PoolType ObjectPooling { get { return default(PoolType); } set { } }
+            public static PoolType ObjectPooling { get { return PoolType.Internal; } set { } }
 #else
             private static PoolType _objectPooling = PoolType.Internal;
             public static PoolType ObjectPooling { get { return _objectPooling; } set { _objectPooling = value; } }
 #endif
 
 #if PROMISE_DEBUG
-            private static GeneratedStacktrace _debugStacktraceGenerator = GeneratedStacktrace.Rejections;
-            public static GeneratedStacktrace DebugStacktraceGenerator { get { return _debugStacktraceGenerator; } set { _debugStacktraceGenerator = value; } }
-#else
-            public static GeneratedStacktrace DebugStacktraceGenerator { get { return default(GeneratedStacktrace); } set { } }
-#endif
-
-            private static IValueConverter _valueConverter = new DefaultValueConverter();
+            private static TraceLevel _debugCausalityTracer = TraceLevel.Rejections;
             /// <summary>
-            /// Value converter used to determine if a reject or cancel reason is convertible for a catch delegate expecting a reason.
-            /// <para/>The default implementation uses <see cref="Type.IsAssignableFrom(Type)"/>.
+            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
             /// </summary>
-            public static IValueConverter ValueConverter { get { return _valueConverter; } set { _valueConverter = value; } }
+            public static TraceLevel DebugCausalityTracer { get { return _debugCausalityTracer; } set { _debugCausalityTracer = value; } }
+#else
+            /// <summary>
+            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
+            /// </summary>
+            public static TraceLevel DebugCausalityTracer { get { return default(TraceLevel); } set { } }
+#endif
 
             /// <summary>
             /// If this is not null, uncaught rejections get routed through this instead of being thrown.
             /// </summary>
             public static Action<UnhandledException> UncaughtRejectionHandler { get; set; }
-
-            private sealed class DefaultValueConverter : IValueConverter
-            {
-                bool IValueConverter.TryConvert<TOriginal, TConvert>(IValueContainer<TOriginal> valueContainer, out TConvert converted)
-                {
-                    // Avoid boxing value types.
-#if CSHARP_7_OR_LATER
-                    if (valueContainer is IValueContainer<TConvert> casted)
-#else
-                    var casted = valueContainer as IValueContainer<TConvert>;
-                    if (casted != null)
+#if UNITY_2019_2_OR_NEWER
+                // Unity changed AggregateException logging to not include the InnerException, so make the default rejection handler route to UnityEngine.Debug.LogException.
+                = UnityEngine.Debug.LogException;
 #endif
-                    {
-                        converted = casted.Value;
-                        return true;
-                    }
-                    // Can it be up-casted or down-casted, null or not?
-                    TOriginal value = valueContainer.Value;
-                    if (typeof(TConvert).IsAssignableFrom(typeof(TOriginal)) || value is TConvert)
-                    {
-                        converted = (TConvert) (object) value;
-                        return true;
-                    }
-                    converted = default(TConvert);
-                    return false;
-                }
-            }
         }
     }
 }

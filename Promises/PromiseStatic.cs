@@ -87,7 +87,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise AllNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
+        public static Promise All<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             return Internal._All(promises, 1);
         }
@@ -108,6 +108,15 @@ namespace Proto.Promises
         public static Promise<IList<T>> All<T>(IEnumerable<Promise<T>> promises)
         {
             return Internal._All(promises.GetEnumerator(), new List<T>(), 1);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/>s when they have all resolved.
+        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<IList<T>> All<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
+        {
+            return Internal._All(promises, new List<T>(), 1);
         }
 
         /// <summary>
@@ -190,7 +199,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise RaceNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
+        public static Promise Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             return Internal._Race(promises, 1);
         }
@@ -265,9 +274,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
         /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise<T> RaceNonAlloc<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
+        public static Promise<T> Race<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            return Internal._Race<T, IEnumerator<Promise<T>>>(promises, 1);
+            return Internal._Race<T, TEnumerator>(promises, 1);
         }
 
         /// <summary>
@@ -292,7 +301,7 @@ namespace Proto.Promises
         /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
         /// If any <see cref="Promise"/> is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise SequenceNonAlloc<TEnumerator>(TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
+        public static Promise Sequence<TEnumerator>(TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
         {
             return Internal._Sequence(promiseFuncs, 1);
         }
@@ -367,7 +376,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
-        public static Promise FirstNonAlloc<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
+        public static Promise First<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             return Internal._First(promises, 1);
         }
@@ -442,7 +451,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
-        public static Promise<T> FirstNonAlloc<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
+        public static Promise<T> First<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Internal._First<T, TEnumerator>(promises, 1);
         }
@@ -458,11 +467,11 @@ namespace Proto.Promises
             var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
 
-            return Internal.MergePromise<T1>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<T1>.GetOrCreate(passThroughs, default(T1), (feed, target, index) =>
                 {
                     if (index == 0)
                     {
-                        target._value = ((Internal.PromiseInternal<T1>) feed)._value;
+                        target.value = ((Internal.ResolveContainer<T1>) feed).value;
                     }
                 }, 2, 1);
         }
@@ -478,15 +487,15 @@ namespace Proto.Promises
             var passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>(Internal.PromisePassThrough.GetOrCreate(promise1, 0, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
 
-            return Internal.MergePromise<ValueTuple<T1, T2>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<ValueTuple<T1, T2>>.GetOrCreate(passThroughs, default(ValueTuple<T1, T2>), (feed, target, index) =>
             {
                 if (index == 0)
                 {
-                    target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                    target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                 }
                 else
                 {
-                    target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                    target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                 }
             }, 2, 1);
         }
@@ -504,15 +513,15 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
 
-            return Internal.MergePromise<ValueTuple<T1, T2>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<ValueTuple<T1, T2>>.GetOrCreate(passThroughs, default(ValueTuple<T1, T2>), (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                 }
             }, 3, 1);
@@ -531,18 +540,18 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise2, 1, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
 
-            return Internal.MergePromise<ValueTuple<T1, T2, T3>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<ValueTuple<T1, T2, T3>>.GetOrCreate(passThroughs, default(ValueTuple<T1, T2, T3>), (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                 }
             }, 3, 1);
@@ -563,18 +572,18 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
 
-            return Internal.MergePromise<ValueTuple<T1, T2, T3>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<ValueTuple<T1, T2, T3>>.GetOrCreate(passThroughs, default(ValueTuple<T1, T2, T3>), (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                 }
             }, 4, 1);
@@ -595,21 +604,21 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise3, 2, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
 
-            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4>>.GetOrCreate(passThroughs, default(ValueTuple<T1, T2, T3, T4>), (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                 }
             }, 4, 1);
@@ -632,21 +641,21 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise5, 4, 1));
 
-            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4>>.GetOrCreate(passThroughs, default(ValueTuple<T1, T2, T3, T4>), (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                 }
             }, 5, 1);
@@ -669,24 +678,24 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise4, 3, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise5, 4, 1));
 
-            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5>>.GetOrCreate(passThroughs, default(ValueTuple<T1, T2, T3, T4, T5>), (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                     case 4:
-                        target._value.Item5 = ((Internal.PromiseInternal<T5>) feed)._value;
+                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
                         break;
                 }
             }, 5, 1);
@@ -711,24 +720,24 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise5, 4, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise6, 5, 1));
 
-            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5>>.GetOrCreate(passThroughs, default(ValueTuple<T1, T2, T3, T4, T5>), (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                     case 4:
-                        target._value.Item5 = ((Internal.PromiseInternal<T5>) feed)._value;
+                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
                         break;
                 }
             }, 6, 1);
@@ -753,27 +762,27 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise5, 4, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise6, 5, 1));
 
-            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6>>.GetOrCreate(passThroughs, default(ValueTuple<T1, T2, T3, T4, T5, T6>), (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                     case 4:
-                        target._value.Item5 = ((Internal.PromiseInternal<T5>) feed)._value;
+                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
                         break;
                     case 5:
-                        target._value.Item6 = ((Internal.PromiseInternal<T6>) feed)._value;
+                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
                         break;
                 }
             }, 6, 1);
@@ -800,27 +809,27 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise6, 5, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise7, 6, 1));
 
-            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6>>.GetOrCreate(passThroughs, default(ValueTuple<T1, T2, T3, T4, T5, T6>), (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                     case 4:
-                        target._value.Item5 = ((Internal.PromiseInternal<T5>) feed)._value;
+                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
                         break;
                     case 5:
-                        target._value.Item6 = ((Internal.PromiseInternal<T6>) feed)._value;
+                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
                         break;
                 }
             }, 7, 1);
@@ -847,30 +856,30 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise6, 5, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise7, 6, 1));
 
-            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>.GetOrCreate(passThroughs, default(ValueTuple<T1, T2, T3, T4, T5, T6, T7>), (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                     case 4:
-                        target._value.Item5 = ((Internal.PromiseInternal<T5>) feed)._value;
+                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
                         break;
                     case 5:
-                        target._value.Item6 = ((Internal.PromiseInternal<T6>) feed)._value;
+                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
                         break;
                     case 6:
-                        target._value.Item7 = ((Internal.PromiseInternal<T7>) feed)._value;
+                        target.value.Item7 = ((Internal.ResolveContainer<T7>) feed).value;
                         break;
                 }
             }, 7, 1);
@@ -899,30 +908,30 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise7, 6, 1));
             passThroughs.Push(Internal.PromisePassThrough.GetOrCreate(promise8, 7, 1));
 
-            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>.GetOrCreate(passThroughs, (feed, target, index) =>
+            return Internal.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>.GetOrCreate(passThroughs, default(ValueTuple<T1, T2, T3, T4, T5, T6, T7>), (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target._value.Item1 = ((Internal.PromiseInternal<T1>) feed)._value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        target._value.Item2 = ((Internal.PromiseInternal<T2>) feed)._value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        target._value.Item3 = ((Internal.PromiseInternal<T3>) feed)._value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        target._value.Item4 = ((Internal.PromiseInternal<T4>) feed)._value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                     case 4:
-                        target._value.Item5 = ((Internal.PromiseInternal<T5>) feed)._value;
+                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
                         break;
                     case 5:
-                        target._value.Item6 = ((Internal.PromiseInternal<T6>) feed)._value;
+                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
                         break;
                     case 6:
-                        target._value.Item7 = ((Internal.PromiseInternal<T7>) feed)._value;
+                        target.value.Item7 = ((Internal.ResolveContainer<T7>) feed).value;
                         break;
                 }
             }, 8, 1);
@@ -948,9 +957,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    var rejectValue = Internal.UnhandledExceptionException.GetOrCreate(e);
-                    _SetStackTraceFromCreated(promise, rejectValue);
-                    AddRejectionToUnhandledStack(rejectValue);
+                    AddRejectionToUnhandledStack(e, promise);
                 }
             }
             return promise;
@@ -976,9 +983,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    var rejectValue = Internal.UnhandledExceptionException.GetOrCreate(e);
-                    _SetStackTraceFromCreated(promise, rejectValue);
-                    AddRejectionToUnhandledStack(rejectValue);
+                    AddRejectionToUnhandledStack(e, promise);
                 }
             }
             return promise;
@@ -1004,9 +1009,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    var rejectValue = Internal.UnhandledExceptionException.GetOrCreate(e);
-                    _SetStackTraceFromCreated(promise, rejectValue);
-                    AddRejectionToUnhandledStack(rejectValue);
+                    AddRejectionToUnhandledStack(e, promise);
                 }
             }
             return promise;
@@ -1032,9 +1035,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    var rejectValue = Internal.UnhandledExceptionException.GetOrCreate(e);
-                    _SetStackTraceFromCreated(promise, rejectValue);
-                    AddRejectionToUnhandledStack(rejectValue);
+                    AddRejectionToUnhandledStack(e, promise);
                 }
             }
             return promise;
@@ -1072,8 +1073,7 @@ namespace Proto.Promises
         public static Promise Rejected<TReject>(TReject reason)
         {
             var promise = Internal.LitePromise0.GetOrCreate(1);
-            var rejection = CreateRejection(reason, 1);
-            promise.RejectDirect(rejection);
+            promise.RejectDirect(reason, false);
             return promise;
         }
 
@@ -1083,8 +1083,7 @@ namespace Proto.Promises
         public static Promise<T> Rejected<T, TReject>(TReject reason)
         {
             var promise = Internal.LitePromise<T>.GetOrCreate(1);
-            var rejection = CreateRejection(reason, 1);
-            promise.RejectDirect(rejection);
+            promise.RejectDirect(reason, false);
             return promise;
         }
 
@@ -1176,16 +1175,14 @@ namespace Proto.Promises
             {
                 if (Internal._invokingRejected)
                 {
-                    // Ensure _rethrow is set by the static constructor.
-                    System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(RethrowException).TypeHandle);
-                    return _rethrow;
+                    return RethrowException.instance;
                 }
                 throw new InvalidOperationException("Rethrow can only be accessed inside an onRejected callback.", GetFormattedStacktrace(1));
             }
         }
 
         /// <summary>
-        /// Get a <see cref="CanceledException"/> that can be thrown to cancel the promise without a reason from an onResolved or onRejected callback.
+        /// Get a <see cref="CancelException"/> that can be thrown to cancel the promise without a reason from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.CancelException();"
         /// <para/>
         /// If this is called while not inside an onResolved or onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
@@ -1194,22 +1191,23 @@ namespace Proto.Promises
 #if !PROMISE_CANCEL
         [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
-        public static CanceledException CancelException()
+        public static CancelException CancelException()
         {
+            ValidateCancel(1);
 #if !PROMISE_CANCEL
             ThrowCancelException(1);
             return null;
 #else
             if (Internal._invokingResolved | Internal._invokingRejected)
             {
-                return Internal.CancelVoid.GetOrCreate();
+                return Internal.CancelExceptionVoidInternal.GetOrCreate();
             }
-            throw new InvalidOperationException("CancelationException can only be accessed inside an onResolved or onRejected callback.", GetFormattedStacktrace(1));
+            throw new InvalidOperationException("CancelException can only be accessed inside an onResolved or onRejected callback, or in an async Promise function.", GetFormattedStacktrace(1));
 #endif
         }
 
         /// <summary>
-        /// Get a <see cref="CanceledException"/> that can be thrown to cancel the promise with the provided reason from an onResolved or onRejected callback.
+        /// Get a <see cref="Promises.CancelException"/> that can be thrown to cancel the promise with the provided reason from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.CancelException(value);"
         /// <para/>
         /// If this is called while not inside an onResolved or onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
@@ -1218,7 +1216,7 @@ namespace Proto.Promises
 #if !PROMISE_CANCEL
         [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
 #endif
-        public static CanceledException CancelException<T>(T value)
+        public static CancelException CancelException<T>(T value)
         {
 #if !PROMISE_CANCEL
             ThrowCancelException(1);
@@ -1226,32 +1224,26 @@ namespace Proto.Promises
 #else
             if (Internal._invokingResolved | Internal._invokingRejected)
             {
-                return Internal.CancelValue<T>.GetOrCreate(value);
+                return Internal.CancelExceptionInternal<T>.GetOrCreate(value);
             }
-            throw new InvalidOperationException("CancelationException can only be accessed inside an onResolved or onRejected callback.", GetFormattedStacktrace(1));
+            throw new InvalidOperationException("CancelException can only be accessed inside an onResolved or onRejected callback, or in an async Promise function.", GetFormattedStacktrace(1));
 #endif
         }
 
         /// <summary>
-        /// Get an <see cref="Exception"/> that can be thrown to cancel the promise from an onResolved or onRejected callback.
+        /// Get a <see cref="Promises.RejectException"/> that can be thrown to reject the promise from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.RejectException(value);"
         /// <para/>
         /// If this is called while not inside an onResolved or onRejected handler, this will throw an <see cref="InvalidOperationException"/>.
         /// </summary>
         /// <exception cref="InvalidOperationException"/>
-        public static Exception RejectException<T>(T value)
+        public static RejectException RejectException<T>(T value)
         {
             if (Internal._invokingResolved | Internal._invokingRejected)
             {
-                if (typeof(Exception).IsAssignableFrom(typeof(T)) || value is Exception)
-                {
-                    // No need to wrap the exception, just return it as-is.
-                    Logger.LogWarning("An exception was passed to RejectedException, returning that exception as-is.");
-                    return value as Exception;
-                }
-                return Internal.UnhandledException<T>.GetOrCreate(value);
+                return Internal.RejectExceptionInternal<T>.GetOrCreate(value);
             }
-            throw new InvalidOperationException("RejectedException can only be accessed inside an onResolved or onRejected callback.", GetFormattedStacktrace(1));
+            throw new InvalidOperationException("RejectException can only be accessed inside an onResolved or onRejected callback, or in an async Promise function.", GetFormattedStacktrace(1));
         }
     }
 }

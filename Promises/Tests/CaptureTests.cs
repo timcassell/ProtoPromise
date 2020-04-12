@@ -22,6 +22,19 @@ namespace Proto.Promises.Tests
 {
     public class CaptureTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = null;
+        }
+
+        [TearDown]
+        public void Teardown()
+        {
+            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+        }
+
 #if PROMISE_DEBUG
 
 #if PROMISE_PROGRESS
@@ -51,7 +64,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 #endif
@@ -66,11 +79,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.CatchCancelation(100, default(Action<int>));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferred.Promise.CatchCancelation(true, default(Action<bool, int>));
+                deferred.Promise.CatchCancelation(100, default(Action<int, Promise.ReasonContainer>));
             });
 
             deferred.Cancel();
@@ -80,18 +89,14 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.CatchCancelation(100, default(Action<int>));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferredInt.Promise.CatchCancelation(true, default(Action<bool, Exception>));
+                deferredInt.Promise.CatchCancelation(100, default(Action<int, Promise.ReasonContainer>));
             });
 
             deferredInt.Cancel();
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 #endif
@@ -116,54 +121,54 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
         [Test]
-        public void IfOnCompleteIsNullThrow()
+        public void IfOnContinueIsNullThrow()
         {
             var deferred = Promise.NewDeferred();
             var deferredInt = Promise.NewDeferred<int>();
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.Complete(100, default(Action<int>));
+                deferred.Promise.ContinueWith(100, default(Action<int, Promise.ResultContainer>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.Complete(100, default(Func<int, bool>));
+                deferred.Promise.ContinueWith(100, default(Func<int, Promise.ResultContainer, bool>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.Complete(100, default(Func<int, Promise>));
+                deferred.Promise.ContinueWith(100, default(Func<int, Promise.ResultContainer, Promise>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.Complete(100, default(Func<int, Promise<bool>>));
+                deferred.Promise.ContinueWith(100, default(Func<int, Promise.ResultContainer, Promise<bool>>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.Complete(100, default(Action<int>));
+                deferredInt.Promise.ContinueWith(100, default(Action<int, Promise<int>.ResultContainer>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.Complete(100, default(Func<int, bool>));
+                deferredInt.Promise.ContinueWith(100, default(Func<int, Promise<int>.ResultContainer, bool>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.Complete(100, default(Func<int, Promise>));
+                deferredInt.Promise.ContinueWith(100, default(Func<int, Promise<int>.ResultContainer, Promise>));
             });
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.Complete(100, default(Func<int, Promise<bool>>));
+                deferredInt.Promise.ContinueWith(100, default(Func<int, Promise<int>.ResultContainer, Promise<bool>>));
             });
             deferred.Resolve();
             deferredInt.Resolve(0);
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -370,7 +375,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -579,7 +584,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 #endif
@@ -623,7 +628,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 #endif
@@ -635,18 +640,14 @@ namespace Proto.Promises.Tests
             var deferred = Promise.NewDeferred();
 
             string expected = "expected";
+            int cancelValue = 50;
             bool invoked = false;
 
             deferred.Promise
-                .CatchCancelation(expected, cv =>
+                .CatchCancelation(expected, (cv, reason) =>
                 {
                     Assert.AreEqual(expected, cv);
-                    invoked = true;
-                });
-            deferred.Promise
-                .CatchCancelation(expected, (string cv, int cancelValue) =>
-                {
-                    Assert.AreEqual(expected, cv);
+                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
 
@@ -655,19 +656,14 @@ namespace Proto.Promises.Tests
             var deferredInt = Promise.NewDeferred<int>();
 
             deferredInt.Promise
-                .CatchCancelation(expected, cv =>
+                .CatchCancelation(expected, (cv, reason) =>
                 {
                     Assert.AreEqual(expected, cv);
-                    invoked = true;
-                });
-            deferredInt.Promise
-                .CatchCancelation(expected, (string cv, int cancelValue) =>
-                {
-                    Assert.AreEqual(expected, cv);
+                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
 
-            deferredInt.Cancel(50);
+            deferredInt.Cancel(cancelValue);
 
             Promise.Manager.HandleCompletes();
 
@@ -675,7 +671,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 #endif
@@ -711,7 +707,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -748,7 +744,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -803,22 +799,22 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 #endif
 
         [Test]
-        public void OnCompleteWillBeInvokedWithCapturedValue0()
+        public void OnContinueWillBeInvokedWithCapturedValue0()
         {
             var deferred = Promise.NewDeferred();
 
             string expected = "expected";
             bool invoked = false;
 
-            TestHelper.AddCompleteCallbacks<int, string>(deferred.Promise,
+            TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 captureValue: expected,
-                onCompleteCapture: cv =>
+                onContinueCapture: (cv, r) =>
                 {
                     Assert.AreEqual(expected, cv);
                     invoked = true;
@@ -832,21 +828,21 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
         [Test]
-        public void OnCompleteWillBeInvokedWithCapturedValue1()
+        public void OnContinueWillBeInvokedWithCapturedValue1()
         {
             var deferred = Promise.NewDeferred();
 
             string expected = "expected";
             bool invoked = false;
 
-            TestHelper.AddCompleteCallbacks<int, string>(deferred.Promise,
+            TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 captureValue: expected,
-                onCompleteCapture: cv =>
+                onContinueCapture: (cv, r) =>
                 {
                     Assert.AreEqual(expected, cv);
                     invoked = true;
@@ -860,7 +856,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -896,7 +892,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -932,7 +928,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -965,7 +961,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -998,7 +994,7 @@ namespace Proto.Promises.Tests
 
             // Clean up.
             GC.Collect();
-            Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
     }

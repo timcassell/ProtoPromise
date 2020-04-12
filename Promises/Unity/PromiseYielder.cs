@@ -1,4 +1,5 @@
 ﻿#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable RECS0108 // Warns about static fields in generic types
 
 using System;
 using System.Collections;
@@ -10,23 +11,66 @@ namespace Proto.Promises
     partial class Promise
     {
         /// <summary>
-        /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise"/> it came from is complete.
+        /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise"/> it came from has settled.
         /// An instance of this should be disposed when you are finished with it.
         /// </summary>
-        public abstract class YieldInstruction : CustomYieldInstruction, IDisposable
+        [System.Diagnostics.DebuggerNonUserCode]
+        public abstract class YieldInstruction : CustomYieldInstruction, IDisposable, Internal.ITreeHandleable
         {
+            Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
+
+            protected object _value;
+            protected State _state;
+
+            internal YieldInstruction() { }
+
             /// <summary>
             /// The state of the <see cref="Promise"/> this came from.
             /// </summary>
             /// <value>The state.</value>
-            public State State { get; protected set; }
+            public State State
+            {
+                get
+                {
+                    ValidateYieldInstructionOperation(_value, 1);
 
+                    return _state;
+                }
+            }
+
+            /// <summary>
+            /// Is the Promise still pending?
+            /// </summary>
             public override bool keepWaiting
             {
                 get
                 {
+                    ValidateYieldInstructionOperation(_value, 1);
+
                     return State == State.Pending;
                 }
+            }
+
+            /// <summary>
+            /// Get the result. If the Promise resolved successfully, this will return without error.
+            /// If the Promise was rejected, this will throw an <see cref="UnhandledException"/>.
+            /// If the Promise was canceled, this will throw a <see cref="CanceledException"/>.
+            /// </summary>
+            public void GetResult()
+            {
+                ValidateYieldInstructionOperation(_value, 1);
+
+                if (_state == State.Pending)
+                {
+                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", GetFormattedStacktrace(1));
+                }
+
+                if (_state == State.Resolved)
+                {
+                    return;
+                }
+                // Throw unhandled exception or canceled exception.
+                throw ((Internal.IThrowable) _value).GetException();
             }
 
             /// <summary>
@@ -39,58 +83,138 @@ namespace Proto.Promises
             /// <see cref="Dispose"/>, you must release all references to the
             /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/> so the garbage collector can reclaim the memory
             /// that the <see cref="T:ProtoPromise.Promise.YieldInstruction"/> was occupying.</remarks>
-            public abstract void Dispose();
-        }
+            public virtual void Dispose()
+            {
+                ValidateYieldInstructionOperation(_value, 1);
 
-        private sealed class InternalYieldInstruction : YieldInstruction, Internal.ITreeHandleable
+                ((IRetainable) _value).Release();
+                _value = DisposedObject;
+            }
+
+            void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer,
+                ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue,
+                ref ValueLinkedQueue<Internal.ITreeHandleable> cancelQueue)
+            {
+                valueContainer.Retain();
+                _value = valueContainer;
+                _state = valueContainer.GetState();
+            }
+
+            void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer)
+            {
+                valueContainer.Retain();
+                _value = valueContainer;
+                _state = valueContainer.GetState();
+            }
+
+            void Internal.ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
+            void Internal.ITreeHandleable.Cancel() { throw new System.InvalidOperationException(); }
+        }
+    }
+
+    partial class Promise<T>
+    {
+        /// <summary>
+        /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise{T}"/> it came from has settled.
+        /// An instance of this should be disposed when you are finished with it.
+        /// </summary>
+        [System.Diagnostics.DebuggerNonUserCode]
+        public abstract new class YieldInstruction : Promise.YieldInstruction
         {
-            Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
+            internal YieldInstruction() { }
 
-            private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
-
-            private Promise _owner;
-
-            static InternalYieldInstruction()
+            /// <summary>
+            /// Get the result. If the Promise resolved successfully, this will return the result of the operation.
+            /// If the Promise was rejected, this will throw an <see cref="UnhandledException"/>.
+            /// If the Promise was canceled, this will throw a <see cref="CanceledException"/>.
+            /// </summary>
+            public new T GetResult()
             {
-                Internal.OnClearPool += () => _pool.Clear();
-            }
+                ValidateYieldInstructionOperation(_value, 1);
 
-            private InternalYieldInstruction() { }
+                if (_state == State.Pending)
+                {
+                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", GetFormattedStacktrace(1));
+                }
 
-            public static InternalYieldInstruction GetOrCreate(Promise owner)
-            {
-                var yieldInstruction = _pool.IsNotEmpty ? (InternalYieldInstruction) _pool.Pop() : new InternalYieldInstruction();
-                yieldInstruction._owner = owner;
-                return yieldInstruction;
-            }
-
-            public override void Dispose()
-            {
-                _pool.Push(this);
-            }
-
-            void Internal.ITreeHandleable.Cancel()
-            {
-#pragma warning disable CS0618 // Type or member is obsolete
-                State = State.Canceled;
-#pragma warning restore CS0618 // Type or member is obsolete
-                _owner.ReleaseInternal();
-                _owner = null;
-            }
-
-            void Internal.ITreeHandleable.Handle()
-            {
-                State = _owner._state;
-                _owner.ReleaseInternal();
-                _owner = null;
+                if (_state == State.Resolved)
+                {
+                    return ((Internal.ResolveContainer<T>) _value).value;
+                }
+                // Throw unhandled exception or canceled exception.
+                throw ((Internal.IThrowable) _value).GetException();
             }
         }
+    }
 
+    partial class Promise
+    {
+        partial class Internal
+        {
+            [System.Diagnostics.DebuggerNonUserCode]
+            public sealed class YieldInstructionVoid : YieldInstruction
+            {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static YieldInstructionVoid()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                private YieldInstructionVoid() { }
+
+                public static YieldInstructionVoid GetOrCreate(Promise owner)
+                {
+                    var yieldInstruction = _pool.IsNotEmpty ? (YieldInstructionVoid) _pool.Pop() : new YieldInstructionVoid();
+                    yieldInstruction._state = owner._state;
+                    return yieldInstruction;
+                }
+
+                public override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, ITreeHandleable
+            {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static YieldInstruction()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                private YieldInstruction() { }
+
+                public static YieldInstruction<T> GetOrCreate(Promise owner)
+                {
+                    var yieldInstruction = _pool.IsNotEmpty ? (YieldInstruction<T>) _pool.Pop() : new YieldInstruction<T>();
+                    yieldInstruction._state = owner._state;
+                    return yieldInstruction;
+                }
+
+                public override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
+        }
     }
 
     /// <summary>
     /// Yielder used to wait for a yield instruction to complete in the form of a Promise, using Unity's coroutines.
     /// </summary>
+    [System.Diagnostics.DebuggerNonUserCode]
     public sealed class PromiseYielder : MonoBehaviour
     {
         static Action _onClearObjects;
