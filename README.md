@@ -576,6 +576,9 @@ At least you can still catch `OperationCanceledException` to catch cancelations 
 
 The other thing, and this is more of an issue than exceptions, is that you can't report progress to the promise returned from the async function. This is probably why the designers of Tasks chose to use `Progress<T>` passed into the function instead of implementing it directly into Tasks.
 
+Another issue is that, while promises don't need to create extra allocations every time if object pooling is enabled, `async Promise` functions are unable to use the same pooling trick. Because of that, `async Promise` functions will almost always allocate when they are called (the exception to this is when they complete synchronously).
+
+
 Because of these issues, you must put `using Proto.Promises.Await` at the top of your file to `await` a promise. This is done as an extra step to prove that you know what you're doing.
 
 ## Additional Information
