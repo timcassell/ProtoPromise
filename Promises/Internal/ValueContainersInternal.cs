@@ -10,6 +10,7 @@
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
 #pragma warning disable IDE0041 // Use 'is null' check
 #pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable IDE0031 // Use null propagation
 
 using System;
 using Proto.Utils;
@@ -57,7 +58,7 @@ namespace Proto.Promises
 
 #if PROMISE_DEBUG
                 System.Diagnostics.StackTrace _rejectedStacktrace;
-                // Stack traces of recursive promises.
+                // Stack traces of recursive callbacks.
                 private CausalityTrace _stacktraces;
 
                 public void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, CausalityTrace createdStacktraces)
