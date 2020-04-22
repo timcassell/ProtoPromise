@@ -1304,6 +1304,7 @@ namespace Proto.Promises
                 public static DelegateContinueCaptureArgResult<TCapture, TArg, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, TResult> callback)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueCaptureArgResult<TCapture, TArg, TResult>();
+                    del._capturedValue = capturedValue;
                     del._callback = callback;
                     return del;
                 }

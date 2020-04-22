@@ -154,7 +154,7 @@ namespace Proto.Promises
             partial class AllPromise0 : IInvokable
             {
                 // These are used to avoid rounding errors when normalizing the progress.
-                private float _expected;
+                private uint _expected;
                 private UnsignedFixed32 _currentAmount;
                 private bool _invokingProgress;
                 private bool _suspended;

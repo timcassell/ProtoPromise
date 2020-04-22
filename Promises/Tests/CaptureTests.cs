@@ -861,6 +861,62 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
+        public void OnContinueWillBeInvokedWithCapturedValue2()
+        {
+            var deferred = Promise.NewDeferred<int>();
+
+            string expected = "expected";
+            bool invoked = false;
+
+            TestHelper.AddContinueCallbacks<int, int, string>(deferred.Promise,
+                captureValue: expected,
+                onContinueCapture: (cv, r) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
+
+            deferred.Resolve(50);
+            Promise.Manager.HandleCompletes();
+
+            Assert.AreEqual(true, invoked);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void OnContinueWillBeInvokedWithCapturedValue3()
+        {
+            var deferred = Promise.NewDeferred<int>();
+
+            string expected = "expected";
+            bool invoked = false;
+
+            TestHelper.AddContinueCallbacks<int, int, string>(deferred.Promise,
+                captureValue: expected,
+                onContinueCapture: (cv, r) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
+
+            deferred.Reject("Reject");
+            Promise.Manager.HandleCompletes();
+
+            Assert.AreEqual(true, invoked);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
         public void OnResolvedWillBeInvokedWithCapturedValue0()
         {
             var deferred = Promise.NewDeferred();
