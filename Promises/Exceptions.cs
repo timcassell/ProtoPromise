@@ -118,7 +118,7 @@ namespace Proto.Promises
         private readonly Type _type;
         private readonly string _stackTrace;
 
-        protected UnhandledException(object value, Type valueType, string message, string stacktrace, Exception innerException) : base(message, innerException)
+        internal UnhandledException(object value, Type valueType, string message, string stacktrace, Exception innerException) : base(message, innerException)
         {
             _value = value;
             _type = valueType;
@@ -152,7 +152,7 @@ namespace Proto.Promises
         private readonly object _value;
         private readonly Type _type;
 
-        protected CanceledException(object value, Type valueType, string message) : base(message)
+        internal CanceledException(object value, Type valueType, string message) : base(message)
         {
             _value = value;
             _type = valueType;
@@ -192,7 +192,7 @@ namespace Proto.Promises
     [DebuggerNonUserCode]
     public abstract class RejectException : Exception
     {
-        protected RejectException() { }
+        internal RejectException() { }
 
         public override string Message
         {
@@ -209,7 +209,7 @@ namespace Proto.Promises
     [DebuggerNonUserCode]
     public abstract class CancelException : OperationCanceledException
     {
-        protected CancelException() { }
+        internal CancelException() { }
 
         public override string Message
         {
@@ -226,7 +226,7 @@ namespace Proto.Promises
         partial class Internal
         {
             [DebuggerNonUserCode]
-            public sealed class UnhandledExceptionInternal : UnhandledException, IValueContainer, IRejectionContainer, IThrowable
+            public sealed class UnhandledExceptionInternal : UnhandledException, IRejectValueContainer, ICantHandleException
             {
                 public UnhandledExceptionInternal(object value, Type valueType, string message, string stacktrace, Exception innerException) :
                     base(value, valueType, message, stacktrace, innerException)
@@ -255,12 +255,17 @@ namespace Proto.Promises
                 }
 
 #if PROMISE_DEBUG
-                void IRejectionContainer.SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces) { }
+                void IRejectValueContainer.SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces) { }
 #endif
+
+                void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
+                {
+                    AddUnhandledException(this);
+                }
             }
 
             [DebuggerNonUserCode]
-            public sealed class CanceledExceptionInternal : CanceledException, IValueContainer, IThrowable
+            public sealed class CanceledExceptionInternal : CanceledException, ICancelValueContainer, ICancelationToContainer
             {
                 public CanceledExceptionInternal(object value, Type valueType, string message) :
                     base(value, valueType, message)
@@ -280,6 +285,11 @@ namespace Proto.Promises
                 {
                     return this;
                 }
+
+                ICancelValueContainer ICancelationToContainer.ToContainer()
+                {
+                    return this;
+                }
             }
 
             [DebuggerNonUserCode]
@@ -296,7 +306,7 @@ namespace Proto.Promises
             }
 
             [DebuggerNonUserCode]
-            public sealed class RejectExceptionInternal<T> : RejectException, IExceptionToContainer, ICantHandleException
+            public sealed class RejectExceptionInternal<T> : RejectException, IRejectionToContainer, ICantHandleException
             {
                 // We can reuse the same object.
                 private static readonly RejectExceptionInternal<T> _instance = new RejectExceptionInternal<T>();
@@ -311,9 +321,9 @@ namespace Proto.Promises
 
                 private RejectExceptionInternal() { }
 
-                public IValueContainer ToContainer(ITraceable traceable)
+                public IRejectValueContainer ToContainer(ITraceable traceable)
                 {
-                    var rejection = CreateRejection(Value);
+                    var rejection = CreateRejectContainer(Value, int.MinValue, traceable);
 #if PROMISE_DEBUG
                     rejection.SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
 #endif
@@ -327,7 +337,7 @@ namespace Proto.Promises
             }
 
             [DebuggerNonUserCode]
-            public sealed class CancelExceptionVoidInternal : CancelException, IExceptionToContainer
+            public sealed class CancelExceptionVoidInternal : CancelException, ICancelationToContainer
             {
                 // We can reuse the same object.
                 private static readonly CancelExceptionVoidInternal _instance = new CancelExceptionVoidInternal();
@@ -339,14 +349,14 @@ namespace Proto.Promises
 
                 private CancelExceptionVoidInternal() { }
 
-                public IValueContainer ToContainer(ITraceable traceable)
+                public ICancelValueContainer ToContainer()
                 {
                     return CancelContainerVoid.GetOrCreate();
                 }
             }
 
             [DebuggerNonUserCode]
-            public sealed class CancelExceptionInternal<T> : CancelException, IExceptionToContainer
+            public sealed class CancelExceptionInternal<T> : CancelException, ICancelationToContainer
             {
                 // We can reuse the same object.
                 private static readonly CancelExceptionInternal<T> _instance = new CancelExceptionInternal<T>();
@@ -361,18 +371,9 @@ namespace Proto.Promises
 
                 private CancelExceptionInternal() { }
 
-                public IValueContainer ToContainer(ITraceable traceable)
+                public ICancelValueContainer ToContainer()
                 {
-#if CSHARP_7_OR_LATER
-                    if (((object) Value) is CanceledExceptionInternal e)
-#else
-                    CanceledExceptionInternal e = Value as CanceledExceptionInternal;
-                    if (e != null)
-#endif
-                    {
-                        return e;
-                    }
-                    return CancelContainer<T>.GetOrCreate(Value);
+                    return CreateCancelContainer(Value);
                 }
             }
         }

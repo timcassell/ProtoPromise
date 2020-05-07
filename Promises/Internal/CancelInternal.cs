@@ -22,6 +22,7 @@
 #pragma warning disable CS0618 // Type or member is obsolete
 
 using System;
+using System.Collections.Generic;
 using Proto.Utils;
 
 namespace Proto.Promises
@@ -90,9 +91,9 @@ namespace Proto.Promises
 
         private void MaybeReleaseContainer()
         {
-            // Handle edge case where the promise is pending with a value container and is canceled before it's handled.
+            // Handle edge case where the promise is pending with a value container and is canceled before it's handled (it's canceled during its own callback).
 #if CSHARP_7_OR_LATER
-            if (_valueOrPrevious is Internal.IValueContainer container)
+            if (((object) _valueOrPrevious) is Internal.IValueContainer container)
 #else
             Internal.IValueContainer container = _valueOrPrevious as Internal.IValueContainer;
             if (container != null)
@@ -135,42 +136,50 @@ namespace Proto.Promises
                 {
                     AddToHandleQueueFront(this);
                 }
+                return;
+            }
+
+            _state = State.Canceled;
+            MaybeReleaseContainer();
+            Internal.IValueContainer cancelValue = CreateCancelContainer(reason);
+            cancelValue.Retain();
+            _valueOrPrevious = cancelValue;
+            AddBranchesToCancelQueueBack(cancelValue);
+            CancelProgressListeners();
+            OnCancel();
+        }
+
+        private static Internal.ICancelValueContainer CreateCancelContainer<TCancel>(TCancel reason)
+        {
+            Internal.ICancelValueContainer cancelValue;
+            if (typeof(TCancel).IsValueType)
+            {
+                cancelValue = Internal.CancelContainer<TCancel>.GetOrCreate(reason);
             }
             else
             {
-                _state = State.Canceled;
-                MaybeReleaseContainer();
-                Internal.IValueContainer cancelValue;
-                if (reason is OperationCanceledException)
-                {
-                    cancelValue = reason as Internal.IValueContainer;
 #if CSHARP_7_OR_LATER
-                    if (reason is Internal.IExceptionToContainer e)
+                if (((object) reason) is Internal.ICancelationToContainer internalCancelation)
 #else
-                    Internal.IExceptionToContainer e = reason as Internal.IExceptionToContainer;
-                    if (e != null)
+                Internal.ICancelationToContainer internalCancelation = reason as Internal.ICancelationToContainer;
+                if (internalCancelation != null)
 #endif
-                    {
-                        // reason is an internal cancelation object (CancelException), convert it to a container instead of wrapping it.
-                        cancelValue = e.ToContainer(this);
-                    }
-                    else if (cancelValue == null)
-                    {
-                        // Don't wrap OperationCanceledException.
-                        cancelValue = Internal.CancelContainerVoid.GetOrCreate();
-                    }
-                    // else reason is an internal cancelation object (CanceledException), use it directly instead of wrapping it.
+                {
+                    // reason is an internal cancelation object, get its container instead of wrapping it.
+                    cancelValue = internalCancelation.ToContainer();
+                }
+                else if (reason is OperationCanceledException)
+                {
+                    // Use void container instead of wrapping OperationCanceledException.
+                    cancelValue = Internal.CancelContainerVoid.GetOrCreate();
                 }
                 else
                 {
-                    cancelValue = Internal.CancelContainer<TCancel>.GetOrCreate(reason);
+                    // Only need to generate one object pool for reference types.
+                    cancelValue = Internal.CancelContainer<object>.GetOrCreate(reason);
                 }
-                cancelValue.Retain();
-                _valueOrPrevious = cancelValue;
-                AddBranchesToCancelQueueBack(cancelValue);
-                CancelProgressListeners();
-                OnCancel();
             }
+            return cancelValue;
         }
 #else
         static protected void ThrowCancelException(int skipFrames)
@@ -187,7 +196,7 @@ namespace Proto.Promises
         partial class Internal
         {
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class CancelDelegate : ITreeHandleable
+            public sealed partial class CancelDelegate : ICancelDelegate
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
@@ -239,7 +248,19 @@ namespace Proto.Promises
                     }
                 }
 
+                void ICancelDelegate.Invoke(IValueContainer valueContainer)
+                {
+                    valueContainer.Retain();
+                    _valueContainer = valueContainer;
+                    Invoke();
+                }
+
                 void ITreeHandleable.Cancel()
+                {
+                    Invoke();
+                }
+
+                private void Invoke()
                 {
                     SetCurrentInvoker(this);
                     var callback = _onCanceled;
@@ -257,7 +278,7 @@ namespace Proto.Promises
                     ClearCurrentInvoker();
                 }
 
-                void Dispose()
+                public void Dispose()
                 {
                     _onCanceled = null;
                     _valueContainer = null;
@@ -271,7 +292,7 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class CancelDelegateCapture<TCapture> : ITreeHandleable
+            public sealed partial class CancelDelegateCapture<TCapture> : ICancelDelegate
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
@@ -325,7 +346,19 @@ namespace Proto.Promises
                     }
                 }
 
+                void ICancelDelegate.Invoke(IValueContainer valueContainer)
+                {
+                    valueContainer.Retain();
+                    _valueContainer = valueContainer;
+                    Invoke();
+                }
+
                 void ITreeHandleable.Cancel()
+                {
+                    Invoke();
+                }
+
+                private void Invoke()
                 {
                     SetCurrentInvoker(this);
                     var value = _capturedValue;
@@ -344,7 +377,7 @@ namespace Proto.Promises
                     ClearCurrentInvoker();
                 }
 
-                void Dispose()
+                public void Dispose()
                 {
                     _capturedValue = default(TCapture);
                     _onCanceled = null;
@@ -356,6 +389,150 @@ namespace Proto.Promises
                 }
 
                 void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
+            }
+
+            public sealed class CancelationRef : ILinked<CancelationRef>
+            {
+                private struct RegisteredDelegate : IComparable<RegisteredDelegate>
+                {
+                    public readonly int order;
+                    public readonly ICancelDelegate callback;
+
+                    public RegisteredDelegate(int order)
+                    {
+                        this.order = order;
+                        callback = null;
+                    }
+
+                    public RegisteredDelegate(int order, ICancelDelegate callback)
+                    {
+                        this.order = order;
+                        this.callback = callback;
+                    }
+
+                    public int CompareTo(RegisteredDelegate other)
+                    {
+                        return order.CompareTo(other.order);
+                    }
+                }
+
+                CancelationRef ILinked<CancelationRef>.Next { get; set; }
+
+                private static ValueLinkedStack<CancelationRef> _pool;
+
+                private readonly List<RegisteredDelegate> _registeredCallbacks = new List<RegisteredDelegate>();
+                private int _registeredCount;
+                private int _retainCount;
+
+                public ICancelValueContainer ValueContainer { get; private set; }
+                public int SourceId { get; private set; }
+                public int TokenId { get; private set; }
+
+                public bool IsCanceled { get { return ValueContainer != null; } }
+
+                public static CancelationRef GetOrCreate()
+                {
+                    return _pool.IsNotEmpty ? _pool.Pop() : new CancelationRef();
+                }
+
+                public int Register(ICancelDelegate callback)
+                {
+                    if (ValueContainer != null)
+                    {
+                        callback.Invoke(ValueContainer);
+                        return 0;
+                    }
+                    checked
+                    {
+                        int order = ++_registeredCount;
+                        _registeredCallbacks.Add(new RegisteredDelegate(order, callback));
+                        return order;
+                    }
+                }
+
+                public void Unregister(int order)
+                {
+                    int index = _registeredCallbacks.BinarySearch(new RegisteredDelegate(order));
+                    _registeredCallbacks.RemoveAt(index);
+                }
+
+                public bool IsRegistered(int order)
+                {
+                    int index = _registeredCallbacks.BinarySearch(new RegisteredDelegate(order));
+                    return index >= 0;
+                }
+
+                public void SetCanceled()
+                {
+                    ValueContainer = CancelContainerVoid.GetOrCreate();
+                    InvokeCallbacks();
+                }
+
+                public void SetCanceled<T>(T cancelValue)
+                {
+                    var container = CancelContainer<T>.GetOrCreate(cancelValue);
+                    container.Retain();
+                    ValueContainer = container;
+                    InvokeCallbacks();
+                }
+
+                private void InvokeCallbacks()
+                {
+                    foreach (var del in _registeredCallbacks)
+                    {
+                        del.callback.Invoke(ValueContainer);
+                    }
+                    _registeredCallbacks.Clear();
+                }
+
+                public void Dispose()
+                {
+                    ++SourceId;
+                    _registeredCount = 0;
+                    foreach (var del in _registeredCallbacks)
+                    {
+                        del.callback.Dispose();
+                    }
+                    _registeredCallbacks.Clear();
+                    if (_retainCount == 0)
+                    {
+                        ResetAndRepool();
+                    }
+                }
+
+                private void ResetAndRepool()
+                {
+                    TokenId = SourceId;
+                    if (ValueContainer != null)
+                    {
+                        ValueContainer.Release();
+                        ValueContainer = null;
+                    }
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
+                public void Retain()
+                {
+                    checked
+                    {
+                        ++_retainCount;
+                    }
+                }
+
+                public void Release()
+                {
+                    checked
+                    {
+                        // If SourceId is different from TokenId, Dispose was called while this was retained.
+                        if (--_retainCount == 0 & SourceId != TokenId)
+                        {
+                            ResetAndRepool();
+                        }
+                    }
+                }
             }
         }
 
@@ -408,12 +585,12 @@ namespace Proto.Promises
             }
         }
 
-        protected void RejectDirectIfNotCanceled<TReject>(TReject reason, bool generateStacktrace)
+        protected void RejectDirectIfNotCanceled<TReject>(TReject reason)
         {
 #if PROMISE_CANCEL
             if (_state == State.Canceled)
             {
-                AddRejectionToUnhandledStack(reason, generateStacktrace ? null : this);
+                AddRejectionToUnhandledStack(reason, null);
                 if (_retainCounter == 0)
                 {
                     AddToHandleQueueFront(this);
@@ -422,7 +599,7 @@ namespace Proto.Promises
             else
 #endif
             {
-                RejectDirect(reason, generateStacktrace);
+                RejectDirect(reason, 2);
             }
         }
 

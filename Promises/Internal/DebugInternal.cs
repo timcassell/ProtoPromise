@@ -45,7 +45,7 @@ namespace Proto.Promises
         static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames);
 
         static partial void SetCreatedStacktrace(Internal.ITraceable stacktraceable, int skipFrames);
-        partial void SetCreatedAndRejectedStacktrace(Internal.IRejectionContainer unhandledException, bool generateStacktrace);
+        static partial void SetCreatedAndRejectedStacktrace(Internal.IRejectValueContainer unhandledException, int rejectSkipFrames, Internal.ITraceable traceable);
         partial void SetNotDisposed();
         static partial void SetCurrentInvoker(Internal.ITraceable current);
         static partial void ClearCurrentInvoker();
@@ -140,12 +140,12 @@ namespace Proto.Promises
             stacktraceable.Trace = new Internal.CausalityTrace(stackTrace, _currentTrace);
         }
 
-        partial void SetCreatedAndRejectedStacktrace(Internal.IRejectionContainer unhandledException, bool generateStacktrace)
+        static partial void SetCreatedAndRejectedStacktrace(Internal.IRejectValueContainer unhandledException, int rejectSkipFrames, Internal.ITraceable traceable)
         {
-            StackTrace stacktrace = generateStacktrace & Config.DebugCausalityTracer != TraceLevel.None
-                ? GetStackTrace(1)
+            StackTrace stacktrace = rejectSkipFrames > 0 & Config.DebugCausalityTracer != TraceLevel.None
+                ? GetStackTrace(rejectSkipFrames + 1)
                 : null;
-            unhandledException.SetCreatedAndRejectedStacktrace(stacktrace, ((Internal.ITraceable) this).Trace);
+            unhandledException.SetCreatedAndRejectedStacktrace(stacktrace, traceable.Trace);
         }
 
         private static StackTrace GetStackTrace(int skipFrames)

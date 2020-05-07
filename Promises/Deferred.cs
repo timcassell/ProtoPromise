@@ -234,7 +234,7 @@ namespace Proto.Promises
                     {
                         State = State.Rejected;
                         promise.ReleaseWithoutDisposeCheck();
-                        promise.RejectDirectIfNotCanceled(reason, true);
+                        promise.RejectDirectIfNotCanceled(reason);
                     }
                     else
                     {
@@ -300,7 +300,7 @@ namespace Proto.Promises
                     {
                         State = State.Rejected;
                         promise.ReleaseWithoutDisposeCheck();
-                        promise.RejectDirectIfNotCanceled(reason, true);
+                        promise.RejectDirectIfNotCanceled(reason);
                     }
                     else
                     {

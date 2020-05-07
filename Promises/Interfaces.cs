@@ -63,9 +63,14 @@ namespace Proto.Promises
                 void ReleaseAndMaybeAddToUnhandledStack();
             }
 
-            public interface IExceptionToContainer
+            public interface IRejectionToContainer
             {
-                IValueContainer ToContainer(ITraceable traceable);
+                IRejectValueContainer ToContainer(ITraceable traceable);
+            }
+
+            public interface ICancelationToContainer
+            {
+                ICancelValueContainer ToContainer();
             }
 
             public interface ICantHandleException
@@ -73,16 +78,23 @@ namespace Proto.Promises
                 void AddToUnhandledStack(ITraceable traceable);
             }
 
-            public interface IRejectionContainer : IValueContainer
+            public interface IThrowable
+            {
+                Exception GetException();
+            }
+
+            public interface IRejectValueContainer : IValueContainer, IThrowable
             {
 #if PROMISE_DEBUG
                 void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, CausalityTrace createdStacktraces);
 #endif
             }
 
-            public interface IThrowable
+            public interface ICancelValueContainer : IValueContainer, IThrowable { }
+
+            public interface ICancelDelegate : ITreeHandleable, IDisposable
             {
-                Exception GetException();
+                void Invoke(IValueContainer valueContainer);
             }
 
             public interface IDelegateResolve : IDisposable

@@ -35,7 +35,7 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class RejectionContainer<T> : PoolableObject<RejectionContainer<T>>, IRejectionContainer, IValueContainer<T>, IThrowable
+            public sealed class RejectionContainer<T> : PoolableObject<RejectionContainer<T>>, IRejectValueContainer, IValueContainer<T>, IRejectionToContainer, ICantHandleException
             {
                 public T Value { get; private set; }
 
@@ -173,10 +173,20 @@ namespace Proto.Promises
                 {
                     return ToException();
                 }
+
+                IRejectValueContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+                {
+                    return this;
+                }
+
+                void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
+                {
+                    AddUnhandledException(ToException());
+                }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class CancelContainer<T> : PoolableObject<CancelContainer<T>>, IValueContainer, IValueContainer<T>, IThrowable
+            public sealed class CancelContainer<T> : PoolableObject<CancelContainer<T>>, ICancelValueContainer, IValueContainer<T>, ICancelationToContainer
             {
                 public T Value { get; private set; }
                 private int _retainCounter;
@@ -207,8 +217,6 @@ namespace Proto.Promises
                 {
                     return State.Canceled;
                 }
-
-                public void SetNewOwner(Promise newOwner, bool appendStacktrace) { }
 
                 public void Retain()
                 {
@@ -250,10 +258,15 @@ namespace Proto.Promises
 
                     return new CanceledExceptionInternal(Value, type, message);
                 }
+
+                ICancelValueContainer ICancelationToContainer.ToContainer()
+                {
+                    return this;
+                }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class CancelContainerVoid : IValueContainer, IThrowable
+            public sealed class CancelContainerVoid : ICancelValueContainer, ICancelationToContainer
             {
                 // We can reuse the same object.
                 private static readonly CancelContainerVoid _instance = new CancelContainerVoid();
@@ -272,7 +285,6 @@ namespace Proto.Promises
                     return State.Canceled;
                 }
 
-                public void SetNewOwner(Promise newOwner, bool appendStacktrace) { }
                 public void Retain() { }
                 public void Release() { }
                 public void ReleaseAndMaybeAddToUnhandledStack() { }
@@ -281,6 +293,11 @@ namespace Proto.Promises
                 Exception IThrowable.GetException()
                 {
                     return new CanceledExceptionInternal(null, null, "Promise was canceled without a reason.");
+                }
+
+                ICancelValueContainer ICancelationToContainer.ToContainer()
+                {
+                    return this;
                 }
             }
 
@@ -322,8 +339,6 @@ namespace Proto.Promises
                 {
                     return State.Resolved;
                 }
-
-                public void SetNewOwner(Promise newOwner, bool appendStacktrace) { }
 
                 public void Retain()
                 {
@@ -378,7 +393,6 @@ namespace Proto.Promises
                     return State.Resolved;
                 }
 
-                public void SetNewOwner(Promise newOwner, bool appendStacktrace) { }
                 public void Retain() { }
                 public void Release() { }
                 public void ReleaseAndMaybeAddToUnhandledStack() { }

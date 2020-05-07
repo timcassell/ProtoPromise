@@ -271,34 +271,11 @@ namespace Proto.Promises
                 ReleaseInternal();
             }
 #if PROMISE_CANCEL
-            catch (CancelException e)
+            catch (OperationCanceledException e)
             {
                 if (_state == State.Pending)
                 {
-                    CancelInternal(((Internal.IExceptionToContainer) e).ToContainer(this));
-                }
-                else
-                {
-                    ReleaseInternal();
-                }
-            }
-            catch (Internal.CanceledExceptionInternal e)
-            {
-                if (_state == State.Pending)
-                {
-                    // reason is an internal cancelation object (CanceledException), don't wrap it.
-                    CancelInternal(e);
-                }
-                else
-                {
-                    ReleaseInternal();
-                }
-            }
-            catch (OperationCanceledException) // Built-in system cancelation (or Task cancelation)
-            {
-                if (_state == State.Pending)
-                {
-                    CancelInternal(Internal.CancelContainerVoid.GetOrCreate());
+                    CancelInternal(CreateCancelContainer(e));
                 }
                 else
                 {
@@ -306,20 +283,6 @@ namespace Proto.Promises
                 }
             }
 #endif
-            catch (RejectException e)
-            {
-#if PROMISE_CANCEL
-                if (_state == State.Canceled)
-                {
-                    ((Internal.ICantHandleException) e).AddToUnhandledStack(this);
-                    ReleaseInternal();
-                }
-                else
-#endif
-                {
-                    RejectInternal(((Internal.IExceptionToContainer) e).ToContainer(this));
-                }
-            }
             catch (Exception e)
             {
 #if PROMISE_CANCEL
@@ -331,9 +294,7 @@ namespace Proto.Promises
                 else
 #endif
                 {
-                    var rejection = CreateRejection(e);
-                    SetCreatedAndRejectedStacktrace(rejection, false);
-                    RejectInternal(rejection);
+                    RejectInternal(CreateRejectContainer(e, int.MinValue, this));
                 }
             }
             finally
@@ -345,11 +306,10 @@ namespace Proto.Promises
             }
         }
 
-        private void RejectDirect<TReject>(TReject reason, bool generateStacktrace)
+        private void RejectDirect<TReject>(TReject reason, int rejectSkipFrames)
         {
             _state = State.Rejected;
-            var rejection = CreateRejection(reason);
-            SetCreatedAndRejectedStacktrace(rejection, generateStacktrace);
+            var rejection = CreateRejectContainer(reason, rejectSkipFrames, this);
             rejection.Retain();
             _valueOrPrevious = rejection;
             AddBranchesToHandleQueueBack(rejection);
@@ -357,23 +317,29 @@ namespace Proto.Promises
             AddToHandleQueueFront(this);
         }
 
-        protected static Internal.IRejectionContainer CreateRejection<TReject>(TReject reason)
+        private static Internal.IRejectValueContainer CreateRejectContainer<TReject>(TReject reason, int rejectSkipFrames, Internal.ITraceable traceable)
         {
-#if CSHARP_7_OR_LATER
-            if (((object) reason) is Internal.IRejectionContainer internalReason)
-#else
-            Internal.IRejectionContainer internalReason = reason as Internal.IRejectionContainer;
-            if (internalReason != null)
-#endif
-            {
-                // reason is an internal rejection object (UnhandledException), use it directly instead of wrapping it.
-                return internalReason;
-            }
+            Internal.IRejectValueContainer valueContainer;
 
             // Avoid boxing value types.
             Type type = typeof(TReject);
-            if (type.IsClass)
+            if (type.IsValueType)
             {
+                valueContainer = Internal.RejectionContainer<TReject>.GetOrCreate(reason);
+            }
+            else
+            {
+#if CSHARP_7_OR_LATER
+                if (((object) reason) is Internal.IRejectionToContainer internalRejection)
+#else
+                Internal.IRejectionToContainer internalRejection = reason as Internal.IRejectionToContainer;
+                if (internalRejection != null)
+#endif
+                {
+                    // reason is an internal rejection object, get its container instead of wrapping it.
+                    return internalRejection.ToContainer(traceable);
+                }
+
 #if CSHARP_7_OR_LATER
                 if (((object) reason) is Exception e)
 #else
@@ -382,15 +348,21 @@ namespace Proto.Promises
 #endif
                 {
                     // reason is a non-null Exception.
-                    return Internal.RejectionContainer<Exception>.GetOrCreate(e);
+                    valueContainer = Internal.RejectionContainer<Exception>.GetOrCreate(e);
                 }
-                if (typeof(Exception).IsAssignableFrom(type))
+                else if (typeof(Exception).IsAssignableFrom(type))
                 {
                     // reason is a null Exception, behave the same way .Net behaves if you throw null.
-                    return Internal.RejectionContainer<Exception>.GetOrCreate(new NullReferenceException());
+                    valueContainer = Internal.RejectionContainer<Exception>.GetOrCreate(new NullReferenceException());
+                }
+                else
+                {
+                    // Only need to generate one object pool for reference types.
+                    valueContainer = Internal.RejectionContainer<object>.GetOrCreate(reason);
                 }
             }
-            return Internal.RejectionContainer<TReject>.GetOrCreate(reason);
+            SetCreatedAndRejectedStacktrace(valueContainer, rejectSkipFrames + 1, traceable);
+            return valueContainer;
         }
 
         protected void HandleSelf(Internal.IValueContainer valueContainer)
@@ -426,9 +398,14 @@ namespace Proto.Promises
         // Generate stacktrace if traceable is null.
         private static void AddRejectionToUnhandledStack<TReject>(TReject unhandledValue, Internal.ITraceable traceable)
         {
-            if (unhandledValue is UnhandledException)
+#if CSHARP_7_OR_LATER
+            if (((object) unhandledValue) is Internal.ICantHandleException ex)
+#else
+            Internal.ICantHandleException ex = unhandledValue as Internal.ICantHandleException;
+            if (ex != null)
+#endif
             {
-                AddUnhandledException(unhandledValue as UnhandledException);
+                ex.AddToUnhandledStack(traceable);
                 return;
             }
 
@@ -546,7 +523,7 @@ namespace Proto.Promises
         {
             // Avoid boxing value types.
 #if CSHARP_7_OR_LATER
-            if (valueContainer is IValueContainer<TConvert> directContainer)
+            if (((object) valueContainer) is IValueContainer<TConvert> directContainer)
 #else
             var directContainer = valueContainer as IValueContainer<TConvert>;
             if (directContainer != null)
@@ -558,6 +535,9 @@ namespace Proto.Promises
 
             if (typeof(TConvert).IsAssignableFrom(valueContainer.ValueType))
             {
+                // Unfortunately, this will box if converting from a non-nullable value type to nullable.
+                // I couldn't find any way around that without resorting to Expressions (which won't work for this purpose with the IL2CPP compiler),
+                // and I didn't want to restrict converting to nullables simply for the sake of no boxing.
                 converted = (TConvert) valueContainer.Value;
                 return true;
             }
@@ -859,7 +839,7 @@ namespace Proto.Promises
                 }
             }
 
-#region Resolve Promises
+            #region Resolve Promises
             // Individual types for more common .Then(onResolved) calls to be more efficient.
             [System.Diagnostics.DebuggerNonUserCode]
             public sealed class PromiseVoidResolve0 : PoolablePromise<PromiseVoidResolve0>
@@ -1557,9 +1537,9 @@ namespace Proto.Promises
                     _onResolved = null;
                 }
             }
-#endregion
+            #endregion
 
-#region Resolve or Reject Promises
+            #region Resolve or Reject Promises
             // IDelegate to reduce the amount of classes I would have to write to handle catches (Composition Over Inheritance).
             // I'm less concerned about performance for catches since exceptions are expensive anyway, and they are expected to be used less often than .Then(onResolved).
             [System.Diagnostics.DebuggerNonUserCode]
