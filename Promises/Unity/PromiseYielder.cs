@@ -91,9 +91,7 @@ namespace Proto.Promises
                 _value = DisposedObject;
             }
 
-            void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer,
-                ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue,
-                ref ValueLinkedQueue<Internal.ITreeHandleable> cancelQueue)
+            void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
             {
                 valueContainer.Retain();
                 _value = valueContainer;
@@ -108,7 +106,6 @@ namespace Proto.Promises
             }
 
             void Internal.ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
-            void Internal.ITreeHandleable.Cancel() { throw new System.InvalidOperationException(); }
         }
     }
 

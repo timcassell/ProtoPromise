@@ -30,7 +30,7 @@ namespace Proto.Promises
     /// or the reason why the <see cref="Promise"/> cannot be resolved.
     /// </summary>
     [System.Diagnostics.DebuggerNonUserCode]
-    public abstract partial class Promise : ICancelableAny, IRetainable
+    public abstract partial class Promise : IRetainable
     {
         public enum State : byte
         {
@@ -97,21 +97,6 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise"/> that adopts the state of this. This is mostly useful for branches that you expect might be canceled, and you don't want all branches to be canceled.
-        /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. This is mostly useful for cancelations of branched promises. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", false)]
-#endif
-        public Promise ThenDuplicate()
-        {
-            ValidateOperation(this, 1);
-
-            var promise = GetDuplicate();
-            HookupNewPromise(promise);
-            return promise;
-        }
-
-        /// <summary>
         /// Add a progress listener. Returns this.
         /// <para/><paramref name="onProgress"/> will be invoked with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
         /// </summary>
@@ -142,36 +127,6 @@ namespace Proto.Promises
                 AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled, 1));
             }
             return this;
-        }
-
-        /// <summary>
-        /// Cancels this promise and all promises that have been chained from this without a reason.
-        /// Does nothing if this promise isn't pending.
-        /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
-        public void Cancel()
-        {
-            ValidateCancel(1);
-            ValidateOperation(this, 1);
-
-            CancelDirectIfPending();
-        }
-
-        /// <summary>
-        /// Cancels this promise and all promises that have been chained from this with the provided cancel reason.
-        /// Does nothing if this promise isn't pending.
-        /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
-        public void Cancel<TCancel>(TCancel reason)
-        {
-            ValidateCancel(1);
-            ValidateOperation(this, 1);
-
-            CancelDirectIfPending(reason);
         }
 
         /// <summary>
@@ -761,25 +716,10 @@ namespace Proto.Promises
         public new YieldInstruction ToYieldInstruction()
         {
             ValidateOperation(this, 1);
-            
+
             var yield = Internal.YieldInstruction<T>.GetOrCreate(this);
             AddWaiter(yield);
             return yield;
-        }
-
-        /// <summary>
-        /// Returns a new <see cref="Promise{T}"/> that adopts the state of this. This is mostly useful for branches that you expect might be canceled, and you don't want all branches to be canceled.
-        /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. This is mostly useful for cancelations of branched promises. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", false)]
-#endif
-        public new Promise<T> ThenDuplicate()
-        {
-            ValidateOperation(this, 1);
-
-            var promise = Internal.DuplicatePromise<T>.GetOrCreate(1);
-            HookupNewPromise(promise);
-            return promise;
         }
 
         /// <summary>

@@ -13,6 +13,42 @@ namespace Proto.Promises
         partial class Internal
         {
             [System.Diagnostics.DebuggerNonUserCode]
+            public sealed class DelegatePassthrough : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            {
+                private static readonly DelegatePassthrough _instance = new DelegatePassthrough();
+
+                private DelegatePassthrough() { }
+
+                public static DelegatePassthrough GetOrCreate()
+                {
+                    return _instance;
+                }
+
+                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                {
+                    owner.ResolveInternal(valueContainer);
+                }
+
+                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                {
+                    owner.RejectOrCancelInternal(valueContainer);
+                }
+
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                {
+                    owner.ResolveInternal(valueContainer);
+                }
+
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                {
+                    owner.RejectOrCancelInternal(valueContainer);
+                }
+
+                void IDisposable.Dispose() { }
+            }
+
+
+            [System.Diagnostics.DebuggerNonUserCode]
             public sealed partial class FinallyDelegate : ITreeHandleable
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
@@ -66,12 +102,7 @@ namespace Proto.Promises
                     InvokeAndCatchAndDispose();
                 }
 
-                void ITreeHandleable.Cancel()
-                {
-                    InvokeAndCatchAndDispose();
-                }
-
-                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue, ref ValueLinkedQueue<ITreeHandleable> cancelQueue)
+                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
                     handleQueue.Push(this);
                 }
@@ -82,42 +113,7 @@ namespace Proto.Promises
                 }
             }
 
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegatePassthrough : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                private static readonly DelegatePassthrough _instance = new DelegatePassthrough();
-
-                private DelegatePassthrough() { }
-
-                public static DelegatePassthrough GetOrCreate()
-                {
-                    return _instance;
-                }
-
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    owner.ResolveInternal(valueContainer);
-                }
-
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    owner.RejectInternal(valueContainer);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    owner.ResolveInternal(valueContainer);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    owner.RejectInternal(valueContainer);
-                }
-
-                void IDisposable.Dispose() { }
-            }
-
+            #region Regular Delegates
             [System.Diagnostics.DebuggerNonUserCode]
             public sealed class DelegateVoidVoid : PoolableObject<DelegateVoidVoid>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
@@ -137,7 +133,7 @@ namespace Proto.Promises
                     var temp = _callback;
                     Dispose();
                     temp.Invoke();
-                    owner.ResolveInternalIfNotCanceled();
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
@@ -189,7 +185,7 @@ namespace Proto.Promises
                     var temp = _callback;
                     Dispose();
                     temp.Invoke(arg);
-                    owner.ResolveInternalIfNotCanceled();
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
@@ -207,7 +203,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
@@ -255,7 +251,7 @@ namespace Proto.Promises
                     var temp = _callback;
                     Dispose();
                     TResult result = temp.Invoke();
-                    owner.ResolveInternalIfNotCanceled(result);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(result));
                 }
 
                 void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
@@ -307,7 +303,7 @@ namespace Proto.Promises
                     var temp = _callback;
                     Dispose();
                     TResult result = temp.Invoke(arg);
-                    owner.ResolveInternalIfNotCanceled(result);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(result));
                 }
 
                 void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
@@ -325,7 +321,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
@@ -432,7 +428,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
@@ -523,7 +519,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
@@ -549,7 +545,7 @@ namespace Proto.Promises
                     del._callback = callback;
                     return del;
                 }
-                
+
                 private DelegateContinueVoidVoid() { }
 
                 void IDelegateContinue.DisposeAndInvoke(IValueContainer valueContainer)
@@ -661,8 +657,9 @@ namespace Proto.Promises
                     }
                 }
             }
+            #endregion
 
-
+            #region Delegates with capture value
             [System.Diagnostics.DebuggerNonUserCode]
             public sealed partial class FinallyDelegateCapture<TCapture> : ITreeHandleable
             {
@@ -721,12 +718,7 @@ namespace Proto.Promises
                     InvokeAndCatchAndDispose();
                 }
 
-                void ITreeHandleable.Cancel()
-                {
-                    InvokeAndCatchAndDispose();
-                }
-
-                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue, ref ValueLinkedQueue<ITreeHandleable> cancelQueue)
+                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
                     handleQueue.Push(this);
                 }
@@ -760,7 +752,7 @@ namespace Proto.Promises
                     var temp = _callback;
                     Dispose();
                     temp.Invoke(value);
-                    owner.ResolveInternalIfNotCanceled();
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
@@ -816,7 +808,7 @@ namespace Proto.Promises
                     var temp = _callback;
                     Dispose();
                     temp.Invoke(value, arg);
-                    owner.ResolveInternalIfNotCanceled();
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
@@ -834,7 +826,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
@@ -886,7 +878,7 @@ namespace Proto.Promises
                     var temp = _callback;
                     Dispose();
                     TResult result = temp.Invoke(value);
-                    owner.ResolveInternalIfNotCanceled(result);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(result));
                 }
 
                 void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
@@ -942,7 +934,7 @@ namespace Proto.Promises
                     var temp = _callback;
                     Dispose();
                     TResult result = temp.Invoke(value, arg);
-                    owner.ResolveInternalIfNotCanceled(result);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(result));
                 }
 
                 void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
@@ -960,7 +952,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
@@ -1075,7 +1067,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
@@ -1174,7 +1166,7 @@ namespace Proto.Promises
                     else
                     {
                         Dispose();
-                        owner.RejectInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
@@ -1329,6 +1321,123 @@ namespace Proto.Promises
                     }
                 }
             }
+            #endregion
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public sealed class DelegatePassthroughCancel : PoolableObject<DelegatePassthroughCancel>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            {
+                private CancelationToken _cancelationToken;
+
+                private DelegatePassthroughCancel() { }
+
+                public static DelegatePassthroughCancel GetOrCreate(CancelationToken cancelationToken)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegatePassthroughCancel();
+                    del._cancelationToken = cancelationToken;
+                    return del;
+                }
+
+                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                {
+                    DisposeAndReleaseAndMaybeThrow();
+                    owner.ResolveInternal(valueContainer);
+                }
+
+                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                {
+                    DisposeAndReleaseAndMaybeThrow();
+                    owner.RejectOrCancelInternal(valueContainer);
+                }
+
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                {
+                    DisposeAndReleaseAndMaybeThrow();
+                    owner.ResolveInternal(valueContainer);
+                }
+
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                {
+                    DisposeAndReleaseAndMaybeThrow();
+                    owner.RejectOrCancelInternal(valueContainer);
+                }
+
+                private void DisposeAndReleaseAndMaybeThrow()
+                {
+                    var token = _cancelationToken;
+                    Dispose();
+                    ReleaseAndMaybeThrow(token);
+                }
+
+                public void Dispose()
+                {
+                    _cancelationToken = default(CancelationToken);
+                }
+            }
+
+            #region Delegates with cancelation token
+            [System.Diagnostics.DebuggerNonUserCode]
+            public sealed class DelegateVoidVoidCancel : PoolableObject<DelegateVoidVoidCancel>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            {
+                private Action<CancelationToken> _callback;
+                private CancelationToken _cancelationToken;
+                public CancelationRegistration cancelationRegistration;
+
+                private DelegateVoidVoidCancel() { }
+
+                public static DelegateVoidVoidCancel GetOrCreate(Action<CancelationToken> callback, CancelationToken cancelationToken)
+                {
+                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidVoidCancel();
+                    del._callback = callback;
+                    del._cancelationToken = cancelationToken;
+                    return del;
+                }
+
+                private void DisposeAndInvoke(Promise owner)
+                {
+                    var temp = _callback;
+                    var token = _cancelationToken;
+                    Dispose();
+                    ReleaseAndMaybeThrow(token);
+                    temp.Invoke(_cancelationToken);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                }
+
+                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                {
+                    DisposeAndInvoke(owner);
+                }
+
+                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                {
+                    DisposeAndInvoke(owner);
+                }
+
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                {
+                    DisposeAndInvoke(owner);
+                }
+
+                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                {
+                    DisposeAndInvoke(owner);
+                }
+
+                public void Dispose()
+                {
+                    _callback = null;
+                    _cancelationToken = default(CancelationToken);
+                    if (cancelationRegistration.IsRegistered)
+                    {
+                        cancelationRegistration.Unregister();
+                    }
+                    cancelationRegistration = default(CancelationRegistration);
+                    if (Config.ObjectPooling != PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+            }
+            #endregion
         }
     }
 }

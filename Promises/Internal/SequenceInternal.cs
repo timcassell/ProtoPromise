@@ -2,5 +2,4 @@
 
                 // Invoke funcs async and normalize the progress.
                 Promise promise = PromiseVoidResolvePromise0.GetOrCreate(promiseFuncs.Current, skipFrames + 1);                 promise._valueOrPrevious = ResolveContainerVoid.GetOrCreate();                 promise.ResetDepth();                 AddToHandleQueueBack(promise);                  while (promiseFuncs.MoveNext())                 {                     promise = promise.Then(promiseFuncs.Current);                 }
-#if PROMISE_CANCEL                 return promise.ThenDuplicate(); // Prevents canceling only the very last callback.
-#else                 return promise; #endif             }         }     } }
+                return promise;             }         }     } }

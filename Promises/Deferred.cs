@@ -36,10 +36,7 @@ namespace Proto.Promises
             /// </summary>
             public Promise Promise { get; protected set; }
 
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-            private
-#endif
-            protected DeferredBase() { }
+            internal DeferredBase() { }
 
             ~DeferredBase()
             {
@@ -83,7 +80,7 @@ namespace Proto.Promises
             public abstract void ReportProgress(float progress);
 
             /// <summary>
-            /// Cancel the linked <see cref="Promise"/> and all promises that have been chained from it without a reason.
+            /// Cancel the linked <see cref="Promise"/> without a reason.
             /// </summary>
 #if !PROMISE_CANCEL
             [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
@@ -98,7 +95,7 @@ namespace Proto.Promises
                 {
                     State = State.Canceled;
                     promise.ReleaseWithoutDisposeCheck();
-                    promise.CancelDirectIfPending();
+                    promise.CancelDirect();
                 }
                 else
                 {
@@ -107,7 +104,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Cancel the linked <see cref="Promise"/> and all promises that have been chained from it with <paramref name="reason"/>.
+            /// Cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// </summary>
 #if !PROMISE_CANCEL
             [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
@@ -122,7 +119,7 @@ namespace Proto.Promises
                 {
                     State = State.Canceled;
                     promise.ReleaseWithoutDisposeCheck();
-                    promise.CancelDirectIfPending(reason);
+                    promise.CancelDirect(reason);
                 }
                 else
                 {
@@ -137,10 +134,7 @@ namespace Proto.Promises
         [System.Diagnostics.DebuggerNonUserCode]
         public abstract class Deferred : DeferredBase
         {
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-            private
-#endif
-            protected Deferred() { }
+            internal Deferred() { }
 
             /// <summary>
             /// Resolve the linked <see cref="Promise"/>.
@@ -162,10 +156,7 @@ namespace Proto.Promises
             /// </summary>
             public new Promise<T> Promise { get { return (Promise<T>) base.Promise; } protected set { base.Promise = value; } }
 
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-            private
-#endif
-            protected Deferred() { }
+            internal Deferred() { }
 
             /// <summary>
             /// Resolve the linked <see cref="Promise{T}"/> with <paramref name="value"/>.
@@ -216,7 +207,7 @@ namespace Proto.Promises
                     {
                         State = State.Resolved;
                         promise.ReleaseWithoutDisposeCheck();
-                        promise.ResolveDirectIfNotCanceled();
+                        promise.ResolveDirect();
                     }
                     else
                     {
@@ -234,7 +225,7 @@ namespace Proto.Promises
                     {
                         State = State.Rejected;
                         promise.ReleaseWithoutDisposeCheck();
-                        promise.RejectDirectIfNotCanceled(reason);
+                        promise.RejectDirect(reason, 1);
                     }
                     else
                     {
@@ -282,7 +273,7 @@ namespace Proto.Promises
                     {
                         State = State.Resolved;
                         promise.ReleaseWithoutDisposeCheck();
-                        promise.ResolveDirectIfNotCanceled(value);
+                        promise.ResolveDirect(value);
                     }
                     else
                     {
@@ -300,7 +291,7 @@ namespace Proto.Promises
                     {
                         State = State.Rejected;
                         promise.ReleaseWithoutDisposeCheck();
-                        promise.RejectDirectIfNotCanceled(reason);
+                        promise.RejectDirect(reason, 1);
                     }
                     else
                     {

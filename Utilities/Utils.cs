@@ -113,6 +113,29 @@ namespace Proto.Utils
             return _first;
         }
 
+        public void Remove(T item)
+        {
+            if (item == _first)
+            {
+                _first = _first.Next;
+                item.Next = null;
+                return;
+            }
+            T node = _first;
+            T next = node.Next;
+            while (next != null)
+            {
+                if (next == item)
+                {
+                    node.Next = next.Next;
+                    item.Next = null;
+                    return;
+                }
+                node = next;
+                next = node.Next;
+            }
+        }
+
         public Enumerator<T> GetEnumerator()
         {
             return new Enumerator<T>(_first);

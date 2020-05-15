@@ -7,7 +7,8 @@ namespace Proto.Promises
         /// <summary>
         /// Cancelation source used to cancel promises.
         /// </summary>
-        public struct CancelationSource : IDisposable, IEquatable<CancelationSource>
+        [System.Diagnostics.DebuggerNonUserCode]
+        public struct CancelationSource : ICancelableAny, IDisposable, IEquatable<CancelationSource>
         {
             private readonly Internal.CancelationRef _ref;
             private readonly int _id;
@@ -35,7 +36,7 @@ namespace Proto.Promises
                 {
                     if (!IsValid)
                     {
-                        throw new InvalidOperationException("CancelationSource is not valid.", GetFormattedStacktrace(1));
+                        throw new InvalidOperationException("CancelationSource.Token: source is not valid.", GetFormattedStacktrace(1));
                     }
                     return new CancelationToken(_ref);
                 }
@@ -54,13 +55,45 @@ namespace Proto.Promises
             }
 
             /// <summary>
+            /// Communicates a request for cancelation without providing a reason, and invokes all callbacks that are registered to any associated <see cref="CancelationToken"/>.
+            /// </summary>
+            public void Cancel()
+            {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("CancelationSource.Cancel: source is not valid.", GetFormattedStacktrace(1));
+                }
+                if (_ref.IsCanceled)
+                {
+                    throw new InvalidOperationException("CancelationSource.Cancel: source was already canceled.", GetFormattedStacktrace(1));
+                }
+                _ref.SetCanceled();
+            }
+
+            /// <summary>
+            /// Communicates a request for cancelation with the provided reason, and invokes all callbacks that are registered to any associated <see cref="CancelationToken"/>.
+            /// </summary>
+            public void Cancel<TCancel>(TCancel reason)
+            {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("CancelationSource.Cancel: source is not valid.", GetFormattedStacktrace(1));
+                }
+                if (_ref.IsCanceled)
+                {
+                    throw new InvalidOperationException("CancelationSource.Cancel: source was already canceled.", GetFormattedStacktrace(1));
+                }
+                _ref.SetCanceled(reason);
+            }
+
+            /// <summary>
             /// Release all resources used by this <see cref="CancelationSource"/>. This instance will no longer be valid.
             /// </summary>
             public void Dispose()
             {
                 if (!IsValid)
                 {
-                    throw new InvalidOperationException("CancelationSource is not valid.", GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("CancelationSource.Dispose: source is not valid.", GetFormattedStacktrace(1));
                 }
                 _ref.Dispose();
             }
@@ -108,6 +141,7 @@ namespace Proto.Promises
         /// <summary>
         /// Propagates notification that operations should be canceled.
         /// </summary>
+        [System.Diagnostics.DebuggerNonUserCode]
         public struct CancelationToken : IRetainable, IEquatable<CancelationToken>
         {
             private readonly Internal.CancelationRef _ref;
@@ -146,6 +180,9 @@ namespace Proto.Promises
                 }
             }
 
+            /// <summary>
+            /// If cancelation was requested on this token, throws a <see cref="Promises.CancelException"/>.
+            /// </summary>
             public void ThrowIfCancelationRequested()
             {
                 if (IsCancelationRequested)
@@ -164,7 +201,7 @@ namespace Proto.Promises
                 {
                     if (!IsCancelationRequested)
                     {
-                        throw new InvalidOperationException("CancelationToken has not been canceled.", GetFormattedStacktrace(1));
+                        throw new InvalidOperationException("CancelationToken.CancelationValueType: token has not been canceled.", GetFormattedStacktrace(1));
                     }
                     return _ref.ValueContainer.ValueType;
                 }
@@ -180,7 +217,7 @@ namespace Proto.Promises
                 {
                     if (!IsCancelationRequested)
                     {
-                        throw new InvalidOperationException("CancelationToken has not been canceled.", GetFormattedStacktrace(1));
+                        throw new InvalidOperationException("CancelationToken.CancelationValue: token has not been canceled.", GetFormattedStacktrace(1));
                     }
                     return _ref.ValueContainer.Value;
                 }
@@ -194,7 +231,7 @@ namespace Proto.Promises
             {
                 if (!IsCancelationRequested)
                 {
-                    throw new InvalidOperationException("CancelationToken has not been canceled.", GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("CancelationToken.CancelationValue: token has not been canceled.", GetFormattedStacktrace(1));
                 }
                 return TryConvert(_ref.ValueContainer, out value);
             }
@@ -209,7 +246,7 @@ namespace Proto.Promises
             {
                 if (!CanBeCanceled)
                 {
-                    throw new InvalidOperationException("CancelationToken.Register is invalid because it cannot be canceled.", GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", GetFormattedStacktrace(1));
                 }
                 ValidateArgument(callback, "callback", 1);
                 if (_ref.IsCanceled)
@@ -230,7 +267,7 @@ namespace Proto.Promises
             {
                 if (!CanBeCanceled)
                 {
-                    throw new InvalidOperationException("CancelationToken.Register is invalid because it cannot be canceled.", GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", GetFormattedStacktrace(1));
                 }
                 ValidateArgument(callback, "callback", 1);
                 if (_ref.IsCanceled)
@@ -249,7 +286,7 @@ namespace Proto.Promises
             {
                 if (!CanBeCanceled)
                 {
-                    throw new InvalidOperationException("CancelationToken.Retain is invalid because it cannot be canceled.", GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("CancelationToken.Retain: token cannot be canceled.", GetFormattedStacktrace(1));
                 }
                 _ref.Retain();
             }
@@ -262,7 +299,7 @@ namespace Proto.Promises
             {
                 if (!CanBeCanceled)
                 {
-                    throw new InvalidOperationException("CancelationToken.Release is invalid because it cannot be canceled.", GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("CancelationToken.Release: token cannot be canceled.", GetFormattedStacktrace(1));
                 }
                 _ref.Release();
             }
@@ -310,6 +347,7 @@ namespace Proto.Promises
         /// <summary>
         /// Represents a callback delegate that has been registered with a <see cref="CancelationToken"/>.
         /// </summary>
+        [System.Diagnostics.DebuggerNonUserCode]
         public struct CancelationRegistration : IEquatable<CancelationRegistration>
         {
             private readonly Internal.CancelationRef _ref;

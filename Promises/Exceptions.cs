@@ -101,10 +101,7 @@ namespace Proto.Promises
     [DebuggerNonUserCode]
     public class UnreleasedObjectException : Exception
     {
-        public static readonly UnreleasedObjectException instance =
-            new UnreleasedObjectException("An IRetainable object was garbage collected that was not released. You must release all IRetainable objects that you have retained.");
-
-        private UnreleasedObjectException(string message) : base(message) { }
+        public UnreleasedObjectException(string message) : base(message) { }
     }
 
 

@@ -344,14 +344,9 @@ namespace Proto.Promises
 
             _runningProgress = true;
 
-            // Cancels are high priority, make sure those delegates are invoked before anything else.
-            HandleCanceled();
-
             while (_progressQueue.IsNotEmpty)
             {
                 _progressQueue.DequeueRisky().Invoke();
-
-                HandleCanceled();
             }
 
             _progressQueue.ClearLast();
@@ -629,9 +624,8 @@ namespace Proto.Promises
                     _canceled = true;
                     MarkOrDispose();
                 }
-        
-                void ITreeHandleable.Cancel() { throw new System.InvalidOperationException(); }
-                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue, ref ValueLinkedQueue<ITreeHandleable> cancelQueue) { throw new System.InvalidOperationException(); }
+
+                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue) { throw new System.InvalidOperationException(); }
                 void ITreeHandleable.MakeReadyFromSettled(IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
             }
 

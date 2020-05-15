@@ -46,8 +46,7 @@ namespace Proto.Promises
             public interface ITreeHandleable : ILinked<ITreeHandleable>
             {
                 void Handle();
-                void Cancel();
-                void MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue, ref ValueLinkedQueue<ITreeHandleable> cancelQueue);
+                void MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue);
                 void MakeReadyFromSettled(IValueContainer valueContainer);
             }
 

@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Proto.Utils;
 
 namespace Proto.Promises
@@ -32,66 +33,16 @@ namespace Proto.Promises
         // Calls to this get compiled away when CANCEL is defined.
         static partial void ValidateCancel(int skipFrames);
 
-        static partial void AddToCancelQueueBack(Internal.ITreeHandleable cancelation);
-        static partial void AddToCancelQueueFront(Internal.ITreeHandleable cancelation);
-        static partial void AddToCancelQueueFront(ref ValueLinkedQueue<Internal.ITreeHandleable> cancelations);
-        static partial void AddToCancelQueueBack(ref ValueLinkedQueue<Internal.ITreeHandleable> cancelations);
-        static partial void HandleCanceled();
-        partial void CancelDirectIfPending();
+        partial void CancelDirect();
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-        partial void CancelDirectIfPending<TCancel>(in TCancel reason);
+        partial void CancelDirect<TCancel>(in TCancel reason);
 #else
-        partial void CancelDirectIfPending<TCancel>(TCancel reason);
+        partial void CancelDirect<TCancel>(TCancel reason);
 #endif
 
 #if PROMISE_CANCEL
-        // Cancel promises in a depth-first manner.
-        private static ValueLinkedQueue<Internal.ITreeHandleable> _cancelQueue;
-
-        static partial void AddToCancelQueueFront(Internal.ITreeHandleable cancelation)
+        private void MakeCanceledFromToken()
         {
-            _cancelQueue.Push(cancelation);
-        }
-
-        static partial void AddToCancelQueueBack(Internal.ITreeHandleable cancelation)
-        {
-            _cancelQueue.Enqueue(cancelation);
-        }
-
-        static partial void AddToCancelQueueFront(ref ValueLinkedQueue<Internal.ITreeHandleable> cancelations)
-        {
-            _cancelQueue.PushAndClear(ref cancelations);
-        }
-
-        static partial void AddToCancelQueueBack(ref ValueLinkedQueue<Internal.ITreeHandleable> cancelations)
-        {
-            _cancelQueue.EnqueueAndClear(ref cancelations);
-        }
-
-        static partial void HandleCanceled()
-        {
-            while (_cancelQueue.IsNotEmpty)
-            {
-                _cancelQueue.DequeueRisky().Cancel();
-            }
-            _cancelQueue.ClearLast();
-        }
-
-        void Internal.ITreeHandleable.Cancel()
-        {
-            if (_state == State.Pending)
-            {
-                HandleCancel();
-            }
-            else
-            {
-                ReleaseInternal();
-            }
-        }
-
-        private void MaybeReleaseContainer()
-        {
-            // Handle edge case where the promise is pending with a value container and is canceled before it's handled (it's canceled during its own callback).
 #if CSHARP_7_OR_LATER
             if (((object) _valueOrPrevious) is Internal.IValueContainer container)
 #else
@@ -99,54 +50,49 @@ namespace Proto.Promises
             if (container != null)
 #endif
             {
+                // Rejection maybe wasn't caught.
                 container.ReleaseAndMaybeAddToUnhandledStack();
-            }
-        }
-
-        partial void CancelDirectIfPending()
-        {
-            if (_state != State.Pending)
-            {
-                if (_retainCounter == 0)
-                {
-                    AddToHandleQueueFront(this);
-                }
             }
             else
             {
-                _state = State.Canceled;
-                MaybeReleaseContainer();
-                var cancelValue = Internal.CancelContainerVoid.GetOrCreate();
-                _valueOrPrevious = cancelValue;
-                AddBranchesToCancelQueueBack(cancelValue);
-                CancelProgressListeners();
-                OnCancel();
+#if CSHARP_7_OR_LATER
+                if (((object) _valueOrPrevious) is Promise previous)
+#else
+                Promise previous = _valueOrPrevious as Promise;
+                if (previous != null)
+#endif
+                {
+                    // Remove this from previous' next branches.
+                    previous._nextBranches.Remove(this);
+                }
             }
+            _valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
+            AddToHandleQueueBack(this);
+        }
+
+        partial void CancelDirect()
+        {
+            _state = State.Canceled;
+            var cancelContainer = Internal.CancelContainerVoid.GetOrCreate();
+            _valueOrPrevious = cancelContainer;
+            AddBranchesToHandleQueueBack(cancelContainer);
+            CancelProgressListeners();
+            AddToHandleQueueFront(this);
         }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-        partial void CancelDirectIfPending<TCancel>(in TCancel reason)
+        partial void CancelDirect<TCancel>(in TCancel reason)
 #else
-        partial void CancelDirectIfPending<TCancel>(TCancel reason)
+        partial void CancelDirect<TCancel>(TCancel reason)
 #endif
         {
-            if (_state != State.Pending)
-            {
-                if (_retainCounter == 0)
-                {
-                    AddToHandleQueueFront(this);
-                }
-                return;
-            }
-
             _state = State.Canceled;
-            MaybeReleaseContainer();
-            Internal.IValueContainer cancelValue = CreateCancelContainer(reason);
-            cancelValue.Retain();
-            _valueOrPrevious = cancelValue;
-            AddBranchesToCancelQueueBack(cancelValue);
+            var cancelContainer = CreateCancelContainer(reason);
+            cancelContainer.Retain();
+            _valueOrPrevious = cancelContainer;
+            AddBranchesToHandleQueueBack(cancelContainer);
             CancelProgressListeners();
-            OnCancel();
+            AddToHandleQueueFront(this);
         }
 
         private static Internal.ICancelValueContainer CreateCancelContainer<TCancel>(TCancel reason)
@@ -175,11 +121,32 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    // Only need to generate one object pool for reference types.
-                    cancelValue = Internal.CancelContainer<object>.GetOrCreate(reason);
+                    cancelValue = Internal.CancelContainer<TCancel>.GetOrCreate(reason);
                 }
             }
             return cancelValue;
+        }
+
+        protected static CancelationRegistration RegisterForCancelation(Promise promise, CancelationToken cancelationToken)
+        {
+            return cancelationToken.CanBeCanceled
+                ? cancelationToken.Register(promise, (p, _) => p.MakeCanceledFromToken())
+                : default(CancelationRegistration);
+        }
+
+        private static void ReleaseAndMaybeThrow(CancelationToken cancelationToken)
+        {
+            try
+            {
+                cancelationToken.ThrowIfCancelationRequested();
+            }
+            finally
+            {
+                if (cancelationToken.CanBeCanceled)
+                {
+                    cancelationToken.Release();
+                }
+            }
         }
 #else
         static protected void ThrowCancelException(int skipFrames)
@@ -195,7 +162,7 @@ namespace Proto.Promises
 
         partial class Internal
         {
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode]
             public sealed partial class CancelDelegate : ICancelDelegate
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
@@ -220,13 +187,13 @@ namespace Proto.Promises
                     return del;
                 }
 
-                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue, ref ValueLinkedQueue<ITreeHandleable> cancelQueue)
+                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
                     if (valueContainer.GetState() == State.Canceled)
                     {
                         valueContainer.Retain();
                         _valueContainer = valueContainer;
-                        cancelQueue.Push(this);
+                        handleQueue.Push(this);
                     }
                     else
                     {
@@ -240,7 +207,7 @@ namespace Proto.Promises
                     {
                         valueContainer.Retain();
                         _valueContainer = valueContainer;
-                        AddToCancelQueueBack(this);
+                        AddToHandleQueueBack(this);
                     }
                     else
                     {
@@ -255,7 +222,7 @@ namespace Proto.Promises
                     Invoke();
                 }
 
-                void ITreeHandleable.Cancel()
+                void ITreeHandleable.Handle()
                 {
                     Invoke();
                 }
@@ -287,11 +254,9 @@ namespace Proto.Promises
                         _pool.Push(this);
                     }
                 }
-
-                void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
             }
 
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode]
             public sealed partial class CancelDelegateCapture<TCapture> : ICancelDelegate
             {
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
@@ -318,13 +283,13 @@ namespace Proto.Promises
                     return del;
                 }
 
-                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue, ref ValueLinkedQueue<ITreeHandleable> cancelQueue)
+                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
                     if (valueContainer.GetState() == State.Canceled)
                     {
                         valueContainer.Retain();
                         _valueContainer = valueContainer;
-                        cancelQueue.Push(this);
+                        handleQueue.Push(this);
                     }
                     else
                     {
@@ -338,7 +303,7 @@ namespace Proto.Promises
                     {
                         valueContainer.Retain();
                         _valueContainer = valueContainer;
-                        AddToCancelQueueBack(this);
+                        AddToHandleQueueBack(this);
                     }
                     else
                     {
@@ -353,7 +318,7 @@ namespace Proto.Promises
                     Invoke();
                 }
 
-                void ITreeHandleable.Cancel()
+                void ITreeHandleable.Handle()
                 {
                     Invoke();
                 }
@@ -387,32 +352,54 @@ namespace Proto.Promises
                         _pool.Push(this);
                     }
                 }
-
-                void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
             }
 
-            public sealed class CancelationRef : ILinked<CancelationRef>
+            [DebuggerNonUserCode]
+            public sealed class CancelationRef : ILinked<CancelationRef>, ITraceable
             {
                 private struct RegisteredDelegate : IComparable<RegisteredDelegate>
                 {
-                    public readonly int order;
                     public readonly ICancelDelegate callback;
+                    public readonly int order;
 
                     public RegisteredDelegate(int order)
                     {
-                        this.order = order;
                         callback = null;
+                        this.order = order;
                     }
 
                     public RegisteredDelegate(int order, ICancelDelegate callback)
                     {
-                        this.order = order;
                         this.callback = callback;
+                        this.order = order;
                     }
 
                     public int CompareTo(RegisteredDelegate other)
                     {
                         return order.CompareTo(other.order);
+                    }
+                }
+
+#if PROMISE_DEBUG
+                CausalityTrace ITraceable.Trace { get; set; }
+#endif
+
+                ~CancelationRef()
+                {
+                    if (ValueContainer != null)
+                    {
+                        ValueContainer.Release();
+                    }
+                    if (_retainCount > 0)
+                    {
+                        // CancelationToken wasn't released.
+                        string message = "A CancelationToken's resources were garbage collected without being released. You must release all IRetainable objects that you have retained.";
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                    }
+                    if (!_isDisposed)
+                    {
+                        // CancelationSource wasn't disposed.
+                        AddRejectionToUnhandledStack(new Exception("CancelationSource's resources were garbage collected without being disposed."), this);
                     }
                 }
 
@@ -430,9 +417,14 @@ namespace Proto.Promises
 
                 public bool IsCanceled { get { return ValueContainer != null; } }
 
+                private bool _isDisposed;
+
                 public static CancelationRef GetOrCreate()
                 {
-                    return _pool.IsNotEmpty ? _pool.Pop() : new CancelationRef();
+                    var cancelRef = _pool.IsNotEmpty ? _pool.Pop() : new CancelationRef();
+                    cancelRef._isDisposed = false;
+                    SetCreatedStacktrace(cancelRef, 2);
+                    return cancelRef;
                 }
 
                 public int Register(ICancelDelegate callback)
@@ -498,6 +490,7 @@ namespace Proto.Promises
                     {
                         ResetAndRepool();
                     }
+                    _isDisposed = true;
                 }
 
                 private void ResetAndRepool()
@@ -533,101 +526,6 @@ namespace Proto.Promises
                         }
                     }
                 }
-            }
-        }
-
-        private void ResolveDirectIfNotCanceled()
-        {
-#if PROMISE_CANCEL
-            if (_state == State.Canceled)
-            {
-                if (_retainCounter == 0)
-                {
-                    AddToHandleQueueFront(this);
-                }
-            }
-            else
-#endif
-            {
-                _state = State.Resolved;
-                var resolveValue = Internal.ResolveContainerVoid.GetOrCreate();
-                _valueOrPrevious = resolveValue;
-                AddBranchesToHandleQueueBack(resolveValue);
-                ResolveProgressListeners();
-                AddToHandleQueueFront(this);
-            }
-        }
-
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-        private void ResolveDirectIfNotCanceled<T>(in T value)
-#else
-        private void ResolveDirectIfNotCanceled<T>(T value)
-#endif
-        {
-#if PROMISE_CANCEL
-            if (_state == State.Canceled)
-            {
-                if (_retainCounter == 0)
-                {
-                    AddToHandleQueueFront(this);
-                }
-            }
-            else
-#endif
-            {
-                _state = State.Resolved;
-                var resolveValue = Internal.ResolveContainer<T>.GetOrCreate(value);
-                resolveValue.Retain();
-                _valueOrPrevious = resolveValue;
-                AddBranchesToHandleQueueBack(resolveValue);
-                ResolveProgressListeners();
-                AddToHandleQueueFront(this);
-            }
-        }
-
-        protected void RejectDirectIfNotCanceled<TReject>(TReject reason)
-        {
-#if PROMISE_CANCEL
-            if (_state == State.Canceled)
-            {
-                AddRejectionToUnhandledStack(reason, null);
-                if (_retainCounter == 0)
-                {
-                    AddToHandleQueueFront(this);
-                }
-            }
-            else
-#endif
-            {
-                RejectDirect(reason, 2);
-            }
-        }
-
-        protected void ResolveInternalIfNotCanceled()
-        {
-#if PROMISE_CANCEL
-            if (_state == State.Canceled)
-            {
-                ReleaseInternal();
-            }
-            else
-#endif
-            {
-                ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
-            }
-        }
-
-        protected void ResolveInternalIfNotCanceled<T>(T value)
-        {
-#if PROMISE_CANCEL
-            if (_state == State.Canceled)
-            {
-                ReleaseInternal();
-            }
-            else
-#endif
-            {
-                ResolveInternal(Internal.ResolveContainer<T>.GetOrCreate(value));
             }
         }
     }

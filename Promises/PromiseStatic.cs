@@ -1097,9 +1097,14 @@ namespace Proto.Promises
         {
             ValidateCancel(1);
 
+#if PROMISE_DEBUG
+            // Create new because stack trace can be different.
             var promise = Internal.LitePromise0.GetOrCreate(1);
-            promise.Cancel();
+            promise.CancelDirect();
             return promise;
+#else
+            return Internal.SettledPromise.GetOrCreateCanceled();
+#endif
         }
 
         /// <summary>
@@ -1113,7 +1118,7 @@ namespace Proto.Promises
             ValidateCancel(1);
 
             var promise = Internal.LitePromise0.GetOrCreate(1);
-            promise.Cancel(reason);
+            promise.CancelDirect(reason);
             return promise;
         }
 
@@ -1128,7 +1133,7 @@ namespace Proto.Promises
             ValidateCancel(1);
 
             var promise = Internal.LitePromise<T>.GetOrCreate(1);
-            promise.Cancel();
+            promise.CancelDirect();
             return promise;
         }
 
@@ -1143,7 +1148,7 @@ namespace Proto.Promises
             ValidateCancel(1);
 
             var promise = Internal.LitePromise<T>.GetOrCreate(1);
-            promise.Cancel(reason);
+            promise.CancelDirect(reason);
             return promise;
         }
 
@@ -1224,12 +1229,7 @@ namespace Proto.Promises
 #else
             if (Internal._invokingResolved | Internal._invokingRejected)
             {
-                if (typeof(T).IsValueType)
-                {
-                    return Internal.CancelExceptionInternal<T>.GetOrCreate(value);
-                }
-                // Only need to generate one object pool for reference types.
-                return Internal.CancelExceptionInternal<object>.GetOrCreate(value);
+                return Internal.CancelExceptionInternal<T>.GetOrCreate(value);
             }
             throw new InvalidOperationException("CancelException can only be accessed inside an onResolved or onRejected callback, or in an async Promise function.", GetFormattedStacktrace(1));
 #endif
@@ -1246,12 +1246,7 @@ namespace Proto.Promises
         {
             if (Internal._invokingResolved | Internal._invokingRejected)
             {
-                if (typeof(T).IsValueType)
-                {
-                    return Internal.RejectExceptionInternal<T>.GetOrCreate(value);
-                }
-                // Only need to generate one object pool for reference types.
-                return Internal.RejectExceptionInternal<object>.GetOrCreate(value);
+                return Internal.RejectExceptionInternal<T>.GetOrCreate(value);
             }
             throw new InvalidOperationException("RejectException can only be accessed inside an onResolved or onRejected callback, or in an async Promise function.", GetFormattedStacktrace(1));
         }

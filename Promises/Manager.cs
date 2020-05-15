@@ -94,15 +94,9 @@ namespace Proto.Promises
 
                 _runningHandles = true;
 
-                // Cancels are high priority, make sure those delegates are invoked before anything else.
-                HandleCanceled();
-
                 while (_handleQueue.IsNotEmpty)
                 {
                     _handleQueue.DequeueRisky().Handle();
-
-                    // In case a promise was canceled from a callback.
-                    HandleCanceled();
                 }
 
                 _handleQueue.ClearLast();
