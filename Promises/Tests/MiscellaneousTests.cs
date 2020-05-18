@@ -1,10 +1,4 @@
-﻿#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
-
-using System;
+﻿using System;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
@@ -28,10 +22,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void AccessingCancelExceptionOrRejectExceptionInNormalCodeThrows()
         {
-#if PROMISE_CANCEL
             Assert.Throws<InvalidOperationException>(() => Promise.CancelException());
             Assert.Throws<InvalidOperationException>(() => Promise.CancelException("Cancel!"));
-#endif
             Assert.Throws<InvalidOperationException>(() => Promise.RejectException("Reject!"));
 
             // Clean up.
@@ -49,19 +41,15 @@ namespace Proto.Promises.Tests
             TestHelper.AddCallbacks<int, object, string>(promise1,
                 onResolve: () =>
                 {
-#if PROMISE_CANCEL
                     Promise.CancelException();
                     Promise.CancelException("Cancel!");
-#endif
                     Promise.RejectException("Reject!");
                 });
             TestHelper.AddCallbacks<int, bool, object, string>(promise2,
                 onResolve: v =>
                 {
-#if PROMISE_CANCEL
                     Promise.CancelException();
                     Promise.CancelException("Cancel!");
-#endif
                     Promise.RejectException("Reject!");
                 });
 
@@ -82,35 +70,27 @@ namespace Proto.Promises.Tests
             TestHelper.AddCallbacks<int, string, string>(promise1,
                 onReject: (string rej) =>
                 {
-#if PROMISE_CANCEL
                     Promise.CancelException();
                     Promise.CancelException("Cancel!");
-#endif
                     Promise.RejectException("Reject!");
                 },
                 onUnknownRejection: () =>
                 {
-#if PROMISE_CANCEL
                     Promise.CancelException();
                     Promise.CancelException("Cancel!");
-#endif
                     Promise.RejectException("Reject!");
                 });
             TestHelper.AddCallbacks<int, bool, string, string>(promise2,
                 onReject: (string rej) =>
                 {
-#if PROMISE_CANCEL
                     Promise.CancelException();
                     Promise.CancelException("Cancel!");
-#endif
                     Promise.RejectException("Reject!");
                 },
                 onUnknownRejection: () =>
                 {
-#if PROMISE_CANCEL
                     Promise.CancelException();
                     Promise.CancelException("Cancel!");
-#endif
                     Promise.RejectException("Reject!");
                 });
 
@@ -282,7 +262,6 @@ namespace Proto.Promises.Tests
             LogAssert.NoUnexpectedReceived();
         }
 
-#if PROMISE_CANCEL
         [Test]
         public void ThrowingCancelExceptionInOnResolvedCancelsThePromiseWithTheGivenValue()
         {
@@ -442,7 +421,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
-#endif
 
         [Test]
         public void AccessingRethrowInNormalCodeThrows()
@@ -607,9 +585,7 @@ namespace Proto.Promises.Tests
 
             promise
                 .Then(() => resolved = true)
-#if PROMISE_CANCEL
                 .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been resolved"))
-#endif
                 ;
 
             Promise.Manager.HandleCompletes();
@@ -634,9 +610,7 @@ namespace Proto.Promises.Tests
                     Assert.AreEqual(expected, val);
                     resolved = true;
                 })
-#if PROMISE_CANCEL
                 .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been resolved"))
-#endif
                 ;
 
             Promise.Manager.HandleCompletes();
@@ -662,9 +636,7 @@ namespace Proto.Promises.Tests
                     Assert.AreEqual(expected, reason);
                     rejected = true;
                 })
-#if PROMISE_CANCEL
                 .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been rejected"))
-#endif
                 ;
 
             Promise.Manager.HandleCompletes();
@@ -690,9 +662,7 @@ namespace Proto.Promises.Tests
                     Assert.AreEqual(expected, reason);
                     rejected = true;
                 })
-#if PROMISE_CANCEL
                 .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been rejected"))
-#endif
                 ;
 
             Promise.Manager.HandleCompletes();
@@ -704,7 +674,6 @@ namespace Proto.Promises.Tests
             LogAssert.NoUnexpectedReceived();
         }
 
-#if PROMISE_CANCEL
         [Test]
         public void PromiseCanceledIsCanceledWithTheGivenReason0()
         {
@@ -754,6 +723,5 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
-#endif
     }
 }

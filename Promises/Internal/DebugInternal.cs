@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -40,11 +35,10 @@ namespace Proto.Promises
         static partial void ValidateProgress(float progress, int skipFrames);
         static partial void ValidateArgument(object arg, string argName, int skipFrames);
         partial void ValidateReturn(Promise other);
-        static partial void ValidateReturn(Delegate other);
         static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames);
         static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames);
 
-        static partial void SetCreatedStacktrace(Internal.ITraceable stacktraceable, int skipFrames);
+        static partial void SetCreatedStacktrace(Internal.ITraceable traceable, int skipFrames);
         static partial void SetCreatedAndRejectedStacktrace(Internal.IRejectValueContainer unhandledException, int rejectSkipFrames, Internal.ITraceable traceable);
         partial void SetNotDisposed();
         static partial void SetCurrentInvoker(Internal.ITraceable current);
@@ -94,31 +88,31 @@ namespace Proto.Promises
             [DebuggerNonUserCode]
             public class CausalityTrace
             {
-                private readonly StackTrace _stacktrace;
+                private readonly StackTrace _stackTrace;
                 private readonly CausalityTrace _next;
 
-                public CausalityTrace(StackTrace stacktrace, CausalityTrace higherStacktrace)
+                public CausalityTrace(StackTrace stackTrace, CausalityTrace higherStacktrace)
                 {
-                    _stacktrace = stacktrace;
+                    _stackTrace = stackTrace;
                     _next = higherStacktrace;
                 }
 
                 public override string ToString()
                 {
-                    if (_stacktrace == null)
+                    if (_stackTrace == null)
                     {
                         return null;
                     }
-                    List<StackTrace> stacktraces = new List<StackTrace>();
+                    List<StackTrace> stackTraces = new List<StackTrace>();
                     for (CausalityTrace current = this; current != null; current = current._next)
                     {
-                        if (current._stacktrace == null)
+                        if (current._stackTrace == null)
                         {
                             break;
                         }
-                        stacktraces.Add(current._stacktrace);
+                        stackTraces.Add(current._stackTrace);
                     }
-                    return FormatStackTrace(stacktraces);
+                    return FormatStackTrace(stackTraces);
                 }
             }
 
@@ -132,20 +126,20 @@ namespace Proto.Promises
             }
         }
 
-        static partial void SetCreatedStacktrace(Internal.ITraceable stacktraceable, int skipFrames)
+        static partial void SetCreatedStacktrace(Internal.ITraceable traceable, int skipFrames)
         {
             StackTrace stackTrace = Config.DebugCausalityTracer == TraceLevel.All
                 ? GetStackTrace(skipFrames + 1)
                 : null;
-            stacktraceable.Trace = new Internal.CausalityTrace(stackTrace, _currentTrace);
+            traceable.Trace = new Internal.CausalityTrace(stackTrace, _currentTrace);
         }
 
         static partial void SetCreatedAndRejectedStacktrace(Internal.IRejectValueContainer unhandledException, int rejectSkipFrames, Internal.ITraceable traceable)
         {
-            StackTrace stacktrace = rejectSkipFrames > 0 & Config.DebugCausalityTracer != TraceLevel.None
+            StackTrace stackTrace = rejectSkipFrames > 0 & Config.DebugCausalityTracer != TraceLevel.None
                 ? GetStackTrace(rejectSkipFrames + 1)
                 : null;
-            unhandledException.SetCreatedAndRejectedStacktrace(stacktrace, traceable.Trace);
+            unhandledException.SetCreatedAndRejectedStacktrace(stackTrace, traceable.Trace);
         }
 
         private static StackTrace GetStackTrace(int skipFrames)
@@ -158,17 +152,17 @@ namespace Proto.Promises
             return FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
         }
 
-        private static string FormatStackTrace(IEnumerable<StackTrace> stacktraces)
+        private static string FormatStackTrace(IEnumerable<StackTrace> stackTraces)
         {
 #if !CSHARP_7_OR_LATER
-            // Format stacktrace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
-            List<string> _stacktraces = new List<string>();
+            // Format stack trace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
+            List<string> _stackTraces = new List<string>();
             string[] separator = new string[1] { Environment.NewLine + " " };
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
-            foreach (StackTrace st in stacktraces)
+            foreach (StackTrace st in stackTraces)
             {
-                string stacktrace = st.ToString().Substring(1);
-                foreach (var trace in stacktrace.Split(separator, StringSplitOptions.RemoveEmptyEntries))
+                string stackTrace = st.ToString().Substring(1);
+                foreach (var trace in stackTrace.Split(separator, StringSplitOptions.RemoveEmptyEntries))
                 {
                     if (!trace.Contains("Proto.Promises"))
                     {
@@ -176,12 +170,12 @@ namespace Proto.Promises
                             .Replace(":line ", ":")
                             .Replace("(", " (")
                             .Replace(") in", ") [0x00000] in"); // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
-                        _stacktraces.Add(sb.ToString());
+                        _stackTraces.Add(sb.ToString());
                         sb.Length = 0;
                     }
                 }
             }
-            foreach (var trace in _stacktraces)
+            foreach (var trace in _stackTraces)
             {
                 sb.Append(trace).Append(" " + Environment.NewLine);
             }
@@ -190,9 +184,9 @@ namespace Proto.Promises
 #else
             // StackTrace.ToString() format issue was fixed in the new runtime.
             List<StackFrame> stackFrames = new List<StackFrame>();
-            foreach (StackTrace stacktrace in stacktraces)
+            foreach (StackTrace stackTrace in stackTraces)
             {
-                stackFrames.AddRange(stacktrace.GetFrames());
+                stackFrames.AddRange(stackTrace.GetFrames());
             }
 
             var trace = stackFrames
@@ -200,11 +194,9 @@ namespace Proto.Promises
                 {
                     // Ignore DebuggerStepThrough and DebuggerHidden and DebuggerNonUserCode.
                     var methodType = frame.GetMethod();
-                    return !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false)
-                        && !methodType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
+                    return !methodType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
                         && !methodType.DeclaringType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
-                        && !methodType.IsDefined(typeof(DebuggerStepThroughAttribute), false)
-                        && !methodType.DeclaringType.IsDefined(typeof(DebuggerStepThroughAttribute), false);
+                        && !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false);
                 })
                 // Create a new StackTrace to get proper formatting.
                 .Select(frame => new StackTrace(frame).ToString());
@@ -250,15 +242,6 @@ namespace Proto.Promises
                 prev = passThrough.Owner;
                 passThrough.Target.ReAdd(passThrough);
                 goto Repeat;
-            }
-        }
-
-        static partial void ValidateReturn(Delegate other)
-        {
-            if (other == null)
-            {
-                // Returning a null from the callback is not allowed.
-                throw new InvalidReturnException("A null delegate was returned.");
             }
         }
 

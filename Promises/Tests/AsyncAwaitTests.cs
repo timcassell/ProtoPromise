@@ -1,10 +1,5 @@
 ﻿#if CSHARP_7_OR_LATER
 
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -14,7 +9,6 @@
 using System;
 using NUnit.Framework;
 using UnityEngine.TestTools;
-using Proto.Promises.Await;
 
 namespace Proto.Promises.Tests
 {
@@ -273,7 +267,6 @@ namespace Proto.Promises.Tests
             LogAssert.NoUnexpectedReceived();
         }
 
-#if PROMISE_CANCEL
         [Test]
         public void CancelAwaitedPromiseThrowsOperationCanceled1()
         {
@@ -407,7 +400,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
-#endif
 
         [Test]
         public void AsyncPromiseIsResolvedFromPromise()
@@ -647,7 +639,6 @@ namespace Proto.Promises.Tests
             LogAssert.NoUnexpectedReceived();
         }
 
-#if PROMISE_CANCEL
         [Test]
         public void AsyncPromiseIsCanceledFromPromise1()
         {
@@ -829,7 +820,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
-#endif
 
         [Test]
         public void AsyncPromiseCanMultipleAwait1()

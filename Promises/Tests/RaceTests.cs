@@ -1,9 +1,4 @@
-﻿#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
@@ -39,7 +34,7 @@ namespace Proto.Promises.Tests
             var resolved = 0;
 
             //Promise.Race(deferred1.Promise, deferred2.Promise)
-                //.Then(i => { Assert.AreEqual(5, i); ++resolved; });
+            //.Then(i => { Assert.AreEqual(5, i); ++resolved; });
 
             Promise.Race((Promise) deferred1.Promise, deferred2.Promise)
                 .Then(() => ++resolved);
@@ -144,7 +139,6 @@ namespace Proto.Promises.Tests
             LogAssert.NoUnexpectedReceived();
         }
 
-#if PROMISE_CANCEL
         [Test]
         public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst()
         {
@@ -204,7 +198,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
-#endif
 
 #if PROMISE_PROGRESS
         [Test]

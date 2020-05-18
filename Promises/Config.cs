@@ -4,13 +4,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-// define PROTO_PROMISE_CANCEL_DISABLE to disable cancelations on promises.
-// If Cancelations are enabled, it breaks the Promises/A+ spec "2.1. Promise States", but allows breaking promise chains. Execution is also a little slower.
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 // define PROTO_PROMISE_PROGRESS_DISABLE to disable progress reports on promises.
 // If Progress is enabled, promises use more memory, and it creates an upper bound to the depth of a promise chain (see Config for details).
 #if !PROTO_PROMISE_PROGRESS_DISABLE

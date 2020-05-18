@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -69,7 +64,6 @@ namespace Proto.Promises.Tests
         }
 #endif
 
-#if PROMISE_CANCEL
         [Test]
         public void IfOnCanceledIsNullThrow()
         {
@@ -99,7 +93,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
-#endif
 
         [Test]
         public void IfOnFinallyIsNullThrow()
@@ -633,7 +626,6 @@ namespace Proto.Promises.Tests
         }
 #endif
 
-#if PROMISE_CANCEL
         [Test]
         public void OnCanceledWillBeInvokedWithCapturedValue()
         {
@@ -674,7 +666,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
-#endif
 
         [Test]
         public void OnFinallyWillBeInvokedWithCapturedValue0()
@@ -748,7 +739,6 @@ namespace Proto.Promises.Tests
             LogAssert.NoUnexpectedReceived();
         }
 
-#if PROMISE_CANCEL
         [Test]
         public void OnFinallyWillBeInvokedWithCapturedValue2()
         {
@@ -802,7 +792,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
-#endif
 
         [Test]
         public void OnContinueWillBeInvokedWithCapturedValue0()

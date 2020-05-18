@@ -22,21 +22,17 @@ namespace Proto.Promises
         partial class Internal
         {
             [System.Diagnostics.DebuggerNonUserCode]
-            public abstract class PoolableObject<T> : ILinked<T> where T : PoolableObject<T>
+            public sealed class RejectionContainer<T> : ILinked<RejectionContainer<T>>, IRejectValueContainer, IValueContainer<T>, IRejectionToContainer, ICantHandleException
             {
-                T ILinked<T>.Next { get; set; }
+                RejectionContainer<T> ILinked<RejectionContainer<T>>.Next { get; set; }
 
-                protected static ValueLinkedStack<T> _pool;
+                private static ValueLinkedStack<RejectionContainer<T>> _pool;
 
-                static PoolableObject()
+                static RejectionContainer()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
-            }
 
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class RejectionContainer<T> : PoolableObject<RejectionContainer<T>>, IRejectValueContainer, IValueContainer<T>, IRejectionToContainer, ICantHandleException
-            {
                 public T Value { get; private set; }
 
                 object IValueContainer.Value { get { return Value; } }
@@ -46,7 +42,8 @@ namespace Proto.Promises
                     get
                     {
                         Type type = typeof(T);
-                        if (type.IsValueType || ReferenceEquals(Value, null))
+                        // Value is never null.
+                        if (type.IsValueType)
                         {
                             return type;
                         }
@@ -57,18 +54,18 @@ namespace Proto.Promises
                 private int _retainCounter;
 
 #if PROMISE_DEBUG
-                System.Diagnostics.StackTrace _rejectedStacktrace;
+                System.Diagnostics.StackTrace _rejectedStackTrace;
                 // Stack traces of recursive callbacks.
-                private CausalityTrace _stacktraces;
+                private CausalityTrace _stackTraces;
 
                 public void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, CausalityTrace createdStacktraces)
                 {
-                    _rejectedStacktrace = rejectedStacktrace;
-                    _stacktraces = createdStacktraces;
+                    _rejectedStackTrace = rejectedStacktrace;
+                    _stackTraces = createdStacktraces;
                 }
 #endif
 
-                public static RejectionContainer<T> GetOrCreate(T value)
+                public static RejectionContainer<T> GetOrCreate(ref T value)
                 {
                     RejectionContainer<T> ex = _pool.IsNotEmpty ? _pool.Pop() : new RejectionContainer<T>();
                     ex.Value = value;
@@ -114,8 +111,8 @@ namespace Proto.Promises
                 private void Dispose()
                 {
 #if PROMISE_DEBUG
-                    _rejectedStacktrace = null;
-                    _stacktraces = null;
+                    _rejectedStackTrace = null;
+                    _stackTraces = null;
 #endif
                     Value = default(T);
                     if (Config.ObjectPooling != PoolType.None)
@@ -132,7 +129,7 @@ namespace Proto.Promises
                     Type type = valueIsNull ? typeof(T) : Value.GetType();
 
 #if PROMISE_DEBUG
-                    string innerStacktrace = _rejectedStacktrace == null ? null : FormatStackTrace(new System.Diagnostics.StackTrace[1] { _rejectedStacktrace });
+                    string innerStacktrace = _rejectedStackTrace == null ? null : FormatStackTrace(new System.Diagnostics.StackTrace[1] { _rejectedStackTrace });
 #else
                     string innerStacktrace = null;
 #endif
@@ -140,7 +137,7 @@ namespace Proto.Promises
                     {
                         Exception e = Value as Exception;
 #if PROMISE_DEBUG
-                        if (_rejectedStacktrace == null)
+                        if (_rejectedStackTrace == null)
                         {
                             innerException = e;
                         }
@@ -159,7 +156,7 @@ namespace Proto.Promises
                         innerException = new RejectionException(message, innerStacktrace, null);
                     }
 #if PROMISE_DEBUG
-                    string outerStacktrace = _stacktraces.ToString();
+                    string outerStacktrace = _stackTraces.ToString();
                     message += Config.DebugCausalityTracer == TraceLevel.All
                         ? " -- This exception's Stacktrace contains the causality trace of all async callbacks that ran."
                         : " -- Set Proto.Promises.Promise.Config.DebugCausalityTracer to Proto.Promises.Promise.TraceLevel.All to get a causality trace.";
@@ -186,8 +183,17 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class CancelContainer<T> : PoolableObject<CancelContainer<T>>, ICancelValueContainer, IValueContainer<T>, ICancelationToContainer
+            public sealed class CancelContainer<T> : ILinked<CancelContainer<T>>, ICancelValueContainer, IValueContainer<T>, ICancelationToContainer
             {
+                CancelContainer<T> ILinked<CancelContainer<T>>.Next { get; set; }
+
+                private static ValueLinkedStack<CancelContainer<T>> _pool;
+
+                static CancelContainer()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
                 public T Value { get; private set; }
                 private int _retainCounter;
 
@@ -198,7 +204,8 @@ namespace Proto.Promises
                     get
                     {
                         Type type = typeof(T);
-                        if (type.IsValueType || ReferenceEquals(Value, null))
+                        // Value is never null.
+                        if (type.IsValueType)
                         {
                             return type;
                         }
@@ -206,7 +213,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public static CancelContainer<T> GetOrCreate(T value)
+                public static CancelContainer<T> GetOrCreate(ref T value)
                 {
                     CancelContainer<T> ex = _pool.IsNotEmpty ? _pool.Pop() : new CancelContainer<T>();
                     ex.Value = value;
@@ -302,8 +309,17 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class ResolveContainer<T> : PoolableObject<ResolveContainer<T>>, IValueContainer, IValueContainer<T>
+            public sealed class ResolveContainer<T> : ILinked<ResolveContainer<T>>, IValueContainer, IValueContainer<T>
             {
+                ResolveContainer<T> ILinked<ResolveContainer<T>>.Next { get; set; }
+
+                private static ValueLinkedStack<ResolveContainer<T>> _pool;
+
+                static ResolveContainer()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
                 public T value;
                 private int _retainCounter;
 
@@ -324,11 +340,7 @@ namespace Proto.Promises
                     }
                 }
 
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-                public static ResolveContainer<T> GetOrCreate(in T value)
-#else
-                public static ResolveContainer<T> GetOrCreate(T value)
-#endif
+                public static ResolveContainer<T> GetOrCreate(ref T value)
                 {
                     ResolveContainer<T> ex = _pool.IsNotEmpty ? _pool.Pop() : new ResolveContainer<T>();
                     ex.value = value;

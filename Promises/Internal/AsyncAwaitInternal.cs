@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -48,19 +43,6 @@ namespace Proto.Promises.Await
         bool IsCompleted { get; }
         void GetResult();
     }
-
-    public static class Extensions
-    {
-        public static IAwaiter GetAwaiter(this Promise promise)
-        {
-            return ((IAwaitable) promise).GetAwaiter();
-        }
-
-        public static IAwaiter<T> GetAwaiter<T>(this Promise<T> promise)
-        {
-            return ((IAwaitable<T>) promise).GetAwaiter();
-        }
-    }
 }
 
 namespace Proto.Promises
@@ -68,7 +50,10 @@ namespace Proto.Promises
     [AsyncMethodBuilder(typeof(Async.CompilerServices.PromiseMethodBuilder))]
     partial class Promise : IAwaitable, IAwaiter, ICriticalNotifyCompletion
     {
-        IAwaiter IAwaitable.GetAwaiter()
+        /// <summary>
+        /// Used to support the await keyword.
+        /// </summary>
+        public IAwaiter GetAwaiter()
         {
             ValidateOperation(this, 1);
 
@@ -121,7 +106,10 @@ namespace Proto.Promises
     [AsyncMethodBuilder(typeof(Async.CompilerServices.PromiseMethodBuilder<>))]
     partial class Promise<T> : IAwaitable<T>, IAwaiter<T>
     {
-        IAwaiter<T> IAwaitable<T>.GetAwaiter()
+        /// <summary>
+        /// Used to support the await keyword.
+        /// </summary>
+        public new IAwaiter<T> GetAwaiter()
         {
             ValidateOperation(this, 1);
 
@@ -177,9 +165,11 @@ namespace Proto.Promises.Async.CompilerServices
     /// <summary>
     /// This type and its members are intended for use by the compiler.
     /// </summary>
+    [DebuggerNonUserCode]
     public struct PromiseMethodBuilder
     {
         private Promise.Deferred _deferred;
+        private IAsyncStateMachine _stateMachine;
         private Action _continuation;
 
         [DebuggerHidden]
@@ -194,7 +184,6 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         public void SetException(Exception exception)
         {
-#if PROMISE_CANCEL
             if (exception is OperationCanceledException ex)
             {
                 if (_deferred == null)
@@ -208,7 +197,6 @@ namespace Proto.Promises.Async.CompilerServices
                 }
             }
             else
-#endif
             {
                 if (_deferred == null)
                 {
@@ -280,19 +268,22 @@ namespace Proto.Promises.Async.CompilerServices
             {
                 _deferred = Promise.NewDeferred();
                 Task = _deferred.Promise;
-                var sm = stateMachine;
-                _continuation = () =>
-                {
-                    Promise.SetInvokingAsyncFunctionInternal(true);
-                    try
-                    {
-                        sm.MoveNext();
-                    }
-                    finally
-                    {
-                        Promise.SetInvokingAsyncFunctionInternal(false);
-                    }
-                };
+                _stateMachine = stateMachine;
+                _continuation = MoveNext;
+            }
+        }
+
+        [DebuggerHidden]
+        private void MoveNext()
+        {
+            Promise.SetInvokingAsyncFunctionInternal(true);
+            try
+            {
+                _stateMachine.MoveNext();
+            }
+            finally
+            {
+                Promise.SetInvokingAsyncFunctionInternal(false);
             }
         }
     }
@@ -300,9 +291,11 @@ namespace Proto.Promises.Async.CompilerServices
     /// <summary>
     /// This type and its members are intended for use by the compiler.
     /// </summary>
+    [DebuggerNonUserCode]
     public struct PromiseMethodBuilder<T>
     {
         private Promise<T>.Deferred _deferred;
+        private IAsyncStateMachine _stateMachine;
         private Action _continuation;
 
         [DebuggerHidden]
@@ -317,7 +310,6 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         public void SetException(Exception exception)
         {
-#if PROMISE_CANCEL
             if (exception is OperationCanceledException ex)
             {
                 if (_deferred == null)
@@ -331,7 +323,6 @@ namespace Proto.Promises.Async.CompilerServices
                 }
             }
             else
-#endif
             {
                 if (_deferred == null)
                 {
@@ -403,19 +394,22 @@ namespace Proto.Promises.Async.CompilerServices
             {
                 _deferred = Promise.NewDeferred<T>();
                 Task = _deferred.Promise;
-                var sm = stateMachine;
-                _continuation = () =>
-                {
-                    Promise.SetInvokingAsyncFunctionInternal(true);
-                    try
-                    {
-                        sm.MoveNext();
-                    }
-                    finally
-                    {
-                        Promise.SetInvokingAsyncFunctionInternal(false);
-                    }
-                };
+                _stateMachine = stateMachine;
+                _continuation = MoveNext;
+            }
+        }
+
+        [DebuggerHidden]
+        private void MoveNext()
+        {
+            Promise.SetInvokingAsyncFunctionInternal(true);
+            try
+            {
+                _stateMachine.MoveNext();
+            }
+            finally
+            {
+                Promise.SetInvokingAsyncFunctionInternal(false);
             }
         }
     }

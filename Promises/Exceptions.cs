@@ -115,11 +115,11 @@ namespace Proto.Promises
         private readonly Type _type;
         private readonly string _stackTrace;
 
-        internal UnhandledException(object value, Type valueType, string message, string stacktrace, Exception innerException) : base(message, innerException)
+        internal UnhandledException(object value, Type valueType, string message, string stackTrace, Exception innerException) : base(message, innerException)
         {
             _value = value;
             _type = valueType;
-            _stackTrace = stacktrace;
+            _stackTrace = stackTrace;
         }
 
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
@@ -223,10 +223,12 @@ namespace Proto.Promises
         partial class Internal
         {
             [DebuggerNonUserCode]
-            public sealed class UnhandledExceptionInternal : UnhandledException, IRejectValueContainer, ICantHandleException
+            public sealed class UnhandledExceptionInternal : UnhandledException, IRejectionToContainer, IRejectValueContainer, ICantHandleException
             {
-                public UnhandledExceptionInternal(object value, Type valueType, string message, string stacktrace, Exception innerException) :
-                    base(value, valueType, message, stacktrace, innerException)
+                private int _retainCounter;
+
+                public UnhandledExceptionInternal(object value, Type valueType, string message, string stackTrace, Exception innerException) :
+                    base(value, valueType, message, stackTrace, innerException)
                 { }
 
                 State IValueContainer.GetState()
@@ -234,11 +236,29 @@ namespace Proto.Promises
                     return State.Rejected;
                 }
 
-                void IValueContainer.Retain() { }
-                void IValueContainer.Release() { }
+                void IValueContainer.Retain()
+                {
+                    checked
+                    {
+                        ++_retainCounter;
+                    }
+                }
+                void IValueContainer.Release()
+                {
+                    checked
+                    {
+                        --_retainCounter;
+                    }
+                }
                 void IValueContainer.ReleaseAndMaybeAddToUnhandledStack()
                 {
-                    AddUnhandledException(this);
+                    checked
+                    {
+                        if (--_retainCounter == 0)
+                        {
+                            AddUnhandledException(this);
+                        }
+                    }
                 }
 
                 void IValueContainer.ReleaseAndAddToUnhandledStack()
@@ -251,14 +271,19 @@ namespace Proto.Promises
                     return this;
                 }
 
-#if PROMISE_DEBUG
-                void IRejectValueContainer.SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces) { }
-#endif
-
                 void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
                 {
                     AddUnhandledException(this);
                 }
+
+                IRejectValueContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+                {
+                    return this;
+                }
+
+#if PROMISE_DEBUG
+                void IRejectValueContainer.SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces) { }
+#endif
             }
 
             [DebuggerNonUserCode]
@@ -294,9 +319,9 @@ namespace Proto.Promises
             {
                 private readonly string _stackTrace;
 
-                public RejectionException(string message, string stacktrace, Exception innerException) : base(message, innerException)
+                public RejectionException(string message, string stackTrace, Exception innerException) : base(message, innerException)
                 {
-                    _stackTrace = stacktrace;
+                    _stackTrace = stackTrace;
                 }
 
                 public override string StackTrace { get { return _stackTrace; } }
@@ -320,7 +345,8 @@ namespace Proto.Promises
 
                 public IRejectValueContainer ToContainer(ITraceable traceable)
                 {
-                    var rejection = CreateRejectContainer(Value, int.MinValue, traceable);
+                    T value = Value;
+                    var rejection = CreateRejectContainer(ref value, int.MinValue, traceable);
 #if PROMISE_DEBUG
                     rejection.SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
 #endif
@@ -370,7 +396,8 @@ namespace Proto.Promises
 
                 public ICancelValueContainer ToContainer()
                 {
-                    return CreateCancelContainer(Value);
+                    T value = Value;
+                    return CreateCancelContainer(ref value);
                 }
             }
         }

@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -30,47 +25,33 @@ namespace Proto.Promises
 {
     partial class Promise
     {
-        // Calls to this get compiled away when CANCEL is defined.
-        static partial void ValidateCancel(int skipFrames);
-
-        partial void CancelDirect();
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-        partial void CancelDirect<TCancel>(in TCancel reason);
-#else
-        partial void CancelDirect<TCancel>(TCancel reason);
-#endif
-
-#if PROMISE_CANCEL
         private void MakeCanceledFromToken()
         {
+            // When this is called, the promise is either waiting for its previous, or it's in the handle queue.
+            // _valueOrPrevious will only be null if the promise is in the object pool,
+            // or if it's a deferred promise, which cannot be subscribed to a cancelationToken, so we don't need to check for that case.
 #if CSHARP_7_OR_LATER
-            if (((object) _valueOrPrevious) is Internal.IValueContainer container)
+            if (_valueOrPrevious is Promise previous)
 #else
-            Internal.IValueContainer container = _valueOrPrevious as Internal.IValueContainer;
-            if (container != null)
+            Promise previous = _valueOrPrevious as Promise;
+            if (previous != null)
 #endif
             {
-                // Rejection maybe wasn't caught.
-                container.ReleaseAndMaybeAddToUnhandledStack();
+                // Remove this from previous' next branches.
+                previous._nextBranches.Remove(this);
+                _valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
+                AddToHandleQueueBack(this);
             }
             else
             {
-#if CSHARP_7_OR_LATER
-                if (((object) _valueOrPrevious) is Promise previous)
-#else
-                Promise previous = _valueOrPrevious as Promise;
-                if (previous != null)
-#endif
-                {
-                    // Remove this from previous' next branches.
-                    previous._nextBranches.Remove(this);
-                }
+                // Rejection maybe wasn't caught.
+                ((Internal.IValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack();
+                _valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
+                // Don't add to handle queue since it's already in it.
             }
-            _valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
-            AddToHandleQueueBack(this);
         }
 
-        partial void CancelDirect()
+        private void CancelDirect()
         {
             _state = State.Canceled;
             var cancelContainer = Internal.CancelContainerVoid.GetOrCreate();
@@ -80,14 +61,10 @@ namespace Proto.Promises
             AddToHandleQueueFront(this);
         }
 
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-        partial void CancelDirect<TCancel>(in TCancel reason)
-#else
-        partial void CancelDirect<TCancel>(TCancel reason)
-#endif
+        private void CancelDirect<TCancel>(ref TCancel reason)
         {
             _state = State.Canceled;
-            var cancelContainer = CreateCancelContainer(reason);
+            var cancelContainer = CreateCancelContainer(ref reason);
             cancelContainer.Retain();
             _valueOrPrevious = cancelContainer;
             AddBranchesToHandleQueueBack(cancelContainer);
@@ -95,12 +72,12 @@ namespace Proto.Promises
             AddToHandleQueueFront(this);
         }
 
-        private static Internal.ICancelValueContainer CreateCancelContainer<TCancel>(TCancel reason)
+        private static Internal.ICancelValueContainer CreateCancelContainer<TCancel>(ref TCancel reason)
         {
             Internal.ICancelValueContainer cancelValue;
             if (typeof(TCancel).IsValueType)
             {
-                cancelValue = Internal.CancelContainer<TCancel>.GetOrCreate(reason);
+                cancelValue = Internal.CancelContainer<TCancel>.GetOrCreate(ref reason);
             }
             else
             {
@@ -114,14 +91,16 @@ namespace Proto.Promises
                     // reason is an internal cancelation object, get its container instead of wrapping it.
                     cancelValue = internalCancelation.ToContainer();
                 }
-                else if (reason is OperationCanceledException)
+                else if (ReferenceEquals(reason, null) || reason is OperationCanceledException)
                 {
-                    // Use void container instead of wrapping OperationCanceledException.
+                    // Use void container instead of wrapping OperationCanceledException, or if reason is null.
                     cancelValue = Internal.CancelContainerVoid.GetOrCreate();
                 }
                 else
                 {
-                    cancelValue = Internal.CancelContainer<TCancel>.GetOrCreate(reason);
+                    // Only need to create one object pool for reference types.
+                    object o = reason;
+                    cancelValue = Internal.CancelContainer<object>.GetOrCreate(ref o);
                 }
             }
             return cancelValue;
@@ -148,17 +127,15 @@ namespace Proto.Promises
                 }
             }
         }
-#else
-        static protected void ThrowCancelException(int skipFrames)
-        {
-            throw new InvalidOperationException("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", GetFormattedStacktrace(skipFrames + 1));
-        }
 
-        static partial void ValidateCancel(int skipFrames)
+        private static void UnregisterAndMakeDefault(ref CancelationRegistration cancelationRegistration)
         {
-            ThrowCancelException(skipFrames + 1);
+            if (cancelationRegistration.IsRegistered)
+            {
+                cancelationRegistration.Unregister();
+            }
+            cancelationRegistration = default(CancelationRegistration);
         }
-#endif
 
         partial class Internal
         {
@@ -179,11 +156,11 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                public static CancelDelegate GetOrCreate(Action<ReasonContainer> onCanceled, int skipFrames)
+                public static CancelDelegate GetOrCreate(Action<ReasonContainer> onCanceled)
                 {
                     var del = _pool.IsNotEmpty ? (CancelDelegate) _pool.Pop() : new CancelDelegate();
                     del._onCanceled = onCanceled;
-                    SetCreatedStacktrace(del, skipFrames + 1);
+                    SetCreatedStacktrace(del, 2);
                     return del;
                 }
 
@@ -274,12 +251,12 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                public static CancelDelegateCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture, ReasonContainer> onCanceled, int skipFrames)
+                public static CancelDelegateCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture, ReasonContainer> onCanceled)
                 {
                     var del = _pool.IsNotEmpty ? (CancelDelegateCapture<TCapture>) _pool.Pop() : new CancelDelegateCapture<TCapture>();
                     del._onCanceled = onCanceled;
                     del._capturedValue = capturedValue;
-                    SetCreatedStacktrace(del, skipFrames + 1);
+                    SetCreatedStacktrace(del, 2);
                     return del;
                 }
 
@@ -460,11 +437,10 @@ namespace Proto.Promises
                     InvokeCallbacks();
                 }
 
-                public void SetCanceled<T>(T cancelValue)
+                public void SetCanceled<T>(ref T cancelValue)
                 {
-                    var container = CancelContainer<T>.GetOrCreate(cancelValue);
-                    container.Retain();
-                    ValueContainer = container;
+                    ValueContainer = CreateCancelContainer(ref cancelValue);
+                    ValueContainer.Retain();
                     InvokeCallbacks();
                 }
 
@@ -528,17 +504,5 @@ namespace Proto.Promises
                 }
             }
         }
-    }
-
-    partial class Promise<T>
-    {
-        // Calls to this get compiled away when CANCEL is defined.
-        static partial void ValidateCancel(int skipFrames);
-#if !PROMISE_CANCEL
-        static partial void ValidateCancel(int skipFrames)
-        {
-            ThrowCancelException(skipFrames + 1);
-        }
-#endif
     }
 }

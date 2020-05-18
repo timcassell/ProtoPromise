@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -140,7 +135,6 @@ namespace Proto.Promises.Tests
             LogAssert.NoUnexpectedReceived();
         }
 
-#if PROMISE_CANCEL
         [Test]
         public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled0()
         {
@@ -164,18 +158,20 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled1()
         {
+            Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
 
             float progress = float.NaN;
 
-            var cancelable = deferred.Promise
+            deferred.Promise
                 .ThenDuplicate()
-                .ThenDuplicate()
-                .Progress(p => progress = p);
+                .Then(_ => { }, cancelationSource.Token)
+                .Progress(p => progress = p)
+                .Finally(cancelationSource.Dispose);
 
             deferred.ReportProgress(0.25f);
-            cancelable.Cancel();
+            cancelationSource.Cancel();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
@@ -196,6 +192,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled2()
         {
+            Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
             var deferred2 = Promise.NewDeferred();
@@ -203,10 +200,14 @@ namespace Proto.Promises.Tests
 
             float progress = float.NaN;
 
-            var cancelable = deferred.Promise
+            deferred.Promise
                 .ThenDuplicate()
-                .Then(() => deferred2.Promise)
-                .Progress(p => progress = p);
+                .Then(() =>
+                    deferred2.Promise
+                        .Then(_ => { }, cancelationSource.Token)
+                )
+                .Progress(p => progress = p)
+                .Finally(cancelationSource.Dispose);
 
             deferred.ReportProgress(0.5f);
             Promise.Manager.HandleCompletesAndProgress();
@@ -217,7 +218,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred2.ReportProgress(0.5f);
-            cancelable.Cancel();
+            cancelationSource.Cancel();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
@@ -268,6 +269,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void MultipleOnProgressAreInvokedProperly()
         {
+            Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
             var deferred2 = Promise.NewDeferred();
@@ -277,10 +279,11 @@ namespace Proto.Promises.Tests
             bool firstInvoked = false;
             bool secondInvoked = false;
 
-            var cancelable = deferred.Promise
+            deferred.Promise
                 .ThenDuplicate()
-                .ThenDuplicate()
-                .Progress(p => { firstInvoked = true; progress = p; });
+                .Then(_ => { }, cancelationSource.Token)
+                .Progress(p => { firstInvoked = true; progress = p; })
+                .Finally(cancelationSource.Dispose);
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
@@ -290,7 +293,7 @@ namespace Proto.Promises.Tests
             progress = float.NaN;
             firstInvoked = false;
             secondInvoked = false;
-            cancelable.Cancel();
+            cancelationSource.Cancel();
 
             deferred2.Promise
                 .ThenDuplicate()
@@ -319,7 +322,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
-#endif
 
         [Test]
         public void OnProgressWillNotBeInvokedWith1UntilPromiseIsResolved()

@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -36,13 +31,6 @@ namespace Proto.Promises
         protected bool _wasWaitedOn;
 
         Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
-
-        internal Promise()
-        {
-#if PROMISE_DEBUG
-            _id = idCounter++;
-#endif
-        }
 
         ~Promise()
         {
@@ -79,12 +67,12 @@ namespace Proto.Promises
             AddToHandleQueueBack(this);
         }
 
-        protected virtual void Reset(int skipFrames)
+        protected virtual void Reset()
         {
             _state = State.Pending;
             _retainCounter = 1;
             SetNotDisposed();
-            SetCreatedStacktrace(this, skipFrames + 1);
+            SetCreatedStacktrace(this, 3);
         }
 
         protected void AddWaiter(Internal.ITreeHandleable waiter)
@@ -206,12 +194,12 @@ namespace Proto.Promises
             catch (OperationCanceledException e)
             {
                 container.Release();
-                RejectOrCancelInternal(CreateCancelContainer(e));
+                RejectOrCancelInternal(CreateCancelContainer(ref e));
             }
             catch (Exception e)
             {
                 container.Release();
-                RejectOrCancelInternal(CreateRejectContainer(e, int.MinValue, this));
+                RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this));
             }
             finally
             {
@@ -231,14 +219,10 @@ namespace Proto.Promises
             AddToHandleQueueFront(this);
         }
 
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-        private void ResolveDirect<T>(in T value)
-#else
-        private void ResolveDirect<T>(T value)
-#endif
+        protected void ResolveDirect<T>(ref T value)
         {
             _state = State.Resolved;
-            var resolveValue = Internal.ResolveContainer<T>.GetOrCreate(value);
+            var resolveValue = Internal.ResolveContainer<T>.GetOrCreate(ref value);
             resolveValue.Retain();
             _valueOrPrevious = resolveValue;
             AddBranchesToHandleQueueBack(resolveValue);
@@ -246,10 +230,10 @@ namespace Proto.Promises
             AddToHandleQueueFront(this);
         }
 
-        private void RejectDirect<TReject>(TReject reason, int rejectSkipFrames)
+        private void RejectDirect<TReject>(ref TReject reason, int rejectSkipFrames)
         {
             _state = State.Rejected;
-            var rejection = CreateRejectContainer(reason, rejectSkipFrames + 1, this);
+            var rejection = CreateRejectContainer(ref reason, rejectSkipFrames + 1, this);
             rejection.Retain();
             _valueOrPrevious = rejection;
             AddBranchesToHandleQueueBack(rejection);
@@ -257,7 +241,7 @@ namespace Proto.Promises
             AddToHandleQueueFront(this);
         }
 
-        private static Internal.IRejectValueContainer CreateRejectContainer<TReject>(TReject reason, int rejectSkipFrames, Internal.ITraceable traceable)
+        private static Internal.IRejectValueContainer CreateRejectContainer<TReject>(ref TReject reason, int rejectSkipFrames, Internal.ITraceable traceable)
         {
             Internal.IRejectValueContainer valueContainer;
 
@@ -265,7 +249,7 @@ namespace Proto.Promises
             Type type = typeof(TReject);
             if (type.IsValueType)
             {
-                valueContainer = Internal.RejectionContainer<TReject>.GetOrCreate(reason);
+                valueContainer = Internal.RejectionContainer<TReject>.GetOrCreate(ref reason);
             }
             else
             {
@@ -280,25 +264,14 @@ namespace Proto.Promises
                     return internalRejection.ToContainer(traceable);
                 }
 
-#if CSHARP_7_OR_LATER
-                if (((object) reason) is Exception e)
-#else
-                Exception e = reason as Exception;
-                if (e != null)
-#endif
+                object o = reason;
+                if (ReferenceEquals(o, null))
                 {
-                    // reason is a non-null Exception.
-                    valueContainer = Internal.RejectionContainer<Exception>.GetOrCreate(e);
+                    // reason is null, behave the same way .Net behaves if you throw null.
+                    o = new NullReferenceException();
                 }
-                else if (typeof(Exception).IsAssignableFrom(type))
-                {
-                    // reason is a null Exception, behave the same way .Net behaves if you throw null.
-                    valueContainer = Internal.RejectionContainer<Exception>.GetOrCreate(new NullReferenceException());
-                }
-                else
-                {
-                    valueContainer = Internal.RejectionContainer<TReject>.GetOrCreate(reason);
-                }
+                // Only need to create one object pool for reference types.
+                valueContainer = Internal.RejectionContainer<object>.GetOrCreate(ref o);
             }
             SetCreatedAndRejectedStacktrace(valueContainer, rejectSkipFrames + 1, traceable);
             return valueContainer;
@@ -332,7 +305,7 @@ namespace Proto.Promises
             _unhandledExceptions.Push(exception);
         }
 
-        // Generate stacktrace if traceable is null.
+        // Generate stack trace if traceable is null.
         private static void AddRejectionToUnhandledStack<TReject>(TReject unhandledValue, Internal.ITraceable traceable)
         {
 #if CSHARP_7_OR_LATER
@@ -347,39 +320,38 @@ namespace Proto.Promises
             }
 
 #if PROMISE_DEBUG
-            string stacktrace =
+            string stackTrace =
                 traceable != null
                     ? GetFormattedStacktrace(traceable)
                     : Config.DebugCausalityTracer != TraceLevel.None
                         ? FormatStackTrace(new System.Diagnostics.StackTrace[1] { GetStackTrace(1) })
                         : null;
 #else
-            string stacktrace = null;
+            string stackTrace = null;
 #endif
             string message;
             Exception innerException;
-            bool valueIsNull = ReferenceEquals(unhandledValue, null);
 
             if (unhandledValue is Exception)
             {
                 message = "An exception was not handled.";
                 innerException = unhandledValue as Exception;
             }
-            else if (typeof(Exception).IsAssignableFrom(typeof(TReject)))
+            else if (ReferenceEquals(unhandledValue, null))
             {
-                // unhandledValue is a null Exception, behave the same way .Net behaves if you throw null.
-                message = "An exception was not handled.";
+                // unhandledValue is null, behave the same way .Net behaves if you throw null.
+                message = "An rejected null value was not handled.";
                 NullReferenceException nullRefEx = new NullReferenceException();
-                AddUnhandledException(new Internal.UnhandledExceptionInternal(nullRefEx, typeof(NullReferenceException), message, stacktrace, nullRefEx));
+                AddUnhandledException(new Internal.UnhandledExceptionInternal(nullRefEx, typeof(NullReferenceException), message, stackTrace, nullRefEx));
                 return;
             }
             else
             {
                 Type type = typeof(TReject);
-                message = "A rejected value was not handled, type: " + type + ", value: " + (valueIsNull ? "NULL" : unhandledValue.ToString());
+                message = "A rejected value was not handled, type: " + type + ", value: " + unhandledValue.ToString();
                 innerException = null;
             }
-            AddUnhandledException(new Internal.UnhandledExceptionInternal(unhandledValue, valueIsNull ? typeof(TReject) : unhandledValue.GetType(), message, stacktrace, innerException));
+            AddUnhandledException(new Internal.UnhandledExceptionInternal(unhandledValue, unhandledValue.GetType(), message, stackTrace, innerException));
         }
 
         // Handle promises in a depth-first manner.
@@ -429,7 +401,7 @@ namespace Proto.Promises
 
         private static bool TryConvert<TConvert>(Internal.IValueContainer valueContainer, out TConvert converted)
         {
-            // Avoid boxing value types.
+            // Try to avoid boxing value types.
 #if CSHARP_7_OR_LATER
             if (((object) valueContainer) is IValueContainer<TConvert> directContainer)
 #else
@@ -444,8 +416,7 @@ namespace Proto.Promises
             if (typeof(TConvert).IsAssignableFrom(valueContainer.ValueType))
             {
                 // Unfortunately, this will box if converting from a non-nullable value type to nullable.
-                // I couldn't find any way around that without resorting to Expressions (which won't work for this purpose with the IL2CPP compiler),
-                // and I didn't want to restrict converting to nullables simply for the sake of no boxing.
+                // I couldn't find any way around that without resorting to Expressions (which won't work for this purpose with the IL2CPP AOT compiler).
                 converted = (TConvert) valueContainer.Value;
                 return true;
             }
@@ -454,6 +425,7 @@ namespace Proto.Promises
             return false;
         }
 
+#if CSHARP_7_OR_LATER
         /// <summary>
         /// DON'T CALL THIS FUNCTION IN USER CODE!
         /// </summary>
@@ -461,15 +433,8 @@ namespace Proto.Promises
         {
             Internal._invokingResolved = invoking;
         }
-    }
+#endif
 
-    partial class Promise<T>
-    {
-        internal Promise() { }
-    }
-
-    partial class Promise
-    {
         protected static partial class Internal
         {
             internal static bool _invokingResolved, _invokingRejected;
@@ -477,102 +442,60 @@ namespace Proto.Promises
             internal static Action OnClearPool;
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public abstract class PoolablePromise<TPromise> : Promise where TPromise : PoolablePromise<TPromise>
-            {
-                protected static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PoolablePromise()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public abstract class PoolablePromise<T, TPromise> : Promise<T> where TPromise : PoolablePromise<T, TPromise>
-            {
-                protected static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PoolablePromise()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public abstract partial class PromiseWaitPromise<TPromise> : PoolablePromise<TPromise> where TPromise : PromiseWaitPromise<TPromise>
+            public abstract partial class PromiseWaitPromise : Promise
             {
                 public void WaitFor(Promise other)
                 {
                     ValidateReturn(other);
-#if PROMISE_CANCEL
-                    if (_state == State.Canceled)
-                    {
-                        ReleaseInternal();
-                    }
-                    else
-#endif
-                    {
-                        _valueOrPrevious = other;
+                    _valueOrPrevious = other;
 #if PROMISE_PROGRESS
-                        _secondPrevious = true;
-                        if (_progressListeners.IsNotEmpty)
-                        {
-                            SubscribeProgressToBranchesAndRoots(other, this);
-                        }
-#endif
-                        other.AddWaiter(this);
+                    _secondPrevious = true;
+                    if (_progressListeners.IsNotEmpty)
+                    {
+                        SubscribeProgressToBranchesAndRoots(other, this);
                     }
+#endif
+                    other.AddWaiter(this);
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public abstract partial class PromiseWaitPromise<T, TPromise> : PoolablePromise<T, TPromise> where TPromise : PromiseWaitPromise<T, TPromise>
+            public abstract partial class PromiseWaitPromise<T> : Promise<T>
             {
                 public void WaitFor(Promise<T> other)
                 {
                     ValidateReturn(other);
-#if PROMISE_CANCEL
-                    if (_state == State.Canceled)
-                    {
-                        ReleaseInternal();
-                    }
-                    else
-#endif
-                    {
-                        _valueOrPrevious = other;
+                    _valueOrPrevious = other;
 #if PROMISE_PROGRESS
-                        _secondPrevious = true;
-                        if (_progressListeners.IsNotEmpty)
-                        {
-                            SubscribeProgressToBranchesAndRoots(other, this);
-                        }
-#endif
-                        other.AddWaiter(this);
+                    _secondPrevious = true;
+                    if (_progressListeners.IsNotEmpty)
+                    {
+                        SubscribeProgressToBranchesAndRoots(other, this);
                     }
+#endif
+                    other.AddWaiter(this);
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class DeferredPromise0 : PoolablePromise<DeferredPromise0>, ITreeHandleable
+            public sealed partial class DeferredPromise0 : Promise, ITreeHandleable
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static DeferredPromise0()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 public readonly DeferredInternal0 deferred;
 
                 private DeferredPromise0()
@@ -580,13 +503,10 @@ namespace Proto.Promises
                     deferred = new DeferredInternal0(this);
                 }
 
-                public static DeferredPromise0 GetOrCreate(int skipFrames)
+                public static DeferredPromise0 GetOrCreate()
                 {
                     var promise = _pool.IsNotEmpty ? (DeferredPromise0) _pool.Pop() : new DeferredPromise0();
-                    promise.Reset(skipFrames + 1);
-                    promise.deferred.Reset();
-                    // Retain now, release when deferred resolves/rejects/cancels.
-                    promise.RetainInternal();
+                    promise.Reset();
                     promise.ResetDepth();
                     return promise;
                 }
@@ -598,8 +518,24 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class DeferredPromise<T> : PoolablePromise<T, DeferredPromise<T>>, ITreeHandleable
+            public sealed partial class DeferredPromise<T> : Promise<T>, ITreeHandleable
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static DeferredPromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 public readonly DeferredInternal<T> deferred;
 
                 private DeferredPromise()
@@ -607,13 +543,10 @@ namespace Proto.Promises
                     deferred = new DeferredInternal<T>(this);
                 }
 
-                public static DeferredPromise<T> GetOrCreate(int skipFrames)
+                public static DeferredPromise<T> GetOrCreate()
                 {
                     var promise = _pool.IsNotEmpty ? (DeferredPromise<T>) _pool.Pop() : new DeferredPromise<T>();
-                    promise.Reset(skipFrames + 1);
-                    promise.deferred.Reset();
-                    // Retain now, release when deferred resolves/rejects/cancels.
-                    promise.RetainInternal();
+                    promise.Reset();
                     promise.ResetDepth();
                     return promise;
                 }
@@ -655,14 +588,30 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class LitePromise0 : PoolablePromise<LitePromise0>, ITreeHandleable
+            public sealed class LitePromise0 : Promise, ITreeHandleable
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static LitePromise0()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private LitePromise0() { }
 
-                public static LitePromise0 GetOrCreate(int skipFrames)
+                public static LitePromise0 GetOrCreate()
                 {
                     var promise = _pool.IsNotEmpty ? (LitePromise0) _pool.Pop() : new LitePromise0();
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     promise.ResetDepth();
                     return promise;
                 }
@@ -683,26 +632,38 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class LitePromise<T> : PoolablePromise<T, LitePromise<T>>, ITreeHandleable
+            public sealed class LitePromise<T> : Promise<T>, ITreeHandleable
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static LitePromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private LitePromise() { }
 
-                public static LitePromise<T> GetOrCreate(int skipFrames)
+                public static LitePromise<T> GetOrCreate()
                 {
                     var promise = _pool.IsNotEmpty ? (LitePromise<T>) _pool.Pop() : new LitePromise<T>();
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     promise.ResetDepth();
                     return promise;
                 }
 
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2, but this symbol is the closest Unity offers.
-                public void ResolveDirect(in T value)
-#else
-                public void ResolveDirect(T value)
-#endif
+                public void ResolveDirect(ref T value)
                 {
                     _state = State.Resolved;
-                    var val = ResolveContainer<T>.GetOrCreate(value);
+                    var val = ResolveContainer<T>.GetOrCreate(ref value);
                     val.Retain();
                     _valueOrPrevious = val;
                     AddToHandleQueueFront(this);
@@ -714,56 +675,36 @@ namespace Proto.Promises
                 }
             }
 
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DuplicatePromise0 : PoolablePromise<DuplicatePromise0>
-            {
-                private DuplicatePromise0() { }
-
-                public static DuplicatePromise0 GetOrCreate(int skipFrames)
-                {
-                    var promise = _pool.IsNotEmpty ? (DuplicatePromise0) _pool.Pop() : new DuplicatePromise0();
-                    promise.Reset(skipFrames + 1);
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    HandleSelf(valueContainer);
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DuplicatePromise<T> : PoolablePromise<T, DuplicatePromise<T>>
-            {
-                private DuplicatePromise() { }
-
-                public static DuplicatePromise<T> GetOrCreate(int skipFrames)
-                {
-                    var promise = _pool.IsNotEmpty ? (DuplicatePromise<T>) _pool.Pop() : new DuplicatePromise<T>();
-                    promise.Reset(skipFrames + 1);
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    HandleSelf(valueContainer);
-                }
-            }
-
             #region Resolve Promises
             // Individual types for more common .Then(onResolved) calls to be more efficient.
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseVoidResolve0 : PoolablePromise<PromiseVoidResolve0>
+            public sealed class PromiseVoidResolve0 : Promise
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseVoidResolve0()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private Action _onResolved;
 
                 private PromiseVoidResolve0() { }
 
-                public static PromiseVoidResolve0 GetOrCreate(Action onResolved, int skipFrames)
+                public static PromiseVoidResolve0 GetOrCreate(Action onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseVoidResolve0) _pool.Pop() : new PromiseVoidResolve0();
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -785,17 +726,33 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseArgResolve<TArg> : PoolablePromise<PromiseArgResolve<TArg>>
+            public sealed class PromiseArgResolve<TArg> : Promise<TArg>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseArgResolve()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private Action<TArg> _onResolved;
 
                 private PromiseArgResolve() { }
 
-                public static PromiseArgResolve<TArg> GetOrCreate(Action<TArg> onResolved, int skipFrames)
+                public static PromiseArgResolve<TArg> GetOrCreate(Action<TArg> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseArgResolve<TArg>) _pool.Pop() : new PromiseArgResolve<TArg>();
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -818,17 +775,33 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseVoidResolve<TResult> : PoolablePromise<TResult, PromiseVoidResolve<TResult>>
+            public sealed class PromiseVoidResolve<TResult> : Promise<TResult>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseVoidResolve()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private Func<TResult> _onResolved;
 
                 private PromiseVoidResolve() { }
 
-                public static PromiseVoidResolve<TResult> GetOrCreate(Func<TResult> onResolved, int skipFrames)
+                public static PromiseVoidResolve<TResult> GetOrCreate(Func<TResult> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseVoidResolve<TResult>) _pool.Pop() : new PromiseVoidResolve<TResult>();
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -840,7 +813,7 @@ namespace Proto.Promises
                     {
                         _invokingResolved = true;
                         TResult result = callback.Invoke();
-                        ResolveInternal(ResolveContainer<TResult>.GetOrCreate(result));
+                        ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                     }
                     else
                     {
@@ -850,17 +823,33 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseArgResolve<TArg, TResult> : PoolablePromise<TResult, PromiseArgResolve<TArg, TResult>>
+            public sealed class PromiseArgResolve<TArg, TResult> : Promise<TResult>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseArgResolve()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private Func<TArg, TResult> _onResolved;
 
                 private PromiseArgResolve() { }
 
-                public static PromiseArgResolve<TArg, TResult> GetOrCreate(Func<TArg, TResult> onResolved, int skipFrames)
+                public static PromiseArgResolve<TArg, TResult> GetOrCreate(Func<TArg, TResult> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseArgResolve<TArg, TResult>) _pool.Pop() : new PromiseArgResolve<TArg, TResult>();
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -873,7 +862,7 @@ namespace Proto.Promises
                         _invokingResolved = true;
                         TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                         TResult result = callback.Invoke(arg);
-                        ResolveInternal(ResolveContainer<TResult>.GetOrCreate(result));
+                        ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                     }
                     else
                     {
@@ -883,17 +872,33 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseVoidResolvePromise0 : PromiseWaitPromise<PromiseVoidResolvePromise0>
+            public sealed class PromiseVoidResolvePromise0 : PromiseWaitPromise
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseVoidResolvePromise0()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private Func<Promise> _onResolved;
 
                 private PromiseVoidResolvePromise0() { }
 
-                public static PromiseVoidResolvePromise0 GetOrCreate(Func<Promise> onResolved, int skipFrames)
+                public static PromiseVoidResolvePromise0 GetOrCreate(Func<Promise> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseVoidResolvePromise0) _pool.Pop() : new PromiseVoidResolvePromise0();
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -921,17 +926,33 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseArgResolvePromise<TArg> : PromiseWaitPromise<PromiseArgResolvePromise<TArg>>
+            public sealed class PromiseArgResolvePromise<TArg> : PromiseWaitPromise
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseArgResolvePromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private Func<TArg, Promise> _onResolved;
 
                 private PromiseArgResolvePromise() { }
 
-                public static PromiseArgResolvePromise<TArg> GetOrCreate(Func<TArg, Promise> onResolved, int skipFrames)
+                public static PromiseArgResolvePromise<TArg> GetOrCreate(Func<TArg, Promise> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseArgResolvePromise<TArg>) _pool.Pop() : new PromiseArgResolvePromise<TArg>();
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -960,17 +981,33 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseVoidResolvePromise<TPromise> : PromiseWaitPromise<TPromise, PromiseVoidResolvePromise<TPromise>>
+            public sealed class PromiseVoidResolvePromise<TPromise> : PromiseWaitPromise<TPromise>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseVoidResolvePromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private Func<Promise<TPromise>> _onResolved;
 
                 private PromiseVoidResolvePromise() { }
 
-                public static PromiseVoidResolvePromise<TPromise> GetOrCreate(Func<Promise<TPromise>> onResolved, int skipFrames)
+                public static PromiseVoidResolvePromise<TPromise> GetOrCreate(Func<Promise<TPromise>> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseVoidResolvePromise<TPromise>) _pool.Pop() : new PromiseVoidResolvePromise<TPromise>();
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -998,17 +1035,33 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseArgResolvePromise<TArg, TPromise> : PromiseWaitPromise<TPromise, PromiseArgResolvePromise<TArg, TPromise>>
+            public sealed class PromiseArgResolvePromise<TArg, TPromise> : PromiseWaitPromise<TPromise>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseArgResolvePromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private Func<TArg, Promise<TPromise>> _onResolved;
 
                 private PromiseArgResolvePromise() { }
 
-                public static PromiseArgResolvePromise<TArg, TPromise> GetOrCreate(Func<TArg, Promise<TPromise>> onResolved, int skipFrames)
+                public static PromiseArgResolvePromise<TArg, TPromise> GetOrCreate(Func<TArg, Promise<TPromise>> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseArgResolvePromise<TArg, TPromise>) _pool.Pop() : new PromiseArgResolvePromise<TArg, TPromise>();
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1038,19 +1091,35 @@ namespace Proto.Promises
 
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureVoidResolve<TCapture> : PoolablePromise<PromiseCaptureVoidResolve<TCapture>>
+            public sealed class PromiseCaptureVoidResolve<TCapture> : Promise
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseCaptureVoidResolve()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private TCapture _capturedValue;
                 private Action<TCapture> resolveHandler;
 
                 private PromiseCaptureVoidResolve() { }
 
-                public static PromiseCaptureVoidResolve<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture> resolveHandler, int skipFrames)
+                public static PromiseCaptureVoidResolve<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture> resolveHandler)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseCaptureVoidResolve<TCapture>) _pool.Pop() : new PromiseCaptureVoidResolve<TCapture>();
                     promise._capturedValue = capturedValue;
                     promise.resolveHandler = resolveHandler;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1074,19 +1143,35 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureArgResolve<TCapture, TArg> : PoolablePromise<PromiseCaptureArgResolve<TCapture, TArg>>
+            public sealed class PromiseCaptureArgResolve<TCapture, TArg> : Promise
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseCaptureArgResolve()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private TCapture _capturedValue;
                 private Action<TCapture, TArg> _onResolved;
 
                 private PromiseCaptureArgResolve() { }
 
-                public static PromiseCaptureArgResolve<TCapture, TArg> GetOrCreate(TCapture capturedValue, Action<TCapture, TArg> onResolved, int skipFrames)
+                public static PromiseCaptureArgResolve<TCapture, TArg> GetOrCreate(TCapture capturedValue, Action<TCapture, TArg> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseCaptureArgResolve<TCapture, TArg>) _pool.Pop() : new PromiseCaptureArgResolve<TCapture, TArg>();
                     promise._capturedValue = capturedValue;
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1111,19 +1196,35 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureVoidResolve<TCapture, TResult> : PoolablePromise<TResult, PromiseCaptureVoidResolve<TCapture, TResult>>
+            public sealed class PromiseCaptureVoidResolve<TCapture, TResult> : Promise<TResult>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseCaptureVoidResolve()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private TCapture _capturedValue;
                 private Func<TCapture, TResult> _onResolved;
 
                 private PromiseCaptureVoidResolve() { }
 
-                public static PromiseCaptureVoidResolve<TCapture, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, TResult> onResolved, int skipFrames)
+                public static PromiseCaptureVoidResolve<TCapture, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, TResult> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseCaptureVoidResolve<TCapture, TResult>) _pool.Pop() : new PromiseCaptureVoidResolve<TCapture, TResult>();
                     promise._capturedValue = capturedValue;
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1137,7 +1238,7 @@ namespace Proto.Promises
                     {
                         _invokingResolved = true;
                         TResult result = callback.Invoke(value);
-                        ResolveInternal(ResolveContainer<TResult>.GetOrCreate(result));
+                        ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                     }
                     else
                     {
@@ -1147,19 +1248,35 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureArgResolve<TCapture, TArg, TResult> : PoolablePromise<TResult, PromiseCaptureArgResolve<TCapture, TArg, TResult>>
+            public sealed class PromiseCaptureArgResolve<TCapture, TArg, TResult> : Promise<TResult>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseCaptureArgResolve()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private TCapture _capturedValue;
                 private Func<TCapture, TArg, TResult> _onResolved;
 
                 private PromiseCaptureArgResolve() { }
 
-                public static PromiseCaptureArgResolve<TCapture, TArg, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, TResult> onResolved, int skipFrames)
+                public static PromiseCaptureArgResolve<TCapture, TArg, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, TResult> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseCaptureArgResolve<TCapture, TArg, TResult>) _pool.Pop() : new PromiseCaptureArgResolve<TCapture, TArg, TResult>();
                     promise._capturedValue = capturedValue;
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1174,7 +1291,7 @@ namespace Proto.Promises
                         _invokingResolved = true;
                         TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                         TResult result = callback.Invoke(value, arg);
-                        ResolveInternal(ResolveContainer<TResult>.GetOrCreate(result));
+                        ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                     }
                     else
                     {
@@ -1184,19 +1301,35 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureVoidResolvePromise<TCapture> : PromiseWaitPromise<PromiseCaptureVoidResolvePromise<TCapture>>
+            public sealed class PromiseCaptureVoidResolvePromise<TCapture> : PromiseWaitPromise
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseCaptureVoidResolvePromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private TCapture _capturedValue;
                 private Func<TCapture, Promise> _onResolved;
 
                 private PromiseCaptureVoidResolvePromise() { }
 
-                public static PromiseCaptureVoidResolvePromise<TCapture> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise> onResolved, int skipFrames)
+                public static PromiseCaptureVoidResolvePromise<TCapture> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseCaptureVoidResolvePromise<TCapture>) _pool.Pop() : new PromiseCaptureVoidResolvePromise<TCapture>();
                     promise._capturedValue = capturedValue;
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1226,19 +1359,35 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureArgResolvePromise<TCapture, TArg> : PromiseWaitPromise<PromiseCaptureArgResolvePromise<TCapture, TArg>>
+            public sealed class PromiseCaptureArgResolvePromise<TCapture, TArg> : PromiseWaitPromise
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseCaptureArgResolvePromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private TCapture _capturedValue;
                 private Func<TCapture, TArg, Promise> _onResolved;
 
                 private PromiseCaptureArgResolvePromise() { }
 
-                public static PromiseCaptureArgResolvePromise<TCapture, TArg> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, Promise> onResolved, int skipFrames)
+                public static PromiseCaptureArgResolvePromise<TCapture, TArg> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, Promise> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseCaptureArgResolvePromise<TCapture, TArg>) _pool.Pop() : new PromiseCaptureArgResolvePromise<TCapture, TArg>();
                     promise._capturedValue = capturedValue;
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1269,19 +1418,35 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureVoidResolvePromise<TCapture, TPromise> : PromiseWaitPromise<TPromise, PromiseCaptureVoidResolvePromise<TCapture, TPromise>>
+            public sealed class PromiseCaptureVoidResolvePromise<TCapture, TPromise> : PromiseWaitPromise<TPromise>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseCaptureVoidResolvePromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private TCapture _capturedValue;
                 private Func<TCapture, Promise<TPromise>> _onResolved;
 
                 private PromiseCaptureVoidResolvePromise() { }
 
-                public static PromiseCaptureVoidResolvePromise<TCapture, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise<TPromise>> onResolved, int skipFrames)
+                public static PromiseCaptureVoidResolvePromise<TCapture, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise<TPromise>> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseCaptureVoidResolvePromise<TCapture, TPromise>) _pool.Pop() : new PromiseCaptureVoidResolvePromise<TCapture, TPromise>();
                     promise._capturedValue = capturedValue;
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1312,19 +1477,35 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise> : PromiseWaitPromise<TPromise, PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise>>
+            public sealed class PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise> : PromiseWaitPromise<TPromise>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseCaptureArgResolvePromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private TCapture _capturedValue;
                 private Func<TCapture, TArg, Promise<TPromise>> _onResolved;
 
                 private PromiseCaptureArgResolvePromise() { }
 
-                public static PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, Promise<TPromise>> onResolved, int skipFrames)
+                public static PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, Promise<TPromise>> onResolved)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise>) _pool.Pop() : new PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise>();
                     promise._capturedValue = capturedValue;
                     promise._onResolved = onResolved;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1359,19 +1540,35 @@ namespace Proto.Promises
             // IDelegate to reduce the amount of classes I would have to write to handle catches (Composition Over Inheritance).
             // I'm less concerned about performance for catches since exceptions are expensive anyway, and they are expected to be used less often than .Then(onResolved).
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolveReject0 : PoolablePromise<PromiseResolveReject0>
+            public sealed class PromiseResolveReject0 : Promise
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseResolveReject0()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private IDelegateResolve _onResolved;
                 private IDelegateReject _onRejected;
 
                 private PromiseResolveReject0() { }
 
-                public static PromiseResolveReject0 GetOrCreate(IDelegateResolve onResolved, IDelegateReject onRejected, int skipFrames)
+                public static PromiseResolveReject0 GetOrCreate(IDelegateResolve onResolved, IDelegateReject onRejected)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseResolveReject0) _pool.Pop() : new PromiseResolveReject0();
                     promise._onResolved = onResolved;
                     promise._onRejected = onRejected;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1402,19 +1599,35 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolveReject<T> : PoolablePromise<T, PromiseResolveReject<T>>
+            public sealed class PromiseResolveReject<T> : Promise<T>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseResolveReject()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private IDelegateResolve _onResolved;
                 private IDelegateReject _onRejected;
 
                 private PromiseResolveReject() { }
 
-                public static PromiseResolveReject<T> GetOrCreate(IDelegateResolve onResolved, IDelegateReject onRejected, int skipFrames)
+                public static PromiseResolveReject<T> GetOrCreate(IDelegateResolve onResolved, IDelegateReject onRejected)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseResolveReject<T>) _pool.Pop() : new PromiseResolveReject<T>();
                     promise._onResolved = onResolved;
                     promise._onRejected = onRejected;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1445,19 +1658,35 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolveRejectPromise0 : PromiseWaitPromise<PromiseResolveRejectPromise0>
+            public sealed class PromiseResolveRejectPromise0 : PromiseWaitPromise
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseResolveRejectPromise0()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private IDelegateResolvePromise _onResolved;
                 private IDelegateRejectPromise _onRejected;
 
                 private PromiseResolveRejectPromise0() { }
 
-                public static PromiseResolveRejectPromise0 GetOrCreate(IDelegateResolvePromise onResolved, IDelegateRejectPromise onRejected, int skipFrames)
+                public static PromiseResolveRejectPromise0 GetOrCreate(IDelegateResolvePromise onResolved, IDelegateRejectPromise onRejected)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise0) _pool.Pop() : new PromiseResolveRejectPromise0();
                     promise._onResolved = onResolved;
                     promise._onRejected = onRejected;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1501,19 +1730,35 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolveRejectPromise<TPromise> : PromiseWaitPromise<TPromise, PromiseResolveRejectPromise<TPromise>>
+            public sealed class PromiseResolveRejectPromise<TPromise> : PromiseWaitPromise<TPromise>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseResolveRejectPromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private IDelegateResolvePromise _onResolved;
                 private IDelegateRejectPromise _onRejected;
 
                 private PromiseResolveRejectPromise() { }
 
-                public static PromiseResolveRejectPromise<TPromise> GetOrCreate(IDelegateResolvePromise onResolved, IDelegateRejectPromise onRejected, int skipFrames)
+                public static PromiseResolveRejectPromise<TPromise> GetOrCreate(IDelegateResolvePromise onResolved, IDelegateRejectPromise onRejected)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise<TPromise>) _pool.Pop() : new PromiseResolveRejectPromise<TPromise>();
                     promise._onResolved = onResolved;
                     promise._onRejected = onRejected;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1559,17 +1804,33 @@ namespace Proto.Promises
 
             #region Continue Promises
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseContinue0 : PoolablePromise<PromiseContinue0>
+            public sealed class PromiseContinue0 : Promise
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseContinue0()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private IDelegateContinue _onContinue;
 
                 private PromiseContinue0() { }
 
-                public static PromiseContinue0 GetOrCreate(IDelegateContinue onContinue, int skipFrames)
+                public static PromiseContinue0 GetOrCreate(IDelegateContinue onContinue)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseContinue0) _pool.Pop() : new PromiseContinue0();
                     promise._onContinue = onContinue;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1584,17 +1845,33 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseContinue<TResult> : PoolablePromise<TResult, PromiseContinue<TResult>>
+            public sealed class PromiseContinue<TResult> : Promise<TResult>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseContinue()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private IDelegateContinue<TResult> _onContinue;
 
                 private PromiseContinue() { }
 
-                public static PromiseContinue<TResult> GetOrCreate(IDelegateContinue<TResult> onContinue, int skipFrames)
+                public static PromiseContinue<TResult> GetOrCreate(IDelegateContinue<TResult> onContinue)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseContinue<TResult>) _pool.Pop() : new PromiseContinue<TResult>();
                     promise._onContinue = onContinue;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1604,22 +1881,38 @@ namespace Proto.Promises
                     _onContinue = null;
                     _invokingResolved = true;
                     TResult result = callback.DisposeAndInvoke(valueContainer);
-                    ResolveInternal(ResolveContainer<TResult>.GetOrCreate(result));
+                    ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseContinuePromise0 : PromiseWaitPromise<PromiseContinuePromise0>
+            public sealed class PromiseContinuePromise0 : PromiseWaitPromise
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseContinuePromise0()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private IDelegateContinue<Promise> _onContinue;
 
                 private PromiseContinuePromise0() { }
 
-                public static PromiseContinuePromise0 GetOrCreate(IDelegateContinue<Promise> onContinue, int skipFrames)
+                public static PromiseContinuePromise0 GetOrCreate(IDelegateContinue<Promise> onContinue)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseContinuePromise0) _pool.Pop() : new PromiseContinuePromise0();
                     promise._onContinue = onContinue;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1641,17 +1934,33 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseContinuePromise<TPromise> : PromiseWaitPromise<TPromise, PromiseContinuePromise<TPromise>>
+            public sealed class PromiseContinuePromise<TPromise> : PromiseWaitPromise<TPromise>
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseContinuePromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private IDelegateContinue<Promise<TPromise>> _onContinue;
 
                 private PromiseContinuePromise() { }
 
-                public static PromiseContinuePromise<TPromise> GetOrCreate(IDelegateContinue<Promise<TPromise>> onContinue, int skipFrames)
+                public static PromiseContinuePromise<TPromise> GetOrCreate(IDelegateContinue<Promise<TPromise>> onContinue)
                 {
                     var promise = _pool.IsNotEmpty ? (PromiseContinuePromise<TPromise>) _pool.Pop() : new PromiseContinuePromise<TPromise>();
                     promise._onContinue = onContinue;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     return promise;
                 }
 
@@ -1692,10 +2001,10 @@ namespace Proto.Promises
                 private int _index;
                 private uint _retainCounter;
 
-                public static PromisePassThrough GetOrCreate(Promise owner, int index, int skipFrames)
+                public static PromisePassThrough GetOrCreate(Promise owner, int index)
                 {
-                    ValidateElementNotNull(owner, "promises", "A promise was null", skipFrames + 1);
-                    ValidateOperation(owner, skipFrames + 1);
+                    ValidateElementNotNull(owner, "promises", "A promise was null", 2);
+                    ValidateOperation(owner, 2);
 
                     var passThrough = _pool.IsNotEmpty ? _pool.Pop() : new PromisePassThrough();
                     passThrough.Owner = owner;
@@ -1756,29 +2065,29 @@ namespace Proto.Promises
                 void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
             }
 
-            public static ValueLinkedStack<PromisePassThrough> WrapInPassThroughs<TEnumerator>(TEnumerator promises, out int count, int skipFrames) where TEnumerator : IEnumerator<Promise>
+            public static ValueLinkedStack<PromisePassThrough> WrapInPassThroughs<TEnumerator>(TEnumerator promises, out int count) where TEnumerator : IEnumerator<Promise>
             {
                 // Assumes promises.MoveNext() was already called once before this.
                 int index = 0;
-                var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(promises.Current, index, skipFrames + 1));
+                var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(promises.Current, index));
                 while (promises.MoveNext())
                 {
-                    passThroughs.Push(PromisePassThrough.GetOrCreate(promises.Current, ++index, skipFrames + 1));
+                    passThroughs.Push(PromisePassThrough.GetOrCreate(promises.Current, ++index));
                 }
                 count = index + 1;
                 return passThroughs;
             }
 
 #pragma warning disable RECS0096 // Type parameter is never used
-            public static ValueLinkedStack<PromisePassThrough> WrapInPassThroughs<T, TEnumerator>(TEnumerator promises, out int count, int skipFrames) where TEnumerator : IEnumerator<Promise<T>>
+            public static ValueLinkedStack<PromisePassThrough> WrapInPassThroughs<T, TEnumerator>(TEnumerator promises, out int count) where TEnumerator : IEnumerator<Promise<T>>
 #pragma warning restore RECS0096 // Type parameter is never used
             {
                 // Assumes promises.MoveNext() was already called once before this.
                 int index = 0;
-                var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(promises.Current, index, skipFrames + 1));
+                var passThroughs = new ValueLinkedStack<PromisePassThrough>(PromisePassThrough.GetOrCreate(promises.Current, index));
                 while (promises.MoveNext())
                 {
-                    passThroughs.Push(PromisePassThrough.GetOrCreate(promises.Current, ++index, skipFrames + 1));
+                    passThroughs.Push(PromisePassThrough.GetOrCreate(promises.Current, ++index));
                 }
                 count = index + 1;
                 return passThroughs;

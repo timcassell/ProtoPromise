@@ -3,13 +3,7 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 
-#if PROMISE_CANCEL
 using System;
 using NUnit.Framework;
 using UnityEngine.TestTools;
@@ -129,9 +123,6 @@ namespace Proto.Promises.Tests
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
                 deferredInt.Cancel();
 
-                deferred.Promise.Cancel();
-                deferredInt.Promise.Cancel();
-
                 Assert.AreEqual(Promise.State.Resolved, deferred.State);
                 Assert.AreEqual(Promise.State.Resolved, deferredInt.State);
 
@@ -193,9 +184,6 @@ namespace Proto.Promises.Tests
                 deferred.Cancel();
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
                 deferredInt.Cancel();
-
-                deferred.Promise.Cancel();
-                deferredInt.Promise.Cancel();
 
                 Assert.AreEqual(Promise.State.Rejected, deferred.State);
                 Assert.AreEqual(Promise.State.Rejected, deferredInt.State);
@@ -578,13 +566,16 @@ namespace Proto.Promises.Tests
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
 
+            Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
+
             bool resolved = false;
 
-            ICancelableAny cancelable = deferred.Promise
+            deferred.Promise
                 .Then(() => resolved = true)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."));
+                .Then(_ => Assert.Fail("Promise was resolved when it should have been canceled."), cancelationSource.Token)
+                .Finally(cancelationSource.Dispose);
 
-            cancelable.Cancel();
+            cancelationSource.Cancel();
             deferred.Resolve();
             Promise.Manager.HandleCompletes();
 
@@ -628,17 +619,18 @@ namespace Proto.Promises.Tests
             bool invoked = false;
 
             object cancelValue = "Cancel";
+            Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
 
-            var cancelable = deferred.Promise
-                .ThenDuplicate();
-            cancelable
+            deferred.Promise
+                .Then(_ => { }, cancelationSource.Token)
                 .CatchCancelation(reason =>
                 {
                     Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
-                });
+                })
+                .Finally(cancelationSource.Dispose);
 
-            cancelable.Cancel(cancelValue);
+            cancelationSource.Cancel(cancelValue);
             deferred.Cancel(100);
             Promise.Manager.HandleCompletes();
 
@@ -651,291 +643,26 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void APromiseMayBeCanceledWhenItIsPending0()
+        public void APromiseMayBeCanceledWhenItIsPending()
         {
+            Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
             string cancelValue = "Cancel";
-            Action<Promise> validate = promise =>
-            {
-                promise
-                    .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
-                        () => Assert.Fail("Promise was rejected when it should have been canceled."))
-                    .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value));
-                Promise.Manager.HandleCompletes();
-            };
 
-            Promise cancelPromise = null;
-            Action cancel = () => cancelPromise.Cancel(cancelValue);
+            Promise.Resolved()
+                .Then(() => cancelationSource.Cancel(cancelValue))
+                .Then(_ => { }, cancelationSource.Token)
+                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
+                    () => Assert.Fail("Promise was rejected when it should have been canceled."))
+                .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value))
+                .Finally(cancelationSource.Dispose);
 
-            cancelPromise = Promise.Resolved().Then(() => cancel());
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved().Then(() => { cancel(); return 0; });
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved().Then(() => { cancel(); return Promise.Resolved(); });
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved().Then(() => { cancel(); return Promise.Resolved(0); });
-            validate(cancelPromise);
-
-            cancelPromise = Promise.Resolved().Then(() => cancel(), () => { });
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved().Then(() => cancel(), (string failValue) => { });
-            validate(cancelPromise);
-
-            cancelPromise = Promise.Resolved().Then(() => { cancel(); return 0; }, () => 0);
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved().Then(() => { cancel(); return 0; }, (string failValue) => 0);
-            validate(cancelPromise);
-
-            cancelPromise = Promise.Resolved().Then(() => { cancel(); return Promise.Resolved(); }, () => Promise.Resolved());
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved().Then(() => { cancel(); return Promise.Resolved(); }, (string failValue) => Promise.Resolved());
-            validate(cancelPromise);
-
-            cancelPromise = Promise.Resolved().Then(() => { cancel(); return Promise.Resolved(0); }, () => Promise.Resolved(0));
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved().Then(() => { cancel(); return Promise.Resolved(0); }, (string failValue) => Promise.Resolved(0));
-            validate(cancelPromise);
-
-            Promise rejected = Promise.Rejected("Reject");
-            // Suppress exception.
-            rejected.Catch(() => { });
-            rejected.Retain();
-
-            cancelPromise = rejected.Then(() => { }, () => cancel());
-            validate(cancelPromise);
-            cancelPromise = rejected.Then(() => { }, (string failValue) => cancel());
-            validate(cancelPromise);
-
-            cancelPromise = rejected.Then(() => 0, () => { cancel(); return 0; });
-            validate(cancelPromise);
-            cancelPromise = rejected.Then(() => 0, (string failValue) => { cancel(); return 0; });
-            validate(cancelPromise);
-
-            cancelPromise = rejected.Then(() => Promise.Resolved(), () => { cancel(); return Promise.Resolved(); });
-            validate(cancelPromise);
-            cancelPromise = rejected.Then(() => Promise.Resolved(), (string failValue) => { cancel(); return Promise.Resolved(); });
-            validate(cancelPromise);
-
-            cancelPromise = rejected.Then(() => Promise.Resolved(0), () => { cancel(); return Promise.Resolved(0); });
-            validate(cancelPromise);
-            cancelPromise = rejected.Then(() => Promise.Resolved(0), (string failValue) => { cancel(); return Promise.Resolved(0); });
-            validate(cancelPromise);
-
-            cancelPromise = rejected.Catch(() => cancel());
-            validate(cancelPromise);
-            cancelPromise = rejected.Catch((string failValue) => cancel());
-            validate(cancelPromise);
-
-            cancelPromise = rejected.Catch(() => { cancel(); return Promise.Resolved(); });
-            validate(cancelPromise);
-            cancelPromise = rejected.Catch((string failValue) => { cancel(); return Promise.Resolved(); });
-            validate(cancelPromise);
-
-            rejected.Release();
+            Promise.Manager.HandleCompletes();
 
             // Clean up.
             Promise.Manager.HandleCompletesAndProgress();
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void APromiseMayBeCanceledWhenItIsPending1()
-        {
-            string cancelValue = "Cancel";
-            Action<Promise> validate = promise =>
-            {
-                promise
-                    .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
-                        () => Assert.Fail("Promise was rejected when it should have been canceled."))
-                    .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value));
-                Promise.Manager.HandleCompletes();
-            };
-
-            Promise cancelPromise = null;
-            Action cancel = () => cancelPromise.Cancel(cancelValue);
-
-            cancelPromise = Promise.Resolved(0).Then(_ => cancel());
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved(0).Then(_ => { cancel(); return 0; });
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved(0).Then(_ => { cancel(); return Promise.Resolved(); });
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved(0).Then(_ => { cancel(); return Promise.Resolved(0); });
-            validate(cancelPromise);
-
-            cancelPromise = Promise.Resolved(0).Then(_ => cancel(), () => { });
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved(0).Then(_ => cancel(), (string failValue) => { });
-            validate(cancelPromise);
-
-            cancelPromise = Promise.Resolved(0).Then(_ => { cancel(); return 0; }, () => 0);
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved(0).Then(_ => { cancel(); return 0; }, (string failValue) => 0);
-            validate(cancelPromise);
-
-            cancelPromise = Promise.Resolved(0).Then(_ => { cancel(); return Promise.Resolved(); }, () => Promise.Resolved());
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved(0).Then(_ => { cancel(); return Promise.Resolved(); }, (string failValue) => Promise.Resolved());
-            validate(cancelPromise);
-
-            cancelPromise = Promise.Resolved(0).Then(_ => { cancel(); return Promise.Resolved(0); }, () => Promise.Resolved(0));
-            validate(cancelPromise);
-            cancelPromise = Promise.Resolved(0).Then(_ => { cancel(); return Promise.Resolved(0); }, (string failValue) => Promise.Resolved(0));
-            validate(cancelPromise);
-
-            Promise<int> rejected = Promise.Rejected<int, string>("Reject");
-            // Suppress exception.
-            rejected.Catch(() => { });
-            rejected.Retain();
-
-            cancelPromise = rejected.Then(_ => { }, () => cancel());
-            validate(cancelPromise);
-            cancelPromise = rejected.Then(_ => { }, (string failValue) => cancel());
-            validate(cancelPromise);
-
-            cancelPromise = rejected.Then(_ => 0, () => { cancel(); return 0; });
-            validate(cancelPromise);
-            cancelPromise = rejected.Then(_ => 0, (string failValue) => { cancel(); return 0; });
-            validate(cancelPromise);
-
-            cancelPromise = rejected.Then(_ => Promise.Resolved(), () => { cancel(); return Promise.Resolved(); });
-            validate(cancelPromise);
-            cancelPromise = rejected.Then(_ => Promise.Resolved(), (string failValue) => { cancel(); return Promise.Resolved(); });
-            validate(cancelPromise);
-
-            cancelPromise = rejected.Then(_ => Promise.Resolved(0), () => { cancel(); return Promise.Resolved(0); });
-            validate(cancelPromise);
-            cancelPromise = rejected.Then(_ => Promise.Resolved(0), (string failValue) => { cancel(); return Promise.Resolved(0); });
-            validate(cancelPromise);
-
-            cancelPromise = rejected.Catch(() => cancel());
-            validate(cancelPromise);
-            cancelPromise = rejected.Catch((string failValue) => cancel());
-            validate(cancelPromise);
-
-            cancelPromise = rejected.Catch(() => { cancel(); return Promise.Resolved(); });
-            validate(cancelPromise);
-            cancelPromise = rejected.Catch((string failValue) => { cancel(); return Promise.Resolved(); });
-            validate(cancelPromise);
-
-            rejected.Release();
-
-            // Clean up.
-            Promise.Manager.HandleCompletesAndProgress();
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void APromiseMayBeCanceledWhenItIsPending2()
-        {
-            var deferred = Promise.NewDeferred();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-            //var deferredInt = Promise.NewDeferred<int>();
-            //Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-            string cancelValue = "Cancel";
-            Action<Promise> validate = promise =>
-            {
-                promise
-                    .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
-                        () => Assert.Fail("Promise was rejected when it should have been canceled."))
-                    .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value));
-                Promise.Manager.HandleCompletes();
-            };
-
-            deferred.Promise.Cancel(cancelValue);
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-            deferred.Resolve();
-
-            validate(deferred.Promise);
-
-            //deferredInt.Promise.Cancel(cancelValue);
-            //Assert.AreEqual(Promise.State.Pending, deferredInt.State);
-            //deferredInt.Resolve(100);
-
-            //validate(deferredInt.Promise);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void APromiseMayBeCanceledWhenItIsPending3()
-        {
-            var deferred = Promise.NewDeferred();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-            var deferredInt = Promise.NewDeferred<int>();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-            string cancelValue = "Cancel";
-            Action<Promise> validate = promise =>
-            {
-                promise
-                    .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
-                        () => Assert.Fail("Promise was rejected when it should have been canceled."))
-                    .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value));
-                // Rejecting a deferred whose promise is not pending adds that rejection to the unhandled rejections stack.
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
-            };
-
-            deferred.Promise.Cancel(cancelValue);
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-            deferred.Reject("Reject");
-
-            validate(deferred.Promise);
-
-            deferredInt.Promise.Cancel(cancelValue);
-            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
-            deferredInt.Reject("Reject");
-
-            validate(deferredInt.Promise);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void APromiseMayBeCanceledWhenItIsPending4()
-        {
-            var deferred = Promise.NewDeferred();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-            var deferredInt = Promise.NewDeferred<int>();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-            string cancelValue = "Cancel";
-            Action<Promise> validate = promise =>
-            {
-                promise
-                    .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
-                        () => Assert.Fail("Promise was rejected when it should have been canceled."))
-                    .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value));
-                Promise.Manager.HandleCompletes();
-            };
-
-            deferred.Promise.Cancel(cancelValue);
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-            deferred.Cancel("Different Cancel");
-
-            validate(deferred.Promise);
-
-            deferredInt.Promise.Cancel(cancelValue);
-            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
-            deferredInt.Cancel("Different Cancel");
-
-            validate(deferredInt.Promise);
-
-            // Clean up.
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
         }
     }
 }
-#endif

@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -31,8 +26,24 @@ namespace Proto.Promises
         partial class Internal
         {
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class MergePromise<T> : PoolablePromise<T, MergePromise<T>>, IMultiTreeHandleable
+            public sealed partial class MergePromise<T> : Promise<T>, IMultiTreeHandleable
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static MergePromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 Action<IValueContainer, ResolveContainer<T>, int> _onPromiseResolved;
                 private uint _waitCount;
@@ -40,7 +51,7 @@ namespace Proto.Promises
 
                 private MergePromise() { }
 
-                public static MergePromise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved, int count, int skipFrames)
+                public static MergePromise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved, int count)
                 {
                     var promise = _pool.IsNotEmpty ? (MergePromise<T>) _pool.Pop() : new MergePromise<T>();
 
@@ -48,12 +59,12 @@ namespace Proto.Promises
                     promise._onPromiseResolved = onPromiseResolved;
 
                     promise._waitCount = (uint) count;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     promise._pending = true;
                     // Retain this until all promises resolve/reject/cancel.
                     promise.RetainInternal();
 
-                    var container = ResolveContainer<T>.GetOrCreate(value);
+                    var container = ResolveContainer<T>.GetOrCreate(ref value);
                     container.Retain();
                     promise._valueOrPrevious = container;
 
@@ -126,13 +137,13 @@ namespace Proto.Promises
                 private bool _invokingProgress;
                 private bool _suspended;
 
-                protected override void Reset(int skipFrames)
+                protected override void Reset()
                 {
 #if PROMISE_DEBUG
                     checked
 #endif
                     {
-                        base.Reset(skipFrames + 1);
+                        base.Reset();
                         _currentAmount = default(UnsignedFixed32);
                         _invokingProgress = false;
                         _suspended = false;

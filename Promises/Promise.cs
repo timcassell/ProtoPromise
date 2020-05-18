@@ -4,13 +4,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-// define PROTO_PROMISE_CANCEL_DISABLE to disable cancelations on promises.
-// If Cancelations are enabled, it breaks the Promises/A+ spec "2.1. Promise States", but allows breaking promise chains. Execution is also a little slower.
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 // define PROTO_PROMISE_PROGRESS_DISABLE to disable progress reports on promises.
 // If Progress is enabled, promises use more memory, and it creates an upper bound to the depth of a promise chain (see Config for details).
 #if !PROTO_PROMISE_PROGRESS_DISABLE
@@ -37,10 +30,14 @@ namespace Proto.Promises
             Pending,
             Resolved,
             Rejected,
-#if !PROMISE_CANCEL
-            [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", false)]
+            Canceled
+        }
+
+        internal Promise()
+        {
+#if PROMISE_DEBUG
+            _id = idCounter++;
 #endif
-            Canceled // This violates Promises/A+ 2.1 when CANCEL is enabled.
         }
 
         /// <summary>
@@ -51,8 +48,8 @@ namespace Proto.Promises
         {
             ValidateOperation(this, 1);
 #if PROMISE_DEBUG
-            // Make sure Retain doesn't overflow the ushort. 4 retains are reserved for internal use.
-            if (_userRetainCounter == ushort.MaxValue - 4)
+            // Make sure Retain doesn't overflow the ushort. 3 retains are reserved for internal use.
+            if (_userRetainCounter == ushort.MaxValue - 3)
             {
                 throw new OverflowException();
             }
@@ -105,7 +102,7 @@ namespace Proto.Promises
 #endif
         public Promise Progress(Action<float> onProgress)
         {
-            SubscribeProgress(onProgress, 1);
+            SubscribeProgress(onProgress);
             return this;
         }
 
@@ -113,18 +110,14 @@ namespace Proto.Promises
         /// Add a cancel callback. Returns this.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with the cancelation reason.
         /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
         public Promise CatchCancelation(Action<ReasonContainer> onCanceled)
         {
-            ValidateCancel(1);
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
             if (_state == State.Pending | _state == State.Canceled)
             {
-                AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled, 1));
+                AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled));
             }
             return this;
         }
@@ -138,7 +131,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, 1));
+            AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally));
             return this;
         }
 
@@ -155,7 +148,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseVoidResolve0.GetOrCreate(onResolved, 1);
+            var promise = Internal.PromiseVoidResolve0.GetOrCreate(onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -172,7 +165,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseVoidResolve<TResult>.GetOrCreate(onResolved, 1);
+            var promise = Internal.PromiseVoidResolve<TResult>.GetOrCreate(onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -189,7 +182,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseVoidResolvePromise0.GetOrCreate(onResolved, 1);
+            var promise = Internal.PromiseVoidResolvePromise0.GetOrCreate(onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -206,7 +199,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseVoidResolvePromise<TResult>.GetOrCreate(onResolved, 1);
+            var promise = Internal.PromiseVoidResolvePromise<TResult>.GetOrCreate(onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -227,7 +220,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
             var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -247,7 +240,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
             var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -266,7 +259,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
             var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -286,7 +279,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
             var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -309,7 +302,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -331,7 +324,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -352,7 +345,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -374,7 +367,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -395,7 +388,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -417,7 +410,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -438,7 +431,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -460,7 +453,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -481,7 +474,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -503,7 +496,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -524,7 +517,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -546,7 +539,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -567,7 +560,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -589,7 +582,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -610,7 +603,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -632,7 +625,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -649,7 +642,7 @@ namespace Proto.Promises
             ValidateArgument(onContinue, "onContinue", 1);
 
             var del = Internal.DelegateContinueVoidVoid.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinue0.GetOrCreate(del, 1);
+            var promise = Internal.PromiseContinue0.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -664,7 +657,7 @@ namespace Proto.Promises
             ValidateArgument(onContinue, "onContinue", 1);
 
             var del = Internal.DelegateContinueVoidResult<TResult>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinue<TResult>.GetOrCreate(del, 1);
+            var promise = Internal.PromiseContinue<TResult>.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -679,7 +672,7 @@ namespace Proto.Promises
             ValidateArgument(onContinue, "onContinue", 1);
 
             var del = Internal.DelegateContinueVoidResult<Promise>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinuePromise0.GetOrCreate(del, 1);
+            var promise = Internal.PromiseContinuePromise0.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -694,7 +687,7 @@ namespace Proto.Promises
             ValidateArgument(onContinue, "onContinue", 1);
 
             var del = Internal.DelegateContinueVoidResult<Promise<TResult>>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinuePromise<TResult>.GetOrCreate(del, 1);
+            var promise = Internal.PromiseContinuePromise<TResult>.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -710,6 +703,8 @@ namespace Proto.Promises
     [System.Diagnostics.DebuggerNonUserCode]
     public abstract partial class Promise<T> : Promise
     {
+        internal Promise() { }
+
         /// <summary>
         /// Returns a new <see cref="Promise{T}.YieldInstruction"/> that can be yielded in a coroutine to wait until this is settled.
         /// </summary>
@@ -731,7 +726,7 @@ namespace Proto.Promises
 #endif
         public new Promise<T> Progress(Action<float> onProgress)
         {
-            SubscribeProgress(onProgress, 1);
+            SubscribeProgress(onProgress);
             return this;
         }
 
@@ -739,18 +734,14 @@ namespace Proto.Promises
         /// Add a cancel callback. Returns this.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with the cancelation reason.
         /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
         public new Promise<T> CatchCancelation(Action<ReasonContainer> onCanceled)
         {
-            ValidateCancel(1);
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
             if (_state == State.Pending | _state == State.Canceled)
             {
-                AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled, 1));
+                AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled));
             }
             return this;
         }
@@ -764,7 +755,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, 1));
+            AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally));
             return this;
         }
 
@@ -781,7 +772,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseArgResolve<T>.GetOrCreate(onResolved, 1);
+            var promise = Internal.PromiseArgResolve<T>.GetOrCreate(onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -798,7 +789,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseArgResolve<T, TResult>.GetOrCreate(onResolved, 1);
+            var promise = Internal.PromiseArgResolve<T, TResult>.GetOrCreate(onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -815,7 +806,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseArgResolvePromise<T>.GetOrCreate(onResolved, 1);
+            var promise = Internal.PromiseArgResolvePromise<T>.GetOrCreate(onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -832,7 +823,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseArgResolvePromise<T, TResult>.GetOrCreate(onResolved, 1);
+            var promise = Internal.PromiseArgResolvePromise<T, TResult>.GetOrCreate(onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -853,7 +844,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
             var rejectDelegate = Internal.DelegateVoidResult<T>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -873,7 +864,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
             var rejectDelegate = Internal.DelegateArgResult<TReject, T>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -892,7 +883,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
             var rejectDelegate = Internal.DelegateVoidPromiseT<T>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -911,7 +902,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
             var rejectDelegate = Internal.DelegateArgPromiseT<TReject, T>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -934,7 +925,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgVoid<T>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -956,7 +947,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgVoid<T>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -977,7 +968,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -999,7 +990,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1020,7 +1011,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgPromise<T>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1042,7 +1033,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgPromise<T>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1063,7 +1054,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1085,7 +1076,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1106,7 +1097,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgVoid<T>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1128,7 +1119,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgVoid<T>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1149,7 +1140,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1171,7 +1162,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1192,7 +1183,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgPromise<T>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1214,7 +1205,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgPromise<T>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1235,7 +1226,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1257,7 +1248,7 @@ namespace Proto.Promises
 
             var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
             var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1274,7 +1265,7 @@ namespace Proto.Promises
             ValidateArgument(onContinue, "onContinue", 1);
 
             var del = Internal.DelegateContinueArgVoid<T>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinue0.GetOrCreate(del, 1);
+            var promise = Internal.PromiseContinue0.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1289,7 +1280,7 @@ namespace Proto.Promises
             ValidateArgument(onContinue, "onContinue", 1);
 
             var del = Internal.DelegateContinueArgResult<T, TResult>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinue<TResult>.GetOrCreate(del, 1);
+            var promise = Internal.PromiseContinue<TResult>.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1305,7 +1296,7 @@ namespace Proto.Promises
             ValidateArgument(onContinue, "onContinue", 1);
 
             var del = Internal.DelegateContinueArgResult<T, Promise>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinuePromise0.GetOrCreate(del, 1);
+            var promise = Internal.PromiseContinuePromise0.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1320,7 +1311,7 @@ namespace Proto.Promises
             ValidateArgument(onContinue, "onContinue", 1);
 
             var del = Internal.DelegateContinueArgResult<T, Promise<TResult>>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinuePromise<TResult>.GetOrCreate(del, 1);
+            var promise = Internal.PromiseContinuePromise<TResult>.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }

@@ -83,7 +83,7 @@ namespace Proto.Promises
                 {
                     throw new InvalidOperationException("CancelationSource.Cancel: source was already canceled.", GetFormattedStacktrace(1));
                 }
-                _ref.SetCanceled(reason);
+                _ref.SetCanceled(ref reason);
             }
 
             /// <summary>
@@ -254,7 +254,7 @@ namespace Proto.Promises
                     callback.Invoke(new ReasonContainer(_ref.ValueContainer));
                     return default(CancelationRegistration);
                 }
-                return new CancelationRegistration(_ref, Internal.CancelDelegate.GetOrCreate(callback, 1));
+                return new CancelationRegistration(_ref, Internal.CancelDelegate.GetOrCreate(callback));
             }
 
             /// <summary>
@@ -275,7 +275,7 @@ namespace Proto.Promises
                     callback.Invoke(captureValue, new ReasonContainer(_ref.ValueContainer));
                     return default(CancelationRegistration);
                 }
-                return new CancelationRegistration(_ref, Internal.CancelDelegateCapture<TCapture>.GetOrCreate(captureValue, callback, 1));
+                return new CancelationRegistration(_ref, Internal.CancelDelegateCapture<TCapture>.GetOrCreate(captureValue, callback));
             }
 
             /// <summary>

@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 # endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 
 using System;
 
@@ -50,12 +45,8 @@ namespace Proto.Promises
             /// <summary>
             /// If the <see cref="Promise"/> is canceled, rethrow the cancelation.
             /// </summary>
-#if !PROMISE_CANCEL
-            [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
             public void RethrowIfCanceled()
             {
-                ValidateCancel(1);
                 ValidateCall();
                 if (_valueContainer.GetState() == State.Canceled)
                 {
@@ -91,14 +82,10 @@ namespace Proto.Promises
             /// <summary>
             /// If the <see cref="Promise"/> is canceled, get a container of the reason.
             /// </summary>
-#if !PROMISE_CANCEL
-            [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
             public ReasonContainer CancelContainer
             {
                 get
                 {
-                    ValidateCancel(1);
                     ValidateCall();
                     ValidateCanceled();
                     return new ReasonContainer(_valueContainer);
@@ -125,7 +112,6 @@ namespace Proto.Promises
                 }
             }
 
-#if PROMISE_CANCEL
             partial void ValidateCanceled()
             {
                 if (_valueContainer.GetState() != State.Canceled)
@@ -133,7 +119,6 @@ namespace Proto.Promises
                     throw new InvalidOperationException("Promise must be canceled in order to access CancelContainer.", GetFormattedStacktrace(2));
                 }
             }
-#endif
 #endif
         }
 
@@ -244,12 +229,8 @@ namespace Proto.Promises
             /// <summary>
             /// If the <see cref="Promise{T}"/> is canceled, rethrow the cancelation.
             /// </summary>
-#if !PROMISE_CANCEL
-            [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
             public void RethrowIfCanceled()
             {
-                ValidateCancel(1);
                 ValidateCall();
                 if (_valueContainer.GetState() == State.Canceled)
                 {
@@ -298,14 +279,10 @@ namespace Proto.Promises
             /// <summary>
             /// If the <see cref="Promise{T}"/> is canceled, get a container of the reason.
             /// </summary>
-#if !PROMISE_CANCEL
-            [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
             public ReasonContainer CancelContainer
             {
                 get
                 {
-                    ValidateCancel(1);
                     ValidateCall();
                     ValidateCanceled();
                     return new ReasonContainer(_valueContainer);
@@ -341,7 +318,6 @@ namespace Proto.Promises
                 }
             }
 
-#if PROMISE_CANCEL
             partial void ValidateCanceled()
             {
                 if (_valueContainer.GetState() != State.Canceled)
@@ -349,7 +325,6 @@ namespace Proto.Promises
                     throw new InvalidOperationException("Promise must be canceled in order to access CancelContainer.", GetFormattedStacktrace(2));
                 }
             }
-#endif
 #endif
         }
     }

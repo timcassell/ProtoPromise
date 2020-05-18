@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -31,46 +26,62 @@ namespace Proto.Promises
     {
         partial class Internal
         {
-            public static Promise _Race<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
+            public static Promise _Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
             {
-                ValidateArgument(promises, "promises", skipFrames + 1);
+                ValidateArgument(promises, "promises", 2);
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", GetFormattedStacktrace(skipFrames + 1));
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", GetFormattedStacktrace(2));
                 }
                 int count;
-                var passThroughs = WrapInPassThroughs(promises, out count, skipFrames + 1);
-                return RacePromise0.GetOrCreate(passThroughs, count, skipFrames + 1);
+                var passThroughs = WrapInPassThroughs(promises, out count);
+                return RacePromise0.GetOrCreate(passThroughs, count);
             }
 
-            public static Promise<T> _Race<T, TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise<T>>
+            public static Promise<T> _Race<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
             {
-                ValidateArgument(promises, "promises", skipFrames + 1);
+                ValidateArgument(promises, "promises", 2);
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", GetFormattedStacktrace(skipFrames + 1));
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", GetFormattedStacktrace(2));
                 }
                 int count;
-                var passThroughs = WrapInPassThroughs<T, TEnumerator>(promises, out count, skipFrames + 1);
-                return RacePromise<T>.GetOrCreate(passThroughs, count, skipFrames + 1);
+                var passThroughs = WrapInPassThroughs<T, TEnumerator>(promises, out count);
+                return RacePromise<T>.GetOrCreate(passThroughs, count);
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class RacePromise0 : PoolablePromise<RacePromise0>, IMultiTreeHandleable
+            public sealed partial class RacePromise0 : Promise, IMultiTreeHandleable
             {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static RacePromise0()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 private uint _waitCount;
 
                 private RacePromise0() { }
 
-                public static Promise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count, int skipFrames)
+                public static Promise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
                 {
                     var promise = _pool.IsNotEmpty ? (RacePromise0) _pool.Pop() : new RacePromise0();
 
                     promise._passThroughs = promisePassThroughs;
 
                     promise._waitCount = (uint) count;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     // Retain this until all promises resolve/reject/cancel.
                     promise.RetainInternal();
 
@@ -111,29 +122,40 @@ namespace Proto.Promises
                 {
                     _passThroughs.Push(passThrough);
                 }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public sealed partial class RacePromise<T> : Promise<T>, IMultiTreeHandleable
+            {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static RacePromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
 
                 protected override void Dispose()
                 {
                     base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
                 }
-            }
 
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class RacePromise<T> : PoolablePromise<T, RacePromise<T>>, IMultiTreeHandleable
-            {
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 private uint _waitCount;
 
                 private RacePromise() { }
 
-                public static Promise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count, int skipFrames)
+                public static Promise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
                 {
                     var promise = _pool.IsNotEmpty ? (RacePromise<T>) _pool.Pop() : new RacePromise<T>();
 
                     promise._passThroughs = promisePassThroughs;
 
                     promise._waitCount = (uint) count;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     // Retain this until all promises resolve/reject/cancel.
                     promise.RetainInternal();
 
@@ -183,9 +205,9 @@ namespace Proto.Promises
                 private bool _invokingProgress;
                 private bool _suspended;
 
-                protected override void Reset(int skipFrames)
+                protected override void Reset()
                 {
-                    base.Reset(skipFrames + 1);
+                    base.Reset();
                     _currentAmount = default(UnsignedFixed32);
                     _invokingProgress = false;
                     _suspended = false;
@@ -293,9 +315,9 @@ namespace Proto.Promises
                 private bool _invokingProgress;
                 private bool _suspended;
 
-                protected override void Reset(int skipFrames)
+                protected override void Reset()
                 {
-                    base.Reset(skipFrames + 1);
+                    base.Reset();
                     _currentAmount = default(UnsignedFixed32);
                     _invokingProgress = false;
                     _suspended = false;

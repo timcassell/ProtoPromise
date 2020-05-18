@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -29,12 +24,12 @@ namespace Proto.Promises
         [System.Diagnostics.DebuggerNonUserCode]
         public abstract class DeferredBase : ICancelableAny, IRetainable
         {
-            public State State { get; protected set; }
-
             /// <summary>
             /// The <see cref="Promise"/> that this controls.
             /// </summary>
             public Promise Promise { get; protected set; }
+
+            public State State { get { return Promise._state; } }
 
             internal DeferredBase() { }
 
@@ -68,7 +63,21 @@ namespace Proto.Promises
             /// <summary>
             /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// </summary>
-            public abstract void Reject<TReject>(TReject reason);
+            public void Reject<TReject>(TReject reason)
+            {
+                var promise = Promise;
+                ValidateOperation(promise, 1);
+
+                if (State == State.Pending)
+                {
+                    promise.RejectDirect(ref reason, 1);
+                }
+                else
+                {
+                    AddRejectionToUnhandledStack(reason, null);
+                    Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
+                }
+            }
 
 
             /// <summary>
@@ -77,24 +86,32 @@ namespace Proto.Promises
 #if !PROMISE_PROGRESS
             [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
-            public abstract void ReportProgress(float progress);
+            public void ReportProgress(float progress)
+            {
+                var promise = Promise;
+                ValidateProgress(1);
+                ValidateOperation(promise, 1);
+                ValidateProgress(progress, 1);
+
+                if (State != State.Pending)
+                {
+                    Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
+                    return;
+                }
+
+                promise.ReportProgress(progress);
+            }
 
             /// <summary>
             /// Cancel the linked <see cref="Promise"/> without a reason.
             /// </summary>
-#if !PROMISE_CANCEL
-            [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
             public void Cancel()
             {
-                ValidateCancel(1);
                 var promise = Promise;
                 ValidateOperation(promise, 1);
 
                 if (State == State.Pending)
                 {
-                    State = State.Canceled;
-                    promise.ReleaseWithoutDisposeCheck();
                     promise.CancelDirect();
                 }
                 else
@@ -106,20 +123,14 @@ namespace Proto.Promises
             /// <summary>
             /// Cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// </summary>
-#if !PROMISE_CANCEL
-            [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
             public void Cancel<TCancel>(TCancel reason)
             {
-                ValidateCancel(1);
                 var promise = Promise;
                 ValidateOperation(promise, 1);
 
                 if (State == State.Pending)
                 {
-                    State = State.Canceled;
-                    promise.ReleaseWithoutDisposeCheck();
-                    promise.CancelDirect(reason);
+                    promise.CancelDirect(ref reason);
                 }
                 else
                 {
@@ -139,7 +150,21 @@ namespace Proto.Promises
             /// <summary>
             /// Resolve the linked <see cref="Promise"/>.
             /// </summary>
-            public abstract void Resolve();
+            public void Resolve()
+            {
+                var promise = Promise;
+                ValidateOperation(promise, 1);
+
+                if (State == State.Pending)
+                {
+                    promise.ResolveDirect();
+                }
+                else
+                {
+                    Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+                    return;
+                }
+            }
         }
     }
 
@@ -161,7 +186,21 @@ namespace Proto.Promises
             /// <summary>
             /// Resolve the linked <see cref="Promise{T}"/> with <paramref name="value"/>.
             /// </summary>
-            public abstract void Resolve(T value);
+            public void Resolve(T value)
+            {
+                var promise = Promise;
+                ValidateOperation(promise, 1);
+
+                if (State == State.Pending)
+                {
+                    promise.ResolveDirect(ref value);
+                }
+                else
+                {
+                    Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+                    return;
+                }
+            }
         }
     }
 
@@ -176,63 +215,6 @@ namespace Proto.Promises
                 {
                     Promise = target;
                 }
-
-                public void Reset()
-                {
-                    State = State.Pending;
-                }
-
-                public override void ReportProgress(float progress)
-                {
-                    var promise = Promise;
-                    ValidateProgress(1);
-                    ValidateOperation(promise, 1);
-                    ValidateProgress(progress, 1);
-
-                    if (State != State.Pending)
-                    {
-                        Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
-                        return;
-                    }
-
-                    promise.ReportProgress(progress);
-                }
-
-                public override void Resolve()
-                {
-                    var promise = Promise;
-                    ValidateOperation(promise, 1);
-
-                    if (State == State.Pending)
-                    {
-                        State = State.Resolved;
-                        promise.ReleaseWithoutDisposeCheck();
-                        promise.ResolveDirect();
-                    }
-                    else
-                    {
-                        Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
-                        return;
-                    }
-                }
-
-                public override void Reject<TReject>(TReject reason)
-                {
-                    var promise = Promise;
-                    ValidateOperation(promise, 1);
-
-                    if (State == State.Pending)
-                    {
-                        State = State.Rejected;
-                        promise.ReleaseWithoutDisposeCheck();
-                        promise.RejectDirect(reason, 1);
-                    }
-                    else
-                    {
-                        AddRejectionToUnhandledStack(reason, null);
-                        Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
-                    }
-                }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
@@ -241,63 +223,6 @@ namespace Proto.Promises
                 public DeferredInternal(Promise<T> target)
                 {
                     Promise = target;
-                }
-
-                public void Reset()
-                {
-                    State = State.Pending;
-                }
-
-                public override void ReportProgress(float progress)
-                {
-                    var promise = Promise;
-                    ValidateProgress(1);
-                    ValidateOperation(promise, 1);
-                    ValidateProgress(progress, 1);
-
-                    if (State != State.Pending)
-                    {
-                        Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
-                        return;
-                    }
-
-                    promise.ReportProgress(progress);
-                }
-
-                public override void Resolve(T value)
-                {
-                    var promise = Promise;
-                    ValidateOperation(promise, 1);
-
-                    if (State == State.Pending)
-                    {
-                        State = State.Resolved;
-                        promise.ReleaseWithoutDisposeCheck();
-                        promise.ResolveDirect(value);
-                    }
-                    else
-                    {
-                        Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
-                        return;
-                    }
-                }
-
-                public override void Reject<TReject>(TReject reason)
-                {
-                    var promise = Promise;
-                    ValidateOperation(promise, 1);
-
-                    if (State == State.Pending)
-                    {
-                        State = State.Rejected;
-                        promise.ReleaseWithoutDisposeCheck();
-                        promise.RejectDirect(reason, 1);
-                    }
-                    else
-                    {
-                        AddRejectionToUnhandledStack(reason, null);
-                        Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
-                    }
                 }
             }
         }

@@ -1,9 +1,4 @@
-﻿#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
@@ -16,6 +11,16 @@ namespace Proto.Promises.Tests
     // These help test all Then/Catch functions at once.
     public static class TestHelper
     {
+        public static Promise ThenDuplicate(this Promise promise)
+        {
+            return promise.Then(() => { });
+        }
+
+        public static Promise<T> ThenDuplicate<T>(this Promise<T> promise)
+        {
+            return promise.Then(v => v);
+        }
+
         public static Action<UnhandledException> cachedRejectionHandler;
 
 #if PROMISE_PROGRESS

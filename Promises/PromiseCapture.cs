@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -29,7 +24,7 @@ namespace Proto.Promises
 #endif
         public Promise Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress)
         {
-            SubscribeProgress(progressCaptureValue, onProgress, 1);
+            SubscribeProgress(progressCaptureValue, onProgress);
             return this;
         }
 
@@ -37,18 +32,14 @@ namespace Proto.Promises
         /// Capture a value and add a cancel callback. Returns this.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and the cancelation reason.
         /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
         public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, ReasonContainer> onCanceled)
         {
-            ValidateCancel(1);
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
             if (_state == State.Pending | _state == State.Canceled)
             {
-                AddWaiter(Internal.CancelDelegateCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled, 1));
+                AddWaiter(Internal.CancelDelegateCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled));
             }
             return this;
         }
@@ -62,7 +53,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(finallyCaptureValue, onFinally, 1));
+            AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(ref finallyCaptureValue, onFinally));
             return this;
         }
 
@@ -79,7 +70,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseCaptureVoidResolve<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved, 1);
+            var promise = Internal.PromiseCaptureVoidResolve<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -96,7 +87,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseCaptureVoidResolve<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved, 1);
+            var promise = Internal.PromiseCaptureVoidResolve<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -113,7 +104,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseCaptureVoidResolvePromise<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved, 1);
+            var promise = Internal.PromiseCaptureVoidResolvePromise<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -130,7 +121,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseCaptureVoidResolvePromise<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved, 1);
+            var promise = Internal.PromiseCaptureVoidResolvePromise<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -150,8 +141,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -170,8 +161,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -189,8 +180,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -209,8 +200,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -231,9 +222,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -253,8 +244,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -273,9 +264,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -295,9 +286,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -318,8 +309,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -339,9 +330,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -360,9 +351,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -382,8 +373,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -402,9 +393,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -424,9 +415,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -447,8 +438,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -468,9 +459,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -489,9 +480,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -511,8 +502,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -531,9 +522,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -553,9 +544,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -576,8 +567,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -597,9 +588,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -618,9 +609,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -640,8 +631,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -660,9 +651,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -682,9 +673,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -705,8 +696,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -726,9 +717,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -747,9 +738,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -769,8 +760,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -789,9 +780,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -811,9 +802,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -834,8 +825,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -855,9 +846,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidVoid<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -876,9 +867,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -898,8 +889,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -918,9 +909,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -940,9 +931,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -963,8 +954,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -984,9 +975,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidResult<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1005,9 +996,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1027,8 +1018,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1047,9 +1038,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1069,9 +1060,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1092,8 +1083,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1113,9 +1104,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromise<TCaptureResolve>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1134,9 +1125,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1156,8 +1147,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1176,9 +1167,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1198,9 +1189,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1221,8 +1212,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1242,9 +1233,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureResolve, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1260,8 +1251,8 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueCaptureVoidVoid<TCapture>.GetOrCreate(continueCaptureValue, onContinue);
-            var promise = Internal.PromiseContinue0.GetOrCreate(del, 1);
+            var del = Internal.DelegateContinueCaptureVoidVoid<TCapture>.GetOrCreate(ref continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinue0.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1275,8 +1266,8 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueCaptureVoidResult<TCapture, TResult>.GetOrCreate(continueCaptureValue, onContinue);
-            var promise = Internal.PromiseContinue<TResult>.GetOrCreate(del, 1);
+            var del = Internal.DelegateContinueCaptureVoidResult<TCapture, TResult>.GetOrCreate(ref continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinue<TResult>.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1290,8 +1281,8 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueCaptureVoidResult<TCapture, Promise>.GetOrCreate(continueCaptureValue, onContinue);
-            var promise = Internal.PromiseContinuePromise0.GetOrCreate(del, 1);
+            var del = Internal.DelegateContinueCaptureVoidResult<TCapture, Promise>.GetOrCreate(ref continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinuePromise0.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1305,8 +1296,8 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueCaptureVoidResult<TCapture, Promise<TResult>>.GetOrCreate(continueCaptureValue, onContinue);
-            var promise = Internal.PromiseContinuePromise<TResult>.GetOrCreate(del, 1);
+            var del = Internal.DelegateContinueCaptureVoidResult<TCapture, Promise<TResult>>.GetOrCreate(ref continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinuePromise<TResult>.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1330,7 +1321,7 @@ namespace Proto.Promises
 #endif
         public new Promise<T> Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress)
         {
-            SubscribeProgress(progressCaptureValue, onProgress, 1);
+            SubscribeProgress(progressCaptureValue, onProgress);
             return this;
         }
 
@@ -1338,18 +1329,14 @@ namespace Proto.Promises
         /// Capture a value and add a cancel callback. Returns this.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and the cancelation reason.
         /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
         public new Promise<T> CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, ReasonContainer> onCanceled)
         {
-            ValidateCancel(1);
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
             if (_state == State.Pending | _state == State.Canceled)
             {
-                AddWaiter(Internal.CancelDelegateCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled, 1));
+                AddWaiter(Internal.CancelDelegateCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled));
             }
             return this;
         }
@@ -1363,7 +1350,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(finallyCaptureValue, onFinally, 1));
+            AddWaiter(Internal.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(ref finallyCaptureValue, onFinally));
             return this;
         }
 
@@ -1380,7 +1367,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseCaptureArgResolve<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved, 1);
+            var promise = Internal.PromiseCaptureArgResolve<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1397,7 +1384,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseCaptureArgResolve<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved, 1);
+            var promise = Internal.PromiseCaptureArgResolve<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1414,7 +1401,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseCaptureArgResolvePromise<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved, 1);
+            var promise = Internal.PromiseCaptureArgResolvePromise<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1431,7 +1418,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseCaptureArgResolvePromise<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved, 1);
+            var promise = Internal.PromiseCaptureArgResolvePromise<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1451,8 +1438,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, T>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, T>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1471,8 +1458,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, T>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, T>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1490,8 +1477,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, T>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, T>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1510,8 +1497,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, T>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, T>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1532,9 +1519,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1554,8 +1541,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgVoid<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1574,9 +1561,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1596,9 +1583,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1619,8 +1606,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgVoid<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1640,9 +1627,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1662,9 +1649,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1684,8 +1671,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1704,9 +1691,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1726,9 +1713,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1749,8 +1736,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1770,9 +1757,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1791,9 +1778,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1813,8 +1800,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgPromise<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1833,9 +1820,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1855,9 +1842,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1878,8 +1865,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgPromise<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1899,9 +1886,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1920,9 +1907,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1942,8 +1929,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1962,9 +1949,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -1984,9 +1971,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2007,8 +1994,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2028,9 +2015,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2049,9 +2036,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2071,8 +2058,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgVoid<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2091,9 +2078,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromise<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2113,9 +2100,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2136,8 +2123,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgVoid<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2157,9 +2144,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgVoid<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgPromise<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2179,9 +2166,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2201,8 +2188,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2221,9 +2208,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2243,9 +2230,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2266,8 +2253,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2287,9 +2274,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgResult<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2308,9 +2295,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2330,8 +2317,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgPromise<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2350,9 +2337,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidVoid<TCaptureReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2372,9 +2359,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2395,8 +2382,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgPromise<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2416,9 +2403,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgPromise<TCaptureResolve, T>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgVoid<TCaptureReject, TReject>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2437,9 +2424,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2459,8 +2446,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2479,9 +2466,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureVoidResult<TCaptureReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2501,9 +2488,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
+            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
             var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2524,8 +2511,8 @@ namespace Proto.Promises
             ValidateArgument(onRejected, "onRejected", 1);
 
             var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2545,9 +2532,9 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(resolveCaptureValue, onResolved);
-            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(rejectCaptureValue, onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
+            var resolveDelegate = Internal.DelegateCaptureArgPromiseT<TCaptureResolve, T, TResult>.GetOrCreate(ref resolveCaptureValue, onResolved);
+            var rejectDelegate = Internal.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>.GetOrCreate(ref rejectCaptureValue, onRejected);
+            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2563,8 +2550,8 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueCaptureArgVoid<TCapture, T>.GetOrCreate(continueCaptureValue, onContinue);
-            var promise = Internal.PromiseContinue0.GetOrCreate(del, 1);
+            var del = Internal.DelegateContinueCaptureArgVoid<TCapture, T>.GetOrCreate(ref continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinue0.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2578,8 +2565,8 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueCaptureArgResult<TCapture, T, TResult>.GetOrCreate(continueCaptureValue, onContinue);
-            var promise = Internal.PromiseContinue<TResult>.GetOrCreate(del, 1);
+            var del = Internal.DelegateContinueCaptureArgResult<TCapture, T, TResult>.GetOrCreate(ref continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinue<TResult>.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2593,8 +2580,8 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueCaptureArgResult<TCapture, T, Promise>.GetOrCreate(continueCaptureValue, onContinue);
-            var promise = Internal.PromiseContinuePromise0.GetOrCreate(del, 1);
+            var del = Internal.DelegateContinueCaptureArgResult<TCapture, T, Promise>.GetOrCreate(ref continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinuePromise0.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
@@ -2608,8 +2595,8 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueCaptureArgResult<TCapture, T, Promise<TResult>>.GetOrCreate(continueCaptureValue, onContinue);
-            var promise = Internal.PromiseContinuePromise<TResult>.GetOrCreate(del, 1);
+            var del = Internal.DelegateContinueCaptureArgResult<TCapture, T, Promise<TResult>>.GetOrCreate(ref continueCaptureValue, onContinue);
+            var promise = Internal.PromiseContinuePromise<TResult>.GetOrCreate(del);
             HookupNewPromise(promise);
             return promise;
         }
