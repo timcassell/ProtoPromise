@@ -1540,7 +1540,7 @@ namespace Proto.Promises
             #endregion
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegatePassthroughCancel : ILinked<DelegatePassthroughCancel>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public sealed class DelegatePassthroughCancel : ILinked<DelegatePassthroughCancel>, IDelegateResolve, IDelegateResolvePromise
             {
                 DelegatePassthroughCancel ILinked<DelegatePassthroughCancel>.Next { get; set; }
 
@@ -1552,6 +1552,7 @@ namespace Proto.Promises
                 }
 
                 private CancelationToken _cancelationToken;
+                public CancelationRegistration cancelationRegistration;
 
                 private DelegatePassthroughCancel() { }
 
@@ -1568,22 +1569,10 @@ namespace Proto.Promises
                     owner.ResolveInternal(valueContainer);
                 }
 
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndReleaseAndMaybeThrow();
-                    owner.RejectOrCancelInternal(valueContainer);
-                }
-
                 void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     DisposeAndReleaseAndMaybeThrow();
                     owner.ResolveInternal(valueContainer);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndReleaseAndMaybeThrow();
-                    owner.RejectOrCancelInternal(valueContainer);
                 }
 
                 private void DisposeAndReleaseAndMaybeThrow()
@@ -1596,12 +1585,13 @@ namespace Proto.Promises
                 public void Dispose()
                 {
                     _cancelationToken = default(CancelationToken);
+                    UnregisterAndMakeDefault(ref cancelationRegistration);
                 }
             }
 
             #region Delegates with cancelation token
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateVoidVoidCancel : ILinked<DelegateVoidVoidCancel>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public sealed class DelegateVoidVoidCancel : ILinked<DelegateVoidVoidCancel>, IDelegateResolve, IDelegateResolvePromise
             {
                 DelegateVoidVoidCancel ILinked<DelegateVoidVoidCancel>.Next { get; set; }
 
@@ -1612,13 +1602,13 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private Action<CancelationToken> _callback;
+                private Action _callback;
                 private CancelationToken _cancelationToken;
                 public CancelationRegistration cancelationRegistration;
 
                 private DelegateVoidVoidCancel() { }
 
-                public static DelegateVoidVoidCancel GetOrCreate(Action<CancelationToken> callback, CancelationToken cancelationToken)
+                public static DelegateVoidVoidCancel GetOrCreate(Action callback, CancelationToken cancelationToken)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidVoidCancel();
                     del._callback = callback;
@@ -1632,7 +1622,7 @@ namespace Proto.Promises
                     var token = _cancelationToken;
                     Dispose();
                     ReleaseAndMaybeThrow(token);
-                    temp.Invoke(_cancelationToken);
+                    temp.Invoke();
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
@@ -1641,17 +1631,7 @@ namespace Proto.Promises
                     DisposeAndInvoke(owner);
                 }
 
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
                 void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     DisposeAndInvoke(owner);
                 }
@@ -1669,7 +1649,7 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateArgVoidCancel<TArg> : ILinked<DelegateArgVoidCancel<TArg>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public sealed class DelegateArgVoidCancel<TArg> : ILinked<DelegateArgVoidCancel<TArg>>, IDelegateResolve, IDelegateResolvePromise
             {
                 DelegateArgVoidCancel<TArg> ILinked<DelegateArgVoidCancel<TArg>>.Next { get; set; }
 
@@ -1680,11 +1660,11 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private Action<TArg, CancelationToken> _callback;
+                private Action<TArg> _callback;
                 private CancelationToken _cancelationToken;
                 public CancelationRegistration cancelationRegistration;
 
-                public static DelegateArgVoidCancel<TArg> GetOrCreate(Action<TArg, CancelationToken> callback, CancelationToken cancelationToken)
+                public static DelegateArgVoidCancel<TArg> GetOrCreate(Action<TArg> callback, CancelationToken cancelationToken)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgVoidCancel<TArg>();
                     del._callback = callback;
@@ -1694,48 +1674,24 @@ namespace Proto.Promises
 
                 private DelegateArgVoidCancel() { }
 
-                private void DisposeAndInvoke(TArg arg, Promise owner)
+                private void DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     var temp = _callback;
                     var token = _cancelationToken;
                     Dispose();
                     ReleaseAndMaybeThrow(token);
-                    temp.Invoke(arg, token);
+                    temp.Invoke(((ResolveContainer<TArg>) valueContainer).value);
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                private void TryDisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TArg arg;
-                    if (TryConvert(valueContainer, out arg))
-                    {
-                        DisposeAndInvoke(arg, owner);
-                    }
-                    else
-                    {
-                        Dispose();
-                        owner.RejectOrCancelInternal(valueContainer);
-                    }
-                }
-
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TryDisposeAndInvoke(valueContainer, owner);
+                    DisposeAndInvoke(valueContainer, owner);
                 }
 
                 void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TryDisposeAndInvoke(valueContainer, owner);
+                    DisposeAndInvoke(valueContainer, owner);
                 }
 
                 public void Dispose()
@@ -1751,7 +1707,7 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateVoidResultCancel<TResult> : ILinked<DelegateVoidResultCancel<TResult>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public sealed class DelegateVoidResultCancel<TResult> : ILinked<DelegateVoidResultCancel<TResult>>, IDelegateResolve, IDelegateResolvePromise
             {
                 DelegateVoidResultCancel<TResult> ILinked<DelegateVoidResultCancel<TResult>>.Next { get; set; }
 
@@ -1762,11 +1718,11 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private Func<CancelationToken, TResult> _callback;
+                private Func<TResult> _callback;
                 private CancelationToken _cancelationToken;
                 public CancelationRegistration cancelationRegistration;
 
-                public static DelegateVoidResultCancel<TResult> GetOrCreate(Func<CancelationToken, TResult> callback, CancelationToken cancelationToken)
+                public static DelegateVoidResultCancel<TResult> GetOrCreate(Func<TResult> callback, CancelationToken cancelationToken)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidResultCancel<TResult>();
                     del._callback = callback;
@@ -1782,7 +1738,7 @@ namespace Proto.Promises
                     var token = _cancelationToken;
                     Dispose();
                     ReleaseAndMaybeThrow(token);
-                    TResult result = temp.Invoke(token);
+                    TResult result = temp.Invoke();
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
@@ -1791,17 +1747,7 @@ namespace Proto.Promises
                     DisposeAndInvoke(owner);
                 }
 
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
                 void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     DisposeAndInvoke(owner);
                 }
@@ -1819,7 +1765,7 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateArgResultCancel<TArg, TResult> : ILinked<DelegateArgResultCancel<TArg, TResult>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public sealed class DelegateArgResultCancel<TArg, TResult> : ILinked<DelegateArgResultCancel<TArg, TResult>>, IDelegateResolve, IDelegateResolvePromise
             {
                 DelegateArgResultCancel<TArg, TResult> ILinked<DelegateArgResultCancel<TArg, TResult>>.Next { get; set; }
 
@@ -1830,11 +1776,11 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private Func<TArg, CancelationToken, TResult> _callback;
+                private Func<TArg, TResult> _callback;
                 private CancelationToken _cancelationToken;
                 public CancelationRegistration cancelationRegistration;
 
-                public static DelegateArgResultCancel<TArg, TResult> GetOrCreate(Func<TArg, CancelationToken, TResult> callback, CancelationToken cancelationToken)
+                public static DelegateArgResultCancel<TArg, TResult> GetOrCreate(Func<TArg, TResult> callback, CancelationToken cancelationToken)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgResultCancel<TArg, TResult>();
                     del._callback = callback;
@@ -1844,48 +1790,24 @@ namespace Proto.Promises
 
                 private DelegateArgResultCancel() { }
 
-                private void DisposeAndInvoke(TArg arg, Promise owner)
+                private void DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     var temp = _callback;
                     var token = _cancelationToken;
                     Dispose();
                     ReleaseAndMaybeThrow(token);
-                    TResult result = temp.Invoke(arg, token);
+                    TResult result = temp.Invoke(((ResolveContainer<TArg>) valueContainer).value);
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                private void TryDisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TArg arg;
-                    if (TryConvert(valueContainer, out arg))
-                    {
-                        DisposeAndInvoke(arg, owner);
-                    }
-                    else
-                    {
-                        Dispose();
-                        owner.RejectOrCancelInternal(valueContainer);
-                    }
-                }
-
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TryDisposeAndInvoke(valueContainer, owner);
+                    DisposeAndInvoke(valueContainer, owner);
                 }
 
                 void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TryDisposeAndInvoke(valueContainer, owner);
+                    DisposeAndInvoke(valueContainer, owner);
                 }
 
                 public void Dispose()
@@ -1902,7 +1824,7 @@ namespace Proto.Promises
 
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateVoidPromiseCancel : ILinked<DelegateVoidPromiseCancel>, IDelegateResolvePromise, IDelegateRejectPromise
+            public sealed class DelegateVoidPromiseCancel : ILinked<DelegateVoidPromiseCancel>, IDelegateResolvePromise
             {
                 DelegateVoidPromiseCancel ILinked<DelegateVoidPromiseCancel>.Next { get; set; }
 
@@ -1913,13 +1835,13 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private Func<CancelationToken, Promise> _callback;
+                private Func<Promise> _callback;
                 private CancelationToken _cancelationToken;
                 public CancelationRegistration cancelationRegistration;
 
                 private DelegateVoidPromiseCancel() { }
 
-                public static DelegateVoidPromiseCancel GetOrCreate(Func<CancelationToken, Promise> callback, CancelationToken cancelationToken)
+                public static DelegateVoidPromiseCancel GetOrCreate(Func<Promise> callback, CancelationToken cancelationToken)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidPromiseCancel();
                     del._callback = callback;
@@ -1927,23 +1849,13 @@ namespace Proto.Promises
                     return del;
                 }
 
-                private void DisposeAndInvoke(Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     var temp = _callback;
                     var token = _cancelationToken;
                     Dispose();
                     ReleaseAndMaybeThrow(token);
-                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(token));
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
+                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke());
                 }
 
                 public void Dispose()
@@ -1959,7 +1871,7 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateArgPromiseCancel<TArg> : ILinked<DelegateArgPromiseCancel<TArg>>, IDelegateResolvePromise, IDelegateRejectPromise
+            public sealed class DelegateArgPromiseCancel<TArg> : ILinked<DelegateArgPromiseCancel<TArg>>, IDelegateResolvePromise
             {
                 DelegateArgPromiseCancel<TArg> ILinked<DelegateArgPromiseCancel<TArg>>.Next { get; set; }
 
@@ -1970,11 +1882,11 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private Func<TArg, CancelationToken, Promise> _callback;
+                private Func<TArg, Promise> _callback;
                 private CancelationToken _cancelationToken;
                 public CancelationRegistration cancelationRegistration;
 
-                public static DelegateArgPromiseCancel<TArg> GetOrCreate(Func<TArg, CancelationToken, Promise> callback, CancelationToken cancelationToken)
+                public static DelegateArgPromiseCancel<TArg> GetOrCreate(Func<TArg, Promise> callback, CancelationToken cancelationToken)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgPromiseCancel<TArg>();
                     del._callback = callback;
@@ -1984,32 +1896,14 @@ namespace Proto.Promises
 
                 private DelegateArgPromiseCancel() { }
 
-                private void DisposeAndInvoke(TArg arg, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     var temp = _callback;
                     var token = _cancelationToken;
                     Dispose();
                     ReleaseAndMaybeThrow(token);
-                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(arg, token));
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TArg arg;
-                    if (TryConvert(valueContainer, out arg))
-                    {
-                        DisposeAndInvoke(arg, owner);
-                    }
-                    else
-                    {
-                        Dispose();
-                        owner.RejectOrCancelInternal(valueContainer);
-                    }
+                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
+                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(arg));
                 }
 
                 public void Dispose()
@@ -2025,7 +1919,7 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateVoidPromiseTCancel<TPromise> : ILinked<DelegateVoidPromiseTCancel<TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
+            public sealed class DelegateVoidPromiseTCancel<TPromise> : ILinked<DelegateVoidPromiseTCancel<TPromise>>, IDelegateResolvePromise
             {
                 DelegateVoidPromiseTCancel<TPromise> ILinked<DelegateVoidPromiseTCancel<TPromise>>.Next { get; set; }
 
@@ -2036,11 +1930,11 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private Func<CancelationToken, Promise<TPromise>> _callback;
+                private Func<Promise<TPromise>> _callback;
                 private CancelationToken _cancelationToken;
                 public CancelationRegistration cancelationRegistration;
 
-                public static DelegateVoidPromiseTCancel<TPromise> GetOrCreate(Func<CancelationToken, Promise<TPromise>> callback, CancelationToken cancelationToken)
+                public static DelegateVoidPromiseTCancel<TPromise> GetOrCreate(Func<Promise<TPromise>> callback, CancelationToken cancelationToken)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidPromiseTCancel<TPromise>();
                     del._callback = callback;
@@ -2050,23 +1944,13 @@ namespace Proto.Promises
 
                 private DelegateVoidPromiseTCancel() { }
 
-                private void DisposeAndInvoke(Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     var temp = _callback;
                     var token = _cancelationToken;
                     Dispose();
                     ReleaseAndMaybeThrow(token);
-                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(token));
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
+                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke());
                 }
 
                 public void Dispose()
@@ -2082,7 +1966,7 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateArgPromiseTCancel<TArg, TPromise> : ILinked<DelegateArgPromiseTCancel<TArg, TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
+            public sealed class DelegateArgPromiseTCancel<TArg, TPromise> : ILinked<DelegateArgPromiseTCancel<TArg, TPromise>>, IDelegateResolvePromise
             {
                 DelegateArgPromiseTCancel<TArg, TPromise> ILinked<DelegateArgPromiseTCancel<TArg, TPromise>>.Next { get; set; }
 
@@ -2093,11 +1977,11 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private Func<TArg, CancelationToken, Promise<TPromise>> _callback;
+                private Func<TArg, Promise<TPromise>> _callback;
                 private CancelationToken _cancelationToken;
                 public CancelationRegistration cancelationRegistration;
 
-                public static DelegateArgPromiseTCancel<TArg, TPromise> GetOrCreate(Func<TArg, CancelationToken, Promise<TPromise>> callback, CancelationToken cancelationToken)
+                public static DelegateArgPromiseTCancel<TArg, TPromise> GetOrCreate(Func<TArg, Promise<TPromise>> callback, CancelationToken cancelationToken)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgPromiseTCancel<TArg, TPromise>();
                     del._callback = callback;
@@ -2107,32 +1991,14 @@ namespace Proto.Promises
 
                 private DelegateArgPromiseTCancel() { }
 
-                private void DisposeAndInvoke(TArg arg, Promise owner)
+                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
                 {
                     var temp = _callback;
                     var token = _cancelationToken;
                     Dispose();
                     ReleaseAndMaybeThrow(token);
-                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(arg, token));
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TArg arg;
-                    if (TryConvert(valueContainer, out arg))
-                    {
-                        DisposeAndInvoke(arg, owner);
-                    }
-                    else
-                    {
-                        Dispose();
-                        owner.RejectOrCancelInternal(valueContainer);
-                    }
+                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
+                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(arg));
                 }
 
                 public void Dispose()
@@ -2160,11 +2026,11 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private Action<ResultContainer, CancelationToken> _callback;
+                private Action<ResultContainer> _callback;
                 private CancelationToken _cancelationToken;
                 public CancelationRegistration cancelationRegistration;
 
-                public static DelegateContinueVoidVoidCancel GetOrCreate(Action<ResultContainer, CancelationToken> callback, CancelationToken cancelationToken)
+                public static DelegateContinueVoidVoidCancel GetOrCreate(Action<ResultContainer> callback, CancelationToken cancelationToken)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueVoidVoidCancel();
                     del._callback = callback;
@@ -2180,7 +2046,7 @@ namespace Proto.Promises
                     var token = _cancelationToken;
                     Dispose();
                     ReleaseAndMaybeThrow(token);
-                    callback.Invoke(new ResultContainer(valueContainer), token);
+                    callback.Invoke(new ResultContainer(valueContainer));
                 }
 
                 public void Dispose()
@@ -2207,11 +2073,11 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private Func<ResultContainer, CancelationToken, TResult> _callback;
+                private Func<ResultContainer, TResult> _callback;
                 private CancelationToken _cancelationToken;
                 public CancelationRegistration cancelationRegistration;
 
-                public static DelegateContinueVoidResultCancel<TResult> GetOrCreate(Func<ResultContainer, CancelationToken, TResult> callback, CancelationToken cancelationToken)
+                public static DelegateContinueVoidResultCancel<TResult> GetOrCreate(Func<ResultContainer, TResult> callback, CancelationToken cancelationToken)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueVoidResultCancel<TResult>();
                     del._callback = callback;
@@ -2227,7 +2093,7 @@ namespace Proto.Promises
                     var token = _cancelationToken;
                     Dispose();
                     ReleaseAndMaybeThrow(token);
-                    return callback.Invoke(new ResultContainer(valueContainer), token);
+                    return callback.Invoke(new ResultContainer(valueContainer));
                 }
 
                 public void Dispose()
@@ -2254,11 +2120,11 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private Action<Promise<TArg>.ResultContainer, CancelationToken> _callback;
+                private Action<Promise<TArg>.ResultContainer> _callback;
                 private CancelationToken _cancelationToken;
                 public CancelationRegistration cancelationRegistration;
 
-                public static DelegateContinueArgVoidCancel<TArg> GetOrCreate(Action<Promise<TArg>.ResultContainer, CancelationToken> callback, CancelationToken cancelationToken)
+                public static DelegateContinueArgVoidCancel<TArg> GetOrCreate(Action<Promise<TArg>.ResultContainer> callback, CancelationToken cancelationToken)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueArgVoidCancel<TArg>();
                     del._callback = callback;
@@ -2274,7 +2140,7 @@ namespace Proto.Promises
                     var token = _cancelationToken;
                     Dispose();
                     ReleaseAndMaybeThrow(token);
-                    callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer), token);
+                    callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                 }
 
                 public void Dispose()
@@ -2301,11 +2167,11 @@ namespace Proto.Promises
                     OnClearPool += () => _pool.Clear();
                 }
 
-                private Func<Promise<TArg>.ResultContainer, CancelationToken, TResult> _callback;
+                private Func<Promise<TArg>.ResultContainer, TResult> _callback;
                 private CancelationToken _cancelationToken;
                 public CancelationRegistration cancelationRegistration;
 
-                public static DelegateContinueArgResultCancel<TArg, TResult> GetOrCreate(Func<Promise<TArg>.ResultContainer, CancelationToken, TResult> callback, CancelationToken cancelationToken)
+                public static DelegateContinueArgResultCancel<TArg, TResult> GetOrCreate(Func<Promise<TArg>.ResultContainer, TResult> callback, CancelationToken cancelationToken)
                 {
                     var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueArgResultCancel<TArg, TResult>();
                     del._callback = callback;
@@ -2321,7 +2187,7 @@ namespace Proto.Promises
                     var token = _cancelationToken;
                     Dispose();
                     ReleaseAndMaybeThrow(token);
-                    return callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer), token);
+                    return callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                 }
 
                 public void Dispose()

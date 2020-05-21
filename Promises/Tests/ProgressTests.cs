@@ -166,7 +166,7 @@ namespace Proto.Promises.Tests
 
             deferred.Promise
                 .ThenDuplicate()
-                .Then(_ => { }, cancelationSource.Token)
+                .Then(() => { }, cancelationSource.Token)
                 .Progress(p => progress = p)
                 .Finally(cancelationSource.Dispose);
 
@@ -204,7 +204,7 @@ namespace Proto.Promises.Tests
                 .ThenDuplicate()
                 .Then(() =>
                     deferred2.Promise
-                        .Then(_ => { }, cancelationSource.Token)
+                        .Then(() => { }, cancelationSource.Token)
                 )
                 .Progress(p => progress = p)
                 .Finally(cancelationSource.Dispose);
@@ -281,7 +281,7 @@ namespace Proto.Promises.Tests
 
             deferred.Promise
                 .ThenDuplicate()
-                .Then(_ => { }, cancelationSource.Token)
+                .Then(() => { }, cancelationSource.Token)
                 .Progress(p => { firstInvoked = true; progress = p; })
                 .Finally(cancelationSource.Dispose);
 

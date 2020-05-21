@@ -622,7 +622,7 @@ namespace Proto.Promises.Tests
             Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
 
             deferred.Promise
-                .Then(_ => { }, cancelationSource.Token)
+                .Then(() => { }, cancelationSource.Token)
                 .CatchCancelation(reason =>
                 {
                     Assert.AreEqual(cancelValue, reason.Value);
@@ -650,7 +650,7 @@ namespace Proto.Promises.Tests
 
             Promise.Resolved()
                 .Then(() => cancelationSource.Cancel(cancelValue))
-                .Then(_ => { }, cancelationSource.Token)
+                .Then(() => { }, cancelationSource.Token)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
                     () => Assert.Fail("Promise was rejected when it should have been canceled."))
                 .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value))
