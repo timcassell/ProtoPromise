@@ -13,38 +13,28 @@ namespace Proto.Promises
         partial class Internal
         {
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegatePassthrough : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegatePassthrough : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
-                private static readonly DelegatePassthrough _instance = new DelegatePassthrough();
+                private readonly bool _isActive;
 
-                private DelegatePassthrough() { }
+                public bool IsNull { get { return !_isActive; } }
 
-                public static DelegatePassthrough GetOrCreate()
+                public DelegatePassthrough(bool active)
                 {
-                    return _instance;
+                    _isActive = active;
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    owner.ResolveInternal(valueContainer);
-                }
-
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    owner.RejectOrCancelInternal(valueContainer);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
                     owner.ResolveInternal(valueContainer);
                 }
 
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
                     owner.RejectOrCancelInternal(valueContainer);
                 }
 
-                void IDisposable.Dispose() { }
+                public void MaybeUnregisterCancelation() { }
             }
 
 
@@ -115,654 +105,335 @@ namespace Proto.Promises
 
             #region Regular Delegates
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateVoidVoid : ILinked<DelegateVoidVoid>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateVoidVoid : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateVoidVoid ILinked<DelegateVoidVoid>.Next { get; set; }
+                private readonly Action _callback;
 
-                private static ValueLinkedStack<DelegateVoidVoid> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateVoidVoid()
+                public DelegateVoidVoid(Action callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
                 }
 
-                private Action _callback;
-
-                private DelegateVoidVoid() { }
-
-                public static DelegateVoidVoid GetOrCreate(Action callback)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidVoid();
-                    del._callback = callback;
-                    return del;
-                }
-
-                private void DisposeAndInvoke(Promise owner)
-                {
-                    var temp = _callback;
-                    Dispose();
-                    temp.Invoke();
+                    _callback.Invoke();
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
-                    DisposeAndInvoke(owner);
+                    _callback.Invoke();
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateArgVoid<TArg> : ILinked<DelegateArgVoid<TArg>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateArgVoid<TArg> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateArgVoid<TArg> ILinked<DelegateArgVoid<TArg>>.Next { get; set; }
+                private readonly Action<TArg> _callback;
 
-                private static ValueLinkedStack<DelegateArgVoid<TArg>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateArgVoid()
+                public DelegateArgVoid(Action<TArg> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
                 }
 
-                private Action<TArg> _callback;
-
-                public static DelegateArgVoid<TArg> GetOrCreate(Action<TArg> callback)
+                private void Invoke(TArg arg, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgVoid<TArg>();
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateArgVoid() { }
-
-                private void DisposeAndInvoke(TArg arg, Promise owner)
-                {
-                    var temp = _callback;
-                    Dispose();
-                    temp.Invoke(arg);
+                    _callback.Invoke(arg);
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                private void TryDisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        DisposeAndInvoke(arg, owner);
+                        Invoke(arg, owner);
                     }
                     else
                     {
-                        Dispose();
                         owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TryDisposeAndInvoke(valueContainer, owner);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TryDisposeAndInvoke(valueContainer, owner);
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateVoidResult<TResult> : ILinked<DelegateVoidResult<TResult>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateVoidResult<TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateVoidResult<TResult> ILinked<DelegateVoidResult<TResult>>.Next { get; set; }
+                private readonly Func<TResult> _callback;
 
-                private static ValueLinkedStack<DelegateVoidResult<TResult>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateVoidResult()
+                public DelegateVoidResult(Func<TResult> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
                 }
 
-                private Func<TResult> _callback;
-
-                public static DelegateVoidResult<TResult> GetOrCreate(Func<TResult> callback)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidResult<TResult>();
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateVoidResult() { }
-
-                private void DisposeAndInvoke(Promise owner)
-                {
-                    var temp = _callback;
-                    Dispose();
-                    TResult result = temp.Invoke();
+                    TResult result = _callback.Invoke();
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
-                    DisposeAndInvoke(owner);
+                    TResult result = _callback.Invoke();
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateArgResult<TArg, TResult> : ILinked<DelegateArgResult<TArg, TResult>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateArgResult<TArg, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateArgResult<TArg, TResult> ILinked<DelegateArgResult<TArg, TResult>>.Next { get; set; }
+                private readonly Func<TArg, TResult> _callback;
 
-                private static ValueLinkedStack<DelegateArgResult<TArg, TResult>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateArgResult()
+                public DelegateArgResult(Func<TArg, TResult> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
                 }
 
-                private Func<TArg, TResult> _callback;
-
-                public static DelegateArgResult<TArg, TResult> GetOrCreate(Func<TArg, TResult> callback)
-                {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgResult<TArg, TResult>();
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateArgResult() { }
-
-                private void DisposeAndInvoke(TArg arg, Promise owner)
+                private void Invoke(TArg arg, Promise owner)
                 {
                     var temp = _callback;
-                    Dispose();
                     TResult result = temp.Invoke(arg);
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                private void TryDisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        DisposeAndInvoke(arg, owner);
+                        Invoke(arg, owner);
                     }
                     else
                     {
-                        Dispose();
                         owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TryDisposeAndInvoke(valueContainer, owner);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TryDisposeAndInvoke(valueContainer, owner);
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateVoidPromise : ILinked<DelegateVoidPromise>, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateVoidPromise : IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateVoidPromise ILinked<DelegateVoidPromise>.Next { get; set; }
+                private readonly Func<Promise> _callback;
 
-                private static ValueLinkedStack<DelegateVoidPromise> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateVoidPromise()
+                public DelegateVoidPromise(Func<Promise> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
                 }
 
-                private Func<Promise> _callback;
-
-                private DelegateVoidPromise() { }
-
-                public static DelegateVoidPromise GetOrCreate(Func<Promise> callback)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidPromise();
-                    del._callback = callback;
-                    return del;
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
 
-                private void DisposeAndInvoke(Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
-                    var temp = _callback;
-                    Dispose();
-                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke());
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
 
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateArgPromise<TArg> : ILinked<DelegateArgPromise<TArg>>, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateArgPromise<TArg> : IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateArgPromise<TArg> ILinked<DelegateArgPromise<TArg>>.Next { get; set; }
+                private readonly Func<TArg, Promise> _callback;
 
-                private static ValueLinkedStack<DelegateArgPromise<TArg>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateArgPromise()
+                public DelegateArgPromise(Func<TArg, Promise> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
                 }
 
-                private Func<TArg, Promise> _callback;
-
-                public static DelegateArgPromise<TArg> GetOrCreate(Func<TArg, Promise> callback)
+                private void Invoke(TArg arg, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgPromise<TArg>();
-                    del._callback = callback;
-                    return del;
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(arg));
                 }
 
-                private DelegateArgPromise() { }
-
-                private void DisposeAndInvoke(TArg arg, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var temp = _callback;
-                    Dispose();
-                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(arg));
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        DisposeAndInvoke(arg, owner);
+                        Invoke(arg, owner);
                     }
                     else
                     {
-                        Dispose();
                         owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
-                public void Dispose()
-                {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateVoidPromiseT<TPromise> : ILinked<DelegateVoidPromiseT<TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateVoidPromiseT<TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateVoidPromiseT<TPromise> ILinked<DelegateVoidPromiseT<TPromise>>.Next { get; set; }
+                private readonly Func<Promise<TPromise>> _callback;
 
-                private static ValueLinkedStack<DelegateVoidPromiseT<TPromise>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateVoidPromiseT()
+                public DelegateVoidPromiseT(Func<Promise<TPromise>> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
                 }
 
-                private Func<Promise<TPromise>> _callback;
-
-                public static DelegateVoidPromiseT<TPromise> GetOrCreate(Func<Promise<TPromise>> callback)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidPromiseT<TPromise>();
-                    del._callback = callback;
-                    return del;
+                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke());
                 }
 
-                private DelegateVoidPromiseT() { }
-
-                private void DisposeAndInvoke(Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
-                    var temp = _callback;
-                    Dispose();
-                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke());
+                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke());
                 }
 
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateArgPromiseT<TArg, TPromise> : ILinked<DelegateArgPromiseT<TArg, TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateArgPromiseT<TArg, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateArgPromiseT<TArg, TPromise> ILinked<DelegateArgPromiseT<TArg, TPromise>>.Next { get; set; }
+                private readonly Func<TArg, Promise<TPromise>> _callback;
 
-                private static ValueLinkedStack<DelegateArgPromiseT<TArg, TPromise>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateArgPromiseT()
+                public DelegateArgPromiseT(Func<TArg, Promise<TPromise>> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
                 }
 
-                private Func<TArg, Promise<TPromise>> _callback;
-
-                public static DelegateArgPromiseT<TArg, TPromise> GetOrCreate(Func<TArg, Promise<TPromise>> callback)
+                private void Invoke(TArg arg, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgPromiseT<TArg, TPromise>();
-                    del._callback = callback;
-                    return del;
+                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(arg));
                 }
 
-                private DelegateArgPromiseT() { }
-
-                private void DisposeAndInvoke(TArg arg, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var temp = _callback;
-                    Dispose();
-                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(arg));
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        DisposeAndInvoke(arg, owner);
+                        Invoke(arg, owner);
                     }
                     else
                     {
-                        Dispose();
                         owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
-                public void Dispose()
-                {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateContinueVoidVoid : ILinked<DelegateContinueVoidVoid>, IDelegateContinue
+            public struct DelegateContinueVoidVoid : IDelegateContinue
             {
-                DelegateContinueVoidVoid ILinked<DelegateContinueVoidVoid>.Next { get; set; }
+                private readonly Action<ResultContainer> _callback;
 
-                private static ValueLinkedStack<DelegateContinueVoidVoid> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateContinueVoidVoid()
+                public DelegateContinueVoidVoid(Action<ResultContainer> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
                 }
 
-                private Action<ResultContainer> _callback;
-
-                public static DelegateContinueVoidVoid GetOrCreate(Action<ResultContainer> callback)
+                public void Invoke(IValueContainer valueContainer)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueVoidVoid();
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateContinueVoidVoid() { }
-
-                void IDelegateContinue.DisposeAndInvoke(IValueContainer valueContainer)
-                {
-                    var callback = _callback;
-                    Dispose();
-                    callback.Invoke(new ResultContainer(valueContainer));
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    _callback.Invoke(new ResultContainer(valueContainer));
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateContinueVoidResult<TResult> : ILinked<DelegateContinueVoidResult<TResult>>, IDelegateContinue<TResult>
+            public struct DelegateContinueVoidResult<TResult> : IDelegateContinue<TResult>
             {
-                DelegateContinueVoidResult<TResult> ILinked<DelegateContinueVoidResult<TResult>>.Next { get; set; }
+                private readonly Func<ResultContainer, TResult> _callback;
 
-                private static ValueLinkedStack<DelegateContinueVoidResult<TResult>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateContinueVoidResult()
+                public DelegateContinueVoidResult(Func<ResultContainer, TResult> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
                 }
 
-                private Func<ResultContainer, TResult> _callback;
-
-                public static DelegateContinueVoidResult<TResult> GetOrCreate(Func<ResultContainer, TResult> callback)
+                public TResult Invoke(IValueContainer valueContainer)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueVoidResult<TResult>();
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateContinueVoidResult() { }
-
-                TResult IDelegateContinue<TResult>.DisposeAndInvoke(IValueContainer valueContainer)
-                {
-                    var callback = _callback;
-                    Dispose();
-                    return callback.Invoke(new ResultContainer(valueContainer));
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    return _callback.Invoke(new ResultContainer(valueContainer));
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateContinueArgVoid<TArg> : ILinked<DelegateContinueArgVoid<TArg>>, IDelegateContinue
+            public struct DelegateContinueArgVoid<TArg> : IDelegateContinue
             {
-                DelegateContinueArgVoid<TArg> ILinked<DelegateContinueArgVoid<TArg>>.Next { get; set; }
+                private readonly Action<Promise<TArg>.ResultContainer> _callback;
 
-                private static ValueLinkedStack<DelegateContinueArgVoid<TArg>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateContinueArgVoid()
+                public DelegateContinueArgVoid(Action<Promise<TArg>.ResultContainer> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
                 }
 
-                private Action<Promise<TArg>.ResultContainer> _callback;
-
-                public static DelegateContinueArgVoid<TArg> GetOrCreate(Action<Promise<TArg>.ResultContainer> callback)
+                public void Invoke(IValueContainer valueContainer)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueArgVoid<TArg>();
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateContinueArgVoid() { }
-
-                void IDelegateContinue.DisposeAndInvoke(IValueContainer valueContainer)
-                {
-                    var callback = _callback;
-                    Dispose();
-                    callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateContinueArgResult<TArg, TResult> : ILinked<DelegateContinueArgResult<TArg, TResult>>, IDelegateContinue<TResult>
+            public struct DelegateContinueArgResult<TArg, TResult> : IDelegateContinue<TResult>
             {
-                DelegateContinueArgResult<TArg, TResult> ILinked<DelegateContinueArgResult<TArg, TResult>>.Next { get; set; }
+                private readonly Func<Promise<TArg>.ResultContainer, TResult> _callback;
 
-                private static ValueLinkedStack<DelegateContinueArgResult<TArg, TResult>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateContinueArgResult()
+                public DelegateContinueArgResult(Func<Promise<TArg>.ResultContainer, TResult> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
                 }
 
-                private Func<Promise<TArg>.ResultContainer, TResult> _callback;
-
-                public static DelegateContinueArgResult<TArg, TResult> GetOrCreate(Func<Promise<TArg>.ResultContainer, TResult> callback)
+                public TResult Invoke(IValueContainer valueContainer)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueArgResult<TArg, TResult>();
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateContinueArgResult() { }
-
-                TResult IDelegateContinue<TResult>.DisposeAndInvoke(IValueContainer valueContainer)
-                {
-                    var callback = _callback;
-                    Dispose();
-                    return callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    return _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                 }
             }
             #endregion
@@ -839,1366 +510,1183 @@ namespace Proto.Promises
 
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateCaptureVoidVoid<TCapture> : ILinked<DelegateCaptureVoidVoid<TCapture>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateCaptureVoidVoid<TCapture> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateCaptureVoidVoid<TCapture> ILinked<DelegateCaptureVoidVoid<TCapture>>.Next { get; set; }
+                private readonly TCapture _capturedValue;
+                private readonly Action<TCapture> _callback;
 
-                private static ValueLinkedStack<DelegateCaptureVoidVoid<TCapture>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateCaptureVoidVoid()
+                public DelegateCaptureVoidVoid(ref TCapture capturedValue, Action<TCapture> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _capturedValue = capturedValue;
+                    _callback = callback;
                 }
 
-                private TCapture _capturedValue;
-                private Action<TCapture> _callback;
-
-                public static DelegateCaptureVoidVoid<TCapture> GetOrCreate(ref TCapture capturedValue, Action<TCapture> callback)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureVoidVoid<TCapture>();
-                    del._capturedValue = capturedValue;
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateCaptureVoidVoid() { }
-
-                private void DisposeAndInvoke(Promise owner)
-                {
-                    var value = _capturedValue;
-                    var temp = _callback;
-                    Dispose();
-                    temp.Invoke(value);
+                    _callback.Invoke(_capturedValue);
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                public void Dispose()
-                {
-                    _capturedValue = default(TCapture);
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateCaptureArgVoid<TCapture, TArg> : ILinked<DelegateCaptureArgVoid<TCapture, TArg>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                DelegateCaptureArgVoid<TCapture, TArg> ILinked<DelegateCaptureArgVoid<TCapture, TArg>>.Next { get; set; }
-
-                private static ValueLinkedStack<DelegateCaptureArgVoid<TCapture, TArg>> _pool;
-
-                static DelegateCaptureArgVoid()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                private TCapture _capturedValue;
-                private Action<TCapture, TArg> _callback;
-
-                public static DelegateCaptureArgVoid<TCapture, TArg> GetOrCreate(ref TCapture capturedValue, Action<TCapture, TArg> callback)
-                {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureArgVoid<TCapture, TArg>();
-                    del._capturedValue = capturedValue;
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateCaptureArgVoid() { }
-
-                private void DisposeAndInvoke(TArg arg, Promise owner)
-                {
-                    var value = _capturedValue;
-                    var temp = _callback;
-                    Dispose();
-                    temp.Invoke(value, arg);
+                    _callback.Invoke(_capturedValue);
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void MaybeUnregisterCancelation() { }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateCaptureArgVoid<TCapture, TArg> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Action<TCapture, TArg> _callback;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateCaptureArgVoid(ref TCapture capturedValue, Action<TCapture, TArg> callback)
                 {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    _capturedValue = capturedValue;
+                    _callback = callback;
                 }
 
-                private void TryReleaseAndInvoke(IValueContainer valueContainer, Promise owner)
+                private void Invoke(TArg arg, Promise owner)
+                {
+                    _callback.Invoke(_capturedValue, arg);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                }
+
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
+                {
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                }
+
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        DisposeAndInvoke(arg, owner);
+                        Invoke(arg, owner);
                     }
                     else
                     {
-                        Dispose();
                         owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TryReleaseAndInvoke(valueContainer, owner);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TryReleaseAndInvoke(valueContainer, owner);
-                }
-
-                public void Dispose()
-                {
-                    _capturedValue = default(TCapture);
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateCaptureVoidResult<TCapture, TResult> : ILinked<DelegateCaptureVoidResult<TCapture, TResult>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateCaptureVoidResult<TCapture, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateCaptureVoidResult<TCapture, TResult> ILinked<DelegateCaptureVoidResult<TCapture, TResult>>.Next { get; set; }
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, TResult> _callback;
 
-                private static ValueLinkedStack<DelegateCaptureVoidResult<TCapture, TResult>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateCaptureVoidResult()
+                public DelegateCaptureVoidResult(ref TCapture capturedValue, Func<TCapture, TResult> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _capturedValue = capturedValue;
+                    _callback = callback;
                 }
 
-                private TCapture _capturedValue;
-                private Func<TCapture, TResult> _callback;
-
-                public static DelegateCaptureVoidResult<TCapture, TResult> GetOrCreate(ref TCapture capturedValue, Func<TCapture, TResult> callback)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureVoidResult<TCapture, TResult>();
-                    del._capturedValue = capturedValue;
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateCaptureVoidResult() { }
-
-                private void DisposeAndInvoke(Promise owner)
-                {
-                    var value = _capturedValue;
-                    var temp = _callback;
-                    Dispose();
-                    TResult result = temp.Invoke(value);
+                    TResult result = _callback.Invoke(_capturedValue);
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                public void Dispose()
-                {
-                    _capturedValue = default(TCapture);
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateCaptureArgResult<TCapture, TArg, TResult> : ILinked<DelegateCaptureArgResult<TCapture, TArg, TResult>>, IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                DelegateCaptureArgResult<TCapture, TArg, TResult> ILinked<DelegateCaptureArgResult<TCapture, TArg, TResult>>.Next { get; set; }
-
-                private static ValueLinkedStack<DelegateCaptureArgResult<TCapture, TArg, TResult>> _pool;
-
-                static DelegateCaptureArgResult()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                private TCapture _capturedValue;
-                private Func<TCapture, TArg, TResult> _callback;
-
-                public static DelegateCaptureArgResult<TCapture, TArg, TResult> GetOrCreate(ref TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
-                {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureArgResult<TCapture, TArg, TResult>();
-                    del._capturedValue = capturedValue;
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateCaptureArgResult() { }
-
-                private void DisposeAndInvoke(TArg arg, Promise owner)
-                {
-                    var value = _capturedValue;
-                    var temp = _callback;
-                    Dispose();
-                    TResult result = temp.Invoke(value, arg);
+                    TResult result = _callback.Invoke(_capturedValue);
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void MaybeUnregisterCancelation() { }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateCaptureArgResult<TCapture, TArg, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, TArg, TResult> _callback;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateCaptureArgResult(ref TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
                 {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                    _capturedValue = capturedValue;
+                    _callback = callback;
                 }
 
-                private void TryDisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                private void Invoke(TArg arg, Promise owner)
+                {
+                    TResult result = _callback.Invoke(_capturedValue, arg);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                }
+
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
+                {
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
+                }
+
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        DisposeAndInvoke(arg, owner);
+                        Invoke(arg, owner);
                     }
                     else
                     {
-                        Dispose();
                         owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
-                void IDelegateReject.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TryDisposeAndInvoke(valueContainer, owner);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    TryDisposeAndInvoke(valueContainer, owner);
-                }
-
-                public void Dispose()
-                {
-                    _capturedValue = default(TCapture);
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateCaptureVoidPromise<TCapture> : ILinked<DelegateCaptureVoidPromise<TCapture>>, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateCaptureVoidPromise<TCapture> : IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateCaptureVoidPromise<TCapture> ILinked<DelegateCaptureVoidPromise<TCapture>>.Next { get; set; }
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, Promise> _callback;
 
-                private static ValueLinkedStack<DelegateCaptureVoidPromise<TCapture>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateCaptureVoidPromise()
+                public DelegateCaptureVoidPromise(ref TCapture capturedValue, Func<TCapture, Promise> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _capturedValue = capturedValue;
+                    _callback = callback;
                 }
 
-                private TCapture _capturedValue;
-                private Func<TCapture, Promise> _callback;
-
-                private DelegateCaptureVoidPromise() { }
-
-                public static DelegateCaptureVoidPromise<TCapture> GetOrCreate(ref TCapture capturedValue, Func<TCapture, Promise> callback)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureVoidPromise<TCapture>();
-                    del._capturedValue = capturedValue;
-                    del._callback = callback;
-                    return del;
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
-                private void DisposeAndInvoke(Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
-                    var value = _capturedValue;
-                    var temp = _callback;
-                    Dispose();
-                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(value));
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                public void Dispose()
-                {
-                    _capturedValue = default(TCapture);
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateCaptureArgPromise<TCapture, TArg> : ILinked<DelegateCaptureArgPromise<TCapture, TArg>>, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateCaptureArgPromise<TCapture, TArg> : IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateCaptureArgPromise<TCapture, TArg> ILinked<DelegateCaptureArgPromise<TCapture, TArg>>.Next { get; set; }
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, TArg, Promise> _callback;
 
-                private static ValueLinkedStack<DelegateCaptureArgPromise<TCapture, TArg>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateCaptureArgPromise()
+                public DelegateCaptureArgPromise(ref TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _capturedValue = capturedValue;
+                    _callback = callback;
                 }
 
-                private TCapture _capturedValue;
-                private Func<TCapture, TArg, Promise> _callback;
-
-                public static DelegateCaptureArgPromise<TCapture, TArg> GetOrCreate(ref TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
+                private void Invoke(TArg arg, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureArgPromise<TCapture, TArg>();
-                    del._capturedValue = capturedValue;
-                    del._callback = callback;
-                    return del;
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
                 }
 
-                private DelegateCaptureArgPromise() { }
-
-                private void DisposeAndInvoke(TArg arg, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var value = _capturedValue;
-                    var temp = _callback;
-                    Dispose();
-                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(value, arg));
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        DisposeAndInvoke(arg, owner);
+                        Invoke(arg, owner);
                     }
                     else
                     {
-                        Dispose();
                         owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
-                public void Dispose()
-                {
-                    _capturedValue = default(TCapture);
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateCaptureVoidPromiseT<TCapture, TPromise> : ILinked<DelegateCaptureVoidPromiseT<TCapture, TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateCaptureVoidPromiseT<TCapture, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateCaptureVoidPromiseT<TCapture, TPromise> ILinked<DelegateCaptureVoidPromiseT<TCapture, TPromise>>.Next { get; set; }
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, Promise<TPromise>> _callback;
 
-                private static ValueLinkedStack<DelegateCaptureVoidPromiseT<TCapture, TPromise>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateCaptureVoidPromiseT()
+                public DelegateCaptureVoidPromiseT(ref TCapture capturedValue, Func<TCapture, Promise<TPromise>> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _capturedValue = capturedValue;
+                    _callback = callback;
                 }
 
-                private TCapture _capturedValue;
-                private Func<TCapture, Promise<TPromise>> _callback;
-
-                public static DelegateCaptureVoidPromiseT<TCapture, TPromise> GetOrCreate(ref TCapture capturedValue, Func<TCapture, Promise<TPromise>> callback)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureVoidPromiseT<TCapture, TPromise>();
-                    del._capturedValue = capturedValue;
-                    del._callback = callback;
-                    return del;
+                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
-                private DelegateCaptureVoidPromiseT() { }
-
-                private void DisposeAndInvoke(Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
-                    var value = _capturedValue;
-                    var temp = _callback;
-                    Dispose();
-                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(value));
+                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                public void Dispose()
-                {
-                    _capturedValue = default(TCapture);
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> : ILinked<DelegateCaptureArgPromiseT<TCapture, TArg, TPromise>>, IDelegateResolvePromise, IDelegateRejectPromise
+            public struct DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
             {
-                DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> ILinked<DelegateCaptureArgPromiseT<TCapture, TArg, TPromise>>.Next { get; set; }
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, TArg, Promise<TPromise>> _callback;
 
-                private static ValueLinkedStack<DelegateCaptureArgPromiseT<TCapture, TArg, TPromise>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateCaptureArgPromiseT()
+                public DelegateCaptureArgPromiseT(ref TCapture capturedValue, Func<TCapture, TArg, Promise<TPromise>> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _capturedValue = capturedValue;
+                    _callback = callback;
                 }
 
-                private TCapture _capturedValue;
-                private Func<TCapture, TArg, Promise<TPromise>> _callback;
-
-                public static DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> GetOrCreate(ref TCapture capturedValue, Func<TCapture, TArg, Promise<TPromise>> callback)
+                private void Invoke(TArg arg, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateCaptureArgPromiseT<TCapture, TArg, TPromise>();
-                    del._capturedValue = capturedValue;
-                    del._callback = callback;
-                    return del;
+                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
                 }
 
-                private DelegateCaptureArgPromiseT() { }
-
-                private void DisposeAndInvoke(TArg arg, Promise owner)
+                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var value = _capturedValue;
-                    var temp = _callback;
-                    Dispose();
-                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(value, arg));
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(((ResolveContainer<TArg>) valueContainer).value, owner);
-                }
-
-                void IDelegateRejectPromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, Promise owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
                     {
-                        DisposeAndInvoke(arg, owner);
+                        Invoke(arg, owner);
                     }
                     else
                     {
-                        Dispose();
                         owner.RejectOrCancelInternal(valueContainer);
                     }
                 }
 
-                public void Dispose()
-                {
-                    _capturedValue = default(TCapture);
-                    _callback = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
-                }
+                public void MaybeUnregisterCancelation() { }
             }
 
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateContinueCaptureVoidVoid<TCapture> : ILinked<DelegateContinueCaptureVoidVoid<TCapture>>, IDelegateContinue
+            public struct DelegateContinueCaptureVoidVoid<TCapture> : IDelegateContinue
             {
-                DelegateContinueCaptureVoidVoid<TCapture> ILinked<DelegateContinueCaptureVoidVoid<TCapture>>.Next { get; set; }
+                private readonly TCapture _capturedValue;
+                private readonly Action<TCapture, ResultContainer> _callback;
 
-                private static ValueLinkedStack<DelegateContinueCaptureVoidVoid<TCapture>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateContinueCaptureVoidVoid()
+                public DelegateContinueCaptureVoidVoid(ref TCapture capturedValue, Action<TCapture, ResultContainer> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _capturedValue = capturedValue;
+                    _callback = callback;
                 }
 
-                private TCapture _capturedValue;
-                private Action<TCapture, ResultContainer> _callback;
-
-                public static DelegateContinueCaptureVoidVoid<TCapture> GetOrCreate(ref TCapture capturedValue, Action<TCapture, ResultContainer> callback)
+                public void Invoke(IValueContainer valueContainer)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueCaptureVoidVoid<TCapture>();
-                    del._capturedValue = capturedValue;
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateContinueCaptureVoidVoid() { }
-
-                void IDelegateContinue.DisposeAndInvoke(IValueContainer valueContainer)
-                {
-                    var callback = _callback;
-                    var value = _capturedValue;
-                    Dispose();
-                    callback.Invoke(value, new ResultContainer(valueContainer));
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    _capturedValue = default(TCapture);
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateContinueCaptureVoidResult<TCapture, TResult> : ILinked<DelegateContinueCaptureVoidResult<TCapture, TResult>>, IDelegateContinue<TResult>
+            public struct DelegateContinueCaptureVoidResult<TCapture, TResult> : IDelegateContinue<TResult>
             {
-                DelegateContinueCaptureVoidResult<TCapture, TResult> ILinked<DelegateContinueCaptureVoidResult<TCapture, TResult>>.Next { get; set; }
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, ResultContainer, TResult> _callback;
 
-                private static ValueLinkedStack<DelegateContinueCaptureVoidResult<TCapture, TResult>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateContinueCaptureVoidResult()
+                public DelegateContinueCaptureVoidResult(ref TCapture capturedValue, Func<TCapture, ResultContainer, TResult> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _capturedValue = capturedValue;
+                    _callback = callback;
                 }
 
-                private TCapture _capturedValue;
-                private Func<TCapture, ResultContainer, TResult> _callback;
-
-                public static DelegateContinueCaptureVoidResult<TCapture, TResult> GetOrCreate(ref TCapture capturedValue, Func<TCapture, ResultContainer, TResult> callback)
+                public TResult Invoke(IValueContainer valueContainer)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueCaptureVoidResult<TCapture, TResult>();
-                    del._capturedValue = capturedValue;
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateContinueCaptureVoidResult() { }
-
-                TResult IDelegateContinue<TResult>.DisposeAndInvoke(IValueContainer valueContainer)
-                {
-                    var callback = _callback;
-                    var value = _capturedValue;
-                    Dispose();
-                    return callback.Invoke(value, new ResultContainer(valueContainer));
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    _capturedValue = default(TCapture);
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    return _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateContinueCaptureArgVoid<TCapture, TArg> : ILinked<DelegateContinueCaptureArgVoid<TCapture, TArg>>, IDelegateContinue
+            public struct DelegateContinueCaptureArgVoid<TCapture, TArg> : IDelegateContinue
             {
-                DelegateContinueCaptureArgVoid<TCapture, TArg> ILinked<DelegateContinueCaptureArgVoid<TCapture, TArg>>.Next { get; set; }
+                private readonly TCapture _capturedValue;
+                private readonly Action<TCapture, Promise<TArg>.ResultContainer> _callback;
 
-                private static ValueLinkedStack<DelegateContinueCaptureArgVoid<TCapture, TArg>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateContinueCaptureArgVoid()
+                public DelegateContinueCaptureArgVoid(ref TCapture capturedValue, Action<TCapture, Promise<TArg>.ResultContainer> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _capturedValue = capturedValue;
+                    _callback = callback;
                 }
 
-                private TCapture _capturedValue;
-                private Action<TCapture, Promise<TArg>.ResultContainer> _callback;
-
-                public static DelegateContinueCaptureArgVoid<TCapture, TArg> GetOrCreate(ref TCapture capturedValue, Action<TCapture, Promise<TArg>.ResultContainer> callback)
+                void IDelegateContinue.Invoke(IValueContainer valueContainer)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueCaptureArgVoid<TCapture, TArg>();
-                    del._capturedValue = capturedValue;
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateContinueCaptureArgVoid() { }
-
-                void IDelegateContinue.DisposeAndInvoke(IValueContainer valueContainer)
-                {
-                    var callback = _callback;
-                    var value = _capturedValue;
-                    Dispose();
-                    callback.Invoke(value, new Promise<TArg>.ResultContainer(valueContainer));
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    _capturedValue = default(TCapture);
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateContinueCaptureArgResult<TCapture, TArg, TResult> : ILinked<DelegateContinueCaptureArgResult<TCapture, TArg, TResult>>, IDelegateContinue<TResult>
+            public struct DelegateContinueCaptureArgResult<TCapture, TArg, TResult> : IDelegateContinue<TResult>
             {
-                DelegateContinueCaptureArgResult<TCapture, TArg, TResult> ILinked<DelegateContinueCaptureArgResult<TCapture, TArg, TResult>>.Next { get; set; }
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, Promise<TArg>.ResultContainer, TResult> _callback;
 
-                private static ValueLinkedStack<DelegateContinueCaptureArgResult<TCapture, TArg, TResult>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateContinueCaptureArgResult()
+                public DelegateContinueCaptureArgResult(ref TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, TResult> callback)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _capturedValue = capturedValue;
+                    _callback = callback;
                 }
 
-                private TCapture _capturedValue;
-                private Func<TCapture, Promise<TArg>.ResultContainer, TResult> _callback;
-
-                public static DelegateContinueCaptureArgResult<TCapture, TArg, TResult> GetOrCreate(ref TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, TResult> callback)
+                public TResult Invoke(IValueContainer valueContainer)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueCaptureArgResult<TCapture, TArg, TResult>();
-                    del._capturedValue = capturedValue;
-                    del._callback = callback;
-                    return del;
-                }
-
-                private DelegateContinueCaptureArgResult() { }
-
-                TResult IDelegateContinue<TResult>.DisposeAndInvoke(IValueContainer valueContainer)
-                {
-                    var callback = _callback;
-                    var value = _capturedValue;
-                    Dispose();
-                    return callback.Invoke(value, new Promise<TArg>.ResultContainer(valueContainer));
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    _capturedValue = default(TCapture);
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    return _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                 }
             }
             #endregion
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegatePassthroughCancel : ILinked<DelegatePassthroughCancel>, IDelegateResolve, IDelegateResolvePromise
+            public struct DelegatePassthroughCancel : IDelegateResolve, IDelegateResolvePromise
             {
-                DelegatePassthroughCancel ILinked<DelegatePassthroughCancel>.Next { get; set; }
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+                private readonly bool _isActive;
 
-                private static ValueLinkedStack<DelegatePassthroughCancel> _pool;
+                public bool IsNull { get { return !_isActive; } }
 
-                static DelegatePassthroughCancel()
+                public DelegatePassthroughCancel(CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                    _isActive = true;
                 }
 
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
-
-                private DelegatePassthroughCancel() { }
-
-                public static DelegatePassthroughCancel GetOrCreate(CancelationToken cancelationToken)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegatePassthroughCancel();
-                    del._cancelationToken = cancelationToken;
-                    return del;
-                }
-
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndReleaseAndMaybeThrow();
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    _cancelationToken.ThrowIfCancelationRequested();
                     owner.ResolveInternal(valueContainer);
                 }
 
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void MaybeUnregisterCancelation()
                 {
-                    DisposeAndReleaseAndMaybeThrow();
-                    owner.ResolveInternal(valueContainer);
-                }
-
-                private void DisposeAndReleaseAndMaybeThrow()
-                {
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
-                }
-
-                public void Dispose()
-                {
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
                 }
             }
 
             #region Delegates with cancelation token
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateVoidVoidCancel : ILinked<DelegateVoidVoidCancel>, IDelegateResolve, IDelegateResolvePromise
+            public struct DelegateVoidVoidCancel : IDelegateResolve, IDelegateResolvePromise
             {
-                DelegateVoidVoidCancel ILinked<DelegateVoidVoidCancel>.Next { get; set; }
+                private readonly Action _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
 
-                private static ValueLinkedStack<DelegateVoidVoidCancel> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateVoidVoidCancel()
+                public DelegateVoidVoidCancel(Action callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
                 }
 
-                private Action _callback;
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
-
-                private DelegateVoidVoidCancel() { }
-
-                public static DelegateVoidVoidCancel GetOrCreate(Action callback, CancelationToken cancelationToken)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidVoidCancel();
-                    del._callback = callback;
-                    del._cancelationToken = cancelationToken;
-                    return del;
-                }
-
-                private void DisposeAndInvoke(Promise owner)
-                {
-                    var temp = _callback;
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
-                    temp.Invoke();
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    _callback.Invoke();
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void MaybeUnregisterCancelation()
                 {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
-                    if (Config.ObjectPooling != PoolType.None)
+                    if (_cancelationRegistration.IsRegistered)
                     {
-                        _pool.Push(this);
+                        _cancelationRegistration.Unregister();
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateArgVoidCancel<TArg> : ILinked<DelegateArgVoidCancel<TArg>>, IDelegateResolve, IDelegateResolvePromise
+            public struct DelegateArgVoidCancel<TArg> : IDelegateResolve, IDelegateResolvePromise
             {
-                DelegateArgVoidCancel<TArg> ILinked<DelegateArgVoidCancel<TArg>>.Next { get; set; }
+                private readonly Action<TArg> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
 
-                private static ValueLinkedStack<DelegateArgVoidCancel<TArg>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateArgVoidCancel()
+                public DelegateArgVoidCancel(Action<TArg> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
                 }
 
-                private Action<TArg> _callback;
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
-
-                public static DelegateArgVoidCancel<TArg> GetOrCreate(Action<TArg> callback, CancelationToken cancelationToken)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgVoidCancel<TArg>();
-                    del._callback = callback;
-                    del._cancelationToken = cancelationToken;
-                    return del;
-                }
-
-                private DelegateArgVoidCancel() { }
-
-                private void DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    var temp = _callback;
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
-                    temp.Invoke(((ResolveContainer<TArg>) valueContainer).value);
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    _callback.Invoke(((ResolveContainer<TArg>) valueContainer).value);
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void MaybeUnregisterCancelation()
                 {
-                    DisposeAndInvoke(valueContainer, owner);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(valueContainer, owner);
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
-                    if (Config.ObjectPooling != PoolType.None)
+                    if (_cancelationRegistration.IsRegistered)
                     {
-                        _pool.Push(this);
+                        _cancelationRegistration.Unregister();
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateVoidResultCancel<TResult> : ILinked<DelegateVoidResultCancel<TResult>>, IDelegateResolve, IDelegateResolvePromise
+            public struct DelegateVoidResultCancel<TResult> : IDelegateResolve, IDelegateResolvePromise
             {
-                DelegateVoidResultCancel<TResult> ILinked<DelegateVoidResultCancel<TResult>>.Next { get; set; }
+                private readonly Func<TResult> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
 
-                private static ValueLinkedStack<DelegateVoidResultCancel<TResult>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateVoidResultCancel()
+                public DelegateVoidResultCancel(Func<TResult> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
                 }
 
-                private Func<TResult> _callback;
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
-
-                public static DelegateVoidResultCancel<TResult> GetOrCreate(Func<TResult> callback, CancelationToken cancelationToken)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidResultCancel<TResult>();
-                    del._callback = callback;
-                    del._cancelationToken = cancelationToken;
-                    return del;
-                }
-
-                private DelegateVoidResultCancel() { }
-
-                private void DisposeAndInvoke(Promise owner)
-                {
-                    var temp = _callback;
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
-                    TResult result = temp.Invoke();
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    TResult result = _callback.Invoke();
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void MaybeUnregisterCancelation()
                 {
-                    DisposeAndInvoke(owner);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(owner);
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
-                    if (Config.ObjectPooling != PoolType.None)
+                    if (_cancelationRegistration.IsRegistered)
                     {
-                        _pool.Push(this);
+                        _cancelationRegistration.Unregister();
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateArgResultCancel<TArg, TResult> : ILinked<DelegateArgResultCancel<TArg, TResult>>, IDelegateResolve, IDelegateResolvePromise
+            public struct DelegateArgResultCancel<TArg, TResult> : IDelegateResolve, IDelegateResolvePromise
             {
-                DelegateArgResultCancel<TArg, TResult> ILinked<DelegateArgResultCancel<TArg, TResult>>.Next { get; set; }
+                private readonly Func<TArg, TResult> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
 
-                private static ValueLinkedStack<DelegateArgResultCancel<TArg, TResult>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateArgResultCancel()
+                public DelegateArgResultCancel(Func<TArg, TResult> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
                 }
 
-                private Func<TArg, TResult> _callback;
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
-
-                public static DelegateArgResultCancel<TArg, TResult> GetOrCreate(Func<TArg, TResult> callback, CancelationToken cancelationToken)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgResultCancel<TArg, TResult>();
-                    del._callback = callback;
-                    del._cancelationToken = cancelationToken;
-                    return del;
-                }
-
-                private DelegateArgResultCancel() { }
-
-                private void DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    var temp = _callback;
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
-                    TResult result = temp.Invoke(((ResolveContainer<TArg>) valueContainer).value);
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    TResult result = _callback.Invoke(((ResolveContainer<TArg>) valueContainer).value);
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
-                void IDelegateResolve.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void MaybeUnregisterCancelation()
                 {
-                    DisposeAndInvoke(valueContainer, owner);
-                }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    DisposeAndInvoke(valueContainer, owner);
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
-                    if (Config.ObjectPooling != PoolType.None)
+                    if (_cancelationRegistration.IsRegistered)
                     {
-                        _pool.Push(this);
+                        _cancelationRegistration.Unregister();
                     }
                 }
             }
 
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateVoidPromiseCancel : ILinked<DelegateVoidPromiseCancel>, IDelegateResolvePromise
+            public struct DelegateVoidPromiseCancel : IDelegateResolvePromise
             {
-                DelegateVoidPromiseCancel ILinked<DelegateVoidPromiseCancel>.Next { get; set; }
+                private readonly Func<Promise> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
 
-                private static ValueLinkedStack<DelegateVoidPromiseCancel> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateVoidPromiseCancel()
+                public DelegateVoidPromiseCancel(Func<Promise> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
                 }
 
-                private Func<Promise> _callback;
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
-
-                private DelegateVoidPromiseCancel() { }
-
-                public static DelegateVoidPromiseCancel GetOrCreate(Func<Promise> callback, CancelationToken cancelationToken)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidPromiseCancel();
-                    del._callback = callback;
-                    del._cancelationToken = cancelationToken;
-                    return del;
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
 
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void MaybeUnregisterCancelation()
                 {
-                    var temp = _callback;
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
-                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke());
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
-                    if (Config.ObjectPooling != PoolType.None)
+                    if (_cancelationRegistration.IsRegistered)
                     {
-                        _pool.Push(this);
+                        _cancelationRegistration.Unregister();
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateArgPromiseCancel<TArg> : ILinked<DelegateArgPromiseCancel<TArg>>, IDelegateResolvePromise
+            public struct DelegateArgPromiseCancel<TArg> : IDelegateResolvePromise
             {
-                DelegateArgPromiseCancel<TArg> ILinked<DelegateArgPromiseCancel<TArg>>.Next { get; set; }
+                private readonly Func<TArg, Promise> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
 
-                private static ValueLinkedStack<DelegateArgPromiseCancel<TArg>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateArgPromiseCancel()
+                public DelegateArgPromiseCancel(Func<TArg, Promise> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
                 }
 
-                private Func<TArg, Promise> _callback;
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
-
-                public static DelegateArgPromiseCancel<TArg> GetOrCreate(Func<TArg, Promise> callback, CancelationToken cancelationToken)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgPromiseCancel<TArg>();
-                    del._callback = callback;
-                    del._cancelationToken = cancelationToken;
-                    return del;
-                }
-
-                private DelegateArgPromiseCancel() { }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    var temp = _callback;
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    ((PromiseResolveRejectPromise0) owner).WaitFor(temp.Invoke(arg));
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(arg));
                 }
 
-                public void Dispose()
+                public void MaybeUnregisterCancelation()
                 {
-                    _callback = null;
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
-                    if (Config.ObjectPooling != PoolType.None)
+                    if (_cancelationRegistration.IsRegistered)
                     {
-                        _pool.Push(this);
+                        _cancelationRegistration.Unregister();
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateVoidPromiseTCancel<TPromise> : ILinked<DelegateVoidPromiseTCancel<TPromise>>, IDelegateResolvePromise
+            public struct DelegateVoidPromiseTCancel<TPromise> : IDelegateResolvePromise
             {
-                DelegateVoidPromiseTCancel<TPromise> ILinked<DelegateVoidPromiseTCancel<TPromise>>.Next { get; set; }
+                private readonly Func<Promise<TPromise>> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
 
-                private static ValueLinkedStack<DelegateVoidPromiseTCancel<TPromise>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateVoidPromiseTCancel()
+                public DelegateVoidPromiseTCancel(Func<Promise<TPromise>> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
                 }
 
-                private Func<Promise<TPromise>> _callback;
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
-
-                public static DelegateVoidPromiseTCancel<TPromise> GetOrCreate(Func<Promise<TPromise>> callback, CancelationToken cancelationToken)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateVoidPromiseTCancel<TPromise>();
-                    del._callback = callback;
-                    del._cancelationToken = cancelationToken;
-                    return del;
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke());
                 }
 
-                private DelegateVoidPromiseTCancel() { }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
+                public void MaybeUnregisterCancelation()
                 {
-                    var temp = _callback;
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
-                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke());
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
-                    if (Config.ObjectPooling != PoolType.None)
+                    if (_cancelationRegistration.IsRegistered)
                     {
-                        _pool.Push(this);
+                        _cancelationRegistration.Unregister();
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateArgPromiseTCancel<TArg, TPromise> : ILinked<DelegateArgPromiseTCancel<TArg, TPromise>>, IDelegateResolvePromise
+            public struct DelegateArgPromiseTCancel<TArg, TPromise> : IDelegateResolvePromise
             {
-                DelegateArgPromiseTCancel<TArg, TPromise> ILinked<DelegateArgPromiseTCancel<TArg, TPromise>>.Next { get; set; }
+                private readonly Func<TArg, Promise<TPromise>> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
 
-                private static ValueLinkedStack<DelegateArgPromiseTCancel<TArg, TPromise>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateArgPromiseTCancel()
+                public DelegateArgPromiseTCancel(Func<TArg, Promise<TPromise>> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
                 }
 
-                private Func<TArg, Promise<TPromise>> _callback;
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
-
-                public static DelegateArgPromiseTCancel<TArg, TPromise> GetOrCreate(Func<TArg, Promise<TPromise>> callback, CancelationToken cancelationToken)
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateArgPromiseTCancel<TArg, TPromise>();
-                    del._callback = callback;
-                    del._cancelationToken = cancelationToken;
-                    return del;
-                }
-
-                private DelegateArgPromiseTCancel() { }
-
-                void IDelegateResolvePromise.DisposeAndInvoke(IValueContainer valueContainer, Promise owner)
-                {
-                    var temp = _callback;
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    ((PromiseResolveRejectPromise<TPromise>) owner).WaitFor(temp.Invoke(arg));
+                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(arg));
                 }
 
-                public void Dispose()
+                public void MaybeUnregisterCancelation()
                 {
-                    _callback = null;
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
-                    if (Config.ObjectPooling != PoolType.None)
+                    if (_cancelationRegistration.IsRegistered)
                     {
-                        _pool.Push(this);
+                        _cancelationRegistration.Unregister();
                     }
                 }
             }
 
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateContinueVoidVoidCancel : ILinked<DelegateContinueVoidVoidCancel>, IDelegateContinue
+            public struct DelegateContinueVoidVoidCancel : IDelegateContinue
             {
-                DelegateContinueVoidVoidCancel ILinked<DelegateContinueVoidVoidCancel>.Next { get; set; }
-
-                private static ValueLinkedStack<DelegateContinueVoidVoidCancel> _pool;
-
-                static DelegateContinueVoidVoidCancel()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
                 private Action<ResultContainer> _callback;
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
 
-                public static DelegateContinueVoidVoidCancel GetOrCreate(Action<ResultContainer> callback, CancelationToken cancelationToken)
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateContinueVoidVoidCancel(Action<ResultContainer> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueVoidVoidCancel();
-                    del._callback = callback;
-                    del._cancelationToken = cancelationToken;
-                    return del;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
                 }
 
-                private DelegateContinueVoidVoidCancel() { }
-
-                void IDelegateContinue.DisposeAndInvoke(IValueContainer valueContainer)
+                public void Invoke(IValueContainer valueContainer)
                 {
-                    var callback = _callback;
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
-                    callback.Invoke(new ResultContainer(valueContainer));
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    _callback.Invoke(new ResultContainer(valueContainer));
                 }
 
-                public void Dispose()
+                public void MaybeUnregisterCancelation()
                 {
-                    _callback = null;
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
-                    if (Config.ObjectPooling != PoolType.None)
+                    if (_cancelationRegistration.IsRegistered)
                     {
-                        _pool.Push(this);
+                        _cancelationRegistration.Unregister();
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateContinueVoidResultCancel<TResult> : ILinked<DelegateContinueVoidResultCancel<TResult>>, IDelegateContinue<TResult>
+            public struct DelegateContinueVoidResultCancel<TResult> : IDelegateContinue<TResult>
             {
-                DelegateContinueVoidResultCancel<TResult> ILinked<DelegateContinueVoidResultCancel<TResult>>.Next { get; set; }
+                private readonly Func<ResultContainer, TResult> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
 
-                private static ValueLinkedStack<DelegateContinueVoidResultCancel<TResult>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateContinueVoidResultCancel()
+                public DelegateContinueVoidResultCancel(Func<ResultContainer, TResult> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
                 }
 
-                private Func<ResultContainer, TResult> _callback;
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
-
-                public static DelegateContinueVoidResultCancel<TResult> GetOrCreate(Func<ResultContainer, TResult> callback, CancelationToken cancelationToken)
+                public TResult Invoke(IValueContainer valueContainer)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueVoidResultCancel<TResult>();
-                    del._callback = callback;
-                    del._cancelationToken = cancelationToken;
-                    return del;
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    return _callback.Invoke(new ResultContainer(valueContainer));
                 }
 
-                private DelegateContinueVoidResultCancel() { }
-
-                TResult IDelegateContinue<TResult>.DisposeAndInvoke(IValueContainer valueContainer)
+                public void MaybeUnregisterCancelation()
                 {
-                    var callback = _callback;
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
-                    return callback.Invoke(new ResultContainer(valueContainer));
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
-                    if (Config.ObjectPooling != PoolType.None)
+                    if (_cancelationRegistration.IsRegistered)
                     {
-                        _pool.Push(this);
+                        _cancelationRegistration.Unregister();
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateContinueArgVoidCancel<TArg> : ILinked<DelegateContinueArgVoidCancel<TArg>>, IDelegateContinue
+            public struct DelegateContinueArgVoidCancel<TArg> : IDelegateContinue
             {
-                DelegateContinueArgVoidCancel<TArg> ILinked<DelegateContinueArgVoidCancel<TArg>>.Next { get; set; }
-
-                private static ValueLinkedStack<DelegateContinueArgVoidCancel<TArg>> _pool;
-
-                static DelegateContinueArgVoidCancel()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
                 private Action<Promise<TArg>.ResultContainer> _callback;
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
 
-                public static DelegateContinueArgVoidCancel<TArg> GetOrCreate(Action<Promise<TArg>.ResultContainer> callback, CancelationToken cancelationToken)
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateContinueArgVoidCancel(Action<Promise<TArg>.ResultContainer> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueArgVoidCancel<TArg>();
-                    del._callback = callback;
-                    del._cancelationToken = cancelationToken;
-                    return del;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
                 }
 
-                private DelegateContinueArgVoidCancel() { }
-
-                void IDelegateContinue.DisposeAndInvoke(IValueContainer valueContainer)
+                public void Invoke(IValueContainer valueContainer)
                 {
-                    var callback = _callback;
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
-                    callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                 }
 
-                public void Dispose()
+                public void MaybeUnregisterCancelation()
                 {
-                    _callback = null;
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
-                    if (Config.ObjectPooling != PoolType.None)
+                    if (_cancelationRegistration.IsRegistered)
                     {
-                        _pool.Push(this);
+                        _cancelationRegistration.Unregister();
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DelegateContinueArgResultCancel<TArg, TResult> : ILinked<DelegateContinueArgResultCancel<TArg, TResult>>, IDelegateContinue<TResult>
+            public struct DelegateContinueArgResultCancel<TArg, TResult> : IDelegateContinue<TResult>
             {
-                DelegateContinueArgResultCancel<TArg, TResult> ILinked<DelegateContinueArgResultCancel<TArg, TResult>>.Next { get; set; }
+                private readonly Func<Promise<TArg>.ResultContainer, TResult> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
 
-                private static ValueLinkedStack<DelegateContinueArgResultCancel<TArg, TResult>> _pool;
+                public bool IsNull { get { return _callback == null; } }
 
-                static DelegateContinueArgResultCancel()
+                public DelegateContinueArgResultCancel(Func<Promise<TArg>.ResultContainer, TResult> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
                 {
-                    OnClearPool += () => _pool.Clear();
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
                 }
 
-                private Func<Promise<TArg>.ResultContainer, TResult> _callback;
-                private CancelationToken _cancelationToken;
-                public CancelationRegistration cancelationRegistration;
-
-                public static DelegateContinueArgResultCancel<TArg, TResult> GetOrCreate(Func<Promise<TArg>.ResultContainer, TResult> callback, CancelationToken cancelationToken)
+                public TResult Invoke(IValueContainer valueContainer)
                 {
-                    var del = _pool.IsNotEmpty ? _pool.Pop() : new DelegateContinueArgResultCancel<TArg, TResult>();
-                    del._callback = callback;
-                    del._cancelationToken = cancelationToken;
-                    return del;
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    return _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                 }
 
-                private DelegateContinueArgResultCancel() { }
-
-                TResult IDelegateContinue<TResult>.DisposeAndInvoke(IValueContainer valueContainer)
+                public void MaybeUnregisterCancelation()
                 {
-                    var callback = _callback;
-                    var token = _cancelationToken;
-                    Dispose();
-                    ReleaseAndMaybeThrow(token);
-                    return callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                }
-
-                public void Dispose()
-                {
-                    _callback = null;
-                    _cancelationToken = default(CancelationToken);
-                    UnregisterAndMakeDefault(ref cancelationRegistration);
-                    if (Config.ObjectPooling != PoolType.None)
+                    if (_cancelationRegistration.IsRegistered)
                     {
-                        _pool.Push(this);
+                        _cancelationRegistration.Unregister();
                     }
+                }
+            }
+            #endregion
+
+            #region Delegates with capture value and cancelation token
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateCaptureVoidVoidCancel<TCapture> : IDelegateResolve, IDelegateResolvePromise
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Action<TCapture> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateCaptureVoidVoidCancel(ref TCapture capturedValue, Action<TCapture> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                }
+
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
+                {
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    _callback.Invoke(_capturedValue);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                }
+
+                public void MaybeUnregisterCancelation()
+                {
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateCaptureArgVoidCancel<TCapture, TArg> : IDelegateResolve, IDelegateResolvePromise
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Action<TCapture, TArg> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateCaptureArgVoidCancel(ref TCapture capturedValue, Action<TCapture, TArg> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                }
+
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
+                {
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    _callback.Invoke(_capturedValue, ((ResolveContainer<TArg>) valueContainer).value);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                }
+
+                public void MaybeUnregisterCancelation()
+                {
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateCaptureVoidResultCancel<TCapture, TResult> : IDelegateResolve, IDelegateResolvePromise
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, TResult> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateCaptureVoidResultCancel(ref TCapture capturedValue, Func<TCapture, TResult> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                }
+
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
+                {
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    TResult result = _callback.Invoke(_capturedValue);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                }
+
+                public void MaybeUnregisterCancelation()
+                {
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateCaptureArgResultCancel<TCapture, TArg, TResult> : IDelegateResolve, IDelegateResolvePromise
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, TArg, TResult> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateCaptureArgResultCancel(ref TCapture capturedValue, Func<TCapture, TArg, TResult> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                }
+
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
+                {
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    TResult result = _callback.Invoke(_capturedValue, ((ResolveContainer<TArg>) valueContainer).value);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                }
+
+                public void MaybeUnregisterCancelation()
+                {
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
+                }
+            }
+
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateCaptureVoidPromiseCancel<TCapture> : IDelegateResolvePromise
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, Promise> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateCaptureVoidPromiseCancel(ref TCapture capturedValue, Func<TCapture, Promise> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                }
+
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
+                {
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
+                }
+
+                public void MaybeUnregisterCancelation()
+                {
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateCaptureArgPromiseCancel<TCapture, TArg> : IDelegateResolvePromise
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, TArg, Promise> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateCaptureArgPromiseCancel(ref TCapture capturedValue, Func<TCapture, TArg, Promise> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                }
+
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
+                {
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
+                }
+
+                public void MaybeUnregisterCancelation()
+                {
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateCaptureVoidPromiseTCancel<TCapture, TPromise> : IDelegateResolvePromise
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, Promise<TPromise>> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateCaptureVoidPromiseTCancel(ref TCapture capturedValue, Func<TCapture, Promise<TPromise>> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                }
+
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
+                {
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(_capturedValue));
+                }
+
+                public void MaybeUnregisterCancelation()
+                {
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateCaptureArgPromiseTCancel<TCapture, TArg, TPromise> : IDelegateResolvePromise
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, TArg, Promise<TPromise>> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateCaptureArgPromiseTCancel(ref TCapture capturedValue, Func<TCapture, TArg, Promise<TPromise>> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                }
+
+                public void InvokeResolver(IValueContainer valueContainer, Promise owner)
+                {
+                    MaybeUnregisterCancelation();
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
+                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
+                }
+
+                public void MaybeUnregisterCancelation()
+                {
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
+                }
+            }
+
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateContinueCaptureVoidVoidCancel<TCapture> : IDelegateContinue
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Action<TCapture, ResultContainer> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateContinueCaptureVoidVoidCancel(ref TCapture capturedValue, Action<TCapture, ResultContainer> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                }
+
+                public void Invoke(IValueContainer valueContainer)
+                {
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateContinueCaptureVoidResultCancel<TCapture, TResult> : IDelegateContinue<TResult>
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, ResultContainer, TResult> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateContinueCaptureVoidResultCancel(ref TCapture capturedValue, Func<TCapture, ResultContainer, TResult> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                }
+
+                public TResult Invoke(IValueContainer valueContainer)
+                {
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    return _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateContinueCaptureArgVoidCancel<TCapture, TArg> : IDelegateContinue
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Action<TCapture, Promise<TArg>.ResultContainer> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateContinueCaptureArgVoidCancel(ref TCapture capturedValue, Action<TCapture, Promise<TArg>.ResultContainer> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                }
+
+                public void Invoke(IValueContainer valueContainer)
+                {
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public struct DelegateContinueCaptureArgResultCancel<TCapture, TArg, TResult> : IDelegateContinue<TResult>
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Func<TCapture, Promise<TArg>.ResultContainer, TResult> _callback;
+                private readonly CancelationToken _cancelationToken;
+                private readonly CancelationRegistration _cancelationRegistration;
+
+                public bool IsNull { get { return _callback == null; } }
+
+                public DelegateContinueCaptureArgResultCancel(ref TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, TResult> callback, CancelationToken cancelationToken, CancelationRegistration cancelationRegistration)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                    _cancelationToken = cancelationToken;
+                    _cancelationRegistration = cancelationRegistration;
+                }
+
+                public TResult Invoke(IValueContainer valueContainer)
+                {
+                    if (_cancelationRegistration.IsRegistered)
+                    {
+                        _cancelationRegistration.Unregister();
+                    }
+                    ReleaseAndMaybeThrow(_cancelationToken);
+                    return _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                 }
             }
             #endregion

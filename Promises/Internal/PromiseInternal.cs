@@ -166,6 +166,19 @@ namespace Proto.Promises
             ReleaseInternal();
         }
 
+        protected void MaybeHookupNewPromise(Promise newPromise)
+        {
+            // This is called from a Then/Catch/ContinueWith accepting a cancelationToken, which could have been fed an already canceled token.
+            if (newPromise._valueOrPrevious == null)
+            {
+                HookupNewPromise(newPromise);
+            }
+            else
+            {
+                AddToHandleQueueBack(newPromise);
+            }
+        }
+
         protected void HookupNewPromise(Promise newPromise)
         {
             newPromise._valueOrPrevious = this;
@@ -574,14 +587,30 @@ namespace Proto.Promises
                     _valueOrPrevious = CancelContainerVoid.GetOrCreate()
                 };
 
-                public static SettledPromise GetOrCreateResolved()
+                public static Promise GetOrCreateResolved()
                 {
+#if PROMISE_DEBUG
+                    // Create new because stack trace can be different.
+                    var promise = LitePromise0.GetOrCreate();
+                    promise.ResolveDirectFromSettled();
+                    return promise;
+#else
+                    // Reuse a single resolved instance.
                     return _resolved;
+#endif
                 }
 
-                public static SettledPromise GetOrCreateCanceled()
+                public static Promise GetOrCreateCanceled()
                 {
+#if PROMISE_DEBUG
+                    // Create new because stack trace can be different.
+                    var promise = LitePromise0.GetOrCreate();
+                    promise.CancelDirect();
+                    return promise;
+#else
+                    // Reuse a single canceled instance.
                     return _canceled;
+#endif
                 }
 
                 protected override void Dispose() { }
@@ -617,7 +646,7 @@ namespace Proto.Promises
                 }
 
 #if PROMISE_DEBUG
-                new public void ResolveDirect()
+                public void ResolveDirectFromSettled()
                 {
                     _state = State.Resolved;
                     _valueOrPrevious = ResolveContainerVoid.GetOrCreate();
@@ -676,13 +705,18 @@ namespace Proto.Promises
             }
 
             #region Resolve Promises
-            // Individual types for more common .Then(onResolved) calls to be more efficient.
+            // IDelegate to reduce the amount of classes I would have to write(Composition Over Inheritance).
+            // Using generics with constraints allows us to use structs to get composition for "free"
+            // (no extra object allocation or extra memory overhead, and the compiler will generate the Promise classes for us).
+            // The only downside is that more classes are created than if we just used straight interfaces (not a problem with JIT, but makes the code size larger with AOT).
+
+            // Resolve types for more common .Then(onResolved) calls to be more efficient.
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseVoidResolve0 : Promise
+            public sealed class PromiseResolve<TResolver> : Promise where TResolver : IDelegateResolve
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
-                static PromiseVoidResolve0()
+                static PromiseResolve()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
@@ -696,41 +730,40 @@ namespace Proto.Promises
                     }
                 }
 
-                private Action _onResolved;
+                public TResolver resolver;
 
-                private PromiseVoidResolve0() { }
+                private PromiseResolve() { }
 
-                public static PromiseVoidResolve0 GetOrCreate(Action onResolved)
+                public static PromiseResolve<TResolver> GetOrCreate()
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseVoidResolve0) _pool.Pop() : new PromiseVoidResolve0();
-                    promise._onResolved = onResolved;
+                    var promise = _pool.IsNotEmpty ? (PromiseResolve<TResolver>) _pool.Pop() : new PromiseResolve<TResolver>();
                     promise.Reset();
                     return promise;
                 }
 
                 protected override void Execute(IValueContainer valueContainer)
                 {
-                    var callback = _onResolved;
-                    _onResolved = null;
+                    var resolveCallback = resolver;
+                    resolver = default(TResolver);
                     if (valueContainer.GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
-                        callback.Invoke();
-                        ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                        resolveCallback.InvokeResolver(valueContainer, this);
                     }
                     else
                     {
+                        resolveCallback.MaybeUnregisterCancelation();
                         RejectOrCancelInternal(valueContainer);
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseArgResolve<TArg> : Promise<TArg>
+            public sealed class PromiseResolve<T, TResolver> : Promise<T> where TResolver : IDelegateResolve
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
-                static PromiseArgResolve()
+                static PromiseResolve()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
@@ -744,42 +777,40 @@ namespace Proto.Promises
                     }
                 }
 
-                private Action<TArg> _onResolved;
+                public TResolver resolver;
 
-                private PromiseArgResolve() { }
+                private PromiseResolve() { }
 
-                public static PromiseArgResolve<TArg> GetOrCreate(Action<TArg> onResolved)
+                public static PromiseResolve<T, TResolver> GetOrCreate()
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseArgResolve<TArg>) _pool.Pop() : new PromiseArgResolve<TArg>();
-                    promise._onResolved = onResolved;
+                    var promise = _pool.IsNotEmpty ? (PromiseResolve<T, TResolver>) _pool.Pop() : new PromiseResolve<T, TResolver>();
                     promise.Reset();
                     return promise;
                 }
 
                 protected override void Execute(IValueContainer valueContainer)
                 {
-                    var callback = _onResolved;
-                    _onResolved = null;
+                    var resolveCallback = resolver;
+                    resolver = default(TResolver);
                     if (valueContainer.GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                        callback.Invoke(arg);
-                        ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                        resolveCallback.InvokeResolver(valueContainer, this);
                     }
                     else
                     {
+                        resolveCallback.MaybeUnregisterCancelation();
                         RejectOrCancelInternal(valueContainer);
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseVoidResolve<TResult> : Promise<TResult>
+            public sealed class PromiseResolvePromise<TResolver> : PromiseWaitPromise where TResolver : IDelegateResolvePromise
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
-                static PromiseVoidResolve()
+                static PromiseResolvePromise()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
@@ -793,144 +824,47 @@ namespace Proto.Promises
                     }
                 }
 
-                private Func<TResult> _onResolved;
+                public TResolver resolver;
 
-                private PromiseVoidResolve() { }
+                private PromiseResolvePromise() { }
 
-                public static PromiseVoidResolve<TResult> GetOrCreate(Func<TResult> onResolved)
+                public static PromiseResolvePromise<TResolver> GetOrCreate()
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseVoidResolve<TResult>) _pool.Pop() : new PromiseVoidResolve<TResult>();
-                    promise._onResolved = onResolved;
+                    var promise = _pool.IsNotEmpty ? (PromiseResolvePromise<TResolver>) _pool.Pop() : new PromiseResolvePromise<TResolver>();
                     promise.Reset();
                     return promise;
                 }
 
                 protected override void Execute(IValueContainer valueContainer)
                 {
-                    var callback = _onResolved;
-                    _onResolved = null;
-                    if (valueContainer.GetState() == State.Resolved)
-                    {
-                        _invokingResolved = true;
-                        TResult result = callback.Invoke();
-                        ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseArgResolve<TArg, TResult> : Promise<TResult>
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseArgResolve()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private Func<TArg, TResult> _onResolved;
-
-                private PromiseArgResolve() { }
-
-                public static PromiseArgResolve<TArg, TResult> GetOrCreate(Func<TArg, TResult> onResolved)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseArgResolve<TArg, TResult>) _pool.Pop() : new PromiseArgResolve<TArg, TResult>();
-                    promise._onResolved = onResolved;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    var callback = _onResolved;
-                    _onResolved = null;
-                    if (valueContainer.GetState() == State.Resolved)
-                    {
-                        _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                        TResult result = callback.Invoke(arg);
-                        ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseVoidResolvePromise0 : PromiseWaitPromise
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseVoidResolvePromise0()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private Func<Promise> _onResolved;
-
-                private PromiseVoidResolvePromise0() { }
-
-                public static PromiseVoidResolvePromise0 GetOrCreate(Func<Promise> onResolved)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseVoidResolvePromise0) _pool.Pop() : new PromiseVoidResolvePromise0();
-                    promise._onResolved = onResolved;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    if (_onResolved == null)
+                    if (resolver.IsNull)
                     {
                         // The returned promise is handling this.
                         HandleSelf(valueContainer);
                         return;
                     }
 
-                    var callback = _onResolved;
-                    _onResolved = null;
+                    var resolveCallback = resolver;
+                    resolver = default(TResolver);
                     if (valueContainer.GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
-                        WaitFor(callback.Invoke());
+                        resolveCallback.InvokeResolver(valueContainer, this);
                     }
                     else
                     {
+                        resolver.MaybeUnregisterCancelation();
                         RejectOrCancelInternal(valueContainer);
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseArgResolvePromise<TArg> : PromiseWaitPromise
+            public sealed class PromiseResolvePromise<T, TResolver> : PromiseWaitPromise<T> where TResolver : IDelegateResolvePromise
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
-                static PromiseArgResolvePromise()
+                static PromiseResolvePromise()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
@@ -944,592 +878,36 @@ namespace Proto.Promises
                     }
                 }
 
-                private Func<TArg, Promise> _onResolved;
+                public TResolver resolver;
 
-                private PromiseArgResolvePromise() { }
+                private PromiseResolvePromise() { }
 
-                public static PromiseArgResolvePromise<TArg> GetOrCreate(Func<TArg, Promise> onResolved)
+                public static PromiseResolvePromise<T, TResolver> GetOrCreate()
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseArgResolvePromise<TArg>) _pool.Pop() : new PromiseArgResolvePromise<TArg>();
-                    promise._onResolved = onResolved;
+                    var promise = _pool.IsNotEmpty ? (PromiseResolvePromise<T, TResolver>) _pool.Pop() : new PromiseResolvePromise<T, TResolver>();
                     promise.Reset();
                     return promise;
                 }
 
                 protected override void Execute(IValueContainer valueContainer)
                 {
-                    if (_onResolved == null)
+                    if (resolver.IsNull)
                     {
                         // The returned promise is handling this.
                         HandleSelf(valueContainer);
                         return;
                     }
 
-                    var callback = _onResolved;
-                    _onResolved = null;
+                    var resolveCallback = resolver;
+                    resolver = default(TResolver);
                     if (valueContainer.GetState() == State.Resolved)
                     {
                         _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                        WaitFor(callback.Invoke(arg));
+                        resolveCallback.InvokeResolver(valueContainer, this);
                     }
                     else
                     {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseVoidResolvePromise<TPromise> : PromiseWaitPromise<TPromise>
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseVoidResolvePromise()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private Func<Promise<TPromise>> _onResolved;
-
-                private PromiseVoidResolvePromise() { }
-
-                public static PromiseVoidResolvePromise<TPromise> GetOrCreate(Func<Promise<TPromise>> onResolved)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseVoidResolvePromise<TPromise>) _pool.Pop() : new PromiseVoidResolvePromise<TPromise>();
-                    promise._onResolved = onResolved;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    if (_onResolved == null)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(valueContainer);
-                        return;
-                    }
-
-                    var callback = _onResolved;
-                    _onResolved = null;
-                    if (valueContainer.GetState() == State.Resolved)
-                    {
-                        _invokingResolved = true;
-                        WaitFor(callback.Invoke());
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseArgResolvePromise<TArg, TPromise> : PromiseWaitPromise<TPromise>
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseArgResolvePromise()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private Func<TArg, Promise<TPromise>> _onResolved;
-
-                private PromiseArgResolvePromise() { }
-
-                public static PromiseArgResolvePromise<TArg, TPromise> GetOrCreate(Func<TArg, Promise<TPromise>> onResolved)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseArgResolvePromise<TArg, TPromise>) _pool.Pop() : new PromiseArgResolvePromise<TArg, TPromise>();
-                    promise._onResolved = onResolved;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    if (_onResolved == null)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(valueContainer);
-                        return;
-                    }
-
-                    var callback = _onResolved;
-                    _onResolved = null;
-                    if (valueContainer.GetState() == State.Resolved)
-                    {
-                        _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                        WaitFor(callback.Invoke(arg));
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureVoidResolve<TCapture> : Promise
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseCaptureVoidResolve()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private TCapture _capturedValue;
-                private Action<TCapture> resolveHandler;
-
-                private PromiseCaptureVoidResolve() { }
-
-                public static PromiseCaptureVoidResolve<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture> resolveHandler)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseCaptureVoidResolve<TCapture>) _pool.Pop() : new PromiseCaptureVoidResolve<TCapture>();
-                    promise._capturedValue = capturedValue;
-                    promise.resolveHandler = resolveHandler;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    var value = _capturedValue;
-                    _capturedValue = default(TCapture);
-                    var callback = resolveHandler;
-                    resolveHandler = null;
-                    if (valueContainer.GetState() == State.Resolved)
-                    {
-                        _invokingResolved = true;
-                        callback.Invoke(value);
-                        ResolveInternal(ResolveContainerVoid.GetOrCreate());
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureArgResolve<TCapture, TArg> : Promise
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseCaptureArgResolve()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private TCapture _capturedValue;
-                private Action<TCapture, TArg> _onResolved;
-
-                private PromiseCaptureArgResolve() { }
-
-                public static PromiseCaptureArgResolve<TCapture, TArg> GetOrCreate(TCapture capturedValue, Action<TCapture, TArg> onResolved)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseCaptureArgResolve<TCapture, TArg>) _pool.Pop() : new PromiseCaptureArgResolve<TCapture, TArg>();
-                    promise._capturedValue = capturedValue;
-                    promise._onResolved = onResolved;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    var value = _capturedValue;
-                    _capturedValue = default(TCapture);
-                    var callback = _onResolved;
-                    _onResolved = null;
-                    if (valueContainer.GetState() == State.Resolved)
-                    {
-                        _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                        callback.Invoke(value, arg);
-                        ResolveInternal(ResolveContainerVoid.GetOrCreate());
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureVoidResolve<TCapture, TResult> : Promise<TResult>
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseCaptureVoidResolve()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private TCapture _capturedValue;
-                private Func<TCapture, TResult> _onResolved;
-
-                private PromiseCaptureVoidResolve() { }
-
-                public static PromiseCaptureVoidResolve<TCapture, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, TResult> onResolved)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseCaptureVoidResolve<TCapture, TResult>) _pool.Pop() : new PromiseCaptureVoidResolve<TCapture, TResult>();
-                    promise._capturedValue = capturedValue;
-                    promise._onResolved = onResolved;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    var value = _capturedValue;
-                    _capturedValue = default(TCapture);
-                    var callback = _onResolved;
-                    _onResolved = null;
-                    if (valueContainer.GetState() == State.Resolved)
-                    {
-                        _invokingResolved = true;
-                        TResult result = callback.Invoke(value);
-                        ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureArgResolve<TCapture, TArg, TResult> : Promise<TResult>
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseCaptureArgResolve()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private TCapture _capturedValue;
-                private Func<TCapture, TArg, TResult> _onResolved;
-
-                private PromiseCaptureArgResolve() { }
-
-                public static PromiseCaptureArgResolve<TCapture, TArg, TResult> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, TResult> onResolved)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseCaptureArgResolve<TCapture, TArg, TResult>) _pool.Pop() : new PromiseCaptureArgResolve<TCapture, TArg, TResult>();
-                    promise._capturedValue = capturedValue;
-                    promise._onResolved = onResolved;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    var value = _capturedValue;
-                    _capturedValue = default(TCapture);
-                    var callback = _onResolved;
-                    _onResolved = null;
-                    if (valueContainer.GetState() == State.Resolved)
-                    {
-                        _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                        TResult result = callback.Invoke(value, arg);
-                        ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureVoidResolvePromise<TCapture> : PromiseWaitPromise
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseCaptureVoidResolvePromise()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private TCapture _capturedValue;
-                private Func<TCapture, Promise> _onResolved;
-
-                private PromiseCaptureVoidResolvePromise() { }
-
-                public static PromiseCaptureVoidResolvePromise<TCapture> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise> onResolved)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseCaptureVoidResolvePromise<TCapture>) _pool.Pop() : new PromiseCaptureVoidResolvePromise<TCapture>();
-                    promise._capturedValue = capturedValue;
-                    promise._onResolved = onResolved;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    if (_onResolved == null)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(valueContainer);
-                        return;
-                    }
-
-                    var value = _capturedValue;
-                    _capturedValue = default(TCapture);
-                    var callback = _onResolved;
-                    _onResolved = null;
-                    if (valueContainer.GetState() == State.Resolved)
-                    {
-                        _invokingResolved = true;
-                        WaitFor(callback.Invoke(value));
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureArgResolvePromise<TCapture, TArg> : PromiseWaitPromise
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseCaptureArgResolvePromise()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private TCapture _capturedValue;
-                private Func<TCapture, TArg, Promise> _onResolved;
-
-                private PromiseCaptureArgResolvePromise() { }
-
-                public static PromiseCaptureArgResolvePromise<TCapture, TArg> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, Promise> onResolved)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseCaptureArgResolvePromise<TCapture, TArg>) _pool.Pop() : new PromiseCaptureArgResolvePromise<TCapture, TArg>();
-                    promise._capturedValue = capturedValue;
-                    promise._onResolved = onResolved;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    if (_onResolved == null)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(valueContainer);
-                        return;
-                    }
-
-                    var value = _capturedValue;
-                    _capturedValue = default(TCapture);
-                    var callback = _onResolved;
-                    _onResolved = null;
-                    if (valueContainer.GetState() == State.Resolved)
-                    {
-                        _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                        WaitFor(callback.Invoke(value, arg));
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureVoidResolvePromise<TCapture, TPromise> : PromiseWaitPromise<TPromise>
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseCaptureVoidResolvePromise()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private TCapture _capturedValue;
-                private Func<TCapture, Promise<TPromise>> _onResolved;
-
-                private PromiseCaptureVoidResolvePromise() { }
-
-                public static PromiseCaptureVoidResolvePromise<TCapture, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, Promise<TPromise>> onResolved)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseCaptureVoidResolvePromise<TCapture, TPromise>) _pool.Pop() : new PromiseCaptureVoidResolvePromise<TCapture, TPromise>();
-                    promise._capturedValue = capturedValue;
-                    promise._onResolved = onResolved;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    if (_onResolved == null)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(valueContainer);
-                        return;
-                    }
-
-                    var value = _capturedValue;
-                    _capturedValue = default(TCapture);
-                    var callback = _onResolved;
-                    _onResolved = null;
-
-                    if (valueContainer.GetState() == State.Resolved)
-                    {
-                        _invokingResolved = true;
-                        WaitFor(callback.Invoke(value));
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise> : PromiseWaitPromise<TPromise>
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseCaptureArgResolvePromise()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private TCapture _capturedValue;
-                private Func<TCapture, TArg, Promise<TPromise>> _onResolved;
-
-                private PromiseCaptureArgResolvePromise() { }
-
-                public static PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise> GetOrCreate(TCapture capturedValue, Func<TCapture, TArg, Promise<TPromise>> onResolved)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise>) _pool.Pop() : new PromiseCaptureArgResolvePromise<TCapture, TArg, TPromise>();
-                    promise._capturedValue = capturedValue;
-                    promise._onResolved = onResolved;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    if (_onResolved == null)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(valueContainer);
-                        return;
-                    }
-
-                    var value = _capturedValue;
-                    _capturedValue = default(TCapture);
-                    var callback = _onResolved;
-                    _onResolved = null;
-                    if (valueContainer.GetState() == State.Resolved)
-                    {
-                        _invokingResolved = true;
-                        TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                        WaitFor(callback.Invoke(value, arg));
-                    }
-                    else
-                    {
+                        resolver.MaybeUnregisterCancelation();
                         RejectOrCancelInternal(valueContainer);
                     }
                 }
@@ -1537,69 +915,8 @@ namespace Proto.Promises
             #endregion
 
             #region Resolve or Reject Promises
-            // IDelegate to reduce the amount of classes I would have to write to handle catches (Composition Over Inheritance).
-            // I'm less concerned about performance for catches since exceptions are expensive anyway, and they are expected to be used less often than .Then(onResolved).
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolveReject0 : Promise
-            {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
-
-                static PromiseResolveReject0()
-                {
-                    OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private IDelegateResolve _onResolved;
-                private IDelegateReject _onRejected;
-
-                private PromiseResolveReject0() { }
-
-                public static PromiseResolveReject0 GetOrCreate(IDelegateResolve onResolved, IDelegateReject onRejected)
-                {
-                    var promise = _pool.IsNotEmpty ? (PromiseResolveReject0) _pool.Pop() : new PromiseResolveReject0();
-                    promise._onResolved = onResolved;
-                    promise._onRejected = onRejected;
-                    promise.Reset();
-                    return promise;
-                }
-
-                protected override void Execute(IValueContainer valueContainer)
-                {
-                    var resolveCallback = _onResolved;
-                    _onResolved = null;
-                    var rejectCallback = _onRejected;
-                    _onRejected = null;
-                    State state = valueContainer.GetState();
-                    if (state == State.Resolved)
-                    {
-                        rejectCallback.Dispose();
-                        _invokingResolved = true;
-                        resolveCallback.DisposeAndInvoke(valueContainer, this);
-                    }
-                    else if (state == State.Rejected)
-                    {
-                        resolveCallback.Dispose();
-                        _invokingRejected = true;
-                        rejectCallback.DisposeAndInvoke(valueContainer, this);
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolveReject<T> : Promise<T>
+            public sealed class PromiseResolveReject<TResolver, TRejecter> : Promise where TResolver : IDelegateResolve where TRejecter : IDelegateReject
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
@@ -1617,38 +934,36 @@ namespace Proto.Promises
                     }
                 }
 
-                private IDelegateResolve _onResolved;
-                private IDelegateReject _onRejected;
+                public TResolver resolver;
+                public TRejecter rejecter;
 
                 private PromiseResolveReject() { }
 
-                public static PromiseResolveReject<T> GetOrCreate(IDelegateResolve onResolved, IDelegateReject onRejected)
+                public static PromiseResolveReject<TResolver, TRejecter> GetOrCreate()
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseResolveReject<T>) _pool.Pop() : new PromiseResolveReject<T>();
-                    promise._onResolved = onResolved;
-                    promise._onRejected = onRejected;
+                    var promise = _pool.IsNotEmpty ? (PromiseResolveReject<TResolver, TRejecter>) _pool.Pop() : new PromiseResolveReject<TResolver, TRejecter>();
                     promise.Reset();
                     return promise;
                 }
 
                 protected override void Execute(IValueContainer valueContainer)
                 {
-                    var resolveCallback = _onResolved;
-                    _onResolved = null;
-                    var rejectCallback = _onRejected;
-                    _onRejected = null;
+                    var resolveCallback = resolver;
+                    resolver = default(TResolver);
+                    var rejectCallback = rejecter;
+                    rejecter = default(TRejecter);
                     State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
-                        rejectCallback.Dispose();
                         _invokingResolved = true;
-                        resolveCallback.DisposeAndInvoke(valueContainer, this);
+                        resolveCallback.InvokeResolver(valueContainer, this);
+                        return;
                     }
-                    else if (state == State.Rejected)
+                    resolveCallback.MaybeUnregisterCancelation();
+                    if (state == State.Rejected)
                     {
-                        resolveCallback.Dispose();
                         _invokingRejected = true;
-                        rejectCallback.DisposeAndInvoke(valueContainer, this);
+                        rejectCallback.InvokeRejecter(valueContainer, this);
                     }
                     else
                     {
@@ -1658,11 +973,11 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolveRejectPromise0 : PromiseWaitPromise
+            public sealed class PromiseResolveReject<T, TResolver, TRejecter> : Promise<T> where TResolver : IDelegateResolve where TRejecter : IDelegateReject
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
-                static PromiseResolveRejectPromise0()
+                static PromiseResolveReject()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
@@ -1676,61 +991,46 @@ namespace Proto.Promises
                     }
                 }
 
-                private IDelegateResolvePromise _onResolved;
-                private IDelegateRejectPromise _onRejected;
+                public TResolver resolver;
+                public TRejecter rejecter;
 
-                private PromiseResolveRejectPromise0() { }
+                private PromiseResolveReject() { }
 
-                public static PromiseResolveRejectPromise0 GetOrCreate(IDelegateResolvePromise onResolved, IDelegateRejectPromise onRejected)
+                public static PromiseResolveReject<T, TResolver, TRejecter> GetOrCreate()
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise0) _pool.Pop() : new PromiseResolveRejectPromise0();
-                    promise._onResolved = onResolved;
-                    promise._onRejected = onRejected;
+                    var promise = _pool.IsNotEmpty ? (PromiseResolveReject<T, TResolver, TRejecter>) _pool.Pop() : new PromiseResolveReject<T, TResolver, TRejecter>();
                     promise.Reset();
                     return promise;
                 }
 
                 protected override void Execute(IValueContainer valueContainer)
                 {
-                    if (_onResolved == null)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(valueContainer);
-                        return;
-                    }
-
-                    var resolveCallback = _onResolved;
-                    _onResolved = null;
-                    var rejectCallback = _onRejected;
-                    _onRejected = null;
+                    var resolveCallback = resolver;
+                    resolver = default(TResolver);
+                    var rejectCallback = rejecter;
+                    rejecter = default(TRejecter);
                     State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
-                        rejectCallback.Dispose();
                         _invokingResolved = true;
-                        resolveCallback.DisposeAndInvoke(valueContainer, this);
+                        resolveCallback.InvokeResolver(valueContainer, this);
+                        return;
                     }
-                    else if (state == State.Rejected)
+                    resolveCallback.MaybeUnregisterCancelation();
+                    if (state == State.Rejected)
                     {
-                        resolveCallback.Dispose();
                         _invokingRejected = true;
-#if PROMISE_PROGRESS
-                        _suspended = true;
-#endif
-                        rejectCallback.DisposeAndInvoke(valueContainer, this);
+                        rejectCallback.InvokeRejecter(valueContainer, this);
                     }
                     else
                     {
-#if PROMISE_PROGRESS
-                        _suspended = true;
-#endif
                         RejectOrCancelInternal(valueContainer);
                     }
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolveRejectPromise<TPromise> : PromiseWaitPromise<TPromise>
+            public sealed class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise where TResolver : IDelegateResolvePromise where TRejecter : IDelegateRejectPromise
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
@@ -1748,67 +1048,60 @@ namespace Proto.Promises
                     }
                 }
 
-                private IDelegateResolvePromise _onResolved;
-                private IDelegateRejectPromise _onRejected;
+                public TResolver resolver;
+                public TRejecter rejecter;
 
                 private PromiseResolveRejectPromise() { }
 
-                public static PromiseResolveRejectPromise<TPromise> GetOrCreate(IDelegateResolvePromise onResolved, IDelegateRejectPromise onRejected)
+                public static PromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate()
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise<TPromise>) _pool.Pop() : new PromiseResolveRejectPromise<TPromise>();
-                    promise._onResolved = onResolved;
-                    promise._onRejected = onRejected;
+                    var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise<TResolver, TRejecter>) _pool.Pop() : new PromiseResolveRejectPromise<TResolver, TRejecter>();
                     promise.Reset();
                     return promise;
                 }
 
                 protected override void Execute(IValueContainer valueContainer)
                 {
-                    if (_onResolved == null)
+                    if (resolver.IsNull)
                     {
                         // The returned promise is handling this.
                         HandleSelf(valueContainer);
                         return;
                     }
 
-                    var resolveCallback = _onResolved;
-                    _onResolved = null;
-                    var rejectCallback = _onRejected;
-                    _onRejected = null;
+                    var resolveCallback = resolver;
+                    resolver = default(TResolver);
+                    var rejectCallback = rejecter;
+                    rejecter = default(TRejecter);
                     State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
-                        rejectCallback.Dispose();
                         _invokingResolved = true;
-                        resolveCallback.DisposeAndInvoke(valueContainer, this);
+                        resolveCallback.InvokeResolver(valueContainer, this);
+                        return;
                     }
-                    else if (state == State.Rejected)
-                    {
-                        resolveCallback.Dispose();
-                        _invokingRejected = true;
+                    resolveCallback.MaybeUnregisterCancelation();
 #if PROMISE_PROGRESS
-                        _suspended = true;
+                    _suspended = true;
 #endif
-                        rejectCallback.DisposeAndInvoke(valueContainer, this);
+                    if (state == State.Rejected)
+                    {
+                        _invokingRejected = true;
+                        rejectCallback.InvokeRejecter(valueContainer, this);
                     }
                     else
                     {
-#if PROMISE_PROGRESS
-                        _suspended = true;
-#endif
                         RejectOrCancelInternal(valueContainer);
                     }
                 }
             }
-            #endregion
 
-            #region Continue Promises
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseContinue0 : Promise
+            public sealed class PromiseResolveRejectPromise<TPromise, TResolver, TRejecter> : PromiseWaitPromise<TPromise> where TResolver : IDelegateResolvePromise where TRejecter : IDelegateRejectPromise
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
-                static PromiseContinue0()
+                static PromiseResolveRejectPromise()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
@@ -1822,30 +1115,58 @@ namespace Proto.Promises
                     }
                 }
 
-                private IDelegateContinue _onContinue;
+                public TResolver resolver;
+                public TRejecter rejecter;
 
-                private PromiseContinue0() { }
+                private PromiseResolveRejectPromise() { }
 
-                public static PromiseContinue0 GetOrCreate(IDelegateContinue onContinue)
+                public static PromiseResolveRejectPromise<TPromise, TResolver, TRejecter> GetOrCreate()
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseContinue0) _pool.Pop() : new PromiseContinue0();
-                    promise._onContinue = onContinue;
+                    var promise = _pool.IsNotEmpty ? (PromiseResolveRejectPromise<TPromise, TResolver, TRejecter>) _pool.Pop() : new PromiseResolveRejectPromise<TPromise, TResolver, TRejecter>();
                     promise.Reset();
                     return promise;
                 }
 
                 protected override void Execute(IValueContainer valueContainer)
                 {
-                    var callback = _onContinue;
-                    _onContinue = null;
-                    _invokingResolved = true;
-                    callback.DisposeAndInvoke(valueContainer);
-                    ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    if (resolver.IsNull)
+                    {
+                        // The returned promise is handling this.
+                        HandleSelf(valueContainer);
+                        return;
+                    }
+
+                    var resolveCallback = resolver;
+                    resolver = default(TResolver);
+                    var rejectCallback = rejecter;
+                    rejecter = default(TRejecter);
+                    State state = valueContainer.GetState();
+                    if (state == State.Resolved)
+                    {
+                        _invokingResolved = true;
+                        resolveCallback.InvokeResolver(valueContainer, this);
+                        return;
+                    }
+                    resolveCallback.MaybeUnregisterCancelation();
+#if PROMISE_PROGRESS
+                    _suspended = true;
+#endif
+                    if (state == State.Rejected)
+                    {
+                        _invokingRejected = true;
+                        rejectCallback.InvokeRejecter(valueContainer, this);
+                    }
+                    else
+                    {
+                        RejectOrCancelInternal(valueContainer);
+                    }
                 }
             }
+            #endregion
 
+            #region Continue Promises
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseContinue<TResult> : Promise<TResult>
+            public sealed class PromiseContinue<TContinuer> : Promise where TContinuer : IDelegateContinue
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
@@ -1863,34 +1184,33 @@ namespace Proto.Promises
                     }
                 }
 
-                private IDelegateContinue<TResult> _onContinue;
+                public TContinuer continuer;
 
                 private PromiseContinue() { }
 
-                public static PromiseContinue<TResult> GetOrCreate(IDelegateContinue<TResult> onContinue)
+                public static PromiseContinue<TContinuer> GetOrCreate()
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseContinue<TResult>) _pool.Pop() : new PromiseContinue<TResult>();
-                    promise._onContinue = onContinue;
+                    var promise = _pool.IsNotEmpty ? (PromiseContinue<TContinuer>) _pool.Pop() : new PromiseContinue<TContinuer>();
                     promise.Reset();
                     return promise;
                 }
 
                 protected override void Execute(IValueContainer valueContainer)
                 {
-                    var callback = _onContinue;
-                    _onContinue = null;
+                    var callback = continuer;
+                    continuer = default(TContinuer);
                     _invokingResolved = true;
-                    TResult result = callback.DisposeAndInvoke(valueContainer);
-                    ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    callback.Invoke(valueContainer);
+                    ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseContinuePromise0 : PromiseWaitPromise
+            public sealed class PromiseContinue<TResult, TContinuer> : Promise<TResult> where TContinuer : IDelegateContinue<TResult>
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
-                static PromiseContinuePromise0()
+                static PromiseContinue()
                 {
                     OnClearPool += () => _pool.Clear();
                 }
@@ -1904,37 +1224,29 @@ namespace Proto.Promises
                     }
                 }
 
-                private IDelegateContinue<Promise> _onContinue;
+                public TContinuer continuer;
 
-                private PromiseContinuePromise0() { }
+                private PromiseContinue() { }
 
-                public static PromiseContinuePromise0 GetOrCreate(IDelegateContinue<Promise> onContinue)
+                public static PromiseContinue<TResult, TContinuer> GetOrCreate()
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseContinuePromise0) _pool.Pop() : new PromiseContinuePromise0();
-                    promise._onContinue = onContinue;
+                    var promise = _pool.IsNotEmpty ? (PromiseContinue<TResult, TContinuer>) _pool.Pop() : new PromiseContinue<TResult, TContinuer>();
                     promise.Reset();
                     return promise;
                 }
 
                 protected override void Execute(IValueContainer valueContainer)
                 {
-                    if (_onContinue == null)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(valueContainer);
-                        return;
-                    }
-
-                    var callback = _onContinue;
-                    _onContinue = null;
+                    var callback = continuer;
+                    continuer = default(TContinuer);
                     _invokingResolved = true;
-                    Promise result = callback.DisposeAndInvoke(valueContainer);
-                    WaitFor(result);
+                    TResult result = callback.Invoke(valueContainer);
+                    ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseContinuePromise<TPromise> : PromiseWaitPromise<TPromise>
+            public sealed class PromiseContinuePromise<TContinuer> : PromiseWaitPromise where TContinuer : IDelegateContinue<Promise>
             {
                 private static ValueLinkedStack<ITreeHandleable> _pool;
 
@@ -1952,31 +1264,77 @@ namespace Proto.Promises
                     }
                 }
 
-                private IDelegateContinue<Promise<TPromise>> _onContinue;
+                public TContinuer continuer;
 
                 private PromiseContinuePromise() { }
 
-                public static PromiseContinuePromise<TPromise> GetOrCreate(IDelegateContinue<Promise<TPromise>> onContinue)
+                public static PromiseContinuePromise<TContinuer> GetOrCreate()
                 {
-                    var promise = _pool.IsNotEmpty ? (PromiseContinuePromise<TPromise>) _pool.Pop() : new PromiseContinuePromise<TPromise>();
-                    promise._onContinue = onContinue;
+                    var promise = _pool.IsNotEmpty ? (PromiseContinuePromise<TContinuer>) _pool.Pop() : new PromiseContinuePromise<TContinuer>();
                     promise.Reset();
                     return promise;
                 }
 
                 protected override void Execute(IValueContainer valueContainer)
                 {
-                    if (_onContinue == null)
+                    if (continuer.IsNull)
                     {
                         // The returned promise is handling this.
                         HandleSelf(valueContainer);
                         return;
                     }
 
-                    var callback = _onContinue;
-                    _onContinue = null;
+                    var callback = continuer;
+                    continuer = default(TContinuer);
                     _invokingResolved = true;
-                    Promise<TPromise> result = callback.DisposeAndInvoke(valueContainer);
+                    Promise result = callback.Invoke(valueContainer);
+                    WaitFor(result);
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            public sealed class PromiseContinuePromise<TPromise, TContinuer> : PromiseWaitPromise<TPromise> where TContinuer : IDelegateContinue<Promise<TPromise>>
+            {
+                private static ValueLinkedStack<ITreeHandleable> _pool;
+
+                static PromiseContinuePromise()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
+                public TContinuer continuer;
+
+                private PromiseContinuePromise() { }
+
+                public static PromiseContinuePromise<TPromise, TContinuer> GetOrCreate()
+                {
+                    var promise = _pool.IsNotEmpty ? (PromiseContinuePromise<TPromise, TContinuer>) _pool.Pop() : new PromiseContinuePromise<TPromise, TContinuer>();
+                    promise.Reset();
+                    return promise;
+                }
+
+                protected override void Execute(IValueContainer valueContainer)
+                {
+                    if (continuer.IsNull)
+                    {
+                        // The returned promise is handling this.
+                        HandleSelf(valueContainer);
+                        return;
+                    }
+
+                    var callback = continuer;
+                    continuer = default(TContinuer);
+                    _invokingResolved = true;
+                    Promise<TPromise> result = callback.Invoke(valueContainer);
                     WaitFor(result);
                 }
             }

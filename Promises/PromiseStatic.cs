@@ -1054,15 +1054,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise Resolved()
         {
-#if PROMISE_DEBUG
-            // Create new because stack trace can be different.
-            var promise = Internal.LitePromise0.GetOrCreate();
-            promise.ResolveDirect();
-            return promise;
-#else
             // Reuse a single resolved instance.
             return Internal.SettledPromise.GetOrCreateResolved();
-#endif
         }
 
         /// <summary>
@@ -1100,14 +1093,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Canceled()
         {
-#if PROMISE_DEBUG
-            // Create new because stack trace can be different.
-            var promise = Internal.LitePromise0.GetOrCreate();
-            promise.CancelDirect();
-            return promise;
-#else
             return Internal.SettledPromise.GetOrCreateCanceled();
-#endif
         }
 
         /// <summary>

@@ -96,33 +96,40 @@ namespace Proto.Promises
                 void Invoke(IValueContainer valueContainer);
             }
 
-            public interface IDelegateResolve : IDisposable
+            public interface IDelegateResolve
             {
-                void DisposeAndInvoke(IValueContainer valueContainer, Promise owner);
-            }
-            public interface IDelegateResolvePromise : IDisposable
-            {
-                void DisposeAndInvoke(IValueContainer valueContainer, Promise owner);
+                void InvokeResolver(IValueContainer valueContainer, Promise owner);
+                void MaybeUnregisterCancelation();
+                bool IsNull { get; }
             }
 
-            public interface IDelegateReject : IDisposable
+            public interface IDelegateResolvePromise
             {
-                void DisposeAndInvoke(IValueContainer valueContainer, Promise owner);
+                void InvokeResolver(IValueContainer valueContainer, Promise owner);
+                void MaybeUnregisterCancelation();
+                bool IsNull { get; }
             }
 
-            public interface IDelegateRejectPromise : IDisposable
+            public interface IDelegateReject
             {
-                void DisposeAndInvoke(IValueContainer valueContainer, Promise owner);
+                void InvokeRejecter(IValueContainer valueContainer, Promise owner);
+            }
+
+            public interface IDelegateRejectPromise
+            {
+                void InvokeRejecter(IValueContainer valueContainer, Promise owner);
             }
 
             public interface IDelegateContinue
             {
-                void DisposeAndInvoke(IValueContainer valueContainer);
+                void Invoke(IValueContainer valueContainer);
+                bool IsNull { get; }
             }
 
             public interface IDelegateContinue<T>
             {
-                T DisposeAndInvoke(IValueContainer valueContainer);
+                T Invoke(IValueContainer valueContainer);
+                bool IsNull { get; }
             }
 
             public partial interface IMultiTreeHandleable : ITreeHandleable

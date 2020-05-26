@@ -107,6 +107,18 @@ namespace Proto.Promises
 
             void Internal.ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
         }
+
+        /// <summary>
+        /// Returns a new <see cref="YieldInstruction"/> that can be yielded in a coroutine to wait until this is settled.
+        /// </summary>
+        public YieldInstruction ToYieldInstruction()
+        {
+            ValidateOperation(this, 1);
+
+            var yield = Internal.YieldInstructionVoid.GetOrCreate(this);
+            AddWaiter(yield);
+            return yield;
+        }
     }
 
     partial class Promise<T>
@@ -141,6 +153,18 @@ namespace Proto.Promises
                 // Throw unhandled exception or canceled exception.
                 throw ((Internal.IThrowable) _value).GetException();
             }
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}.YieldInstruction"/> that can be yielded in a coroutine to wait until this is settled.
+        /// </summary>
+        public new YieldInstruction ToYieldInstruction()
+        {
+            ValidateOperation(this, 1);
+
+            var yield = Internal.YieldInstruction<T>.GetOrCreate(this);
+            AddWaiter(yield);
+            return yield;
         }
     }
 
@@ -426,3 +450,28 @@ namespace Proto.Promises
         }
     }
 }
+
+#if !UNITY_5_3_OR_NEWER
+namespace UnityEngine
+{
+    /// <summary>
+    /// Custom yield instruction. Use yield return StartCoroutine(customYieldInstruction)
+    /// </summary>
+    public abstract class CustomYieldInstruction : IEnumerator
+    {
+        public abstract bool keepWaiting { get; }
+
+        public object Current { get { return null; } }
+
+        public bool MoveNext()
+        {
+            return keepWaiting;
+        }
+
+        public void Reset()
+        {
+            throw new NotImplementedException();
+        }
+    }
+}
+#endif

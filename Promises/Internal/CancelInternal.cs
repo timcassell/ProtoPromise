@@ -27,9 +27,14 @@ namespace Proto.Promises
     {
         private void MakeCanceledFromToken()
         {
-            // When this is called, the promise is either waiting for its previous, or it's in the handle queue.
-            // _valueOrPrevious will only be null if the promise is in the object pool,
-            // or if it's a deferred promise, which cannot be subscribed to a cancelationToken, so we don't need to check for that case.
+            // This might be called synchronously when it's registered to an already canceled token. In that case, _valueOrPrevious will be null.
+            if (_valueOrPrevious == null)
+            {
+                _valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
+                return;
+            }
+
+            // Otherwise, the promise is either waiting for its previous, or it's in the handle queue.
 #if CSHARP_7_OR_LATER
             if (_valueOrPrevious is Promise previous)
 #else
@@ -108,9 +113,7 @@ namespace Proto.Promises
 
         protected static CancelationRegistration RegisterForCancelation(Promise promise, CancelationToken cancelationToken)
         {
-            return cancelationToken.CanBeCanceled
-                ? cancelationToken.Register(promise, (p, _) => p.MakeCanceledFromToken())
-                : default(CancelationRegistration);
+            return cancelationToken.Register(promise, (p, _) => p.MakeCanceledFromToken());
         }
 
         private static void ReleaseAndMaybeThrow(CancelationToken cancelationToken)
@@ -126,15 +129,6 @@ namespace Proto.Promises
                     cancelationToken.Release();
                 }
             }
-        }
-
-        private static void UnregisterAndMakeDefault(ref CancelationRegistration cancelationRegistration)
-        {
-            if (cancelationRegistration.IsRegistered)
-            {
-                cancelationRegistration.Unregister();
-            }
-            cancelationRegistration = default(CancelationRegistration);
         }
 
         partial class Internal
