@@ -62,7 +62,7 @@ namespace Proto.Promises
 
                 if (_state == State.Pending)
                 {
-                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
                 }
 
                 if (_state == State.Resolved)
@@ -88,7 +88,7 @@ namespace Proto.Promises
                 ValidateYieldInstructionOperation(_value, 1);
 
                 ((IRetainable) _value).Release();
-                _value = DisposedObject;
+                _value = disposedObject;
             }
 
             void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
@@ -115,7 +115,7 @@ namespace Proto.Promises
         {
             ValidateOperation(this, 1);
 
-            var yield = Internal.YieldInstructionVoid.GetOrCreate(this);
+            var yield = InternalProtected.YieldInstructionVoid.GetOrCreate(this);
             AddWaiter(yield);
             return yield;
         }
@@ -143,7 +143,7 @@ namespace Proto.Promises
 
                 if (_state == State.Pending)
                 {
-                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
                 }
 
                 if (_state == State.Resolved)
@@ -162,7 +162,7 @@ namespace Proto.Promises
         {
             ValidateOperation(this, 1);
 
-            var yield = Internal.YieldInstruction<T>.GetOrCreate(this);
+            var yield = InternalProtected.YieldInstruction<T>.GetOrCreate(this);
             AddWaiter(yield);
             return yield;
         }
@@ -170,16 +170,16 @@ namespace Proto.Promises
 
     partial class Promise
     {
-        partial class Internal
+        partial class InternalProtected
         {
             [System.Diagnostics.DebuggerNonUserCode]
             public sealed class YieldInstructionVoid : YieldInstruction
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static YieldInstructionVoid()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 private YieldInstructionVoid() { }
@@ -202,13 +202,13 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, ITreeHandleable
+            public sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, Internal.ITreeHandleable
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static YieldInstruction()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 private YieldInstruction() { }

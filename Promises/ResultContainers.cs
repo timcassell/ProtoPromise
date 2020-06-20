@@ -8,6 +8,75 @@ using System;
 
 namespace Proto.Promises
 {
+    /// <summary>
+    /// Used to get the value of a rejection or cancelation.
+    /// An instance of <see cref="ReasonContainer"/> is only valid during the invocation of the delegate it is passed into.
+    /// </summary>
+    [System.Diagnostics.DebuggerNonUserCode]
+    public partial struct ReasonContainer
+    {
+        private readonly Internal.IValueContainer _valueContainer;
+#if PROMISE_DEBUG
+        private readonly ulong _id;
+#endif
+
+        internal ReasonContainer(Internal.IValueContainer valueContainer)
+        {
+            _valueContainer = valueContainer;
+#if PROMISE_DEBUG
+            _id = Internal.InvokeId;
+#endif
+        }
+
+        /// <summary>
+        /// Get the type of the value, or null if there is no value.
+        /// </summary>
+        /// <value>The type of the value.</value>
+        public Type ValueType
+        {
+            get
+            {
+                Validate();
+                return _valueContainer.ValueType;
+            }
+        }
+
+        /// <summary>
+        /// Get the value.
+        /// <para/>NOTE: Use <see cref="TryGetValueAs{T}(out T)"/> if you want to prevent value type boxing.
+        /// </summary>
+        public object Value
+        {
+            get
+            {
+                Validate();
+                return _valueContainer.Value;
+            }
+        }
+
+        /// <summary>
+        /// Try to get the value casted to <typeparamref name="T"/>.
+        /// Returns true if successful, false otherwise.
+        /// </summary>
+        public bool TryGetValueAs<T>(out T value)
+        {
+            Validate();
+            return Internal.TryConvert(_valueContainer, out value);
+        }
+
+
+        partial void Validate();
+#if PROMISE_DEBUG
+        partial void Validate()
+        {
+            if (_id != Internal.InvokeId | ReferenceEquals(_valueContainer, null))
+            {
+                throw new InvalidOperationException("An instance of Promise.ReasonContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
+            }
+        }
+#endif
+    }
+
     partial class Promise
     {
         /// <summary>
@@ -22,11 +91,11 @@ namespace Proto.Promises
             private readonly ulong _id;
 #endif
 
-            internal ResultContainer(object valueContainer)
+            internal ResultContainer(Internal.IValueContainer valueContainer)
             {
-                _valueContainer = (Internal.IValueContainer) valueContainer;
+                _valueContainer = valueContainer;
 #if PROMISE_DEBUG
-                _id = _invokeId;
+                _id = Internal.InvokeId;
 #endif
             }
 
@@ -98,9 +167,9 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             partial void ValidateCall()
             {
-                if (_id != _invokeId | ReferenceEquals(_valueContainer, null))
+                if (_id != Internal.InvokeId | ReferenceEquals(_valueContainer, null))
                 {
-                    throw new InvalidOperationException("An instance of Promise.CancelContainer is only valid during the invocation of the delegate it is passed into.", GetFormattedStacktrace(2));
+                    throw new InvalidOperationException("An instance of Promise.CancelContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
                 }
             }
 
@@ -108,7 +177,7 @@ namespace Proto.Promises
             {
                 if (_valueContainer.GetState() != State.Rejected)
                 {
-                    throw new InvalidOperationException("Promise must be rejected in order to access RejectContainer.", GetFormattedStacktrace(2));
+                    throw new InvalidOperationException("Promise must be rejected in order to access RejectContainer.", Internal.GetFormattedStacktrace(2));
                 }
             }
 
@@ -116,76 +185,7 @@ namespace Proto.Promises
             {
                 if (_valueContainer.GetState() != State.Canceled)
                 {
-                    throw new InvalidOperationException("Promise must be canceled in order to access CancelContainer.", GetFormattedStacktrace(2));
-                }
-            }
-#endif
-        }
-
-        /// <summary>
-        /// Used to get the value of a <see cref="Promise"/> rejection or cancelation.
-        /// An instance of <see cref="ReasonContainer"/> is only valid during the invocation of the delegate it is passed into.
-        /// </summary>
-        [System.Diagnostics.DebuggerNonUserCode]
-        public partial struct ReasonContainer
-        {
-            private readonly Internal.IValueContainer _valueContainer;
-#if PROMISE_DEBUG
-            private readonly ulong _id;
-#endif
-
-            internal ReasonContainer(object valueContainer)
-            {
-                _valueContainer = (Internal.IValueContainer) valueContainer;
-#if PROMISE_DEBUG
-                _id = _invokeId;
-#endif
-            }
-
-            /// <summary>
-            /// Get the type of the value, or null if there is no value.
-            /// </summary>
-            /// <value>The type of the value.</value>
-            public Type ValueType
-            {
-                get
-                {
-                    Validate();
-                    return _valueContainer.ValueType;
-                }
-            }
-
-            /// <summary>
-            /// Get the value.
-            /// <para/>NOTE: Use <see cref="TryGetValueAs{T}(out T)"/> if you want to prevent value type boxing.
-            /// </summary>
-            public object Value
-            {
-                get
-                {
-                    Validate();
-                    return _valueContainer.Value;
-                }
-            }
-
-            /// <summary>
-            /// Try to get the value casted to <typeparamref name="T"/>.
-            /// Returns true if successful, false otherwise.
-            /// </summary>
-            public bool TryGetValueAs<T>(out T value)
-            {
-                Validate();
-                return TryConvert(_valueContainer, out value);
-            }
-
-
-            partial void Validate();
-#if PROMISE_DEBUG
-            partial void Validate()
-            {
-                if (_id != _invokeId | ReferenceEquals(_valueContainer, null))
-                {
-                    throw new InvalidOperationException("An instance of Promise.ReasonContainer is only valid during the invocation of the delegate it is passed into.", GetFormattedStacktrace(2));
+                    throw new InvalidOperationException("Promise must be canceled in order to access CancelContainer.", Internal.GetFormattedStacktrace(2));
                 }
             }
 #endif
@@ -206,11 +206,11 @@ namespace Proto.Promises
             private readonly ulong _id;
 #endif
 
-            internal ResultContainer(object valueContainer)
+            internal ResultContainer(Internal.IValueContainer valueContainer)
             {
-                _valueContainer = (Internal.IValueContainer) valueContainer;
+                _valueContainer = valueContainer;
 #if PROMISE_DEBUG
-                _id = _invokeId;
+                _id = Internal.InvokeId;
 #endif
             }
 
@@ -296,9 +296,9 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             partial void ValidateCall()
             {
-                if (_id != _invokeId | ReferenceEquals(_valueContainer, null))
+                if (_id != Internal.InvokeId | ReferenceEquals(_valueContainer, null))
                 {
-                    throw new InvalidOperationException("An instance of Promise.CancelContainer is only valid during the invocation of the delegate it is passed into.", GetFormattedStacktrace(2));
+                    throw new InvalidOperationException("An instance of Promise.CancelContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
                 }
             }
 
@@ -306,7 +306,7 @@ namespace Proto.Promises
             {
                 if (_valueContainer.GetState() != State.Resolved)
                 {
-                    throw new InvalidOperationException("Promise must be resolved in order to access Result.", GetFormattedStacktrace(2));
+                    throw new InvalidOperationException("Promise must be resolved in order to access Result.", Internal.GetFormattedStacktrace(2));
                 }
             }
 
@@ -314,7 +314,7 @@ namespace Proto.Promises
             {
                 if (_valueContainer.GetState() != State.Rejected)
                 {
-                    throw new InvalidOperationException("Promise must be rejected in order to access RejectContainer.", GetFormattedStacktrace(2));
+                    throw new InvalidOperationException("Promise must be rejected in order to access RejectContainer.", Internal.GetFormattedStacktrace(2));
                 }
             }
 
@@ -322,7 +322,7 @@ namespace Proto.Promises
             {
                 if (_valueContainer.GetState() != State.Canceled)
                 {
-                    throw new InvalidOperationException("Promise must be canceled in order to access CancelContainer.", GetFormattedStacktrace(2));
+                    throw new InvalidOperationException("Promise must be canceled in order to access CancelContainer.", Internal.GetFormattedStacktrace(2));
                 }
             }
 #endif

@@ -9,9 +9,6 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable CS0672 // Member overrides obsolete member
-#pragma warning disable CS0618 // Type or member is obsolete
-
 using System;
 
 namespace Proto.Promises
@@ -38,7 +35,7 @@ namespace Proto.Promises
                 if (State == State.Pending)
                 {
                     // Deferred wasn't handled.
-                    AddRejectionToUnhandledStack(UnhandledDeferredException.instance, Promise);
+                    Internal.AddRejectionToUnhandledStack(UnhandledDeferredException.instance, Promise);
                 }
             }
 
@@ -74,7 +71,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    AddRejectionToUnhandledStack(reason, null);
+                    Internal.AddRejectionToUnhandledStack(reason, null);
                     Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
                 }
             }
@@ -206,7 +203,7 @@ namespace Proto.Promises
 
     partial class Promise
     {
-        partial class Internal
+        partial class InternalProtected
         {
             [System.Diagnostics.DebuggerNonUserCode]
             public sealed class DeferredInternal0 : Deferred

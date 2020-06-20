@@ -12,7 +12,6 @@
 #pragma warning disable RECS0108 // Warns about static fields in generic types
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0618 // Type or member is obsolete
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
 #pragma warning disable IDE0041 // Use 'is null' check
 
@@ -22,7 +21,7 @@ using Proto.Utils;
 
 namespace Proto.Promises
 {
-    partial class Promise : Promise.Internal.ITreeHandleable, Promise.Internal.ITraceable
+    partial class Promise : Internal.ITreeHandleable, Internal.ITraceable
     {
         private ValueLinkedStack<Internal.ITreeHandleable> _nextBranches;
         protected object _valueOrPrevious;
@@ -47,7 +46,7 @@ namespace Proto.Promises
                 }
                 // Promise wasn't released.
                 string message = "A Promise object was garbage collected that was not released. You must release all IRetainable objects that you have retained.";
-                AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                Internal.AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
             }
         }
 
@@ -64,7 +63,7 @@ namespace Proto.Promises
             ((Promise) _valueOrPrevious)._wasWaitedOn = true;
             valueContainer.Retain();
             _valueOrPrevious = valueContainer;
-            AddToHandleQueueBack(this);
+            Internal.AddToHandleQueueBack(this);
         }
 
         protected virtual void Reset()
@@ -75,8 +74,14 @@ namespace Proto.Promises
             SetCreatedStacktrace(this, 3);
         }
 
-        protected void AddWaiter(Internal.ITreeHandleable waiter)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+        private protected void AddWaiter(Internal.ITreeHandleable waiter)
         {
+#else
+        protected void AddWaiter(object _waiter)
+        {
+            Internal.ITreeHandleable waiter = (Internal.ITreeHandleable) _waiter;
+#endif
             if (_state == State.Pending)
             {
                 _nextBranches.Push(waiter);
@@ -141,10 +146,10 @@ namespace Proto.Promises
                     ((Internal.IValueContainer) _valueOrPrevious).ReleaseAndAddToUnhandledStack();
                 }
             }
-            _valueOrPrevious = DisposedObject;
+            _valueOrPrevious = disposedObject;
         }
 
-        protected void ResolveInternal(Internal.IValueContainer container)
+        private void ResolveInternal(Internal.IValueContainer container)
         {
             _state = State.Resolved;
             container.Retain();
@@ -155,7 +160,7 @@ namespace Proto.Promises
             ReleaseInternal();
         }
 
-        protected void RejectOrCancelInternal(Internal.IValueContainer container)
+        private void RejectOrCancelInternal(Internal.IValueContainer container)
         {
             _state = container.GetState();
             container.Retain();
@@ -175,7 +180,7 @@ namespace Proto.Promises
             }
             else
             {
-                AddToHandleQueueBack(newPromise);
+                Internal.AddToHandleQueueBack(newPromise);
             }
         }
 
@@ -207,17 +212,17 @@ namespace Proto.Promises
             catch (OperationCanceledException e)
             {
                 container.Release();
-                RejectOrCancelInternal(CreateCancelContainer(ref e));
+                RejectOrCancelInternal(Internal.CreateCancelContainer(ref e));
             }
             catch (Exception e)
             {
                 container.Release();
-                RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this));
+                RejectOrCancelInternal(Internal.CreateRejectContainer(ref e, int.MinValue, this));
             }
             finally
             {
-                Internal._invokingResolved = false;
-                Internal._invokingRejected = false;
+                Internal.invokingResolved = false;
+                Internal.invokingRejected = false;
                 ClearCurrentInvoker();
             }
         }
@@ -229,7 +234,7 @@ namespace Proto.Promises
             _valueOrPrevious = resolveValue;
             AddBranchesToHandleQueueBack(resolveValue);
             ResolveProgressListeners();
-            AddToHandleQueueFront(this);
+            Internal.AddToHandleQueueFront(this);
         }
 
         protected void ResolveDirect<T>(ref T value)
@@ -240,57 +245,21 @@ namespace Proto.Promises
             _valueOrPrevious = resolveValue;
             AddBranchesToHandleQueueBack(resolveValue);
             ResolveProgressListeners();
-            AddToHandleQueueFront(this);
+            Internal.AddToHandleQueueFront(this);
         }
 
         private void RejectDirect<TReject>(ref TReject reason, int rejectSkipFrames)
         {
             _state = State.Rejected;
-            var rejection = CreateRejectContainer(ref reason, rejectSkipFrames + 1, this);
+            var rejection = Internal.CreateRejectContainer(ref reason, rejectSkipFrames + 1, this);
             rejection.Retain();
             _valueOrPrevious = rejection;
             AddBranchesToHandleQueueBack(rejection);
             CancelProgressListeners();
-            AddToHandleQueueFront(this);
+            Internal.AddToHandleQueueFront(this);
         }
 
-        private static Internal.IRejectValueContainer CreateRejectContainer<TReject>(ref TReject reason, int rejectSkipFrames, Internal.ITraceable traceable)
-        {
-            Internal.IRejectValueContainer valueContainer;
-
-            // Avoid boxing value types.
-            Type type = typeof(TReject);
-            if (type.IsValueType)
-            {
-                valueContainer = Internal.RejectionContainer<TReject>.GetOrCreate(ref reason);
-            }
-            else
-            {
-#if CSHARP_7_OR_LATER
-                if (((object) reason) is Internal.IRejectionToContainer internalRejection)
-#else
-                Internal.IRejectionToContainer internalRejection = reason as Internal.IRejectionToContainer;
-                if (internalRejection != null)
-#endif
-                {
-                    // reason is an internal rejection object, get its container instead of wrapping it.
-                    return internalRejection.ToContainer(traceable);
-                }
-
-                object o = reason;
-                if (ReferenceEquals(o, null))
-                {
-                    // reason is null, behave the same way .Net behaves if you throw null.
-                    o = new NullReferenceException();
-                }
-                // Only need to create one object pool for reference types.
-                valueContainer = Internal.RejectionContainer<object>.GetOrCreate(ref o);
-            }
-            SetCreatedAndRejectedStacktrace(valueContainer, rejectSkipFrames + 1, traceable);
-            return valueContainer;
-        }
-
-        protected void HandleSelf(Internal.IValueContainer valueContainer)
+        private void HandleSelf(Internal.IValueContainer valueContainer)
         {
             _state = valueContainer.GetState();
             valueContainer.Retain();
@@ -309,87 +278,12 @@ namespace Proto.Promises
             ReleaseInternal();
         }
 
-        protected virtual void Execute(Internal.IValueContainer valueContainer) { }
-
-        private static ValueLinkedStackZeroGC<UnhandledException> _unhandledExceptions;
-
-        private static void AddUnhandledException(UnhandledException exception)
-        {
-            _unhandledExceptions.Push(exception);
-        }
-
-        // Generate stack trace if traceable is null.
-        private static void AddRejectionToUnhandledStack<TReject>(TReject unhandledValue, Internal.ITraceable traceable)
-        {
-#if CSHARP_7_OR_LATER
-            if (((object) unhandledValue) is Internal.ICantHandleException ex)
+        // Annoyingly necessary since private protected isn't available in old C# versions.
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+        private protected virtual void Execute(Internal.IValueContainer valueContainer) { }
 #else
-            Internal.ICantHandleException ex = unhandledValue as Internal.ICantHandleException;
-            if (ex != null)
+        protected virtual void Execute(object valueContainer) { }
 #endif
-            {
-                ex.AddToUnhandledStack(traceable);
-                return;
-            }
-
-#if PROMISE_DEBUG
-            string stackTrace =
-                traceable != null
-                    ? GetFormattedStacktrace(traceable)
-                    : Config.DebugCausalityTracer != TraceLevel.None
-                        ? FormatStackTrace(new System.Diagnostics.StackTrace[1] { GetStackTrace(1) })
-                        : null;
-#else
-            string stackTrace = null;
-#endif
-            string message;
-            Exception innerException;
-
-            if (unhandledValue is Exception)
-            {
-                message = "An exception was not handled.";
-                innerException = unhandledValue as Exception;
-            }
-            else if (ReferenceEquals(unhandledValue, null))
-            {
-                // unhandledValue is null, behave the same way .Net behaves if you throw null.
-                message = "An rejected null value was not handled.";
-                NullReferenceException nullRefEx = new NullReferenceException();
-                AddUnhandledException(new Internal.UnhandledExceptionInternal(nullRefEx, typeof(NullReferenceException), message, stackTrace, nullRefEx));
-                return;
-            }
-            else
-            {
-                Type type = typeof(TReject);
-                message = "A rejected value was not handled, type: " + type + ", value: " + unhandledValue.ToString();
-                innerException = null;
-            }
-            AddUnhandledException(new Internal.UnhandledExceptionInternal(unhandledValue, unhandledValue.GetType(), message, stackTrace, innerException));
-        }
-
-        // Handle promises in a depth-first manner.
-        private static ValueLinkedQueue<Internal.ITreeHandleable> _handleQueue;
-        private static bool _runningHandles;
-
-        private static void AddToHandleQueueFront(Internal.ITreeHandleable handleable)
-        {
-            _handleQueue.Push(handleable);
-        }
-
-        private static void AddToHandleQueueBack(Internal.ITreeHandleable handleable)
-        {
-            _handleQueue.Enqueue(handleable);
-        }
-
-        private static void AddToHandleQueueFront(ref ValueLinkedQueue<Internal.ITreeHandleable> handleables)
-        {
-            _handleQueue.PushAndClear(ref handleables);
-        }
-
-        private static void AddToHandleQueueBack(ref ValueLinkedQueue<Internal.ITreeHandleable> handleables)
-        {
-            _handleQueue.EnqueueAndClear(ref handleables);
-        }
 
         private void HandleBranches()
         {
@@ -399,7 +293,7 @@ namespace Proto.Promises
             {
                 _nextBranches.Pop().MakeReady(valueContainer, ref handleQueue);
             }
-            AddToHandleQueueFront(ref handleQueue);
+            Internal.AddToHandleQueueFront(ref handleQueue);
         }
 
         private void AddBranchesToHandleQueueBack(Internal.IValueContainer valueContainer)
@@ -409,53 +303,40 @@ namespace Proto.Promises
             {
                 _nextBranches.Pop().MakeReady(valueContainer, ref handleQueue);
             }
-            AddToHandleQueueBack(ref handleQueue);
+            Internal.AddToHandleQueueBack(ref handleQueue);
         }
 
-        private static bool TryConvert<TConvert>(Internal.IValueContainer valueContainer, out TConvert converted)
+        protected static partial class InternalProtected
         {
-            // Try to avoid boxing value types.
-#if CSHARP_7_OR_LATER
-            if (((object) valueContainer) is IValueContainer<TConvert> directContainer)
-#else
-            var directContainer = valueContainer as IValueContainer<TConvert>;
-            if (directContainer != null)
-#endif
+            // PromiseIntermediate is annoyingly necessary since private protected isn't available in old C# versions.
+            [System.Diagnostics.DebuggerNonUserCode]
+            internal abstract partial class PromiseIntermediate : Promise
             {
-                converted = directContainer.Value;
-                return true;
-            }
+#if !CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                protected override sealed void Execute(object valueContainer)
+                {
+                    Execute((Internal.IValueContainer) valueContainer);
+                }
 
-            if (typeof(TConvert).IsAssignableFrom(valueContainer.ValueType))
-            {
-                // Unfortunately, this will box if converting from a non-nullable value type to nullable.
-                // I couldn't find any way around that without resorting to Expressions (which won't work for this purpose with the IL2CPP AOT compiler).
-                converted = (TConvert) valueContainer.Value;
-                return true;
-            }
-
-            converted = default(TConvert);
-            return false;
-        }
-
-#if CSHARP_7_OR_LATER
-        /// <summary>
-        /// DON'T CALL THIS FUNCTION IN USER CODE!
-        /// </summary>
-        internal static void SetInvokingAsyncFunctionInternal(bool invoking)
-        {
-            Internal._invokingResolved = invoking;
-        }
+                protected abstract void Execute(Internal.IValueContainer valueContainer);
 #endif
-
-        protected static partial class Internal
-        {
-            internal static bool _invokingResolved, _invokingRejected;
-
-            internal static Action OnClearPool;
+            }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public abstract partial class PromiseWaitPromise : Promise
+            internal abstract partial class PromiseIntermediate<T> : Promise<T>
+            {
+#if !CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                protected override sealed void Execute(object valueContainer)
+                {
+                    Execute((Internal.IValueContainer) valueContainer);
+                }
+
+                protected abstract void Execute(Internal.IValueContainer valueContainer);
+#endif
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            internal abstract partial class PromiseWaitPromise : PromiseIntermediate
             {
                 public void WaitFor(Promise other)
                 {
@@ -473,7 +354,7 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public abstract partial class PromiseWaitPromise<T> : Promise<T>
+            internal abstract partial class PromiseWaitPromise<T> : PromiseIntermediate<T>
             {
                 public void WaitFor(Promise<T> other)
                 {
@@ -491,13 +372,13 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class DeferredPromise0 : Promise, ITreeHandleable
+            internal sealed partial class DeferredPromise0 : Promise, Internal.ITreeHandleable
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static DeferredPromise0()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -524,20 +405,20 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                void ITreeHandleable.Handle()
+                void Internal.ITreeHandleable.Handle()
                 {
                     ReleaseInternal();
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class DeferredPromise<T> : Promise<T>, ITreeHandleable
+            internal sealed partial class DeferredPromise<T> : Promise<T>, Internal.ITreeHandleable
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static DeferredPromise()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -564,66 +445,70 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                void ITreeHandleable.Handle()
+                void Internal.ITreeHandleable.Handle()
                 {
                     ReleaseInternal();
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class SettledPromise : Promise
+            internal sealed class SettledPromise : Promise
             {
                 private SettledPromise() { }
 
+#if PROMISE_DEBUG
+                public static Promise GetOrCreateResolved()
+                {
+                    // Create new because stack trace can be different.
+                    var promise = LitePromise0.GetOrCreate();
+                    promise.ResolveDirectFromSettled();
+                    return promise;
+                }
+
+                public static Promise GetOrCreateCanceled()
+                {
+                    // Create new because stack trace can be different.
+                    var promise = LitePromise0.GetOrCreate();
+                    promise.CancelDirect();
+                    return promise;
+                }
+#else
                 private static readonly SettledPromise _resolved = new SettledPromise()
                 {
                     _state = State.Resolved,
-                    _valueOrPrevious = ResolveContainerVoid.GetOrCreate()
+                    _valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate()
                 };
 
                 private static readonly SettledPromise _canceled = new SettledPromise()
                 {
                     _state = State.Canceled,
-                    _valueOrPrevious = CancelContainerVoid.GetOrCreate()
+                    _valueOrPrevious = Internal.CancelContainerVoid.GetOrCreate()
                 };
 
                 public static Promise GetOrCreateResolved()
                 {
-#if PROMISE_DEBUG
-                    // Create new because stack trace can be different.
-                    var promise = LitePromise0.GetOrCreate();
-                    promise.ResolveDirectFromSettled();
-                    return promise;
-#else
                     // Reuse a single resolved instance.
                     return _resolved;
-#endif
                 }
 
                 public static Promise GetOrCreateCanceled()
                 {
-#if PROMISE_DEBUG
-                    // Create new because stack trace can be different.
-                    var promise = LitePromise0.GetOrCreate();
-                    promise.CancelDirect();
-                    return promise;
-#else
                     // Reuse a single canceled instance.
                     return _canceled;
-#endif
                 }
+#endif
 
                 protected override void Dispose() { }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class LitePromise0 : Promise, ITreeHandleable
+            internal sealed class LitePromise0 : Promise, Internal.ITreeHandleable
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static LitePromise0()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -649,25 +534,25 @@ namespace Proto.Promises
                 public void ResolveDirectFromSettled()
                 {
                     _state = State.Resolved;
-                    _valueOrPrevious = ResolveContainerVoid.GetOrCreate();
-                    AddToHandleQueueFront(this);
+                    _valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
+                    Internal.AddToHandleQueueFront(this);
                 }
 #endif
 
-                void ITreeHandleable.Handle()
+                void Internal.ITreeHandleable.Handle()
                 {
                     ReleaseInternal();
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class LitePromise<T> : Promise<T>, ITreeHandleable
+            internal sealed class LitePromise<T> : Promise<T>, Internal.ITreeHandleable
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static LitePromise()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -692,13 +577,13 @@ namespace Proto.Promises
                 public void ResolveDirect(ref T value)
                 {
                     _state = State.Resolved;
-                    var val = ResolveContainer<T>.GetOrCreate(ref value);
+                    var val = Internal.ResolveContainer<T>.GetOrCreate(ref value);
                     val.Retain();
                     _valueOrPrevious = val;
-                    AddToHandleQueueFront(this);
+                    Internal.AddToHandleQueueFront(this);
                 }
 
-                void ITreeHandleable.Handle()
+                void Internal.ITreeHandleable.Handle()
                 {
                     ReleaseInternal();
                 }
@@ -712,13 +597,13 @@ namespace Proto.Promises
 
             // Resolve types for more common .Then(onResolved) calls to be more efficient.
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolve<TResolver> : Promise where TResolver : IDelegateResolve
+            internal sealed class PromiseResolve<TResolver> : PromiseIntermediate where TResolver : IDelegateResolve
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static PromiseResolve()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -741,13 +626,16 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     var resolveCallback = resolver;
                     resolver = default(TResolver);
                     if (valueContainer.GetState() == State.Resolved)
                     {
-                        _invokingResolved = true;
+                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                     }
                     else
@@ -759,13 +647,13 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolve<T, TResolver> : Promise<T> where TResolver : IDelegateResolve
+            internal sealed class PromiseResolve<T, TResolver> : PromiseIntermediate<T> where TResolver : IDelegateResolve
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static PromiseResolve()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -788,13 +676,16 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     var resolveCallback = resolver;
                     resolver = default(TResolver);
                     if (valueContainer.GetState() == State.Resolved)
                     {
-                        _invokingResolved = true;
+                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                     }
                     else
@@ -806,13 +697,13 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolvePromise<TResolver> : PromiseWaitPromise where TResolver : IDelegateResolvePromise
+            internal sealed class PromiseResolvePromise<TResolver> : PromiseWaitPromise where TResolver : IDelegateResolvePromise
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static PromiseResolvePromise()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -835,7 +726,10 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     if (resolver.IsNull)
                     {
@@ -848,7 +742,7 @@ namespace Proto.Promises
                     resolver = default(TResolver);
                     if (valueContainer.GetState() == State.Resolved)
                     {
-                        _invokingResolved = true;
+                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                     }
                     else
@@ -860,13 +754,13 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolvePromise<T, TResolver> : PromiseWaitPromise<T> where TResolver : IDelegateResolvePromise
+            internal sealed class PromiseResolvePromise<T, TResolver> : PromiseWaitPromise<T> where TResolver : IDelegateResolvePromise
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static PromiseResolvePromise()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -889,7 +783,10 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     if (resolver.IsNull)
                     {
@@ -902,7 +799,7 @@ namespace Proto.Promises
                     resolver = default(TResolver);
                     if (valueContainer.GetState() == State.Resolved)
                     {
-                        _invokingResolved = true;
+                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                     }
                     else
@@ -916,13 +813,13 @@ namespace Proto.Promises
 
             #region Resolve or Reject Promises
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolveReject<TResolver, TRejecter> : Promise where TResolver : IDelegateResolve where TRejecter : IDelegateReject
+            internal sealed class PromiseResolveReject<TResolver, TRejecter> : PromiseIntermediate where TResolver : IDelegateResolve where TRejecter : IDelegateReject
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static PromiseResolveReject()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -946,7 +843,10 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     var resolveCallback = resolver;
                     resolver = default(TResolver);
@@ -955,14 +855,14 @@ namespace Proto.Promises
                     State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
-                        _invokingResolved = true;
+                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                         return;
                     }
                     resolveCallback.MaybeUnregisterCancelation();
                     if (state == State.Rejected)
                     {
-                        _invokingRejected = true;
+                        Internal.invokingRejected = true;
                         rejectCallback.InvokeRejecter(valueContainer, this);
                     }
                     else
@@ -973,13 +873,13 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolveReject<T, TResolver, TRejecter> : Promise<T> where TResolver : IDelegateResolve where TRejecter : IDelegateReject
+            internal sealed class PromiseResolveReject<T, TResolver, TRejecter> : PromiseIntermediate<T> where TResolver : IDelegateResolve where TRejecter : IDelegateReject
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static PromiseResolveReject()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -1003,7 +903,10 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     var resolveCallback = resolver;
                     resolver = default(TResolver);
@@ -1012,14 +915,14 @@ namespace Proto.Promises
                     State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
-                        _invokingResolved = true;
+                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                         return;
                     }
                     resolveCallback.MaybeUnregisterCancelation();
                     if (state == State.Rejected)
                     {
-                        _invokingRejected = true;
+                        Internal.invokingRejected = true;
                         rejectCallback.InvokeRejecter(valueContainer, this);
                     }
                     else
@@ -1030,13 +933,13 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise where TResolver : IDelegateResolvePromise where TRejecter : IDelegateRejectPromise
+            internal sealed class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise where TResolver : IDelegateResolvePromise where TRejecter : IDelegateRejectPromise
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static PromiseResolveRejectPromise()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -1060,7 +963,10 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     if (resolver.IsNull)
                     {
@@ -1076,7 +982,7 @@ namespace Proto.Promises
                     State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
-                        _invokingResolved = true;
+                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                         return;
                     }
@@ -1086,7 +992,7 @@ namespace Proto.Promises
 #endif
                     if (state == State.Rejected)
                     {
-                        _invokingRejected = true;
+                        Internal.invokingRejected = true;
                         rejectCallback.InvokeRejecter(valueContainer, this);
                     }
                     else
@@ -1097,13 +1003,13 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseResolveRejectPromise<TPromise, TResolver, TRejecter> : PromiseWaitPromise<TPromise> where TResolver : IDelegateResolvePromise where TRejecter : IDelegateRejectPromise
+            internal sealed class PromiseResolveRejectPromise<TPromise, TResolver, TRejecter> : PromiseWaitPromise<TPromise> where TResolver : IDelegateResolvePromise where TRejecter : IDelegateRejectPromise
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static PromiseResolveRejectPromise()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -1127,7 +1033,10 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     if (resolver.IsNull)
                     {
@@ -1143,7 +1052,7 @@ namespace Proto.Promises
                     State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
-                        _invokingResolved = true;
+                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                         return;
                     }
@@ -1153,7 +1062,7 @@ namespace Proto.Promises
 #endif
                     if (state == State.Rejected)
                     {
-                        _invokingRejected = true;
+                        Internal.invokingRejected = true;
                         rejectCallback.InvokeRejecter(valueContainer, this);
                     }
                     else
@@ -1166,13 +1075,13 @@ namespace Proto.Promises
 
             #region Continue Promises
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseContinue<TContinuer> : Promise where TContinuer : IDelegateContinue
+            internal sealed class PromiseContinue<TContinuer> : PromiseIntermediate where TContinuer : IDelegateContinue
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static PromiseContinue()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -1195,24 +1104,27 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     var callback = continuer;
                     continuer = default(TContinuer);
-                    _invokingResolved = true;
+                    Internal.invokingResolved = true;
                     callback.Invoke(valueContainer);
-                    ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseContinue<TResult, TContinuer> : Promise<TResult> where TContinuer : IDelegateContinue<TResult>
+            internal sealed class PromiseContinue<TResult, TContinuer> : PromiseIntermediate<TResult> where TContinuer : IDelegateContinue<TResult>
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static PromiseContinue()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -1235,24 +1147,27 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     var callback = continuer;
                     continuer = default(TContinuer);
-                    _invokingResolved = true;
+                    Internal.invokingResolved = true;
                     TResult result = callback.Invoke(valueContainer);
-                    ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseContinuePromise<TContinuer> : PromiseWaitPromise where TContinuer : IDelegateContinue<Promise>
+            internal sealed class PromiseContinuePromise<TContinuer> : PromiseWaitPromise where TContinuer : IDelegateContinue<Promise>
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static PromiseContinuePromise()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -1275,7 +1190,10 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     if (continuer.IsNull)
                     {
@@ -1286,20 +1204,20 @@ namespace Proto.Promises
 
                     var callback = continuer;
                     continuer = default(TContinuer);
-                    _invokingResolved = true;
+                    Internal.invokingResolved = true;
                     Promise result = callback.Invoke(valueContainer);
                     WaitFor(result);
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class PromiseContinuePromise<TPromise, TContinuer> : PromiseWaitPromise<TPromise> where TContinuer : IDelegateContinue<Promise<TPromise>>
+            internal sealed class PromiseContinuePromise<TPromise, TContinuer> : PromiseWaitPromise<TPromise> where TContinuer : IDelegateContinue<Promise<TPromise>>
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static PromiseContinuePromise()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -1322,7 +1240,10 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     if (continuer.IsNull)
                     {
@@ -1333,7 +1254,7 @@ namespace Proto.Promises
 
                     var callback = continuer;
                     continuer = default(TContinuer);
-                    _invokingResolved = true;
+                    Internal.invokingResolved = true;
                     Promise<TPromise> result = callback.Invoke(valueContainer);
                     WaitFor(result);
                 }
@@ -1341,20 +1262,20 @@ namespace Proto.Promises
             #endregion
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class PromisePassThrough : ITreeHandleable, IRetainable, ILinked<PromisePassThrough>
+            public sealed partial class PromisePassThrough : Internal.ITreeHandleable, IRetainable, ILinked<PromisePassThrough>
             {
                 private static ValueLinkedStack<PromisePassThrough> _pool;
 
                 static PromisePassThrough()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
-                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+                Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
 
                 public Promise Owner { get; private set; }
-                public IMultiTreeHandleable Target { get; private set; }
+                internal IMultiTreeHandleable Target { get; private set; }
 
                 private int _index;
                 private uint _retainCounter;
@@ -1373,13 +1294,13 @@ namespace Proto.Promises
 
                 private PromisePassThrough() { }
 
-                public void SetTargetAndAddToOwner(IMultiTreeHandleable target)
+                internal void SetTargetAndAddToOwner(IMultiTreeHandleable target)
                 {
                     Target = target;
                     Owner.AddWaiter(this);
                 }
 
-                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
                 {
                     var temp = Target;
                     if (temp.Handle(valueContainer, Owner, _index))
@@ -1388,12 +1309,12 @@ namespace Proto.Promises
                     }
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(IValueContainer valueContainer)
+                void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer)
                 {
                     var temp = Target;
                     if (temp.Handle(valueContainer, Owner, _index))
                     {
-                        AddToHandleQueueBack(temp);
+                        Internal.AddToHandleQueueBack(temp);
                     }
                 }
 
@@ -1420,10 +1341,10 @@ namespace Proto.Promises
                     }
                 }
 
-                void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
+                void Internal.ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
             }
 
-            public static ValueLinkedStack<PromisePassThrough> WrapInPassThroughs<TEnumerator>(TEnumerator promises, out int count) where TEnumerator : IEnumerator<Promise>
+            internal static ValueLinkedStack<PromisePassThrough> WrapInPassThroughs<TEnumerator>(TEnumerator promises, out int count) where TEnumerator : IEnumerator<Promise>
             {
                 // Assumes promises.MoveNext() was already called once before this.
                 int index = 0;
@@ -1437,7 +1358,7 @@ namespace Proto.Promises
             }
 
 #pragma warning disable RECS0096 // Type parameter is never used
-            public static ValueLinkedStack<PromisePassThrough> WrapInPassThroughs<T, TEnumerator>(TEnumerator promises, out int count) where TEnumerator : IEnumerator<Promise<T>>
+            internal static ValueLinkedStack<PromisePassThrough> WrapInPassThroughs<T, TEnumerator>(TEnumerator promises, out int count) where TEnumerator : IEnumerator<Promise<T>>
 #pragma warning restore RECS0096 // Type parameter is never used
             {
                 // Assumes promises.MoveNext() was already called once before this.

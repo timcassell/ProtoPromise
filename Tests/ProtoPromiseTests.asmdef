@@ -1,9 +1,11 @@
 {
-    "name": "PromisesEditor",
+    "name": "ProtoPromiseTests",
     "references": [
-        "Promises"
+        "ProtoPromise"
     ],
-    "optionalUnityReferences": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
     "includePlatforms": [
         "Editor"
     ],

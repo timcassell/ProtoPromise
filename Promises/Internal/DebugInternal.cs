@@ -9,21 +9,15 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0618 // Type or member is obsolete
-#pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
-#pragma warning disable RECS0085 // When initializing explicitly typed local variable or array type, array creation expression can be replaced with array initializer.
 #pragma warning disable IDE0041 // Use 'is null' check
 
 using System;
-using System.Collections.Generic;
 using Proto.Utils;
 
 #if PROMISE_DEBUG
 using System.Diagnostics;
-using System.Linq;
 #endif
 
 namespace Proto.Promises
@@ -44,38 +38,22 @@ namespace Proto.Promises
         static partial void SetCurrentInvoker(Internal.ITraceable current);
         static partial void ClearCurrentInvoker();
 #if PROMISE_DEBUG
-        protected static ulong _invokeId;
+        private static readonly object disposedObject = DisposedChecker.instance;
 
         private static int idCounter;
         protected readonly int _id;
 
         private ushort _userRetainCounter;
-
-        private static Internal.CausalityTrace _currentTrace;
         Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
 
         static partial void SetCurrentInvoker(Internal.ITraceable current)
         {
-            _currentTrace = current.Trace;
+            Internal.SetCurrentInvoker(current);
         }
 
         static partial void ClearCurrentInvoker()
         {
-            _currentTrace = null;
-            ++_invokeId;
-        }
-
-        private static object DisposedObject
-        {
-            get
-            {
-                return Internal.DisposedChecker.instance;
-            }
-        }
-
-        private static string GetFormattedStacktrace(Internal.ITraceable traceable)
-        {
-            return traceable.Trace.ToString();
+            Internal.ClearCurrentInvoker();
         }
 
         partial void SetNotDisposed()
@@ -83,127 +61,14 @@ namespace Proto.Promises
             _valueOrPrevious = null;
         }
 
-        partial class Internal
-        {
-            [DebuggerNonUserCode]
-            public class CausalityTrace
-            {
-                private readonly StackTrace _stackTrace;
-                private readonly CausalityTrace _next;
-
-                public CausalityTrace(StackTrace stackTrace, CausalityTrace higherStacktrace)
-                {
-                    _stackTrace = stackTrace;
-                    _next = higherStacktrace;
-                }
-
-                public override string ToString()
-                {
-                    if (_stackTrace == null)
-                    {
-                        return null;
-                    }
-                    List<StackTrace> stackTraces = new List<StackTrace>();
-                    for (CausalityTrace current = this; current != null; current = current._next)
-                    {
-                        if (current._stackTrace == null)
-                        {
-                            break;
-                        }
-                        stackTraces.Add(current._stackTrace);
-                    }
-                    return FormatStackTrace(stackTraces);
-                }
-            }
-
-            // This allows us to re-use the reference field without having to add another bool field.
-            [DebuggerNonUserCode]
-            public sealed class DisposedChecker
-            {
-                public static readonly DisposedChecker instance = new DisposedChecker();
-
-                private DisposedChecker() { }
-            }
-        }
-
         static partial void SetCreatedStacktrace(Internal.ITraceable traceable, int skipFrames)
         {
-            StackTrace stackTrace = Config.DebugCausalityTracer == TraceLevel.All
-                ? GetStackTrace(skipFrames + 1)
-                : null;
-            traceable.Trace = new Internal.CausalityTrace(stackTrace, _currentTrace);
+            Internal.SetCreatedStacktrace(traceable, skipFrames + 1);
         }
 
         static partial void SetCreatedAndRejectedStacktrace(Internal.IRejectValueContainer unhandledException, int rejectSkipFrames, Internal.ITraceable traceable)
         {
-            StackTrace stackTrace = rejectSkipFrames > 0 & Config.DebugCausalityTracer != TraceLevel.None
-                ? GetStackTrace(rejectSkipFrames + 1)
-                : null;
-            unhandledException.SetCreatedAndRejectedStacktrace(stackTrace, traceable.Trace);
-        }
-
-        private static StackTrace GetStackTrace(int skipFrames)
-        {
-            return new StackTrace(skipFrames + 1, true);
-        }
-
-        protected static string GetFormattedStacktrace(int skipFrames)
-        {
-            return FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
-        }
-
-        private static string FormatStackTrace(IEnumerable<StackTrace> stackTraces)
-        {
-#if !CSHARP_7_OR_LATER
-            // Format stack trace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
-            List<string> _stackTraces = new List<string>();
-            string[] separator = new string[1] { Environment.NewLine + " " };
-            System.Text.StringBuilder sb = new System.Text.StringBuilder();
-            foreach (StackTrace st in stackTraces)
-            {
-                string stackTrace = st.ToString().Substring(1);
-                foreach (var trace in stackTrace.Split(separator, StringSplitOptions.RemoveEmptyEntries))
-                {
-                    if (!trace.Contains("Proto.Promises"))
-                    {
-                        sb.Append(trace)
-                            .Replace(":line ", ":")
-                            .Replace("(", " (")
-                            .Replace(") in", ") [0x00000] in"); // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
-                        _stackTraces.Add(sb.ToString());
-                        sb.Length = 0;
-                    }
-                }
-            }
-            foreach (var trace in _stackTraces)
-            {
-                sb.Append(trace).Append(" " + Environment.NewLine);
-            }
-            sb.Append(" ");
-            return sb.ToString();
-#else
-            // StackTrace.ToString() format issue was fixed in the new runtime.
-            List<StackFrame> stackFrames = new List<StackFrame>();
-            foreach (StackTrace stackTrace in stackTraces)
-            {
-                stackFrames.AddRange(stackTrace.GetFrames());
-            }
-
-            var trace = stackFrames
-                .Where(frame =>
-                {
-                    // Ignore DebuggerStepThrough and DebuggerHidden and DebuggerNonUserCode.
-                    var methodType = frame.GetMethod();
-                    return !methodType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
-                        && !methodType.DeclaringType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
-                        && !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false);
-                })
-                // Create a new StackTrace to get proper formatting.
-                .Select(frame => new StackTrace(frame).ToString());
-
-            return string.Join(Environment.NewLine, trace.ToArray());
-#endif
-
+            Internal.SetCreatedAndRejectedStacktrace(unhandledException, rejectSkipFrames + 1, traceable);
         }
 
         partial void ValidateReturn(Promise other)
@@ -223,7 +88,7 @@ namespace Proto.Promises
             // A promise cannot wait on itself.
 
             // This allows us to check All/Race/First Promises iteratively.
-            ValueLinkedStack<Internal.PromisePassThrough> passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>();
+            ValueLinkedStack<InternalProtected.PromisePassThrough> passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>();
             var prev = other;
         Repeat:
             for (; prev != null; prev = prev._valueOrPrevious as Promise)
@@ -256,7 +121,7 @@ namespace Proto.Promises
 
         private static bool IsDisposed(object valueContainer)
         {
-            return ReferenceEquals(valueContainer, Internal.DisposedChecker.instance);
+            return ReferenceEquals(valueContainer, DisposedChecker.instance);
         }
 
         static protected void ValidateNotDisposed(object valueContainer, int skipFrames)
@@ -265,7 +130,7 @@ namespace Proto.Promises
             {
                 throw new PromiseDisposedException("Always nullify your references when you are finished with them!" +
                     " Call Retain() if you want to perform operations after the object has finished. Remember to call Release() when you are finished with it!"
-                    , GetFormattedStacktrace(skipFrames + 1));
+                    , Internal.GetFormattedStacktrace(skipFrames + 1));
             }
         }
 
@@ -284,24 +149,16 @@ namespace Proto.Promises
             ValidateProgressValue(progress, skipFrames + 1);
         }
 
-        static protected void ValidateArg(object del, string argName, int skipFrames)
-        {
-            if (del == null)
-            {
-                throw new ArgumentNullException(argName, null, GetFormattedStacktrace(skipFrames + 1));
-            }
-        }
-
         static partial void ValidateArgument(object arg, string argName, int skipFrames)
         {
-            ValidateArg(arg, argName, skipFrames + 1);
+            Internal.ValidateArgument(arg, argName, skipFrames + 1);
         }
 
         static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames)
         {
             if (promise == null)
             {
-                throw new ElementNullException(argName, message, GetFormattedStacktrace(skipFrames + 1));
+                throw new ElementNullException(argName, message, Internal.GetFormattedStacktrace(skipFrames + 1));
             }
         }
 
@@ -309,68 +166,23 @@ namespace Proto.Promises
         {
             return string.Format("Type: Promise, Id: {0}, State: {1}", _id, _state);
         }
+
+        // This allows us to re-use a reference field without having to add another bool field.
+        [DebuggerNonUserCode]
+        private sealed class DisposedChecker
+        {
+            public static readonly DisposedChecker instance = new DisposedChecker();
+
+            private DisposedChecker() { }
+        }
 #else
-        protected static string GetFormattedStacktrace(int skipFrames)
-        {
-            return null;
-        }
-
-        private static string GetFormattedStacktrace(Internal.ITraceable traceable)
-        {
-            return null;
-        }
-
-        private static object DisposedObject
-        {
-            get
-            {
-                return null;
-            }
-        }
+        public const object disposedObject = null;
 
         public override string ToString()
         {
             return string.Format("Type: Promise, State: {0}", _state);
         }
 #endif
-
-        partial class Internal
-        {
-            public interface ITraceable
-            {
-#if PROMISE_DEBUG
-                CausalityTrace Trace { get; set; }
-#endif
-            }
-
-            partial class FinallyDelegate : ITraceable
-            {
-#if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
-#endif
-            }
-
-            partial class FinallyDelegateCapture<TCapture> : ITraceable
-            {
-#if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
-#endif
-            }
-
-            partial class CancelDelegate : ITraceable
-            {
-#if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
-#endif
-            }
-
-            partial class CancelDelegateCapture<TCapture> : ITraceable
-            {
-#if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
-#endif
-            }
-        }
     }
 
     partial class Promise<T>
@@ -398,7 +210,7 @@ namespace Proto.Promises
 
         static partial void ValidateArgument(object arg, string argName, int skipFrames)
         {
-            ValidateArg(arg, argName, skipFrames + 1);
+            Internal.ValidateArgument(arg, argName, skipFrames + 1);
         }
 
         public override string ToString()

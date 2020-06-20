@@ -158,7 +158,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled1()
         {
-            Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
+            CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
 
@@ -192,7 +192,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled2()
         {
-            Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
+            CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
             var deferred2 = Promise.NewDeferred();
@@ -269,7 +269,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void MultipleOnProgressAreInvokedProperly()
         {
-            Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
+            CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
             var deferred2 = Promise.NewDeferred();

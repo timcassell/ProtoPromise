@@ -41,101 +41,48 @@ namespace Proto.Promises
 
     partial class Promise
     {
-        partial class Internal
+        partial class InternalProtected
         {
-            public interface ITreeHandleable : ILinked<ITreeHandleable>
+            internal partial interface IMultiTreeHandleable : Internal.ITreeHandleable
             {
-                void Handle();
-                void MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue);
-                void MakeReadyFromSettled(IValueContainer valueContainer);
-            }
-
-            public interface IValueContainer
-            {
-                void Retain();
-                void Release();
-                State GetState();
-                Type ValueType { get; }
-                object Value { get; }
-
-                void ReleaseAndAddToUnhandledStack();
-                void ReleaseAndMaybeAddToUnhandledStack();
-            }
-
-            public interface IRejectionToContainer
-            {
-                IRejectValueContainer ToContainer(ITraceable traceable);
-            }
-
-            public interface ICancelationToContainer
-            {
-                ICancelValueContainer ToContainer();
-            }
-
-            public interface ICantHandleException
-            {
-                void AddToUnhandledStack(ITraceable traceable);
-            }
-
-            public interface IThrowable
-            {
-                Exception GetException();
-            }
-
-            public interface IRejectValueContainer : IValueContainer, IThrowable
-            {
-#if PROMISE_DEBUG
-                void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, CausalityTrace createdStacktraces);
-#endif
-            }
-
-            public interface ICancelValueContainer : IValueContainer, IThrowable { }
-
-            public interface ICancelDelegate : ITreeHandleable, IDisposable
-            {
-                void Invoke(IValueContainer valueContainer);
-            }
-
-            public interface IDelegateResolve
-            {
-                void InvokeResolver(IValueContainer valueContainer, Promise owner);
-                void MaybeUnregisterCancelation();
-                bool IsNull { get; }
-            }
-
-            public interface IDelegateResolvePromise
-            {
-                void InvokeResolver(IValueContainer valueContainer, Promise owner);
-                void MaybeUnregisterCancelation();
-                bool IsNull { get; }
-            }
-
-            public interface IDelegateReject
-            {
-                void InvokeRejecter(IValueContainer valueContainer, Promise owner);
-            }
-
-            public interface IDelegateRejectPromise
-            {
-                void InvokeRejecter(IValueContainer valueContainer, Promise owner);
-            }
-
-            public interface IDelegateContinue
-            {
-                void Invoke(IValueContainer valueContainer);
-                bool IsNull { get; }
-            }
-
-            public interface IDelegateContinue<T>
-            {
-                T Invoke(IValueContainer valueContainer);
-                bool IsNull { get; }
-            }
-
-            public partial interface IMultiTreeHandleable : ITreeHandleable
-            {
-                bool Handle(IValueContainer valueContainer, Promise owner, int index);
+                bool Handle(Internal.IValueContainer valueContainer, Promise owner, int index);
                 void ReAdd(PromisePassThrough passThrough);
+            }
+
+            internal interface IDelegateResolve
+            {
+                void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner);
+                void MaybeUnregisterCancelation();
+                bool IsNull { get; }
+            }
+
+            internal interface IDelegateResolvePromise
+            {
+                void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner);
+                void MaybeUnregisterCancelation();
+                bool IsNull { get; }
+            }
+
+            internal interface IDelegateReject
+            {
+                void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner);
+            }
+
+            internal interface IDelegateRejectPromise
+            {
+                void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner);
+            }
+
+            internal interface IDelegateContinue
+            {
+                void Invoke(Internal.IValueContainer valueContainer);
+                bool IsNull { get; }
+            }
+
+            internal interface IDelegateContinue<T>
+            {
+                T Invoke(Internal.IValueContainer valueContainer);
+                bool IsNull { get; }
             }
         }
     }

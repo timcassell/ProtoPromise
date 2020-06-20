@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable CS0618 // Type or member is obsolete
-
 using System;
 using NUnit.Framework;
 using UnityEngine.TestTools;

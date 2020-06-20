@@ -13,8 +13,6 @@
 #pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0618 // Type or member is obsolete
-#pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
 using System;
 using Proto.Utils;
@@ -24,9 +22,9 @@ namespace Proto.Promises
     partial class Promise
     {
 #if PROMISE_DEBUG || PROMISE_PROGRESS
-        protected virtual void BorrowPassthroughs(ref ValueLinkedStack<Internal.PromisePassThrough> borrower) { }
+        protected virtual void BorrowPassthroughs(ref ValueLinkedStack<InternalProtected.PromisePassThrough> borrower) { }
 
-        protected static void ExchangePassthroughs(ref ValueLinkedStack<Internal.PromisePassThrough> from, ref ValueLinkedStack<Internal.PromisePassThrough> to)
+        protected static void ExchangePassthroughs(ref ValueLinkedStack<InternalProtected.PromisePassThrough> from, ref ValueLinkedStack<InternalProtected.PromisePassThrough> to)
         {
             // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
             while (from.IsNotEmpty)
@@ -44,7 +42,7 @@ namespace Proto.Promises
             }
         }
 
-        partial class Internal
+        partial class InternalProtected
         {
             partial class AllPromise0
             {
@@ -112,7 +110,7 @@ namespace Proto.Promises
 
         static protected void ThrowProgressException(int skipFrames)
         {
-            throw new InvalidOperationException("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", GetFormattedStacktrace(skipFrames + 1));
+            throw new InvalidOperationException("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", Internal.GetFormattedStacktrace(skipFrames + 1));
         }
 
         static partial void ValidateProgress(int skipFrames)
@@ -130,13 +128,13 @@ namespace Proto.Promises
             ThrowProgressException(2);
         }
 #else
-        private ValueLinkedStackZeroGC<Internal.IProgressListener> _progressListeners;
-        private Internal.UnsignedFixed32 _waitDepthAndProgress;
+        private ValueLinkedStackZeroGC<InternalProtected.IProgressListener> _progressListeners;
+        private InternalProtected.UnsignedFixed32 _waitDepthAndProgress;
 
         static partial void ClearPooledProgress()
         {
-            ValueLinkedStackZeroGC<Internal.IProgressListener>.ClearPooledNodes();
-            ValueLinkedStackZeroGC<Internal.IInvokable>.ClearPooledNodes();
+            ValueLinkedStackZeroGC<InternalProtected.IProgressListener>.ClearPooledNodes();
+            ValueLinkedStackZeroGC<InternalProtected.IInvokable>.ClearPooledNodes();
         }
 
         // All and Race promises return a value depending on the promises they are waiting on. Other promises return 1.
@@ -180,7 +178,7 @@ namespace Proto.Promises
 
         partial void ResetDepth()
         {
-            _waitDepthAndProgress = default(Internal.UnsignedFixed32);
+            _waitDepthAndProgress = default(InternalProtected.UnsignedFixed32);
         }
 
         partial void SetDepth(Promise next)
@@ -188,19 +186,19 @@ namespace Proto.Promises
             next.SetDepth(_waitDepthAndProgress);
         }
 
-        protected virtual void SetDepth(Internal.UnsignedFixed32 previousDepth)
+        protected virtual void SetDepth(InternalProtected.UnsignedFixed32 previousDepth)
         {
             _waitDepthAndProgress = previousDepth;
         }
 
-        protected virtual bool SubscribeProgressAndContinueLoop(ref Internal.IProgressListener progressListener, out Promise previous)
+        protected virtual bool SubscribeProgressAndContinueLoop(ref InternalProtected.IProgressListener progressListener, out Promise previous)
         {
             progressListener.Retain();
             _progressListeners.Push(progressListener);
             return (previous = _valueOrPrevious as Promise) != null;
         }
 
-        protected virtual bool SubscribeProgressIfWaiterAndContinueLoop(ref Internal.IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<Internal.PromisePassThrough> passThroughs)
+        protected virtual bool SubscribeProgressIfWaiterAndContinueLoop(ref InternalProtected.IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<InternalProtected.PromisePassThrough> passThroughs)
         {
             return (previous = _valueOrPrevious as Promise) != null;
         }
@@ -212,7 +210,7 @@ namespace Proto.Promises
 
             if (_state == State.Pending)
             {
-                Internal.IProgressListener progressListener = Internal.ProgressDelegate.GetOrCreate(onProgress, this);
+                InternalProtected.IProgressListener progressListener = InternalProtected.ProgressDelegate.GetOrCreate(onProgress, this);
 
                 // Directly add to listeners for this promise.
                 // Sets promise to the one this is waiting on. Returns false if not waiting on another promise.
@@ -228,7 +226,7 @@ namespace Proto.Promises
             }
             else if (_state == State.Resolved)
             {
-                AddToHandleQueueBack(Internal.ProgressDelegate.GetOrCreate(onProgress, this));
+                Internal.AddToHandleQueueBack(InternalProtected.ProgressDelegate.GetOrCreate(onProgress, this));
             }
 
             // Don't report progress if the promise is canceled or rejected.
@@ -241,7 +239,7 @@ namespace Proto.Promises
 
             if (_state == State.Pending)
             {
-                Internal.IProgressListener progressListener = Internal.ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, this);
+                InternalProtected.IProgressListener progressListener = InternalProtected.ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, this);
 
                 // Directly add to listeners for this promise.
                 // Sets promise to the one this is waiting on. Returns false if not waiting on another promise.
@@ -257,16 +255,16 @@ namespace Proto.Promises
             }
             else if (_state == State.Resolved)
             {
-                AddToHandleQueueBack(Internal.ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, this));
+                Internal.AddToHandleQueueBack(InternalProtected.ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, this));
             }
 
             // Don't report progress if the promise is canceled or rejected.
         }
 
-        private static void SubscribeProgressToBranchesAndRoots(Promise promise, Internal.IProgressListener progressListener)
+        private static void SubscribeProgressToBranchesAndRoots(Promise promise, InternalProtected.IProgressListener progressListener)
         {
             // This allows us to subscribe progress to AllPromises and RacePromises iteratively instead of recursively
-            ValueLinkedStack<Internal.PromisePassThrough> passThroughs = new ValueLinkedStack<Internal.PromisePassThrough>();
+            ValueLinkedStack<InternalProtected.PromisePassThrough> passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>();
 
         Repeat:
             SubscribeProgressToChain(promise, progressListener, ref passThroughs);
@@ -282,7 +280,7 @@ namespace Proto.Promises
             }
         }
 
-        private static void SubscribeProgressToChain(Promise promise, Internal.IProgressListener progressListener, ref ValueLinkedStack<Internal.PromisePassThrough> passThroughs)
+        private static void SubscribeProgressToChain(Promise promise, InternalProtected.IProgressListener progressListener, ref ValueLinkedStack<InternalProtected.PromisePassThrough> passThroughs)
         {
             Promise next;
             // If the promise is not waiting on another promise (is the root), it sets next to null, does not add the listener, and returns false.
@@ -316,15 +314,15 @@ namespace Proto.Promises
         }
 
         // Handle progress.
-        private static ValueLinkedQueueZeroGC<Internal.IInvokable> _progressQueue;
+        private static ValueLinkedQueueZeroGC<InternalProtected.IInvokable> _progressQueue;
         private static bool _runningProgress;
 
-        private static void AddToFrontOfProgressQueue(Internal.IInvokable progressListener)
+        private static void AddToFrontOfProgressQueue(InternalProtected.IInvokable progressListener)
         {
             _progressQueue.Push(progressListener);
         }
 
-        private static void AddToBackOfProgressQueue(Internal.IInvokable progressListener)
+        private static void AddToBackOfProgressQueue(InternalProtected.IInvokable progressListener)
         {
             _progressQueue.Enqueue(progressListener);
         }
@@ -348,7 +346,7 @@ namespace Proto.Promises
             _runningProgress = false;
         }
 
-        partial class Internal
+        partial class InternalProtected
         {
             /// <summary>
             /// Max Whole Number: 2^(32-<see cref="Config.ProgressDecimalBits"/>)
@@ -452,12 +450,12 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public abstract class ProgressDelegateBase : IProgressListener, ITreeHandleable, IInvokable, ITraceable
+            public abstract class ProgressDelegateBase : IProgressListener, Internal.ITreeHandleable, IInvokable, Internal.ITraceable
             {
 #if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
+                Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
 #endif
-                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+                Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
 
                 private Promise _owner;
                 private UnsignedFixed32 _current;
@@ -491,7 +489,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        AddRejectionToUnhandledStack(e, this);
+                        Internal.AddRejectionToUnhandledStack(e, this);
                     }
                     ClearCurrentInvoker();
                 }
@@ -538,7 +536,7 @@ namespace Proto.Promises
                     {
                         // Add to front of handle queue to invoke this with a value of 1.
                         _canceled = true;
-                        AddToHandleQueueFront(this);
+                        Internal.AddToHandleQueueFront(this);
                     }
                     else
                     {
@@ -596,7 +594,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ITreeHandleable.Handle()
+                void Internal.ITreeHandleable.Handle()
                 {
                     InvokeAndCatch(1f);
                     _retainCounter = 0;
@@ -609,18 +607,18 @@ namespace Proto.Promises
                     _owner = null;
                 }
 
-                void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue) { throw new System.InvalidOperationException(); }
-                void ITreeHandleable.MakeReadyFromSettled(IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
+                void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue) { throw new System.InvalidOperationException(); }
+                void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
             public sealed class ProgressDelegate : ProgressDelegateBase
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static ProgressDelegate()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -654,11 +652,11 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
             public sealed class ProgressDelegateCapture<TCapture> : ProgressDelegateBase
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static ProgressDelegateCapture()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()

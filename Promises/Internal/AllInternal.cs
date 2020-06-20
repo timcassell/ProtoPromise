@@ -10,11 +10,8 @@
 #endif
 
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
-#pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0618 // Type or member is obsolete
-#pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
 using System;
 using System.Collections.Generic;
@@ -25,9 +22,9 @@ namespace Proto.Promises
     partial class Promise
     {
         [System.Diagnostics.DebuggerNonUserCode]
-        partial class Internal
+        partial class InternalProtected
         {
-            public static Promise _All<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
+            public static Promise CreateAll<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
             {
                 ValidateArgument(promises, "promises", 2);
                 if (!promises.MoveNext())
@@ -40,7 +37,7 @@ namespace Proto.Promises
                 return AllPromise0.GetOrCreate(passThroughs, count);
             }
 
-            public static Promise<IList<T>> _All<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer) where TEnumerator : IEnumerator<Promise<T>>
+            public static Promise<IList<T>> CreateAll<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer) where TEnumerator : IEnumerator<Promise<T>>
             {
                 ValidateArgument(promises, "promises", 2);
                 if (!promises.MoveNext())
@@ -72,18 +69,18 @@ namespace Proto.Promises
 
                 return MergePromise<IList<T>>.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
                 {
-                    target.value[index] = ((ResolveContainer<T>) feed).value;
+                    target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
                 }, count);
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class AllPromise0 : Promise, IMultiTreeHandleable
+            internal sealed partial class AllPromise0 : PromiseIntermediate, IMultiTreeHandleable
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static AllPromise0()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -119,12 +116,15 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     HandleSelf(valueContainer);
                 }
 
-                bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, Promise owner, int index)
+                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, Promise owner, int index)
                 {
                     bool done = --_waitCount == 0;
                     bool handle = false;

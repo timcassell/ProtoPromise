@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace Proto.Promises
 {
@@ -24,12 +23,12 @@ namespace Proto.Promises
                 bool willThrow = _willThrow;
                 _willThrow = true;
 
-                HandleComplete();
+                Internal.HandleEvents();
 
                 if (!willThrow)
                 {
                     _willThrow = false;
-                    ThrowUnhandledRejections();
+                    Internal.ThrowUnhandledRejections();
                 }
             }
 
@@ -45,13 +44,13 @@ namespace Proto.Promises
                 bool willThrow = _willThrow;
                 _willThrow = true;
 
-                HandleComplete();
+                Internal.HandleEvents();
                 InvokeProgressListeners();
 
                 if (!willThrow)
                 {
                     _willThrow = false;
-                    ThrowUnhandledRejections();
+                    Internal.ThrowUnhandledRejections();
                 }
             }
 
@@ -71,7 +70,7 @@ namespace Proto.Promises
                 if (!willThrow)
                 {
                     _willThrow = false;
-                    ThrowUnhandledRejections();
+                    Internal.ThrowUnhandledRejections();
                 }
             }
 
@@ -81,61 +80,7 @@ namespace Proto.Promises
             public static void ClearObjectPool()
             {
                 ClearPooledProgress();
-                Internal.OnClearPool.Invoke();
-            }
-
-            private static void HandleComplete()
-            {
-                if (_runningHandles)
-                {
-                    // HandleComplete is running higher in the program stack, so just return.
-                    return;
-                }
-
-                _runningHandles = true;
-
-                while (_handleQueue.IsNotEmpty)
-                {
-                    _handleQueue.DequeueRisky().Handle();
-                }
-
-                _handleQueue.ClearLast();
-                _runningHandles = false;
-            }
-
-            private static void ThrowUnhandledRejections()
-            {
-                if (_unhandledExceptions.IsEmpty)
-                {
-                    return;
-                }
-
-                var unhandledExceptions = _unhandledExceptions;
-                _unhandledExceptions.ClearAndDontRepool();
-                Action<UnhandledException> handler = Config.UncaughtRejectionHandler;
-                if (handler != null)
-                {
-                    foreach (UnhandledException unhandled in unhandledExceptions)
-                    {
-                        handler.Invoke(unhandled);
-                    }
-                    unhandledExceptions.Clear();
-                    return;
-                }
-
-#if CSHARP_7_OR_LATER
-                unhandledExceptions.Clear();
-                throw new AggregateException(unhandledExceptions);
-#else
-                // .Net 3.5 dumb compiler can't convert IEnumerable<UnhandledExceptionInternal> to IEnumerable<Exception>
-                var exceptions = new List<Exception>();
-                foreach (var ex in unhandledExceptions)
-                {
-                    exceptions.Add(ex);
-                }
-                unhandledExceptions.Clear();
-                throw new AggregateException(exceptions);
-#endif
+                Internal.ClearPool();
             }
         }
     }

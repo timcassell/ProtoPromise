@@ -10,11 +10,8 @@
 #endif
 
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
-#pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0618 // Type or member is obsolete
-#pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
 using System;
 using System.Collections.Generic;
@@ -24,26 +21,26 @@ namespace Proto.Promises
 {
     partial class Promise
     {
-        partial class Internal
+        partial class InternalProtected
         {
-            public static Promise _Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
+            public static Promise CreateRace<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
             {
                 ValidateArgument(promises, "promises", 2);
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", GetFormattedStacktrace(2));
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(2));
                 }
                 int count;
                 var passThroughs = WrapInPassThroughs(promises, out count);
                 return RacePromise0.GetOrCreate(passThroughs, count);
             }
 
-            public static Promise<T> _Race<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
+            public static Promise<T> CreateRace<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
             {
                 ValidateArgument(promises, "promises", 2);
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", GetFormattedStacktrace(2));
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(2));
                 }
                 int count;
                 var passThroughs = WrapInPassThroughs<T, TEnumerator>(promises, out count);
@@ -51,13 +48,13 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class RacePromise0 : Promise, IMultiTreeHandleable
+            internal sealed partial class RacePromise0 : PromiseIntermediate, IMultiTreeHandleable
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static RacePromise0()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -93,12 +90,15 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     HandleSelf(valueContainer);
                 }
 
-                bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, Promise owner, int index)
+                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, Promise owner, int index)
                 {
                     bool handle = _valueOrPrevious == null;
                     if (handle)
@@ -125,13 +125,13 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class RacePromise<T> : Promise<T>, IMultiTreeHandleable
+            internal sealed partial class RacePromise<T> : PromiseIntermediate<T>, IMultiTreeHandleable
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static RacePromise()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 protected override void Dispose()
@@ -167,12 +167,15 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     HandleSelf(valueContainer);
                 }
 
-                bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, Promise owner, int index)
+                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, Promise owner, int index)
                 {
                     bool handle = _valueOrPrevious == null;
                     if (handle)

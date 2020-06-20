@@ -73,7 +73,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.CatchCancelation(100, default(Action<int, Promise.ReasonContainer>));
+                deferred.Promise.CatchCancelation(100, default(Action<int, ReasonContainer>));
             });
 
             deferred.Cancel();
@@ -83,7 +83,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.CatchCancelation(100, default(Action<int, Promise.ReasonContainer>));
+                deferredInt.Promise.CatchCancelation(100, default(Action<int, ReasonContainer>));
             });
 
             deferredInt.Cancel();

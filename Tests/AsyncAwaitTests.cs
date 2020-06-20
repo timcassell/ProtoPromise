@@ -6,6 +6,8 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0062 // Make local function 'static'
+
 using System;
 using NUnit.Framework;
 using UnityEngine.TestTools;
@@ -640,6 +642,64 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
+        public void AsyncPromiseIsRejectedFromThrow3()
+        {
+            NullReferenceException expected = new NullReferenceException();
+            bool rejected = false;
+
+            async Promise Func()
+            {
+                await Promise.Resolved();
+                throw expected;
+            }
+
+            Func()
+                .Catch((NullReferenceException e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    rejected = true;
+                });
+            Assert.AreEqual(false, rejected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(true, rejected);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void AsyncPromiseIsRejectedFromThrow4()
+        {
+            NullReferenceException expected = new NullReferenceException();
+            bool rejected = false;
+
+            async Promise<int> Func()
+            {
+                await Promise.Resolved();
+                throw expected;
+            }
+
+            Func()
+                .Catch((NullReferenceException e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    rejected = true;
+                });
+            Assert.AreEqual(false, rejected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(true, rejected);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
         public void AsyncPromiseIsCanceledFromPromise1()
         {
             var deferred = Promise.NewDeferred();
@@ -801,6 +861,120 @@ namespace Proto.Promises.Tests
             async Promise<int> Func()
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
             {
+                throw Promise.CancelException(expected);
+            }
+
+            Func()
+                .CatchCancelation(e =>
+                {
+                    Assert.AreEqual(expected, e.Value);
+                    canceled = true;
+                });
+            Assert.AreEqual(false, canceled);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(true, canceled);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void AsyncPromiseIsCanceledFromThrow5()
+        {
+            bool canceled = false;
+
+            async Promise Func()
+            {
+                await Promise.Resolved();
+                throw new OperationCanceledException();
+            }
+
+            Func()
+                .CatchCancelation(e =>
+                {
+                    Assert.AreEqual(null, e.ValueType);
+                    canceled = true;
+                });
+            Assert.AreEqual(false, canceled);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(true, canceled);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void AsyncPromiseIsCanceledFromThrow6()
+        {
+            bool canceled = false;
+
+            async Promise<int> Func()
+            {
+                await Promise.Resolved();
+                throw new OperationCanceledException();
+            }
+
+            Func()
+                .CatchCancelation(e =>
+                {
+                    Assert.AreEqual(null, e.ValueType);
+                    canceled = true;
+                });
+            Assert.AreEqual(false, canceled);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(true, canceled);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void AsyncPromiseIsCanceledFromThrow7()
+        {
+            string expected = "Cancel";
+            bool canceled = false;
+
+            async Promise Func()
+            {
+                await Promise.Resolved();
+                throw Promise.CancelException(expected);
+            }
+
+            Func()
+                .CatchCancelation(e =>
+                {
+                    Assert.AreEqual(expected, e.Value);
+                    canceled = true;
+                });
+            Assert.AreEqual(false, canceled);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(true, canceled);
+
+            // Clean up.
+            GC.Collect();
+            Promise.Manager.HandleCompletesAndProgress();
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void AsyncPromiseIsCanceledFromThrow8()
+        {
+            string expected = "Cancel";
+            bool canceled = false;
+
+            async Promise<int> Func()
+            {
+                await Promise.Resolved();
                 throw Promise.CancelException(expected);
             }
 

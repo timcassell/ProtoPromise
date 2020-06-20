@@ -247,14 +247,14 @@ namespace Proto.Promises.Async.CompilerServices
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
-            Promise.SetInvokingAsyncFunctionInternal(true);
+            Internal.invokingResolved = true;
             try
             {
                 stateMachine.MoveNext();
             }
             finally
             {
-                Promise.SetInvokingAsyncFunctionInternal(false);
+                Internal.invokingResolved = false;
             }
         }
 
@@ -276,14 +276,14 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         private void MoveNext()
         {
-            Promise.SetInvokingAsyncFunctionInternal(true);
+            Internal.invokingResolved = true;
             try
             {
                 _stateMachine.MoveNext();
             }
             finally
             {
-                Promise.SetInvokingAsyncFunctionInternal(false);
+                Internal.invokingResolved = false;
             }
         }
     }
@@ -373,14 +373,14 @@ namespace Proto.Promises.Async.CompilerServices
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
-            Promise.SetInvokingAsyncFunctionInternal(true);
+            Internal.invokingResolved = true;
             try
             {
                 stateMachine.MoveNext();
             }
             finally
             {
-                Promise.SetInvokingAsyncFunctionInternal(false);
+                Internal.invokingResolved = false;
             }
         }
 
@@ -402,14 +402,14 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         private void MoveNext()
         {
-            Promise.SetInvokingAsyncFunctionInternal(true);
+            Internal.invokingResolved = true;
             try
             {
                 _stateMachine.MoveNext();
             }
             finally
             {
-                Promise.SetInvokingAsyncFunctionInternal(false);
+                Internal.invokingResolved = false;
             }
         }
     }

@@ -15,7 +15,6 @@
 #pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0618 // Type or member is obsolete
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
 using System;

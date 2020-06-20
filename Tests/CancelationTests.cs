@@ -359,7 +359,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferred.Promise.CatchCancelation(default(Action<Promise.ReasonContainer>));
+                deferred.Promise.CatchCancelation(default(Action<ReasonContainer>));
             });
 
             deferred.Cancel();
@@ -369,7 +369,7 @@ namespace Proto.Promises.Tests
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                deferredInt.Promise.CatchCancelation(default(Action<Promise.ReasonContainer>));
+                deferredInt.Promise.CatchCancelation(default(Action<ReasonContainer>));
             });
 
             deferredInt.Cancel(0);
@@ -566,7 +566,7 @@ namespace Proto.Promises.Tests
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
 
-            Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
+            CancelationSource cancelationSource = CancelationSource.New();
 
             bool resolved = false;
 
@@ -619,7 +619,7 @@ namespace Proto.Promises.Tests
             bool invoked = false;
 
             object cancelValue = "Cancel";
-            Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
+            CancelationSource cancelationSource = CancelationSource.New();
 
             deferred.Promise
                 .Then(() => { }, cancelationSource.Token)
@@ -645,7 +645,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void APromiseMayBeCanceledWhenItIsPending()
         {
-            Promise.CancelationSource cancelationSource = Promise.CancelationSource.New();
+            CancelationSource cancelationSource = CancelationSource.New();
             string cancelValue = "Cancel";
 
             Promise.Resolved()

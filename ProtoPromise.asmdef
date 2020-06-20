@@ -1,8 +1,6 @@
 {
-    "name": "Promises",
-    "references": [
-        "GUID:8a5cdd463caf4408386403209b02df6c"
-    ],
+    "name": "ProtoPromise",
+    "references": [],
     "optionalUnityReferences": [],
     "includePlatforms": [],
     "excludePlatforms": [],
