@@ -168,7 +168,7 @@ namespace Proto.Promises
 
         protected void MaybeHookupNewPromise(Promise newPromise)
         {
-            // This is called from a Then/Catch/ContinueWith accepting a cancelationToken, which could have been fed an already canceled token.
+            // This is called from a Then/Catch/ContinueWith with a valid cancelationToken, which could have been fed an already canceled token.
             if (newPromise._valueOrPrevious == null)
             {
                 HookupNewPromise(newPromise);
