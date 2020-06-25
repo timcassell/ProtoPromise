@@ -17,18 +17,32 @@ namespace Proto.Promises
     public partial struct CancelationToken : IRetainable, IEquatable<CancelationToken>
     {
         private readonly Internal.CancelationRef _ref;
-        private readonly int _id;
-
-        internal CancelationToken(object cancelationRef)
-        {
-            _ref = (Internal.CancelationRef) cancelationRef;
-            _id = _ref.TokenId;
-        }
+        private readonly ushort _id;
 
         /// <summary>
         /// Returns an empty <see cref="CancelationToken"/>.
         /// </summary>
         public static CancelationToken None { get { return default(CancelationToken); } }
+
+        /// <summary>
+        /// FOR INTERNAL USE ONLY!
+        /// </summary>
+        internal CancelationToken(Internal.CancelationRef cancelationRef)
+        {
+            _ref = cancelationRef;
+            _id = _ref.TokenId;
+        }
+
+        /// <summary>
+        /// FOR INTERNAL USE ONLY!
+        /// </summary>
+        internal void MaybeLinkSource(Internal.CancelationRef cancelationRef)
+        {
+            if (CanBeCanceled)
+            {
+                _ref.AddLinkedCancelation(cancelationRef);
+            }
+        }
 
         /// <summary>
         /// Gets whether this token is capable of being in the canceled state.
@@ -53,7 +67,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// If cancelation was requested on this token, throws a <see cref="Promises.CancelException"/>.
+        /// If cancelation was requested on this token, throws a <see cref="CancelException"/>.
         /// </summary>
         public void ThrowIfCancelationRequested()
         {

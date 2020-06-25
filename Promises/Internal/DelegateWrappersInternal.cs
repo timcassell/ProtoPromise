@@ -904,10 +904,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -938,10 +935,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -971,10 +965,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1004,10 +995,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1037,10 +1025,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1070,10 +1055,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1103,10 +1085,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1135,10 +1114,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1168,10 +1144,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1201,10 +1174,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1233,10 +1203,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1265,10 +1232,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1297,10 +1261,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
             #endregion
@@ -1334,10 +1295,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1369,10 +1327,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1404,10 +1359,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1439,10 +1391,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1474,10 +1423,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1509,10 +1455,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1543,10 +1486,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1578,10 +1518,7 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -1606,10 +1543,7 @@ namespace Proto.Promises
 
                 public void Invoke(Internal.IValueContainer valueContainer)
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                     ReleaseAndMaybeThrow(_cancelationToken);
                     _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
                 }
@@ -1635,10 +1569,7 @@ namespace Proto.Promises
 
                 public TResult Invoke(Internal.IValueContainer valueContainer)
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                     ReleaseAndMaybeThrow(_cancelationToken);
                     return _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
                 }
@@ -1664,10 +1595,7 @@ namespace Proto.Promises
 
                 public void Invoke(Internal.IValueContainer valueContainer)
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                     ReleaseAndMaybeThrow(_cancelationToken);
                     _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                 }
@@ -1693,10 +1621,7 @@ namespace Proto.Promises
 
                 public TResult Invoke(Internal.IValueContainer valueContainer)
                 {
-                    if (_cancelationRegistration.IsRegistered)
-                    {
-                        _cancelationRegistration.Unregister();
-                    }
+                    _cancelationRegistration.TryUnregister();
                     ReleaseAndMaybeThrow(_cancelationToken);
                     return _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                 }

@@ -9,14 +9,15 @@ namespace Proto.Promises
     public struct CancelationRegistration : IEquatable<CancelationRegistration>
     {
         private readonly Internal.CancelationRef _ref;
-        private readonly int _id;
-        private readonly int _order;
+        private readonly uint _order;
 
-        internal CancelationRegistration(object cancelationRef, object cancelDelegate)
+        /// <summary>
+        /// FOR INTERNAL USE ONLY!
+        /// </summary>
+        internal CancelationRegistration(Internal.CancelationRef cancelationRef, Internal.ICancelDelegate cancelDelegate)
         {
-            _ref = (Internal.CancelationRef) cancelationRef;
-            _id = _ref.SourceId;
-            _order = _ref.Register((Internal.ICancelDelegate) cancelDelegate);
+            _ref = cancelationRef;
+            _order = _ref.Register(cancelDelegate);
         }
 
         /// <summary>
@@ -26,7 +27,7 @@ namespace Proto.Promises
         {
             get
             {
-                return _ref != null && _ref.IsRegistered(_order);
+                return _ref != null && _ref.IndexOf(_order) >= 0;
             }
         }
 
@@ -40,6 +41,19 @@ namespace Proto.Promises
                 throw new InvalidOperationException("CancelationRegistration is not registered.", Internal.GetFormattedStacktrace(1));
             }
             _ref.Unregister(_order);
+        }
+
+        /// <summary>
+        /// Try to unregister the callback from the associated <see cref="CancelationToken"/>. Returns true if the callback was successfully unregistered, false otherwise.
+        /// </summary>
+        /// <returns>true if the callback was previously registered, false otherwise</returns>
+        public bool TryUnregister()
+        {
+            if (_ref == null)
+            {
+                return false;
+            }
+            return _ref.TryUnregister(_order);
         }
 
         public bool Equals(CancelationRegistration other)
@@ -65,7 +79,6 @@ namespace Proto.Promises
             unchecked
             {
                 int hash = 17;
-                hash = hash * 31 + _id.GetHashCode();
                 hash = hash * 31 + _order.GetHashCode();
                 hash = hash * 31 + _ref.GetHashCode();
                 return hash;
@@ -74,7 +87,7 @@ namespace Proto.Promises
 
         public static bool operator ==(CancelationRegistration c1, CancelationRegistration c2)
         {
-            return c1._ref == c2._ref & c1._id == c2._id & c1._order == c2._order;
+            return c1._ref == c2._ref & c1._order == c2._order;
         }
 
         public static bool operator !=(CancelationRegistration c1, CancelationRegistration c2)

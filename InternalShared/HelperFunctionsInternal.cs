@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable RECS0085 // When initializing explicitly typed local variable or array type, array creation expression can be replaced with array initializer.
+#pragma warning disable IDE1006 // Naming Styles
 
 using System;
 using System.Collections.Generic;

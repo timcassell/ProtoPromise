@@ -47,7 +47,7 @@ namespace Proto.Promises
 #endif
 
         [DebuggerNonUserCode]
-        public sealed class CancelDelegate : ICancelDelegate, ITraceable
+        public sealed class CancelDelegate : ICancelDelegate, ITreeHandleable, ITraceable
         {
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
@@ -102,10 +102,10 @@ namespace Proto.Promises
                 }
             }
 
-            void ICancelDelegate.Invoke(IValueContainer valueContainer)
+            void ICancelDelegate.Invoke(CancelationRef sender)
             {
-                valueContainer.Retain();
-                _valueContainer = valueContainer;
+                _valueContainer = sender.ValueContainer;
+                _valueContainer.Retain();
                 Invoke();
             }
 
@@ -144,7 +144,7 @@ namespace Proto.Promises
         }
 
         [DebuggerNonUserCode]
-        public sealed class CancelDelegateCapture<TCapture> : ICancelDelegate, ITraceable
+        public sealed class CancelDelegateCapture<TCapture> : ICancelDelegate, ITreeHandleable, ITraceable
         {
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
@@ -201,10 +201,10 @@ namespace Proto.Promises
                 }
             }
 
-            void ICancelDelegate.Invoke(IValueContainer valueContainer)
+            void ICancelDelegate.Invoke(CancelationRef sender)
             {
-                valueContainer.Retain();
-                _valueContainer = valueContainer;
+                _valueContainer = sender.ValueContainer;
+                _valueContainer.Retain();
                 Invoke();
             }
 
@@ -245,24 +245,20 @@ namespace Proto.Promises
         }
 
         [DebuggerNonUserCode]
-        internal sealed class CancelationRef : ILinked<CancelationRef>, ITraceable
+        internal sealed class CancelationRef : ICancelDelegate, ILinked<CancelationRef>, ITraceable
         {
             private struct RegisteredDelegate : IComparable<RegisteredDelegate>
             {
                 public readonly ICancelDelegate callback;
-                public readonly int order;
+                public readonly uint order;
 
-                public RegisteredDelegate(int order)
-                {
-                    callback = null;
-                    this.order = order;
-                }
-
-                public RegisteredDelegate(int order, ICancelDelegate callback)
+                public RegisteredDelegate(uint order, ICancelDelegate callback)
                 {
                     this.callback = callback;
                     this.order = order;
                 }
+
+                public RegisteredDelegate(uint order) : this(order, null) { }
 
                 public int CompareTo(RegisteredDelegate other)
                 {
@@ -280,7 +276,7 @@ namespace Proto.Promises
                 {
                     ValueContainer.Release();
                 }
-                if (_retainCount > 0)
+                if (_retainCounter > 0)
                 {
                     // CancelationToken wasn't released.
                     string message = "A CancelationToken's resources were garbage collected without being released. You must release all IRetainable objects that you have retained.";
@@ -298,16 +294,23 @@ namespace Proto.Promises
             private static ValueLinkedStack<CancelationRef> _pool;
 
             private readonly List<RegisteredDelegate> _registeredCallbacks = new List<RegisteredDelegate>();
-            private int _registeredCount;
-            private int _retainCount;
-
+            private Dictionary<CancelationRef, uint> _links;
             public ICancelValueContainer ValueContainer { get; private set; }
-            public int SourceId { get; private set; }
-            public int TokenId { get; private set; }
+            private uint _registeredCount;
+            private ushort _retainCounter;
+
+            public ushort SourceId { get; private set; }
+            public ushort TokenId { get; private set; }
+
+            private bool _isDisposed;
+            private bool _isInvoking;
 
             public bool IsCanceled { get { return ValueContainer != null; } }
 
-            private bool _isDisposed;
+            static CancelationRef()
+            {
+                OnClearPool += ValueLinkedStackZeroGC<CancelationRegistration>.ClearPooledNodes;
+            }
 
             public static CancelationRef GetOrCreate()
             {
@@ -317,31 +320,61 @@ namespace Proto.Promises
                 return cancelRef;
             }
 
-            public int Register(ICancelDelegate callback)
+            public void AddLinkedCancelation(CancelationRef listener)
+            {
+                if (IsCanceled)
+                {
+                    listener.ValueContainer = ValueContainer;
+                    ValueContainer.Retain();
+                }
+                else
+                {
+                    if (listener._links == null)
+                    {
+                        listener._links = new Dictionary<CancelationRef, uint>();
+                    }
+                    listener._links.Add(this, Register(listener));
+                }
+            }
+
+            public uint Register(ICancelDelegate callback)
             {
                 if (ValueContainer != null)
                 {
-                    callback.Invoke(ValueContainer);
+                    callback.Invoke(this);
                     return 0;
                 }
                 checked
                 {
-                    int order = ++_registeredCount;
+                    uint order = ++_registeredCount;
                     _registeredCallbacks.Add(new RegisteredDelegate(order, callback));
                     return order;
                 }
             }
 
-            public void Unregister(int order)
+            public void Unregister(uint order)
             {
-                int index = _registeredCallbacks.BinarySearch(new RegisteredDelegate(order));
-                _registeredCallbacks.RemoveAt(index);
+                _registeredCallbacks.RemoveAt(IndexOf(order));
             }
 
-            public bool IsRegistered(int order)
+            public bool TryUnregister(uint order)
             {
-                int index = _registeredCallbacks.BinarySearch(new RegisteredDelegate(order));
-                return index >= 0;
+                int index = IndexOf(order);
+                if (index >= 0)
+                {
+                    _registeredCallbacks.RemoveAt(index);
+                    return true;
+                }
+                return false;
+            }
+
+            public int IndexOf(uint order)
+            {
+                if (_isDisposed | ValueContainer != null)
+                {
+                    return -1;
+                }
+                return _registeredCallbacks.BinarySearch(new RegisteredDelegate(order));
             }
 
             public void SetCanceled()
@@ -359,27 +392,61 @@ namespace Proto.Promises
 
             private void InvokeCallbacks()
             {
+                // Retain in case this is disposed while executing callbacks.
+                Retain();
+                Unlink();
+                _isInvoking = true;
                 foreach (var del in _registeredCallbacks)
                 {
-                    del.callback.Invoke(ValueContainer);
+                    del.callback.Invoke(this);
                 }
                 _registeredCallbacks.Clear();
+                _isInvoking = false;
+                Release();
+            }
+
+            public void Retain()
+            {
+                // Make sure Retain doesn't overflow the ushort. 1 retain is reserved for internal use.
+                if (_retainCounter == ushort.MaxValue - 1)
+                {
+                    throw new OverflowException();
+                }
+                ++_retainCounter;
+            }
+
+            public void Release()
+            {
+                if (_retainCounter == 0 | (_isInvoking & _retainCounter == 1))
+                {
+                    throw new InvalidOperationException("You must call Retain before you call Release!", GetFormattedStacktrace(1));
+                }
+                // If SourceId is different from TokenId, Dispose was called while this was retained.
+                if (--_retainCounter == 0 & SourceId != TokenId)
+                {
+                    ResetAndRepool();
+                }
             }
 
             public void Dispose()
             {
+                _isDisposed = true;
                 ++SourceId;
                 _registeredCount = 0;
-                foreach (var del in _registeredCallbacks)
+                Unlink();
+                // In case Dispose is called from a callback.
+                if (!_isInvoking)
                 {
-                    del.callback.Dispose();
+                    foreach (var del in _registeredCallbacks)
+                    {
+                        del.callback.Dispose();
+                    }
+                    _registeredCallbacks.Clear();
                 }
-                _registeredCallbacks.Clear();
-                if (_retainCount == 0)
+                if (_retainCounter == 0)
                 {
                     ResetAndRepool();
                 }
-                _isDisposed = true;
             }
 
             private void ResetAndRepool()
@@ -396,24 +463,26 @@ namespace Proto.Promises
                 }
             }
 
-            public void Retain()
+            private void Unlink()
             {
-                checked
+                if (_links != null)
                 {
-                    ++_retainCount;
+                    foreach (var link in _links)
+                    {
+                        link.Key.TryUnregister(link.Value);
+                    }
+                    _links.Clear();
                 }
             }
 
-            public void Release()
+            void ICancelDelegate.Invoke(CancelationRef sender)
             {
-                checked
-                {
-                    // If SourceId is different from TokenId, Dispose was called while this was retained.
-                    if (--_retainCount == 0 & SourceId != TokenId)
-                    {
-                        ResetAndRepool();
-                    }
-                }
+                // In case this is called recursively from another callback.
+                if (_isDisposed | IsCanceled) return;
+
+                ValueContainer = sender.ValueContainer;
+                ValueContainer.Retain();
+                InvokeCallbacks();
             }
         }
     }

@@ -9,7 +9,7 @@ namespace Proto.Promises
     public struct CancelationSource : ICancelableAny, IDisposable, IEquatable<CancelationSource>
     {
         private readonly Internal.CancelationRef _ref;
-        private readonly int _id;
+        private readonly ushort _id;
 
         /// <summary>
         /// Get a new <see cref="CancelationSource"/>.
@@ -19,10 +19,62 @@ namespace Proto.Promises
             return new CancelationSource(Internal.CancelationRef.GetOrCreate());
         }
 
+        /// <summary>
+        /// FOR INTERNAL USE ONLY! Use <see cref="New"/> instead.
+        /// </summary>
         private CancelationSource(Internal.CancelationRef cancelationRef)
         {
             _ref = cancelationRef;
             _id = _ref.SourceId;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when the given token is canceled (with the same value), whichever is first.
+        /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="token">The cancelation token to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
+        public static CancelationSource CreateLinkedSource(CancelationToken token)
+        {
+            CancelationSource newCancelationSource = New();
+            token.MaybeLinkSource(newCancelationSource._ref);
+            return newCancelationSource;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled (with the same value), whichever is first.
+        /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="token1">The first cancelation token to observe.</param>
+        /// <param name="token2">The second cancelation token to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
+        public static CancelationSource CreateLinkedSource(CancelationToken token1, CancelationToken token2)
+        {
+            CancelationSource newCancelationSource = New();
+            Internal.CancelationRef newCancelation = newCancelationSource._ref;
+            token1.MaybeLinkSource(newCancelation);
+            if (!newCancelation.IsCanceled)
+            {
+                token2.MaybeLinkSource(newCancelation);
+            }
+            return newCancelationSource;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled (with the same value), whichever is first.
+        /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="tokens">An array that contains the cancelation token instances to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
+        public static CancelationSource CreateLinkedSource(params CancelationToken[] tokens)
+        {
+            CancelationSource newCancelationSource = New();
+            Internal.CancelationRef newCancelation = newCancelationSource._ref;
+            for (int i = 0, max = tokens.Length; i < max & !newCancelation.IsCanceled; ++i)
+            {
+                tokens[i].MaybeLinkSource(newCancelation);
+            }
+            return newCancelationSource;
         }
 
         /// <summary>
@@ -49,6 +101,17 @@ namespace Proto.Promises
             get
             {
                 return _ref != null && _ref.SourceId == _id;
+            }
+        }
+
+        /// <summary>
+        /// Gets whether cancelation has been requested for this source.
+        /// </summary>
+        public bool IsCancelationRequested
+        {
+            get
+            {
+                return IsValid && _ref.IsCanceled;
             }
         }
 
