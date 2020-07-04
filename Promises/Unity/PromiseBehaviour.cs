@@ -8,6 +8,10 @@ namespace Proto.Promises
     {
         static Promise()
         {
+#if UNITY_2017_3_OR_NEWER && (CSHARP_7_OR_LATER || CSHARP_7_3_OR_NEWER)
+            // Unity changed AggregateException logging to not include the InnerException, so make the default rejection handler route to UnityEngine.Debug.LogException.
+            Config.UncaughtRejectionHandler = Debug.LogException;
+#endif
 #if UNITY_EDITOR
             if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
 #endif

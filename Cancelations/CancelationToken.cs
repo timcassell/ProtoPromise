@@ -36,12 +36,28 @@ namespace Proto.Promises
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal void MaybeLinkSource(Internal.CancelationRef cancelationRef)
+        internal void MaybeLinkSourceInternal(Internal.CancelationRef cancelationRef)
         {
             if (CanBeCanceled)
             {
                 _ref.AddLinkedCancelation(cancelationRef);
             }
+        }
+
+        /// <summary>
+        /// FOR INTERNAL USE ONLY!
+        /// </summary>
+        internal CancelationRegistration RegisterInternal(Internal.ICancelDelegate listener)
+        {
+            if (CanBeCanceled)
+            {
+                if (!_ref.IsCanceled)
+                {
+                    return new CancelationRegistration(_ref, listener);
+                }
+                listener.Invoke(_ref.ValueContainer);
+            }
+            return default(CancelationRegistration);
         }
 
         /// <summary>

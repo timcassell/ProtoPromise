@@ -66,9 +66,10 @@ namespace Proto.Promises
 
         public interface ICancelValueContainer : IValueContainer, IThrowable { }
 
-        public interface ICancelDelegate : IDisposable
+        public interface ICancelDelegate
         {
-            void Invoke(CancelationRef sender);
+            void Invoke(ICancelValueContainer valueContainer);
+            void Dispose();
         }
     }
 }

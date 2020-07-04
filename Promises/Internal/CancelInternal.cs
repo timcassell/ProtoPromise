@@ -15,39 +15,8 @@
 
 namespace Proto.Promises
 {
-    partial class Promise
+    partial class Promise : Internal.ICancelDelegate
     {
-        private void MakeCanceledFromToken()
-        {
-            // This might be called synchronously when it's registered to an already canceled token. In that case, _valueOrPrevious will be null.
-            if (_valueOrPrevious == null)
-            {
-                _valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
-                return;
-            }
-
-            // Otherwise, the promise is either waiting for its previous, or it's in the handle queue.
-#if CSHARP_7_OR_LATER
-            if (_valueOrPrevious is Promise previous)
-#else
-            Promise previous = _valueOrPrevious as Promise;
-            if (previous != null)
-#endif
-            {
-                // Remove this from previous' next branches.
-                previous._nextBranches.Remove(this);
-                _valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
-                Internal.AddToHandleQueueBack(this);
-            }
-            else
-            {
-                // Rejection maybe wasn't caught.
-                ((Internal.IValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack();
-                _valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
-                // Don't add to handle queue since it's already in it.
-            }
-        }
-
         private void CancelDirect()
         {
             _state = State.Canceled;
@@ -69,24 +38,43 @@ namespace Proto.Promises
             Internal.AddToHandleQueueFront(this);
         }
 
-        protected static CancelationRegistration RegisterForCancelation(Promise promise, CancelationToken cancelationToken)
+        protected virtual void CancelCallbacks() { }
+
+        void Internal.ICancelDelegate.Invoke(Internal.ICancelValueContainer valueContainer)
         {
-            return cancelationToken.Register(promise, (p, _) => p.MakeCanceledFromToken());
+            CancelCallbacks();
+
+            object currentValue = _valueOrPrevious;
+            //_valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
+            _valueOrPrevious = valueContainer;
+            valueContainer.Retain();
+
+            // This might be called synchronously when it's registered to an already canceled token. In that case, _valueOrPrevious will be null.
+            if (currentValue == null)
+            {
+                return;
+            }
+
+            // Otherwise, the promise is either waiting for its previous, or it's in the handle queue.
+#if CSHARP_7_OR_LATER
+            if (currentValue is Promise previous)
+#else
+            Promise previous = currentValue as Promise;
+            if (previous != null)
+#endif
+            {
+                // Remove this from previous' next branches.
+                previous._nextBranches.Remove(this);
+                Internal.AddToHandleQueueBack(this);
+            }
+            else
+            {
+                // Rejection maybe wasn't caught.
+                ((Internal.IValueContainer) currentValue).ReleaseAndMaybeAddToUnhandledStack();
+                // Don't add to handle queue since it's already in it.
+            }
         }
 
-        private static void ReleaseAndMaybeThrow(CancelationToken cancelationToken)
-        {
-            try
-            {
-                cancelationToken.ThrowIfCancelationRequested();
-            }
-            finally
-            {
-                if (cancelationToken.CanBeCanceled)
-                {
-                    cancelationToken.Release();
-                }
-            }
-        }
+        void Internal.ICancelDelegate.Dispose() { }
     }
 }

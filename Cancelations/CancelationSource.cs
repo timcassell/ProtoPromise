@@ -12,16 +12,14 @@ namespace Proto.Promises
         private readonly ushort _id;
 
         /// <summary>
-        /// Get a new <see cref="CancelationSource"/>.
+        /// Create a new <see cref="CancelationSource"/>.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
         /// </summary>
         public static CancelationSource New()
         {
             return new CancelationSource(Internal.CancelationRef.GetOrCreate());
         }
 
-        /// <summary>
-        /// FOR INTERNAL USE ONLY! Use <see cref="New"/> instead.
-        /// </summary>
         private CancelationSource(Internal.CancelationRef cancelationRef)
         {
             _ref = cancelationRef;
@@ -29,50 +27,48 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Creates a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when the given token is canceled (with the same value), whichever is first.
+        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when the given token is canceled (with the same value), whichever is first.
         /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
         /// </summary>
         /// <param name="token">The cancelation token to observe.</param>
         /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
-        public static CancelationSource CreateLinkedSource(CancelationToken token)
+        public static CancelationSource New(CancelationToken token)
         {
             CancelationSource newCancelationSource = New();
-            token.MaybeLinkSource(newCancelationSource._ref);
+            token.MaybeLinkSourceInternal(newCancelationSource._ref);
             return newCancelationSource;
         }
 
         /// <summary>
-        /// Creates a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled (with the same value), whichever is first.
+        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled (with the same value), whichever is first.
         /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
         /// </summary>
         /// <param name="token1">The first cancelation token to observe.</param>
         /// <param name="token2">The second cancelation token to observe.</param>
         /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
-        public static CancelationSource CreateLinkedSource(CancelationToken token1, CancelationToken token2)
+        public static CancelationSource New(CancelationToken token1, CancelationToken token2)
         {
-            CancelationSource newCancelationSource = New();
-            Internal.CancelationRef newCancelation = newCancelationSource._ref;
-            token1.MaybeLinkSource(newCancelation);
-            if (!newCancelation.IsCanceled)
+            CancelationSource newCancelationSource = New(token1);
+            if (!newCancelationSource._ref.IsCanceled)
             {
-                token2.MaybeLinkSource(newCancelation);
+                token2.MaybeLinkSourceInternal(newCancelationSource._ref);
             }
             return newCancelationSource;
         }
 
         /// <summary>
-        /// Creates a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled (with the same value), whichever is first.
+        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled (with the same value), whichever is first.
         /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
         /// </summary>
         /// <param name="tokens">An array that contains the cancelation token instances to observe.</param>
         /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
-        public static CancelationSource CreateLinkedSource(params CancelationToken[] tokens)
+        public static CancelationSource New(params CancelationToken[] tokens)
         {
             CancelationSource newCancelationSource = New();
             Internal.CancelationRef newCancelation = newCancelationSource._ref;
             for (int i = 0, max = tokens.Length; i < max & !newCancelation.IsCanceled; ++i)
             {
-                tokens[i].MaybeLinkSource(newCancelation);
+                tokens[i].MaybeLinkSourceInternal(newCancelation);
             }
             return newCancelationSource;
         }

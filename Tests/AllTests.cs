@@ -258,7 +258,9 @@ namespace Proto.Promises.Tests
         [Test]
         public void AllPromiseIsCanceledWhenFirstPromiseIsCanceled()
         {
-            var deferred1 = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource = CancelationSource.New();
+
+            var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
             var deferred2 = Promise.NewDeferred<int>();
 
             var cancelations = 0;
@@ -271,7 +273,7 @@ namespace Proto.Promises.Tests
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
                 .CatchCancelation(e => { ++cancelations; });
 
-            deferred1.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, cancelations);
@@ -282,6 +284,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(2, cancelations);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -291,7 +294,8 @@ namespace Proto.Promises.Tests
         public void AllPromiseIsCanceledWhenSecondPromiseIsCanceled()
         {
             var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
 
             var cancelations = 0;
 
@@ -308,12 +312,13 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, cancelations);
 
-            deferred2.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, cancelations);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -322,8 +327,11 @@ namespace Proto.Promises.Tests
         [Test]
         public void AllPromiseIsCanceledWhenBothPromisesAreCanceled()
         {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            CancelationSource cancelationSource2 = CancelationSource.New();
+
+            var deferred1 = Promise.NewDeferred<int>(cancelationSource1.Token);
+            var deferred2 = Promise.NewDeferred<int>(cancelationSource2.Token);
 
             var cancelations = 0;
 
@@ -335,17 +343,19 @@ namespace Proto.Promises.Tests
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
                 .CatchCancelation(e => { ++cancelations; });
 
-            deferred1.Cancel("Cancel!");
+            cancelationSource1.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, cancelations);
 
-            deferred2.Cancel("Cancel!");
+            cancelationSource2.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, cancelations);
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();

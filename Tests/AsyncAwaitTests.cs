@@ -272,7 +272,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void CancelAwaitedPromiseThrowsOperationCanceled1()
         {
-            var deferred = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
 
             bool continued = false;
             string cancelValue = "Cancel";
@@ -294,11 +295,12 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(false, continued);
 
-            deferred.Cancel(cancelValue);
+            cancelationSource.Cancel(cancelValue);
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(true, continued);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -307,7 +309,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void CancelAwaitedPromiseThrowsOperationCanceled2()
         {
-            var deferred = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
             string cancelValue = "Cancel";
             bool continued = false;
@@ -329,11 +332,12 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(false, continued);
 
-            deferred.Cancel(cancelValue);
+            cancelationSource.Cancel(cancelValue);
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(true, continued);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -702,7 +706,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void AsyncPromiseIsCanceledFromPromise1()
         {
-            var deferred = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
 
             string expected = "Cancel";
             bool canceled = false;
@@ -721,11 +726,12 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(false, canceled);
 
-            deferred.Cancel(expected);
+            cancelationSource.Cancel(expected);
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(true, canceled);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -734,7 +740,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void AsyncPromiseIsCanceledFromPromise2()
         {
-            var deferred = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
             string expected = "Cancel";
             bool canceled = false;
@@ -753,11 +760,12 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(false, canceled);
 
-            deferred.Cancel(expected);
+            cancelationSource.Cancel(expected);
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(true, canceled);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();

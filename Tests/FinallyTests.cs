@@ -108,8 +108,10 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnFinallyIsInvokedWhenPromiseIsCanceled()
         {
-            var deferred = Promise.NewDeferred();
-            var deferredInt = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource1.Token);
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
 
             bool voidFinallyFired = false;
             bool intFinallyFired = false;
@@ -117,27 +119,36 @@ namespace Proto.Promises.Tests
             deferred.Promise.Finally(() => voidFinallyFired = true);
             deferredInt.Promise.Finally(() => intFinallyFired = true);
 
-            deferred.Cancel();
-            deferredInt.Cancel();
+            cancelationSource1.Cancel();
+            cancelationSource2.Cancel();
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(true, voidFinallyFired);
             Assert.AreEqual(true, intFinallyFired);
 
-            deferred = Promise.NewDeferred();
-            deferredInt = Promise.NewDeferred<int>();
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
+            voidFinallyFired = false;
+            intFinallyFired = false;
+
+            cancelationSource1 = CancelationSource.New();
+            deferred = Promise.NewDeferred(cancelationSource1.Token);
+            cancelationSource2 = CancelationSource.New();
+            deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
 
             deferred.Promise.Finally(() => voidFinallyFired = true);
-            deferredInt.Promise.Finally(() => voidFinallyFired = intFinallyFired);
+            deferredInt.Promise.Finally(() => intFinallyFired = true);
 
-            deferred.Cancel("Cancel");
-            deferredInt.Cancel("Cancel");
+            cancelationSource1.Cancel("Cancel");
+            cancelationSource2.Cancel("Cancel");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(true, voidFinallyFired);
             Assert.AreEqual(true, intFinallyFired);
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();

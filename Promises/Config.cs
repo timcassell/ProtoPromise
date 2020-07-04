@@ -99,10 +99,6 @@ namespace Proto.Promises
             /// If this is not null, uncaught rejections get routed through this instead of being thrown.
             /// </summary>
             public static Action<UnhandledException> UncaughtRejectionHandler { get; set; }
-#if UNITY_2019_2_OR_NEWER
-                // Unity changed AggregateException logging to not include the InnerException, so make the default rejection handler route to UnityEngine.Debug.LogException.
-                = UnityEngine.Debug.LogException;
-#endif
         }
     }
 }

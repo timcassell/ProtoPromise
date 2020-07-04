@@ -76,12 +76,14 @@ namespace Proto.Promises
             internal interface IDelegateContinue
             {
                 void Invoke(Internal.IValueContainer valueContainer);
+                void MaybeUnregisterCancelation();
                 bool IsNull { get; }
             }
 
             internal interface IDelegateContinue<T>
             {
                 T Invoke(Internal.IValueContainer valueContainer);
+                void MaybeUnregisterCancelation();
                 bool IsNull { get; }
             }
         }

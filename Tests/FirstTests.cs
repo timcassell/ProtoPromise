@@ -178,7 +178,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void FirstIsResolvedWhenFirstPromiseIsCanceledThenSecondPromiseIsResolved()
         {
-            var deferred1 = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
             var deferred2 = Promise.NewDeferred<int>();
 
             var resolved = 0;
@@ -189,7 +190,7 @@ namespace Proto.Promises.Tests
             Promise.First((Promise) deferred1.Promise, deferred2.Promise)
                 .Then(() => ++resolved);
 
-            deferred1.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, resolved);
@@ -200,6 +201,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(2, resolved);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -209,7 +211,8 @@ namespace Proto.Promises.Tests
         public void FirstIsResolvedWhenSecondPromiseIsCanceledThenFirstPromiseIsResolved()
         {
             var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
 
             var resolved = 0;
 
@@ -219,7 +222,7 @@ namespace Proto.Promises.Tests
             Promise.First((Promise) deferred1.Promise, deferred2.Promise)
                 .Then(() => ++resolved);
 
-            deferred2.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, resolved);
@@ -230,6 +233,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(2, resolved);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -238,8 +242,10 @@ namespace Proto.Promises.Tests
         [Test]
         public void FirstIsCanceledWhenAllPromisesAreCanceled()
         {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred<int>(cancelationSource1.Token);
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred<int>(cancelationSource2.Token);
 
             var canceled = 0;
             string cancelation = "Cancel!";
@@ -252,17 +258,19 @@ namespace Proto.Promises.Tests
                 .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
                 .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
 
-            deferred1.Cancel("Different Cancel!");
+            cancelationSource1.Cancel("Different Cancel!");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, canceled);
 
-            deferred2.Cancel(cancelation);
+            cancelationSource2.Cancel(cancelation);
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, canceled);
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -271,7 +279,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void FirstIsRejectededWhenFirstPromiseIsCanceledThenSecondPromiseIsRejected()
         {
-            var deferred1 = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
             var deferred2 = Promise.NewDeferred<int>();
 
             var rejected = 0;
@@ -285,7 +294,7 @@ namespace Proto.Promises.Tests
                 .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
                 .Catch<string>(rej => { Assert.AreEqual(rejection, rej); ++rejected; });
 
-            deferred1.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, rejected);
@@ -296,6 +305,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(2, rejected);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -305,7 +315,8 @@ namespace Proto.Promises.Tests
         public void FirstIsRejectededWhenSecondPromiseIsCanceledThenFirstPromiseIsRejected()
         {
             var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
 
             var rejected = 0;
             string rejection = "Error!";
@@ -318,7 +329,7 @@ namespace Proto.Promises.Tests
                 .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
                 .Catch<string>(rej => { Assert.AreEqual(rejection, rej); ++rejected; });
 
-            deferred2.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, rejected);
@@ -329,6 +340,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(2, rejected);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -338,7 +350,8 @@ namespace Proto.Promises.Tests
         public void FirstIsCancelededWhenFirstPromiseIsRejectedThenSecondPromiseIsCanceled()
         {
             var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
 
             var canceled = 0;
             string cancelation = "Cancel!";
@@ -357,12 +370,13 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, canceled);
 
-            deferred2.Cancel(cancelation);
+            cancelationSource.Cancel(cancelation);
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, canceled);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -371,7 +385,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void FirstIsCancelededWhenSecondPromiseIsRejectedThenFirstPromiseIsCanceled()
         {
-            var deferred1 = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
             var deferred2 = Promise.NewDeferred<int>();
 
             var canceled = 0;
@@ -391,12 +406,13 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, canceled);
 
-            deferred1.Cancel(cancelation);
+            cancelationSource.Cancel(cancelation);
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, canceled);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();

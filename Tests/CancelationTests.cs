@@ -58,17 +58,19 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(Promise.State.Rejected, deferred.State);
 
-                deferred = Promise.NewDeferred();
+                CancelationSource cancelationSource = CancelationSource.New();
+                deferred = Promise.NewDeferred(cancelationSource.Token);
 
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
 
-                deferred.Cancel();
+                cancelationSource.Cancel();
 
                 Assert.AreEqual(Promise.State.Canceled, deferred.State);
 
                 Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
 
                 // Clean up.
+                cancelationSource.Dispose();
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
@@ -93,8 +95,9 @@ namespace Proto.Promises.Tests
             [Test]
             public void MustNotTransitionToAnyOtherState()
             {
-                var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                var deferredInt = Promise.NewDeferred<int>(cancelationSource.Token);
 
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
                 Assert.AreEqual(Promise.State.Pending, deferredInt.State);
@@ -118,10 +121,7 @@ namespace Proto.Promises.Tests
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
                 deferredInt.Reject("Fail Value");
 
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
-                deferred.Cancel();
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
-                deferredInt.Cancel();
+                cancelationSource.Cancel();
 
                 Assert.AreEqual(Promise.State.Resolved, deferred.State);
                 Assert.AreEqual(Promise.State.Resolved, deferredInt.State);
@@ -131,6 +131,7 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(2, resolved);
 
                 // Clean up.
+                cancelationSource.Dispose();
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
@@ -155,8 +156,9 @@ namespace Proto.Promises.Tests
             [Test]
             public void MustNotTransitionToAnyOtherState()
             {
-                var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                var deferredInt = Promise.NewDeferred<int>(cancelationSource.Token);
 
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
                 Assert.AreEqual(Promise.State.Pending, deferredInt.State);
@@ -180,10 +182,7 @@ namespace Proto.Promises.Tests
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
                 deferredInt.Resolve(0);
 
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
-                deferred.Cancel();
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
-                deferredInt.Cancel();
+                cancelationSource.Cancel();
 
                 Assert.AreEqual(Promise.State.Rejected, deferred.State);
                 Assert.AreEqual(Promise.State.Rejected, deferredInt.State);
@@ -193,6 +192,7 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(2, rejected);
 
                 // Clean up.
+                cancelationSource.Dispose();
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
@@ -217,8 +217,9 @@ namespace Proto.Promises.Tests
             [Test]
             public void MustNotTransitionToAnyOtherState()
             {
-                var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                var deferredInt = Promise.NewDeferred<int>(cancelationSource.Token);
 
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
                 Assert.AreEqual(Promise.State.Pending, deferredInt.State);
@@ -234,8 +235,7 @@ namespace Proto.Promises.Tests
                     .Catch(() => Assert.Fail("Promise was rejected when it was already canceled."))
                     .CatchCancelation(e => { ++canceled; });
 
-                deferred.Cancel("Cancel Value");
-                deferredInt.Cancel("Cancel Value");
+                cancelationSource.Cancel("Cancel Value");
 
                 LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
                 deferred.Resolve();
@@ -255,6 +255,7 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(2, canceled);
 
                 // Clean up.
+                cancelationSource.Dispose();
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
@@ -263,7 +264,8 @@ namespace Proto.Promises.Tests
             [Test]
             public void MustHaveAReasonWhichMustNotChange_0()
             {
-                var deferred = Promise.NewDeferred();
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
 
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
 
@@ -279,7 +281,7 @@ namespace Proto.Promises.Tests
                     onReject: failValue => rejectAssert(),
                     onUnknownRejection: rejectAssert);
                 deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
-                deferred.Cancel(expected);
+                cancelationSource.Cancel(expected);
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(expected, cancelation);
@@ -290,15 +292,17 @@ namespace Proto.Promises.Tests
                     onUnknownRejection: rejectAssert);
                 deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
 
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
+                Assert.Throws<InvalidOperationException>(() =>
+                    cancelationSource.Cancel("Different Cancel Value")
+                );
 
-                deferred.Cancel("Different Cancel Value");
                 deferred.Release();
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(expected, cancelation);
 
                 // Clean up.
+                cancelationSource.Dispose();
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
@@ -307,7 +311,8 @@ namespace Proto.Promises.Tests
             [Test]
             public void MustHaveAReasonWhichMustNotChange_1()
             {
-                var deferred = Promise.NewDeferred<int>();
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
 
@@ -323,7 +328,7 @@ namespace Proto.Promises.Tests
                     onReject: _ => rejectAssert(),
                     onUnknownRejection: rejectAssert);
                 deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
-                deferred.Cancel(expected);
+                cancelationSource.Cancel(expected);
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(expected, cancelation);
@@ -334,9 +339,10 @@ namespace Proto.Promises.Tests
                     onUnknownRejection: rejectAssert);
                 deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
 
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
+                Assert.Throws<InvalidOperationException>(() =>
+                    cancelationSource.Cancel("Different Cancel Value")
+                );
 
-                deferred.Cancel("Different Cancel Value");
                 deferred.Release();
                 Promise.Manager.HandleCompletes();
 
@@ -353,7 +359,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void IfOnCanceledIsNullThrow()
         {
-            var deferred = Promise.NewDeferred();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource1.Token);
 
             Assert.AreEqual(Promise.State.Pending, deferred.State);
 
@@ -362,9 +369,10 @@ namespace Proto.Promises.Tests
                 deferred.Promise.CatchCancelation(default(Action<ReasonContainer>));
             });
 
-            deferred.Cancel();
+            cancelationSource1.Cancel();
 
-            var deferredInt = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
             Assert.AreEqual(Promise.State.Pending, deferredInt.State);
 
             Assert.Throws<ArgumentNullException>(() =>
@@ -372,9 +380,11 @@ namespace Proto.Promises.Tests
                 deferredInt.Promise.CatchCancelation(default(Action<ReasonContainer>));
             });
 
-            deferredInt.Cancel(0);
+            cancelationSource2.Cancel(0);
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -401,19 +411,21 @@ namespace Proto.Promises.Tests
             {
                 string cancelReason = "Cancel value";
                 var canceled = false;
-                var deferred = Promise.NewDeferred();
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
                 deferred.Promise.CatchCancelation(r =>
                 {
                     Assert.AreEqual(cancelReason, r.Value);
                     canceled = true;
                 });
-                deferred.Cancel(cancelReason);
+                cancelationSource.Cancel(cancelReason);
                 Promise.Manager.HandleCompletes();
 
                 Assert.True(canceled);
 
                 // Clean up.
+                cancelationSource.Dispose();
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
@@ -424,7 +436,8 @@ namespace Proto.Promises.Tests
             {
                 string cancelReason = "Cancel value";
                 var canceled = false;
-                var deferred = Promise.NewDeferred();
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
                 deferred.Promise.CatchCancelation(r =>
                 {
@@ -435,12 +448,13 @@ namespace Proto.Promises.Tests
 
                 Assert.False(canceled);
 
-                deferred.Cancel(cancelReason);
+                cancelationSource.Cancel(cancelReason);
                 Promise.Manager.HandleCompletes();
 
                 Assert.True(canceled);
 
                 // Clean up.
+                cancelationSource.Dispose();
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
@@ -449,21 +463,26 @@ namespace Proto.Promises.Tests
             [Test]
             public void ItMustNotBeCalledMoreThanOnce()
             {
-                var deferred = Promise.NewDeferred();
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
                 deferred.Retain();
                 var cancelCount = 0;
                 deferred.Promise.CatchCancelation(r => ++cancelCount);
-                deferred.Cancel("Cancel value");
+                cancelationSource.Cancel("Cancel value");
                 Promise.Manager.HandleCompletes();
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Cancel - Deferred is not in the pending state.");
-                deferred.Cancel("Cancel value");
+
+                Assert.Throws<InvalidOperationException>(() =>
+                    cancelationSource.Cancel("Cancel value")
+                );
+
                 deferred.Release();
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(1, cancelCount);
 
                 // Clean up.
+                cancelationSource.Dispose();
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
@@ -473,12 +492,13 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnCanceledMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode()
         {
-            var deferred = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
             Assert.AreEqual(Promise.State.Pending, deferred.State);
 
             bool canceled = false;
             deferred.Promise.CatchCancelation(e => canceled = true);
-            deferred.Cancel("Cancel value");
+            cancelationSource.Cancel("Cancel value");
             Assert.False(canceled);
 
 
@@ -486,6 +506,7 @@ namespace Proto.Promises.Tests
             Assert.True(canceled);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -509,7 +530,8 @@ namespace Proto.Promises.Tests
             [Test]
             public void IfWhenPromiseCancelationIsCanceledAllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation()
             {
-                var deferred = Promise.NewDeferred();
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
                 Assert.AreEqual(Promise.State.Pending, deferred.State);
 
                 int counter = 0;
@@ -518,12 +540,13 @@ namespace Proto.Promises.Tests
                 deferred.Promise.CatchCancelation(e => Assert.AreEqual(1, counter++));
                 deferred.Promise.CatchCancelation(e => Assert.AreEqual(2, counter++));
 
-                deferred.Cancel();
+                cancelationSource.Cancel();
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(3, counter);
 
                 // Clean up.
+                cancelationSource.Dispose();
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
@@ -533,9 +556,11 @@ namespace Proto.Promises.Tests
         [Test]
         public void IfPromiseIsCanceledOnResolveAndOnRejectedMustNotBeInvoked()
         {
-            var deferred = Promise.NewDeferred();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource1.Token);
             Assert.AreEqual(Promise.State.Pending, deferred.State);
-            var deferredInt = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
             Assert.AreEqual(Promise.State.Pending, deferredInt.State);
 
             Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been canceled.");
@@ -550,11 +575,13 @@ namespace Proto.Promises.Tests
                 onReject: _ => rejectAssert(),
                 onUnknownRejection: rejectAssert);
 
-            deferred.Cancel();
-            deferredInt.Cancel();
+            cancelationSource1.Cancel();
+            cancelationSource2.Cancel();
             Promise.Manager.HandleCompletes();
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -590,7 +617,10 @@ namespace Proto.Promises.Tests
         [Test]
         public void CancelationsPropagateToBranches()
         {
-            var deferred = Promise.NewDeferred();
+            Promise.Config.UncaughtRejectionHandler = UnityEngine.Debug.LogException;
+
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
             Assert.AreEqual(Promise.State.Pending, deferred.State);
 
             bool invoked = false;
@@ -599,12 +629,13 @@ namespace Proto.Promises.Tests
                 .Then(() => { })
                 .CatchCancelation(e => invoked = true);
 
-            deferred.Cancel();
+            cancelationSource.Cancel();
             Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(true, invoked);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -631,7 +662,7 @@ namespace Proto.Promises.Tests
                 .Finally(cancelationSource.Dispose);
 
             cancelationSource.Cancel(cancelValue);
-            deferred.Cancel(100);
+            deferred.Resolve();
             Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(true, invoked);

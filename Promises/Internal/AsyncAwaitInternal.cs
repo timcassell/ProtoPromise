@@ -192,7 +192,7 @@ namespace Proto.Promises.Async.CompilerServices
                 }
                 else
                 {
-                    _deferred.Cancel(ex);
+                    ((Internal.ICancelDelegate) _deferred).Invoke(Internal.CreateCancelContainer(ref ex));
                     _deferred = null;
                 }
             }
@@ -247,14 +247,14 @@ namespace Proto.Promises.Async.CompilerServices
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
-            Internal.invokingResolved = true;
+            Internal.invokingCallback = true;
             try
             {
                 stateMachine.MoveNext();
             }
             finally
             {
-                Internal.invokingResolved = false;
+                Internal.invokingCallback = false;
             }
         }
 
@@ -276,14 +276,14 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         private void MoveNext()
         {
-            Internal.invokingResolved = true;
+            Internal.invokingCallback = true;
             try
             {
                 _stateMachine.MoveNext();
             }
             finally
             {
-                Internal.invokingResolved = false;
+                Internal.invokingCallback = false;
             }
         }
     }
@@ -318,7 +318,7 @@ namespace Proto.Promises.Async.CompilerServices
                 }
                 else
                 {
-                    _deferred.Cancel(ex);
+                    ((Internal.ICancelDelegate) _deferred).Invoke(Internal.CreateCancelContainer(ref ex));
                     _deferred = null;
                 }
             }
@@ -373,14 +373,14 @@ namespace Proto.Promises.Async.CompilerServices
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
-            Internal.invokingResolved = true;
+            Internal.invokingCallback = true;
             try
             {
                 stateMachine.MoveNext();
             }
             finally
             {
-                Internal.invokingResolved = false;
+                Internal.invokingCallback = false;
             }
         }
 
@@ -402,14 +402,14 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         private void MoveNext()
         {
-            Internal.invokingResolved = true;
+            Internal.invokingCallback = true;
             try
             {
                 _stateMachine.MoveNext();
             }
             finally
             {
-                Internal.invokingResolved = false;
+                Internal.invokingCallback = false;
             }
         }
     }

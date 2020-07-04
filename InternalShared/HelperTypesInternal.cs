@@ -102,9 +102,9 @@ namespace Proto.Promises
                 }
             }
 
-            void ICancelDelegate.Invoke(CancelationRef sender)
+            void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
-                _valueContainer = sender.ValueContainer;
+                _valueContainer = valueContainer;
                 _valueContainer.Retain();
                 Invoke();
             }
@@ -201,9 +201,9 @@ namespace Proto.Promises
                 }
             }
 
-            void ICancelDelegate.Invoke(CancelationRef sender)
+            void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
-                _valueContainer = sender.ValueContainer;
+                _valueContainer = valueContainer;
                 _valueContainer.Retain();
                 Invoke();
             }
@@ -294,7 +294,7 @@ namespace Proto.Promises
             private static ValueLinkedStack<CancelationRef> _pool;
 
             private readonly List<RegisteredDelegate> _registeredCallbacks = new List<RegisteredDelegate>();
-            private Dictionary<CancelationRef, uint> _links;
+            private ValueLinkedStackZeroGC<CancelationRegistration> _links;
             public ICancelValueContainer ValueContainer { get; private set; }
             private uint _registeredCount;
             private ushort _retainCounter;
@@ -324,16 +324,13 @@ namespace Proto.Promises
             {
                 if (IsCanceled)
                 {
+                    // Don't need to worry about invoking callbacks here since this is only called from CancelationSource.CreateLinkedSource.
                     listener.ValueContainer = ValueContainer;
                     ValueContainer.Retain();
                 }
                 else
                 {
-                    if (listener._links == null)
-                    {
-                        listener._links = new Dictionary<CancelationRef, uint>();
-                    }
-                    listener._links.Add(this, Register(listener));
+                    listener._links.Push(new CancelationRegistration(this, listener));
                 }
             }
 
@@ -341,7 +338,7 @@ namespace Proto.Promises
             {
                 if (ValueContainer != null)
                 {
-                    callback.Invoke(this);
+                    callback.Invoke(ValueContainer);
                     return 0;
                 }
                 checked
@@ -398,7 +395,7 @@ namespace Proto.Promises
                 _isInvoking = true;
                 foreach (var del in _registeredCallbacks)
                 {
-                    del.callback.Invoke(this);
+                    del.callback.Invoke(ValueContainer);
                 }
                 _registeredCallbacks.Clear();
                 _isInvoking = false;
@@ -465,22 +462,18 @@ namespace Proto.Promises
 
             private void Unlink()
             {
-                if (_links != null)
+                while (_links.IsNotEmpty)
                 {
-                    foreach (var link in _links)
-                    {
-                        link.Key.TryUnregister(link.Value);
-                    }
-                    _links.Clear();
+                    _links.Pop().TryUnregister();
                 }
             }
 
-            void ICancelDelegate.Invoke(CancelationRef sender)
+            void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
                 // In case this is called recursively from another callback.
                 if (_isDisposed | IsCanceled) return;
 
-                ValueContainer = sender.ValueContainer;
+                ValueContainer = valueContainer;
                 ValueContainer.Retain();
                 InvokeCallbacks();
             }

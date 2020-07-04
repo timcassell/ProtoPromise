@@ -243,8 +243,10 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnContinueIsInvokedWhenPromiseIsCanceled()
         {
-            var deferred = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource1.Token);
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource2.Token);
 
             int voidFinallyFired = 0;
             int intFinallyFired = 0;
@@ -256,14 +258,16 @@ namespace Proto.Promises.Tests
                 onContinue: r => ++intFinallyFired
             );
 
-            deferred.Cancel();
-            deferred2.Cancel("Cancel");
+            cancelationSource1.Cancel();
+            cancelationSource2.Cancel("Cancel");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(TestHelper.continueVoidCallbacks, voidFinallyFired);
             Assert.AreEqual(TestHelper.continueTCallbacks, intFinallyFired);
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -272,8 +276,10 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnContinueCancelReasonWhenPromiseIsCanceled0()
         {
-            var deferred = Promise.NewDeferred();
-            var deferredInt = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource1.Token);
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
 
             string cancelation = "Cancel";
 
@@ -292,12 +298,14 @@ namespace Proto.Promises.Tests
                 }
             );
 
-            deferred.Cancel(cancelation);
-            deferredInt.Cancel(cancelation);
+            cancelationSource1.Cancel(cancelation);
+            cancelationSource2.Cancel(cancelation);
 
             Promise.Manager.HandleCompletes();
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -306,8 +314,10 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnContinueCancelReasonWhenPromiseIsCanceled1()
         {
-            var deferred = Promise.NewDeferred();
-            var deferredInt = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource1.Token);
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
 
             TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 onContinue: r =>
@@ -324,12 +334,14 @@ namespace Proto.Promises.Tests
                 }
             );
 
-            deferred.Cancel();
-            deferredInt.Cancel();
+            cancelationSource1.Cancel();
+            cancelationSource2.Cancel();
 
             Promise.Manager.HandleCompletes();
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -338,8 +350,10 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnContinueRethrowCancelReasonWhenPromiseIsCanceled0()
         {
-            var deferred = Promise.NewDeferred();
-            var deferredInt = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource1.Token);
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
 
             int cancelations = 0;
             string cancelation = "Cancel";
@@ -362,8 +376,8 @@ namespace Proto.Promises.Tests
                 promiseToPromiseConvert: p => { p.CatchCancelation(e => { Assert.AreEqual(cancelation, e.Value); ++cancelations; }); intContainer.RethrowIfCanceled(); return null; }
             );
 
-            deferred.Cancel(cancelation);
-            deferredInt.Cancel(cancelation);
+            cancelationSource1.Cancel(cancelation);
+            cancelationSource2.Cancel(cancelation);
 
             Promise.Manager.HandleCompletes();
 
@@ -371,6 +385,8 @@ namespace Proto.Promises.Tests
                 cancelations);
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -379,8 +395,10 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnContinueRethrowCancelReasonWhenPromiseIsCanceled1()
         {
-            var deferred = Promise.NewDeferred();
-            var deferredInt = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource1.Token);
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
 
             int cancelations = 0;
 
@@ -402,8 +420,8 @@ namespace Proto.Promises.Tests
                 promiseToPromiseConvert: p => { p.CatchCancelation(e => { Assert.AreEqual(null, e.ValueType); ++cancelations; }); intContainer.RethrowIfCanceled(); return null; }
             );
 
-            deferred.Cancel();
-            deferredInt.Cancel();
+            cancelationSource1.Cancel();
+            cancelationSource2.Cancel();
 
             Promise.Manager.HandleCompletes();
 
@@ -411,6 +429,8 @@ namespace Proto.Promises.Tests
                 cancelations);
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();

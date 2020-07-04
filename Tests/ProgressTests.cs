@@ -138,18 +138,20 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled0()
         {
-            var deferred = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
             Assert.AreEqual(Promise.State.Pending, deferred.State);
 
             float progress = float.NaN;
 
             deferred.Promise.Progress(p => progress = p);
 
-            deferred.Cancel();
+            cancelationSource.Cancel();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -237,7 +239,8 @@ namespace Proto.Promises.Tests
         {
             var deferred = Promise.NewDeferred();
             Assert.AreEqual(Promise.State.Pending, deferred.State);
-            var deferred2 = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
             Assert.AreEqual(Promise.State.Pending, deferred2.State);
 
             float progress = float.NaN;
@@ -256,11 +259,12 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred2.ReportProgress(0.5f);
-            deferred2.Cancel();
+            cancelationSource.Cancel();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();

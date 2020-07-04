@@ -67,7 +67,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void IfOnCanceledIsNullThrow()
         {
-            var deferred = Promise.NewDeferred();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource1.Token);
 
             Assert.AreEqual(Promise.State.Pending, deferred.State);
 
@@ -76,9 +77,10 @@ namespace Proto.Promises.Tests
                 deferred.Promise.CatchCancelation(100, default(Action<int, ReasonContainer>));
             });
 
-            deferred.Cancel();
+            cancelationSource1.Cancel();
 
-            var deferredInt = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
             Assert.AreEqual(Promise.State.Pending, deferredInt.State);
 
             Assert.Throws<ArgumentNullException>(() =>
@@ -86,9 +88,11 @@ namespace Proto.Promises.Tests
                 deferredInt.Promise.CatchCancelation(100, default(Action<int, ReasonContainer>));
             });
 
-            deferredInt.Cancel();
+            cancelationSource2.Cancel();
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -629,7 +633,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnCanceledWillBeInvokedWithCapturedValue()
         {
-            var deferred = Promise.NewDeferred();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource1.Token);
 
             string expected = "expected";
             int cancelValue = 50;
@@ -643,9 +648,10 @@ namespace Proto.Promises.Tests
                     invoked = true;
                 });
 
-            deferred.Cancel(50);
+            cancelationSource1.Cancel(50);
 
-            var deferredInt = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
 
             deferredInt.Promise
                 .CatchCancelation(expected, (cv, reason) =>
@@ -655,13 +661,15 @@ namespace Proto.Promises.Tests
                     invoked = true;
                 });
 
-            deferredInt.Cancel(cancelValue);
+            cancelationSource2.Cancel(cancelValue);
 
             Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(true, invoked);
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -742,8 +750,10 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnFinallyWillBeInvokedWithCapturedValue2()
         {
-            var deferred = Promise.NewDeferred();
-            var deferredInt = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource1.Token);
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
 
             string expected = "expected";
             bool invoked = false;
@@ -761,11 +771,13 @@ namespace Proto.Promises.Tests
                     invoked = true;
                 });
 
-            deferred.Cancel();
-            deferredInt.Cancel();
+            cancelationSource1.Cancel();
+            cancelationSource2.Cancel();
 
-            deferred = Promise.NewDeferred();
-            deferredInt = Promise.NewDeferred<int>();
+            var cancelationSource3 = CancelationSource.New();
+            deferred = Promise.NewDeferred(cancelationSource3.Token);
+            var cancelationSource4 = CancelationSource.New();
+            deferredInt = Promise.NewDeferred<int>(cancelationSource4.Token);
 
             deferred.Promise
                 .Finally(expected, cv =>
@@ -780,14 +792,18 @@ namespace Proto.Promises.Tests
                     invoked = true;
                 });
 
-            deferred.Cancel("Cancel");
-            deferredInt.Cancel("Cancel");
+            cancelationSource3.Cancel("Cancel");
+            cancelationSource4.Cancel("Cancel");
 
             Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(true, invoked);
 
             // Clean up.
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
+            cancelationSource3.Dispose();
+            cancelationSource4.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();

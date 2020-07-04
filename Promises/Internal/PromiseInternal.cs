@@ -196,6 +196,7 @@ namespace Proto.Promises
             Internal.IValueContainer container = (Internal.IValueContainer) _valueOrPrevious;
             _valueOrPrevious = null;
             SetCurrentInvoker(this);
+            Internal.invokingCallback = true;
             try
             {
                 Execute(container);
@@ -221,7 +222,7 @@ namespace Proto.Promises
             }
             finally
             {
-                Internal.invokingResolved = false;
+                Internal.invokingCallback = false;
                 Internal.invokingRejected = false;
                 ClearCurrentInvoker();
             }
@@ -633,14 +634,13 @@ namespace Proto.Promises
                 {
                     var resolveCallback = resolver;
                     resolver = default(TResolver);
+                    resolveCallback.MaybeUnregisterCancelation();
                     if (valueContainer.GetState() == State.Resolved)
                     {
-                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                     }
                     else
                     {
-                        resolveCallback.MaybeUnregisterCancelation();
                         RejectOrCancelInternal(valueContainer);
                     }
                 }
@@ -683,14 +683,13 @@ namespace Proto.Promises
                 {
                     var resolveCallback = resolver;
                     resolver = default(TResolver);
+                    resolveCallback.MaybeUnregisterCancelation();
                     if (valueContainer.GetState() == State.Resolved)
                     {
-                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                     }
                     else
                     {
-                        resolveCallback.MaybeUnregisterCancelation();
                         RejectOrCancelInternal(valueContainer);
                     }
                 }
@@ -740,14 +739,13 @@ namespace Proto.Promises
 
                     var resolveCallback = resolver;
                     resolver = default(TResolver);
+                    resolveCallback.MaybeUnregisterCancelation();
                     if (valueContainer.GetState() == State.Resolved)
                     {
-                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                     }
                     else
                     {
-                        resolver.MaybeUnregisterCancelation();
                         RejectOrCancelInternal(valueContainer);
                     }
                 }
@@ -797,14 +795,13 @@ namespace Proto.Promises
 
                     var resolveCallback = resolver;
                     resolver = default(TResolver);
+                    resolveCallback.MaybeUnregisterCancelation();
                     if (valueContainer.GetState() == State.Resolved)
                     {
-                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                     }
                     else
                     {
-                        resolver.MaybeUnregisterCancelation();
                         RejectOrCancelInternal(valueContainer);
                     }
                 }
@@ -852,14 +849,13 @@ namespace Proto.Promises
                     resolver = default(TResolver);
                     var rejectCallback = rejecter;
                     rejecter = default(TRejecter);
+                    resolveCallback.MaybeUnregisterCancelation();
                     State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
-                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                         return;
                     }
-                    resolveCallback.MaybeUnregisterCancelation();
                     if (state == State.Rejected)
                     {
                         Internal.invokingRejected = true;
@@ -912,14 +908,13 @@ namespace Proto.Promises
                     resolver = default(TResolver);
                     var rejectCallback = rejecter;
                     rejecter = default(TRejecter);
+                    resolveCallback.MaybeUnregisterCancelation();
                     State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
-                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                         return;
                     }
-                    resolveCallback.MaybeUnregisterCancelation();
                     if (state == State.Rejected)
                     {
                         Internal.invokingRejected = true;
@@ -979,14 +974,13 @@ namespace Proto.Promises
                     resolver = default(TResolver);
                     var rejectCallback = rejecter;
                     rejecter = default(TRejecter);
+                    resolveCallback.MaybeUnregisterCancelation();
                     State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
-                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                         return;
                     }
-                    resolveCallback.MaybeUnregisterCancelation();
 #if PROMISE_PROGRESS
                     _suspended = true;
 #endif
@@ -1049,14 +1043,13 @@ namespace Proto.Promises
                     resolver = default(TResolver);
                     var rejectCallback = rejecter;
                     rejecter = default(TRejecter);
+                    resolveCallback.MaybeUnregisterCancelation();
                     State state = valueContainer.GetState();
                     if (state == State.Resolved)
                     {
-                        Internal.invokingResolved = true;
                         resolveCallback.InvokeResolver(valueContainer, this);
                         return;
                     }
-                    resolveCallback.MaybeUnregisterCancelation();
 #if PROMISE_PROGRESS
                     _suspended = true;
 #endif
@@ -1094,6 +1087,7 @@ namespace Proto.Promises
                 }
 
                 public TContinuer continuer;
+                private bool _canceled;
 
                 private PromiseContinue() { }
 
@@ -1104,6 +1098,11 @@ namespace Proto.Promises
                     return promise;
                 }
 
+                protected override void CancelCallbacks()
+                {
+                    _canceled = true;
+                }
+
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
                 private
 #endif
@@ -1111,9 +1110,16 @@ namespace Proto.Promises
                 {
                     var callback = continuer;
                     continuer = default(TContinuer);
-                    Internal.invokingResolved = true;
-                    callback.Invoke(valueContainer);
-                    ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    if (_canceled)
+                    {
+                        RejectOrCancelInternal(valueContainer);
+                    }
+                    else
+                    {
+                        continuer.MaybeUnregisterCancelation();
+                        callback.Invoke(valueContainer);
+                        ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    }
                 }
             }
 
@@ -1137,6 +1143,7 @@ namespace Proto.Promises
                 }
 
                 public TContinuer continuer;
+                private bool _canceled;
 
                 private PromiseContinue() { }
 
@@ -1147,6 +1154,11 @@ namespace Proto.Promises
                     return promise;
                 }
 
+                protected override void CancelCallbacks()
+                {
+                    _canceled = true;
+                }
+
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
                 private
 #endif
@@ -1154,9 +1166,16 @@ namespace Proto.Promises
                 {
                     var callback = continuer;
                     continuer = default(TContinuer);
-                    Internal.invokingResolved = true;
-                    TResult result = callback.Invoke(valueContainer);
-                    ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    if (_canceled)
+                    {
+                        RejectOrCancelInternal(valueContainer);
+                    }
+                    else
+                    {
+                        continuer.MaybeUnregisterCancelation();
+                        TResult result = callback.Invoke(valueContainer);
+                        ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    }
                 }
             }
 
@@ -1180,6 +1199,7 @@ namespace Proto.Promises
                 }
 
                 public TContinuer continuer;
+                private bool _canceled;
 
                 private PromiseContinuePromise() { }
 
@@ -1188,6 +1208,11 @@ namespace Proto.Promises
                     var promise = _pool.IsNotEmpty ? (PromiseContinuePromise<TContinuer>) _pool.Pop() : new PromiseContinuePromise<TContinuer>();
                     promise.Reset();
                     return promise;
+                }
+
+                protected override void CancelCallbacks()
+                {
+                    _canceled = true;
                 }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
@@ -1204,9 +1229,16 @@ namespace Proto.Promises
 
                     var callback = continuer;
                     continuer = default(TContinuer);
-                    Internal.invokingResolved = true;
-                    Promise result = callback.Invoke(valueContainer);
-                    WaitFor(result);
+                    if (_canceled)
+                    {
+                        RejectOrCancelInternal(valueContainer);
+                    }
+                    else
+                    {
+                        continuer.MaybeUnregisterCancelation();
+                        Promise result = callback.Invoke(valueContainer);
+                        WaitFor(result);
+                    }
                 }
             }
 
@@ -1230,6 +1262,7 @@ namespace Proto.Promises
                 }
 
                 public TContinuer continuer;
+                private bool _canceled;
 
                 private PromiseContinuePromise() { }
 
@@ -1238,6 +1271,11 @@ namespace Proto.Promises
                     var promise = _pool.IsNotEmpty ? (PromiseContinuePromise<TPromise, TContinuer>) _pool.Pop() : new PromiseContinuePromise<TPromise, TContinuer>();
                     promise.Reset();
                     return promise;
+                }
+
+                protected override void CancelCallbacks()
+                {
+                    _canceled = true;
                 }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
@@ -1254,9 +1292,16 @@ namespace Proto.Promises
 
                     var callback = continuer;
                     continuer = default(TContinuer);
-                    Internal.invokingResolved = true;
-                    Promise<TPromise> result = callback.Invoke(valueContainer);
-                    WaitFor(result);
+                    if (_canceled)
+                    {
+                        RejectOrCancelInternal(valueContainer);
+                    }
+                    else
+                    {
+                        continuer.MaybeUnregisterCancelation();
+                        Promise<TPromise> result = callback.Invoke(valueContainer);
+                        WaitFor(result);
+                    }
                 }
             }
             #endregion

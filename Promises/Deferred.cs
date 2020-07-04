@@ -19,14 +19,15 @@ namespace Proto.Promises
         /// Deferred base. An instance of this can be used to handle the state of the attached <see cref="Promise"/>, except resolve. You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to handle resolve.
         /// </summary>
         [System.Diagnostics.DebuggerNonUserCode]
-        public abstract class DeferredBase : ICancelableAny, IRetainable
+        public abstract class DeferredBase : IRetainable, Internal.ICancelDelegate
         {
             /// <summary>
             /// The <see cref="Promise"/> that this controls.
             /// </summary>
             public Promise Promise { get; protected set; }
-
             public State State { get { return Promise._state; } }
+
+            protected CancelationRegistration _cancelationRegistration;
 
             internal DeferredBase() { }
 
@@ -67,6 +68,7 @@ namespace Proto.Promises
 
                 if (State == State.Pending)
                 {
+                    _cancelationRegistration.TryUnregister();
                     promise.RejectDirect(ref reason, 1);
                 }
                 else
@@ -75,7 +77,6 @@ namespace Proto.Promises
                     Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
                 }
             }
-
 
             /// <summary>
             /// Report progress between 0 and 1.
@@ -99,41 +100,12 @@ namespace Proto.Promises
                 promise.ReportProgress(progress);
             }
 
-            /// <summary>
-            /// Cancel the linked <see cref="Promise"/> without a reason.
-            /// </summary>
-            public void Cancel()
+            void Internal.ICancelDelegate.Invoke(Internal.ICancelValueContainer valueContainer)
             {
-                var promise = Promise;
-                ValidateOperation(promise, 1);
-
-                if (State == State.Pending)
-                {
-                    promise.CancelDirect();
-                }
-                else
-                {
-                    Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
-                }
+                Promise.CancelDirect(ref valueContainer);
             }
 
-            /// <summary>
-            /// Cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
-            /// </summary>
-            public void Cancel<TCancel>(TCancel reason)
-            {
-                var promise = Promise;
-                ValidateOperation(promise, 1);
-
-                if (State == State.Pending)
-                {
-                    promise.CancelDirect(ref reason);
-                }
-                else
-                {
-                    Logger.LogWarning("Deferred.Cancel - Deferred is not in the pending state.");
-                }
-            }
+            void Internal.ICancelDelegate.Dispose() { }
         }
 
         /// <summary>
@@ -154,6 +126,7 @@ namespace Proto.Promises
 
                 if (State == State.Pending)
                 {
+                    _cancelationRegistration.TryUnregister();
                     promise.ResolveDirect();
                 }
                 else
@@ -190,6 +163,7 @@ namespace Proto.Promises
 
                 if (State == State.Pending)
                 {
+                    _cancelationRegistration.TryUnregister();
                     promise.ResolveDirect(ref value);
                 }
                 else
@@ -212,6 +186,11 @@ namespace Proto.Promises
                 {
                     Promise = target;
                 }
+
+                public void RegisterForCancelation(CancelationToken cancelationToken)
+                {
+                    _cancelationRegistration = cancelationToken.RegisterInternal(this);
+                }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
@@ -220,6 +199,11 @@ namespace Proto.Promises
                 public DeferredInternal(Promise<T> target)
                 {
                     Promise = target;
+                }
+
+                public void RegisterForCancelation(CancelationToken cancelationToken)
+                {
+                    _cancelationRegistration = cancelationToken.RegisterInternal(this);
                 }
             }
         }

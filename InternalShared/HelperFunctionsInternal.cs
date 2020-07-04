@@ -23,7 +23,7 @@ namespace Proto.Promises
     /// </summary>
     internal static partial class Internal
     {
-        public static bool invokingResolved, invokingRejected;
+        public static bool invokingCallback, invokingRejected;
 
         public static event Action OnClearPool;
 

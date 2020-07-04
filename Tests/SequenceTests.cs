@@ -218,7 +218,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void SequencePromiseIsCanceledWhenFirstPromiseIsCanceled()
         {
-            var deferred1 = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
             var deferred2 = Promise.NewDeferred();
 
             var cancelations = 0;
@@ -230,7 +231,7 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, cancelations);
 
-            deferred1.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, cancelations);
@@ -241,6 +242,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(1, cancelations);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -250,7 +252,8 @@ namespace Proto.Promises.Tests
         public void SequencePromiseIsCanceledWhenSecondPromiseIsCanceled()
         {
             var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
 
             var cancelations = 0;
 
@@ -266,12 +269,13 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, cancelations);
 
-            deferred2.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, cancelations);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();
@@ -280,7 +284,8 @@ namespace Proto.Promises.Tests
         [Test]
         public void SequenceDelegatesStopGettingInvokedWhenAPromiseIsCanceled()
         {
-            var deferred1 = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
             var deferred2 = Promise.NewDeferred();
 
             int invokes = 0;
@@ -293,7 +298,7 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
 
-            deferred1.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel!");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
@@ -304,6 +309,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(1, invokes);
 
             // Clean up.
+            cancelationSource.Dispose();
             GC.Collect();
             Promise.Manager.HandleCompletesAndProgress();
             LogAssert.NoUnexpectedReceived();

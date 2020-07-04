@@ -1128,18 +1128,24 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Deferred"/> object that is linked to and controls the state of a new <see cref="Promise"/>.
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promise"/> will be canceled with its reason.
         /// </summary>
-		public static Deferred NewDeferred()
+		public static Deferred NewDeferred(CancelationToken cancelationToken = default(CancelationToken))
         {
-            return InternalProtected.DeferredPromise0.GetOrCreate().deferred;
+            var deferred = InternalProtected.DeferredPromise0.GetOrCreate().deferred;
+            deferred.RegisterForCancelation(cancelationToken);
+            return deferred;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Promise{T}.Deferred"/> is pending, it and the <see cref="Promise{T}"/> will be canceled with its reason.
         /// </summary>
-        public static Promise<T>.Deferred NewDeferred<T>()
+        public static Promise<T>.Deferred NewDeferred<T>(CancelationToken cancelationToken = default(CancelationToken))
         {
-            return InternalProtected.DeferredPromise<T>.GetOrCreate().deferred;
+            var deferred = InternalProtected.DeferredPromise<T>.GetOrCreate().deferred;
+            deferred.RegisterForCancelation(cancelationToken);
+            return deferred;
         }
 
         /// <summary>
@@ -1169,7 +1175,7 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public static CancelException CancelException()
         {
-            if (Internal.invokingResolved | Internal.invokingRejected)
+            if (Internal.invokingCallback | Internal.invokingRejected)
             {
                 return Internal.CancelExceptionVoidInternal.GetOrCreate();
             }
@@ -1185,7 +1191,7 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public static CancelException CancelException<T>(T value)
         {
-            if (Internal.invokingResolved | Internal.invokingRejected)
+            if (Internal.invokingCallback | Internal.invokingRejected)
             {
                 return Internal.CancelExceptionInternal<T>.GetOrCreate(value);
             }
@@ -1201,7 +1207,7 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public static RejectException RejectException<T>(T value)
         {
-            if (Internal.invokingResolved | Internal.invokingRejected)
+            if (Internal.invokingCallback | Internal.invokingRejected)
             {
                 return Internal.RejectExceptionInternal<T>.GetOrCreate(value);
             }
