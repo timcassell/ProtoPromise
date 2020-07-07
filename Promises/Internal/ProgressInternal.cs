@@ -513,7 +513,7 @@ namespace Proto.Promises
                     InvokeAndCatch((float) (_current.ToDouble() / expected));
                 }
 
-                private void IncrementProgress(Promise sender, uint amount)
+                private void IncrementProgress(uint amount)
                 {
                     _current.Increment(amount);
                     _suspended = false;
@@ -527,7 +527,7 @@ namespace Proto.Promises
 
                 void IProgressListener.IncrementProgress(Promise sender, uint amount)
                 {
-                    IncrementProgress(sender, amount);
+                    IncrementProgress(amount);
                 }
 
                 void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount)
@@ -540,7 +540,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        IncrementProgress(sender, amount);
+                        IncrementProgress(amount);
                         Release();
                     }
                 }
@@ -918,7 +918,7 @@ namespace Proto.Promises
                 }
             }
 
-            partial class DeferredPromise0
+            partial class DeferredPromiseVoid
             {
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
@@ -968,6 +968,17 @@ namespace Proto.Promises
                     Release();
                 }
             }
+        }
+#endif
+    }
+
+    partial class Promise<T>
+    {
+        static partial void ValidateProgress(int skipFrames);
+#if !PROMISE_PROGRESS
+        static partial void ValidateProgress(int skipFrames)
+        {
+            ThrowProgressException(skipFrames + 1);
         }
 #endif
     }

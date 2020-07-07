@@ -1,74 +1,321 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
-#define PROMISE_DEBUG
-#else
-#undef PROMISE_DEBUG
-#endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
 #endif
 
-using System;
+#pragma warning disable IDE0034 // Simplify 'default' expression
 
 namespace Proto.Promises
 {
     partial class Promise
     {
         /// <summary>
-        /// Deferred base. An instance of this can be used to handle the state of the attached <see cref="Promise"/>, except resolve. You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to handle resolve.
+        /// Deferred base. An instance of this can be used to report progress and reject the attached <see cref="Promises.Promise"/>.
+        /// <para/>You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to resolve the attached <see cref="Promises.Promise"/>.
         /// </summary>
         [System.Diagnostics.DebuggerNonUserCode]
-        public abstract class DeferredBase : IRetainable, Internal.ICancelDelegate
+        public struct DeferredBase : IRetainable
         {
+            private readonly Promise _promise;
+            private readonly ushort _id;
+
             /// <summary>
-            /// The <see cref="Promise"/> that this controls.
+            /// The attached <see cref="Promises.Promise"/> that this controls.
             /// </summary>
-            public Promise Promise { get; protected set; }
-            public State State { get { return Promise._state; } }
-
-            protected CancelationRegistration _cancelationRegistration;
-
-            internal DeferredBase() { }
-
-            ~DeferredBase()
+            public Promise Promise
             {
-                if (State == State.Pending)
+                get
                 {
-                    // Deferred wasn't handled.
-                    Internal.AddRejectionToUnhandledStack(UnhandledDeferredException.instance, Promise);
+                    if (!IsValid)
+                    {
+                        throw new InvalidOperationException("DeferredBase.Promise: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    }
+                    return _promise;
                 }
             }
 
             /// <summary>
-            /// Retain this instance and the linked <see cref="Promise"/>.
+            /// The state of the attached <see cref="Promises.Promise"/>
+            /// </summary>
+            public State State
+            {
+                get
+                {
+                    if (!IsValid)
+                    {
+                        throw new InvalidOperationException("DeferredBase.State: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    }
+                    return _promise._state;
+                }
+            }
+
+            /// <summary>
+            /// Get whether or not this instance is valid.
+            /// <para/>A <see cref="DeferredBase"/> instance is valid if it was casted from a <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> instance, and that instance is still valid.
+            /// </summary>
+            public bool IsValid
+            {
+                get
+                {
+                    return _promise != null && _id == _promise.Id;
+                }
+            }
+
+            private DeferredBase(Promise promise)
+            {
+                _promise = promise;
+                _id = promise.Id;
+            }
+
+            /// <summary>
+            /// Internal use for implicit cast operator.
+            /// </summary>
+            internal static DeferredBase Create(Deferred deferred)
+            {
+                return deferred.IsValid ? new DeferredBase(deferred.Promise) : default(DeferredBase);
+            }
+
+            /// <summary>
+            /// Internal use for implicit cast operator.
+            /// </summary>
+            internal static DeferredBase Create<T>(Promise<T>.Deferred deferred)
+            {
+                return deferred.IsValid ? new DeferredBase(deferred.Promise) : default(DeferredBase);
+            }
+
+            /// <summary>
+            /// Cast this to <see cref="Deferred"/>.
+            /// </summary>
+            public Deferred ToDeferred()
+            {
+                return Deferred.Create(this);
+            }
+
+            /// <summary>
+            /// Cast this to <see cref="Promise{T}.Deferred"/>.
+            /// </summary>
+            public Promise<T>.Deferred ToDeferred<T>()
+            {
+                return Promise<T>.Deferred.Create(this);
+            }
+
+            /// <summary>
+            /// Retain this instance and the linked <see cref="Promises.Promise"/>.
             /// <para/>This should always be paired with a call to <see cref="Release"/>
             /// </summary>
             public void Retain()
             {
-                Promise.Retain();
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("DeferredBase.Retain: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+                _promise.Retain();
             }
 
             /// <summary>
-            /// Release this instance and the linked <see cref="Promise"/>.
+            /// Release this instance and the linked <see cref="Promises.Promise"/>.
             /// <para/>This should always be paired with a call to <see cref="Retain"/>
             /// </summary>
             public void Release()
             {
-                Promise.Release();
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("DeferredBase.Release: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+                _promise.Release();
             }
 
             /// <summary>
-            /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// Reject the linked <see cref="Promises.Promise"/> with <paramref name="reason"/>.
             /// </summary>
             public void Reject<TReject>(TReject reason)
             {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("DeferredBase.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+
                 var promise = Promise;
                 ValidateOperation(promise, 1);
 
                 if (State == State.Pending)
                 {
-                    _cancelationRegistration.TryUnregister();
+                    Promise.CancelCallbacks();
+                    promise.RejectDirect(ref reason, 1);
+                }
+                else
+                {
+                    Internal.AddRejectionToUnhandledStack(reason, null);
+                    Logger.LogWarning("DeferredBase.Reject - Deferred is not in the pending state.");
+                }
+            }
+
+            /// <summary>
+            /// Report progress between 0 and 1.
+            /// </summary>
+#if !PROMISE_PROGRESS
+            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
+#endif
+            public void ReportProgress(float progress)
+            {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("DeferredBase.ReportProgress: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+
+                var promise = Promise;
+                ValidateProgress(1);
+                ValidateOperation(promise, 1);
+                ValidateProgress(progress, 1);
+
+                if (State != State.Pending)
+                {
+                    Logger.LogWarning("DeferredBase.ReportProgress - Deferred is not in the pending state.");
+                    return;
+                }
+
+                promise.ReportProgress(progress);
+            }
+        }
+
+        /// <summary>
+        /// An instance of this is used to report progress and resolve or reject the attached <see cref="Promises.Promise"/>.
+        /// </summary>
+        [System.Diagnostics.DebuggerNonUserCode]
+        public struct Deferred
+        {
+            private readonly Promise _promise;
+            private readonly ushort _id;
+
+            /// <summary>
+            /// The attached <see cref="Promises.Promise"/> that this controls.
+            /// </summary>
+            public Promise Promise
+            {
+                get
+                {
+                    if (!IsValid)
+                    {
+                        throw new InvalidOperationException("Deferred.Promise: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    }
+                    return _promise;
+                }
+            }
+
+            /// <summary>
+            /// The state of the attached <see cref="Promises.Promise"/>
+            /// </summary>
+            public State State
+            {
+                get
+                {
+                    if (!IsValid)
+                    {
+                        throw new InvalidOperationException("Deferred.State: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    }
+                    return _promise._state;
+                }
+            }
+
+            /// <summary>
+            /// Get whether or not this instance is valid.
+            /// <para/>A <see cref="Deferred"/> is valid if it was created from <see cref="New"/> and the attached <see cref="Promises.Promise"/> has not been disposed.
+            /// </summary>
+            public bool IsValid
+            {
+                get
+                {
+                    return _promise != null && _id == _promise.Id;
+                }
+            }
+
+            private Deferred(CancelationToken cancelationToken)
+            {
+                if (cancelationToken.CanBeCanceled)
+                {
+                    _promise = InternalProtected.DeferredPromiseCancelVoid.GetOrCreate(cancelationToken);
+                }
+                else
+                {
+                    _promise = InternalProtected.DeferredPromiseVoid.GetOrCreate();
+                }
+                _id = _promise.Id;
+            }
+
+            private Deferred(Promise promise)
+            {
+                _promise = promise;
+                _id = promise.Id;
+            }
+
+            /// <summary>
+            /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promises.Promise"/>.
+            /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promises.Promise"/> will be canceled with its reason.
+            /// </summary>
+            public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
+            {
+                return new Deferred(cancelationToken);
+            }
+
+            /// <summary>
+            /// Internal use for explicit converter. Use <see cref="DeferredBase.ToDeferred"/>.
+            /// </summary>
+            internal static Deferred Create(DeferredBase deferredBase)
+            {
+                if (deferredBase.IsValid)
+                {
+                    Promise promise = deferredBase.Promise;
+                    if (promise.ResultType == null)
+                    {
+                        return new Deferred(promise);
+                    }
+                }
+                return default(Deferred);
+            }
+
+            /// <summary>
+            /// Retain this instance and the linked <see cref="Promises.Promise"/>.
+            /// <para/>This should always be paired with a call to <see cref="Release"/>
+            /// </summary>
+            public void Retain()
+            {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("Deferred.Retain: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+                _promise.Retain();
+            }
+
+            /// <summary>
+            /// Release this instance and the linked <see cref="Promises.Promise"/>.
+            /// <para/>This should always be paired with a call to <see cref="Retain"/>
+            /// </summary>
+            public void Release()
+            {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("Deferred.Release: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+                _promise.Release();
+            }
+
+            /// <summary>
+            /// Reject the linked <see cref="Promises.Promise"/> with <paramref name="reason"/>.
+            /// </summary>
+            public void Reject<TReject>(TReject reason)
+            {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+
+                var promise = Promise;
+                ValidateOperation(promise, 1);
+
+                if (State == State.Pending)
+                {
+                    Promise.CancelCallbacks();
                     promise.RejectDirect(ref reason, 1);
                 }
                 else
@@ -86,6 +333,11 @@ namespace Proto.Promises
 #endif
             public void ReportProgress(float progress)
             {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+
                 var promise = Promise;
                 ValidateProgress(1);
                 ValidateOperation(promise, 1);
@@ -100,33 +352,22 @@ namespace Proto.Promises
                 promise.ReportProgress(progress);
             }
 
-            void Internal.ICancelDelegate.Invoke(Internal.ICancelValueContainer valueContainer)
-            {
-                Promise.CancelDirect(ref valueContainer);
-            }
-
-            void Internal.ICancelDelegate.Dispose() { }
-        }
-
-        /// <summary>
-        /// An instance of this is used to handle the state of the <see cref="DeferredBase.Promise"/>.
-        /// </summary>
-        [System.Diagnostics.DebuggerNonUserCode]
-        public abstract class Deferred : DeferredBase
-        {
-            internal Deferred() { }
-
             /// <summary>
-            /// Resolve the linked <see cref="Promise"/>.
+            /// Resolve the linked <see cref="Promises.Promise"/>.
             /// </summary>
             public void Resolve()
             {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+
                 var promise = Promise;
                 ValidateOperation(promise, 1);
 
                 if (State == State.Pending)
                 {
-                    _cancelationRegistration.TryUnregister();
+                    Promise.CancelCallbacks();
                     promise.ResolveDirect();
                 }
                 else
@@ -144,66 +385,197 @@ namespace Proto.Promises
         /// An instance of this is used to handle the state of the <see cref="Promise"/>.
         /// </summary>
         [System.Diagnostics.DebuggerNonUserCode]
-        public abstract new class Deferred : DeferredBase
+        public new struct Deferred
         {
-            /// <summary>
-            /// The <see cref="Promise{T}"/> that this controls.
-            /// </summary>
-            public new Promise<T> Promise { get { return (Promise<T>) base.Promise; } protected set { base.Promise = value; } }
+            private readonly Promise<T> _promise;
+            private readonly ushort _id;
 
-            internal Deferred() { }
+            /// <summary>
+            /// The attached <see cref="Promise{T}"/> that this controls.
+            /// </summary>
+            public Promise<T> Promise
+            {
+                get
+                {
+                    if (!IsValid)
+                    {
+                        throw new InvalidOperationException("Deferred.Promise: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    }
+                    return _promise;
+                }
+            }
+
+            /// <summary>
+            /// The state of the attached <see cref="Promises.Promise"/>
+            /// </summary>
+            public State State
+            {
+                get
+                {
+                    if (!IsValid)
+                    {
+                        throw new InvalidOperationException("Deferred.State: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    }
+                    return _promise._state;
+                }
+            }
+
+            /// <summary>
+            /// Get whether or not this instance is valid.
+            /// <para/>A <see cref="Deferred"/> is valid if it was created from <see cref="New"/> and the attached <see cref="Promises.Promise"/> has not been disposed.
+            /// </summary>
+            public bool IsValid
+            {
+                get
+                {
+                    return _promise != null && _id == _promise.Id;
+                }
+            }
+
+            private Deferred(CancelationToken cancelationToken)
+            {
+                if (cancelationToken.CanBeCanceled)
+                {
+                    _promise = InternalProtected.DeferredPromiseCancel<T>.GetOrCreate(cancelationToken);
+                }
+                else
+                {
+                    _promise = InternalProtected.DeferredPromise<T>.GetOrCreate();
+                }
+                _id = _promise.Id;
+            }
+
+            private Deferred(Promise<T> promise)
+            {
+                _promise = promise;
+                _id = promise.Id;
+            }
+
+            /// <summary>
+            /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promises.Promise"/>.
+            /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promises.Promise"/> will be canceled with its reason.
+            /// </summary>
+            public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
+            {
+                return new Deferred(cancelationToken);
+            }
+
+            /// <summary>
+            /// Internal use for explicit converter. Use <see cref="DeferredBase.ToDeferred"/>.
+            /// </summary>
+            internal static Deferred Create(DeferredBase deferredBase)
+            {
+                if (deferredBase.IsValid)
+                {
+                    Promise promise = deferredBase.Promise;
+                    if (promise.ResultType == typeof(T))
+                    {
+                        return new Deferred((Promise<T>) promise);
+                    }
+                }
+                return default(Deferred);
+            }
+
+            /// <summary>
+            /// Retain this instance and the linked <see cref="Promises.Promise"/>.
+            /// <para/>This should always be paired with a call to <see cref="Release"/>
+            /// </summary>
+            public void Retain()
+            {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("Deferred.Retain: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+                _promise.Retain();
+            }
+
+            /// <summary>
+            /// Release this instance and the linked <see cref="Promises.Promise"/>.
+            /// <para/>This should always be paired with a call to <see cref="Retain"/>
+            /// </summary>
+            public void Release()
+            {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("Deferred.Release: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+                _promise.Release();
+            }
+
+            /// <summary>
+            /// Reject the linked <see cref="Promises.Promise"/> with <paramref name="reason"/>.
+            /// </summary>
+            public void Reject<TReject>(TReject reason)
+            {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+
+                var promise = Promise;
+                ValidateOperation(promise, 1);
+
+                if (State == State.Pending)
+                {
+                    Promise.CancelCallbacks();
+                    promise.RejectDirect(ref reason, 1);
+                }
+                else
+                {
+                    Internal.AddRejectionToUnhandledStack(reason, null);
+                    Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
+                }
+            }
+
+            /// <summary>
+            /// Report progress between 0 and 1.
+            /// </summary>
+#if !PROMISE_PROGRESS
+            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
+#endif
+            public void ReportProgress(float progress)
+            {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+
+                var promise = Promise;
+                ValidateProgress(1);
+                ValidateOperation(promise, 1);
+                ValidateProgress(progress, 1);
+
+                if (State != State.Pending)
+                {
+                    Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
+                    return;
+                }
+
+                promise.ReportProgress(progress);
+            }
 
             /// <summary>
             /// Resolve the linked <see cref="Promise{T}"/> with <paramref name="value"/>.
             /// </summary>
             public void Resolve(T value)
             {
+                if (!IsValid)
+                {
+                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+
                 var promise = Promise;
                 ValidateOperation(promise, 1);
 
                 if (State == State.Pending)
                 {
-                    _cancelationRegistration.TryUnregister();
+                    Promise.CancelCallbacks();
                     promise.ResolveDirect(ref value);
                 }
                 else
                 {
                     Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
                     return;
-                }
-            }
-        }
-    }
-
-    partial class Promise
-    {
-        partial class InternalProtected
-        {
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DeferredInternal0 : Deferred
-            {
-                public DeferredInternal0(Promise target)
-                {
-                    Promise = target;
-                }
-
-                public void RegisterForCancelation(CancelationToken cancelationToken)
-                {
-                    _cancelationRegistration = cancelationToken.RegisterInternal(this);
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class DeferredInternal<T> : Promise<T>.Deferred
-            {
-                public DeferredInternal(Promise<T> target)
-                {
-                    Promise = target;
-                }
-
-                public void RegisterForCancelation(CancelationToken cancelationToken)
-                {
-                    _cancelationRegistration = cancelationToken.RegisterInternal(this);
                 }
             }
         }

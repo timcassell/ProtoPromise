@@ -325,7 +325,7 @@ namespace Proto.Promises
             void Complete()
             {
                 var deferred = onComplete;
-                onComplete = null;
+                onComplete = default(Promise.Deferred);
                 // Place this back in the pool before invoking in case the invocation will re-use this.
                 _pool.Push(this);
                 try
@@ -383,7 +383,7 @@ namespace Proto.Promises
             public void Complete()
             {
                 var deferred = onComplete;
-                onComplete = null;
+                onComplete = default(Promise<T>.Deferred);
                 T tempObj = Current;
                 Current = default(T);
                 // Place this back in the pool before invoking in case the invocation will re-use this.
@@ -413,7 +413,7 @@ namespace Proto.Promises
         {
             Routine<TYieldInstruction> routine = Routine<TYieldInstruction>.GetOrCreate();
             routine.Current = yieldInstruction;
-            routine.onComplete = Promise.NewDeferred<TYieldInstruction>();
+            routine.onComplete = Promise<TYieldInstruction>.Deferred.New();
 
             if (routine._continue)
             {
@@ -434,7 +434,7 @@ namespace Proto.Promises
         public static Promise WaitOneFrame()
         {
             Routine routine = Routine.GetOrCreate();
-            routine.onComplete = Promise.NewDeferred();
+            routine.onComplete = Promise.Deferred.New();
 
             if (routine._continue)
             {

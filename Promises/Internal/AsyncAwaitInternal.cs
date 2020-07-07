@@ -12,6 +12,7 @@
 #if CSHARP_7_OR_LATER
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
+#pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
 using System.Diagnostics;
@@ -186,26 +187,26 @@ namespace Proto.Promises.Async.CompilerServices
         {
             if (exception is OperationCanceledException ex)
             {
-                if (_deferred == null)
+                if (!_deferred.IsValid)
                 {
                     Task = Promise.Canceled(ex);
                 }
                 else
                 {
-                    ((Internal.ICancelDelegate) _deferred).Invoke(Internal.CreateCancelContainer(ref ex));
-                    _deferred = null;
+                    ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref ex));
+                    _deferred = default(Promise.Deferred);
                 }
             }
             else
             {
-                if (_deferred == null)
+                if (!_deferred.IsValid)
                 {
                     Task = Promise.Rejected(exception);
                 }
                 else
                 {
                     _deferred.Reject(exception);
-                    _deferred = null;
+                    _deferred = default(Promise.Deferred);
                 }
             }
         }
@@ -213,14 +214,14 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         public void SetResult()
         {
-            if (_deferred == null)
+            if (!_deferred.IsValid)
             {
                 Task = Promise.Resolved();
             }
             else
             {
                 _deferred.Resolve();
-                _deferred = null;
+                _deferred = default(Promise.Deferred);
             }
         }
 
@@ -266,7 +267,7 @@ namespace Proto.Promises.Async.CompilerServices
         {
             if (_continuation == null)
             {
-                _deferred = Promise.NewDeferred();
+                _deferred = Promise.Deferred.New();
                 Task = _deferred.Promise;
                 _stateMachine = stateMachine;
                 _continuation = MoveNext;
@@ -312,26 +313,26 @@ namespace Proto.Promises.Async.CompilerServices
         {
             if (exception is OperationCanceledException ex)
             {
-                if (_deferred == null)
+                if (!_deferred.IsValid)
                 {
                     Task = Promise.Canceled<T, OperationCanceledException>(ex);
                 }
                 else
                 {
-                    ((Internal.ICancelDelegate) _deferred).Invoke(Internal.CreateCancelContainer(ref ex));
-                    _deferred = null;
+                    ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref ex));
+                    _deferred = default(Promise<T>.Deferred);
                 }
             }
             else
             {
-                if (_deferred == null)
+                if (!_deferred.IsValid)
                 {
                     Task = Promise.Rejected<T, Exception>(exception);
                 }
                 else
                 {
                     _deferred.Reject(exception);
-                    _deferred = null;
+                    _deferred = default(Promise<T>.Deferred);
                 }
             }
         }
@@ -339,14 +340,14 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         public void SetResult(T result)
         {
-            if (_deferred == null)
+            if (!_deferred.IsValid)
             {
                 Task = Promise.Resolved(result);
             }
             else
             {
                 _deferred.Resolve(result);
-                _deferred = null;
+                _deferred = default(Promise<T>.Deferred);
             }
         }
 
@@ -392,7 +393,7 @@ namespace Proto.Promises.Async.CompilerServices
         {
             if (_continuation == null)
             {
-                _deferred = Promise.NewDeferred<T>();
+                _deferred = Promise<T>.Deferred.New();
                 Task = _deferred.Promise;
                 _stateMachine = stateMachine;
                 _continuation = MoveNext;

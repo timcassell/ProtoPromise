@@ -30,6 +30,7 @@ namespace Proto.Promises
         protected bool _wasWaitedOn;
 
         Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
+        protected virtual ushort Id { get; }
 
         ~Promise()
         {
@@ -249,7 +250,7 @@ namespace Proto.Promises
             Internal.AddToHandleQueueFront(this);
         }
 
-        private void RejectDirect<TReject>(ref TReject reason, int rejectSkipFrames)
+        protected void RejectDirect<TReject>(ref TReject reason, int rejectSkipFrames)
         {
             _state = State.Rejected;
             var rejection = Internal.CreateRejectContainer(ref reason, rejectSkipFrames + 1, this);
@@ -373,34 +374,42 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            internal sealed partial class DeferredPromise0 : Promise, Internal.ITreeHandleable
+            internal sealed partial class DeferredPromiseVoid : Promise, Internal.ITreeHandleable, Internal.ICancelDelegate
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
-                static DeferredPromise0()
+                static DeferredPromiseVoid()
                 {
                     Internal.OnClearPool += () => _pool.Clear();
+                }
+
+                ~DeferredPromiseVoid()
+                {
+                    if (_state == State.Pending)
+                    {
+                        // Deferred wasn't handled.
+                        Internal.AddRejectionToUnhandledStack(UnhandledDeferredException.instance, this);
+                    }
                 }
 
                 protected override void Dispose()
                 {
                     base.Dispose();
+                    ++id;
                     if (Config.ObjectPooling == PoolType.All)
                     {
                         _pool.Push(this);
                     }
                 }
 
-                public readonly DeferredInternal0 deferred;
+                private ushort id;
+                protected override ushort Id { get { return id; } }
 
-                private DeferredPromise0()
-                {
-                    deferred = new DeferredInternal0(this);
-                }
+                private DeferredPromiseVoid() { }
 
-                public static DeferredPromise0 GetOrCreate()
+                public static DeferredPromiseVoid GetOrCreate()
                 {
-                    var promise = _pool.IsNotEmpty ? (DeferredPromise0) _pool.Pop() : new DeferredPromise0();
+                    var promise = _pool.IsNotEmpty ? (DeferredPromiseVoid) _pool.Pop() : new DeferredPromiseVoid();
                     promise.Reset();
                     promise.ResetDepth();
                     return promise;
@@ -410,10 +419,15 @@ namespace Proto.Promises
                 {
                     ReleaseInternal();
                 }
+
+                void Internal.ICancelDelegate.Invoke(Internal.ICancelValueContainer valueContainer)
+                {
+                    CancelDirect(ref valueContainer);
+                }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            internal sealed partial class DeferredPromise<T> : Promise<T>, Internal.ITreeHandleable
+            internal sealed partial class DeferredPromise<T> : Promise<T>, Internal.ITreeHandleable, Internal.ICancelDelegate
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
@@ -422,21 +436,29 @@ namespace Proto.Promises
                     Internal.OnClearPool += () => _pool.Clear();
                 }
 
+                ~DeferredPromise()
+                {
+                    if (_state == State.Pending)
+                    {
+                        // Deferred wasn't handled.
+                        Internal.AddRejectionToUnhandledStack(UnhandledDeferredException.instance, this);
+                    }
+                }
+
                 protected override void Dispose()
                 {
                     base.Dispose();
+                    ++id;
                     if (Config.ObjectPooling == PoolType.All)
                     {
                         _pool.Push(this);
                     }
                 }
 
-                public readonly DeferredInternal<T> deferred;
+                private ushort id;
+                protected override ushort Id { get { return id; } }
 
-                private DeferredPromise()
-                {
-                    deferred = new DeferredInternal<T>(this);
-                }
+                private DeferredPromise() { }
 
                 public static DeferredPromise<T> GetOrCreate()
                 {
@@ -449,6 +471,133 @@ namespace Proto.Promises
                 void Internal.ITreeHandleable.Handle()
                 {
                     ReleaseInternal();
+                }
+
+                void Internal.ICancelDelegate.Invoke(Internal.ICancelValueContainer valueContainer)
+                {
+                    CancelDirect(ref valueContainer);
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            internal sealed partial class DeferredPromiseCancelVoid : Promise, Internal.ITreeHandleable, Internal.ICancelDelegate
+            {
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+
+                static DeferredPromiseCancelVoid()
+                {
+                    Internal.OnClearPool += () => _pool.Clear();
+                }
+
+                ~DeferredPromiseCancelVoid()
+                {
+                    if (_state == State.Pending)
+                    {
+                        // Deferred wasn't handled.
+                        Internal.AddRejectionToUnhandledStack(UnhandledDeferredException.instance, this);
+                    }
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    ++id;
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
+                private CancelationRegistration _cancelationRegistration;
+                private ushort id;
+                protected override ushort Id { get { return id; } }
+
+                private DeferredPromiseCancelVoid() { }
+
+                public static DeferredPromiseCancelVoid GetOrCreate(CancelationToken cancelationToken)
+                {
+                    var promise = _pool.IsNotEmpty ? (DeferredPromiseCancelVoid) _pool.Pop() : new DeferredPromiseCancelVoid();
+                    promise.Reset();
+                    promise.ResetDepth();
+                    promise._cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                    return promise;
+                }
+
+                void Internal.ITreeHandleable.Handle()
+                {
+                    _cancelationRegistration = default(CancelationRegistration);
+                    ReleaseInternal();
+                }
+
+                void Internal.ICancelDelegate.Invoke(Internal.ICancelValueContainer valueContainer)
+                {
+                    CancelDirect(ref valueContainer);
+                }
+
+                protected override void CancelCallbacks()
+                {
+                    _cancelationRegistration.TryUnregister();
+                }
+            }
+
+            [System.Diagnostics.DebuggerNonUserCode]
+            internal sealed partial class DeferredPromiseCancel<T> : Promise<T>, Internal.ITreeHandleable, Internal.ICancelDelegate
+            {
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+
+                static DeferredPromiseCancel()
+                {
+                    Internal.OnClearPool += () => _pool.Clear();
+                }
+
+                ~DeferredPromiseCancel()
+                {
+                    if (_state == State.Pending)
+                    {
+                        // Deferred wasn't handled.
+                        Internal.AddRejectionToUnhandledStack(UnhandledDeferredException.instance, this);
+                    }
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    ++id;
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
+                private CancelationRegistration _cancelationRegistration;
+                private ushort id;
+                protected override ushort Id { get { return id; } }
+
+                private DeferredPromiseCancel() { }
+
+                public static DeferredPromiseCancel<T> GetOrCreate(CancelationToken cancelationToken)
+                {
+                    var promise = _pool.IsNotEmpty ? (DeferredPromiseCancel<T>) _pool.Pop() : new DeferredPromiseCancel<T>();
+                    promise.Reset();
+                    promise.ResetDepth();
+                    promise._cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                    return promise;
+                }
+
+                void Internal.ITreeHandleable.Handle()
+                {
+                    _cancelationRegistration = default(CancelationRegistration);
+                    ReleaseInternal();
+                }
+
+                void Internal.ICancelDelegate.Invoke(Internal.ICancelValueContainer valueContainer)
+                {
+                    CancelDirect(ref valueContainer);
+                }
+
+                protected override void CancelCallbacks()
+                {
+                    _cancelationRegistration.TryUnregister();
                 }
             }
 

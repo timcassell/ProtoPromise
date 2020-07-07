@@ -43,6 +43,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
+        /// Get the type of the result of the asynchronous operation. Returns null if this instance is a non-value <see cref="Promise"/>.
+        /// </summary>
+        public virtual Type ResultType { get { return null; } }
+
+        /// <summary>
         /// Retain this instance. Allows adding more callbacks and prevents uncaught rejections from being thrown until this is released.
         /// <para/>This should always be paired with a call to <see cref="Release"/>
         /// </summary>
@@ -1059,6 +1064,11 @@ namespace Proto.Promises
     public abstract partial class Promise<T> : Promise
     {
         internal Promise() { }
+
+        /// <summary>
+        /// Get the type of the result of the asynchronous operation. Returns typeof(<typeparamref name="T"/>).
+        /// </summary>
+        public override sealed Type ResultType { get { return typeof(T); } }
 
         /// <summary>
         /// Add a progress listener. Returns this.

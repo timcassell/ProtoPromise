@@ -4,6 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0034 // Simplify 'default' expression
+
 using System;
 using System.Collections.Generic;
 using Proto.Utils;
@@ -951,24 +953,23 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise New(Action<Deferred> resolver)
         {
-            var promise = InternalProtected.DeferredPromise0.GetOrCreate();
+            Deferred deferred = Deferred.New();
             try
             {
-                resolver.Invoke(promise.deferred);
+                resolver.Invoke(deferred);
             }
             catch (Exception e)
             {
-                var deferred = promise.deferred;
                 if (deferred.State == State.Pending)
                 {
                     deferred.Reject(e);
                 }
                 else
                 {
-                    Internal.AddRejectionToUnhandledStack(e, promise);
+                    Internal.AddRejectionToUnhandledStack(e, deferred.Promise);
                 }
             }
-            return promise;
+            return deferred.Promise;
         }
 
         /// <summary>
@@ -977,24 +978,23 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver)
         {
-            var promise = InternalProtected.DeferredPromise<T>.GetOrCreate();
+            Promise<T>.Deferred deferred = Promise<T>.Deferred.New();
             try
             {
-                resolver.Invoke(promise.deferred);
+                resolver.Invoke(deferred);
             }
             catch (Exception e)
             {
-                var deferred = promise.deferred;
                 if (deferred.State == State.Pending)
                 {
                     deferred.Reject(e);
                 }
                 else
                 {
-                    Internal.AddRejectionToUnhandledStack(e, promise);
+                    Internal.AddRejectionToUnhandledStack(e, deferred.Promise);
                 }
             }
-            return promise;
+            return deferred.Promise;
         }
 
         /// <summary>
@@ -1003,24 +1003,23 @@ namespace Proto.Promises
         /// </summary>
         public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver)
         {
-            var promise = InternalProtected.DeferredPromise0.GetOrCreate();
+            Deferred deferred = Deferred.New();
             try
             {
-                resolver.Invoke(captureValue, promise.deferred);
+                resolver.Invoke(captureValue, deferred);
             }
             catch (Exception e)
             {
-                var deferred = promise.deferred;
                 if (deferred.State == State.Pending)
                 {
                     deferred.Reject(e);
                 }
                 else
                 {
-                    Internal.AddRejectionToUnhandledStack(e, promise);
+                    Internal.AddRejectionToUnhandledStack(e, deferred.Promise);
                 }
             }
-            return promise;
+            return deferred.Promise;
         }
 
         /// <summary>
@@ -1029,24 +1028,23 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver)
         {
-            var promise = InternalProtected.DeferredPromise<T>.GetOrCreate();
+            Promise<T>.Deferred deferred = Promise<T>.Deferred.New();
             try
             {
-                resolver.Invoke(captureValue, promise.deferred);
+                resolver.Invoke(captureValue, deferred);
             }
             catch (Exception e)
             {
-                var deferred = promise.deferred;
                 if (deferred.State == State.Pending)
                 {
                     deferred.Reject(e);
                 }
                 else
                 {
-                    Internal.AddRejectionToUnhandledStack(e, promise);
+                    Internal.AddRejectionToUnhandledStack(e, deferred.Promise);
                 }
             }
-            return promise;
+            return deferred.Promise;
         }
 
         /// <summary>
@@ -1127,14 +1125,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Deferred"/> object that is linked to and controls the state of a new <see cref="Promise"/>.
+        /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promise"/>.
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promise"/> will be canceled with its reason.
         /// </summary>
-		public static Deferred NewDeferred(CancelationToken cancelationToken = default(CancelationToken))
+        public static Deferred NewDeferred(CancelationToken cancelationToken = default(CancelationToken))
         {
-            var deferred = InternalProtected.DeferredPromise0.GetOrCreate().deferred;
-            deferred.RegisterForCancelation(cancelationToken);
-            return deferred;
+            return Deferred.New(cancelationToken);
         }
 
         /// <summary>
@@ -1143,9 +1139,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T>.Deferred NewDeferred<T>(CancelationToken cancelationToken = default(CancelationToken))
         {
-            var deferred = InternalProtected.DeferredPromise<T>.GetOrCreate().deferred;
-            deferred.RegisterForCancelation(cancelationToken);
-            return deferred;
+            return Promise<T>.Deferred.New(cancelationToken);
         }
 
         /// <summary>
