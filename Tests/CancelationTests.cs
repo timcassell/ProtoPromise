@@ -4,6 +4,9 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0059 // Unnecessary assignment of a value
+
 using System;
 using NUnit.Framework;
 using UnityEngine.TestTools;
@@ -12,20 +15,7 @@ namespace Proto.Promises.Tests
 {
     public class CancelationTests
     {
-        [SetUp]
-        public void Setup()
-        {
-            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = null;
-        }
-
-        [TearDown]
-        public void Teardown()
-        {
-            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
-        }
-
-        public class WhenPendingAPromise
+        public class Source
         {
             [SetUp]
             public void Setup()
@@ -41,104 +31,129 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void MayTransitionToEitherTheFulfilledOrRejectedOrCanceledState()
+            public void NewCancelationSourceIsNotValid()
             {
-                var deferred = Promise.NewDeferred();
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                CancelationSource cancelationSource = new CancelationSource();
+                Assert.IsFalse(cancelationSource.IsValid);
 
-                deferred.Resolve();
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
 
-                Assert.AreEqual(Promise.State.Resolved, deferred.State);
+            [Test]
+            public void CancelationSourceInvalidOperations()
+            {
+                CancelationSource cancelationSource = new CancelationSource();
+                Assert.Throws<InvalidOperationException>(() => { var _ = cancelationSource.Token; });
+                Assert.Throws<InvalidOperationException>(() => { cancelationSource.Cancel(); });
+                Assert.Throws<InvalidOperationException>(() => { cancelationSource.Cancel("Cancel"); });
+                Assert.Throws<InvalidOperationException>(() => { cancelationSource.Dispose(); });
 
-                deferred = Promise.NewDeferred();
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-                deferred.Reject("Fail Value");
-
-                Assert.AreEqual(Promise.State.Rejected, deferred.State);
-
+            [Test]
+            public void CancelationSourceNewIsValid()
+            {
                 CancelationSource cancelationSource = CancelationSource.New();
-                deferred = Promise.NewDeferred(cancelationSource.Token);
+                Assert.IsTrue(cancelationSource.IsValid);
+                cancelationSource.Dispose();
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
 
+            [Test]
+            public void CancelationSourceIsNotValidAfterDispose()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                cancelationSource.Dispose();
+                Assert.IsFalse(cancelationSource.IsValid);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSourceIsValidAfterCancel0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel();
-
-                Assert.AreEqual(Promise.State.Canceled, deferred.State);
-
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                Assert.IsTrue(cancelationSource.IsValid);
+                cancelationSource.Dispose();
 
                 // Clean up.
-                cancelationSource.Dispose();
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
-        }
 
-        public class WhenFulfilledAPromise
-        {
-            [SetUp]
-            public void Setup()
+            [Test]
+            public void CancelationSourceIsValidAfterCancel1()
             {
-                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
-                Promise.Config.UncaughtRejectionHandler = null;
-            }
+                CancelationSource cancelationSource = CancelationSource.New();
+                cancelationSource.Cancel("Canceled");
+                Assert.IsTrue(cancelationSource.IsValid);
+                cancelationSource.Dispose();
 
-            [TearDown]
-            public void Teardown()
-            {
-                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
             }
 
             [Test]
-            public void MustNotTransitionToAnyOtherState()
+            public void CancelationSourceNoCancelationRequestedBeforeCanceled()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                var deferredInt = Promise.NewDeferred<int>(cancelationSource.Token);
+                Assert.IsFalse(cancelationSource.IsCancelationRequested);
+                cancelationSource.Dispose();
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
 
-                int resolved = 0;
-
-                deferred.Promise
-                    .Then(() => { ++resolved; })
-                    .Catch(() => Assert.Fail("Promise was rejected when it was already resolved."))
-                    .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already resolved."));
-                deferredInt.Promise
-                    .Then(v => { ++resolved; })
-                    .Catch(() => Assert.Fail("Promise was rejected when it was already resolved."))
-                    .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already resolved."));
-
-                deferred.Resolve();
-                deferredInt.Resolve(0);
-
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
-                deferred.Reject("Fail Value");
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
-                deferredInt.Reject("Fail Value");
-
+            [Test]
+            public void CancelationSourceCancelationRequestedAfterCanceled0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel();
-
-                Assert.AreEqual(Promise.State.Resolved, deferred.State);
-                Assert.AreEqual(Promise.State.Resolved, deferredInt.State);
-
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
-
-                Assert.AreEqual(2, resolved);
+                Assert.IsTrue(cancelationSource.IsCancelationRequested);
+                cancelationSource.Dispose();
 
                 // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSourceCancelationRequestedAfterCanceled1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                cancelationSource.Cancel("Canceled");
+                Assert.IsTrue(cancelationSource.IsCancelationRequested);
                 cancelationSource.Dispose();
+
+                // Clean up.
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
         }
 
-        public class WhenRejectedAPromise
+        public class Token
         {
             [SetUp]
             public void Setup()
@@ -154,546 +169,814 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void MustNotTransitionToAnyOtherState()
+            public void NewCancelationTokenCannotBeCanceled()
+            {
+                CancelationToken cancelationToken = new CancelationToken();
+                Assert.IsFalse(cancelationToken.CanBeCanceled);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void NewCancelationTokenNoCancelationRequested()
+            {
+                CancelationToken cancelationToken = new CancelationToken();
+                Assert.IsFalse(cancelationToken.IsCancelationRequested);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenNoCancelationRequestedBeforeCanceled()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                var deferredInt = Promise.NewDeferred<int>(cancelationSource.Token);
+                CancelationToken cancelationToken = cancelationSource.Token;
+                Assert.IsFalse(cancelationToken.IsCancelationRequested);
+                cancelationSource.Dispose();
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
 
-                int rejected = 0;
-
-                deferred.Promise
-                    .Then(() => Assert.Fail("Promise was resolved when it was already rejected."))
-                    .Catch(() => { ++rejected; })
-                    .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already rejected."));
-                deferredInt.Promise
-                    .Then(() => Assert.Fail("Promise was resolved when it was already rejected."))
-                    .Catch(() => { ++rejected; })
-                    .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already rejected."));
-
-                deferred.Reject("Fail Value");
-                deferredInt.Reject("Fail Value");
-
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
-                deferred.Resolve();
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
-                deferredInt.Resolve(0);
-
+            [Test]
+            public void CancelationTokenCancelationRequestedAfterCanceled0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
                 cancelationSource.Cancel();
-
-                Assert.AreEqual(Promise.State.Rejected, deferred.State);
-                Assert.AreEqual(Promise.State.Rejected, deferredInt.State);
-
-                Promise.Manager.HandleCompletes();
-
-                Assert.AreEqual(2, rejected);
-
-                // Clean up.
+                Assert.IsTrue(cancelationToken.IsCancelationRequested);
                 cancelationSource.Dispose();
+
+                // Clean up.
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
-        }
-
-        public class WhenCanceledAPromise
-        {
-            [SetUp]
-            public void Setup()
-            {
-                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
-                Promise.Config.UncaughtRejectionHandler = null;
-            }
-
-            [TearDown]
-            public void Teardown()
-            {
-                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
-            }
 
             [Test]
-            public void MustNotTransitionToAnyOtherState()
+            public void CancelationTokenCancelationRequestedAfterCanceled1()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                var deferredInt = Promise.NewDeferred<int>(cancelationSource.Token);
-
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                Assert.AreEqual(Promise.State.Pending, deferredInt.State);
-
-                int canceled = 0;
-
-                deferred.Promise
-                    .Then(() => Assert.Fail("Promise was resolved when it was already canceled."))
-                    .Catch(() => Assert.Fail("Promise was rejected when it was already canceled."))
-                    .CatchCancelation(e => { ++canceled; });
-                deferredInt.Promise
-                    .Then(v => Assert.Fail("Promise was resolved when it was already canceled."))
-                    .Catch(() => Assert.Fail("Promise was rejected when it was already canceled."))
-                    .CatchCancelation(e => { ++canceled; });
-
-                cancelationSource.Cancel("Cancel Value");
-
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
-                deferred.Resolve();
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Resolve - Deferred is not in the pending state.");
-                deferredInt.Resolve(0);
-
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
-                deferred.Reject("Fail Value");
-                LogAssert.Expect(UnityEngine.LogType.Warning, "Deferred.Reject - Deferred is not in the pending state.");
-                deferredInt.Reject("Fail Value");
-
-                Assert.AreEqual(Promise.State.Canceled, deferred.State);
-                Assert.AreEqual(Promise.State.Canceled, deferredInt.State);
-
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
-
-                Assert.AreEqual(2, canceled);
-
-                // Clean up.
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel("Canceled");
+                Assert.IsTrue(cancelationToken.IsCancelationRequested);
                 cancelationSource.Dispose();
+
+                // Clean up.
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
 
             [Test]
-            public void MustHaveAReasonWhichMustNotChange_0()
+            public void CancelationTokenInvalidOperations()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-                deferred.Retain();
-                object cancelation = null;
-                string expected = "Cancel Value";
-
-                Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-                Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-
-                TestHelper.AddCallbacks<int, object, string>(deferred.Promise,
-                    onResolve: resolveAssert,
-                    onReject: failValue => rejectAssert(),
-                    onUnknownRejection: rejectAssert);
-                deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
-                cancelationSource.Cancel(expected);
-                Promise.Manager.HandleCompletes();
-
-                Assert.AreEqual(expected, cancelation);
-
-                TestHelper.AddCallbacks<int, object, string>(deferred.Promise,
-                    onResolve: resolveAssert,
-                    onReject: failValue => rejectAssert(),
-                    onUnknownRejection: rejectAssert);
-                deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
-
-                Assert.Throws<InvalidOperationException>(() =>
-                    cancelationSource.Cancel("Different Cancel Value")
-                );
-
-                deferred.Release();
-                Promise.Manager.HandleCompletes();
-
-                Assert.AreEqual(expected, cancelation);
+                CancelationToken cancelationToken = new CancelationToken();
+                Assert.Throws<InvalidOperationException>(() => { var _ = cancelationToken.CancelationValue; });
+                Assert.Throws<InvalidOperationException>(() => { var _ = cancelationToken.CancelationValueType; });
+                Assert.Throws<InvalidOperationException>(() => { cancelationToken.Register(_ => { }); });
+                Assert.Throws<InvalidOperationException>(() => { cancelationToken.Register(1, (i, _) => { }); });
+                Assert.Throws<InvalidOperationException>(() => { string _; cancelationToken.TryGetCancelationValueAs(out _); });
+                Assert.Throws<InvalidOperationException>(cancelationToken.Retain);
+                Assert.Throws<InvalidOperationException>(cancelationToken.Release);
 
                 // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenFromSourceCanBeCanceled()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                Assert.IsTrue(cancelationToken.CanBeCanceled);
                 cancelationSource.Dispose();
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
-            }
-
-            [Test]
-            public void MustHaveAReasonWhichMustNotChange_1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-                deferred.Retain();
-                object cancelation = null;
-                string expected = "Cancel Value";
-
-                Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-                Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-
-                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
-                    onResolve: _ => resolveAssert(),
-                    onReject: _ => rejectAssert(),
-                    onUnknownRejection: rejectAssert);
-                deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
-                cancelationSource.Cancel(expected);
-                Promise.Manager.HandleCompletes();
-
-                Assert.AreEqual(expected, cancelation);
-
-                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
-                    onResolve: _ => resolveAssert(),
-                    onReject: _ => rejectAssert(),
-                    onUnknownRejection: rejectAssert);
-                deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
-
-                Assert.Throws<InvalidOperationException>(() =>
-                    cancelationSource.Cancel("Different Cancel Value")
-                );
-
-                deferred.Release();
-                Promise.Manager.HandleCompletes();
-
-                Assert.AreEqual(expected, cancelation);
 
                 // Clean up.
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
-        }
 
-#if PROMISE_DEBUG
-        [Test]
-        public void IfOnCanceledIsNullThrow()
-        {
-            CancelationSource cancelationSource1 = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource1.Token);
-
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-            Assert.Throws<ArgumentNullException>(() =>
+            [Test]
+            public void CancelationTokenFromSourceCannotBeCanceledAfterSourceIsDisposed()
             {
-                deferred.Promise.CatchCancelation(default(Action<ReasonContainer>));
-            });
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Dispose();
+                Assert.IsFalse(cancelationToken.CanBeCanceled);
 
-            cancelationSource1.Cancel();
-
-            CancelationSource cancelationSource2 = CancelationSource.New();
-            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
-            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
-
-            Assert.Throws<ArgumentNullException>(() =>
-            {
-                deferredInt.Promise.CatchCancelation(default(Action<ReasonContainer>));
-            });
-
-            cancelationSource2.Cancel(0);
-
-            // Clean up.
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-#endif
-
-        public class IfOnCanceledIsAFunction
-        {
-            [SetUp]
-            public void Setup()
-            {
-                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
-                Promise.Config.UncaughtRejectionHandler = null;
-            }
-
-            [TearDown]
-            public void Teardown()
-            {
-                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
             }
 
             [Test]
-            public void ItMustBeCalledAfterPromiseIsCanceledWithPromisesReasonAsItsFirstArgument()
+            public void CancelationTokenFromSourceCancelationIsRequested0()
             {
-                string cancelReason = "Cancel value";
-                var canceled = false;
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                deferred.Promise.CatchCancelation(r =>
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel();
+                Assert.IsTrue(cancelationToken.IsCancelationRequested);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenFromSourceCancelationIsRequested1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel("Cancel");
+                Assert.IsTrue(cancelationToken.IsCancelationRequested);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenFromSourceCancelationIsNotRequestedAfterSourceIsDisposed0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
+                Assert.IsFalse(cancelationToken.IsCancelationRequested);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenFromSourceCancelationIsNotRequestedAfterSourceIsDisposed1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel("Cancel");
+                cancelationSource.Dispose();
+                Assert.IsFalse(cancelationToken.IsCancelationRequested);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenValueTypeIsNull0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel();
+                Assert.IsNull(cancelationToken.CancelationValueType);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenValueTypeIsNull1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel(default(string));
+                Assert.IsNull(cancelationToken.CancelationValueType);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenValueTypeIsString()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel("Cancel");
+                Assert.IsTrue(cancelationToken.CancelationValueType == typeof(string));
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenValueIsNull0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel();
+                Assert.IsNull(cancelationToken.CancelationValue);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenValueIsNull1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel(default(string));
+                Assert.IsNull(cancelationToken.CancelationValue);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenValueMatchesCancelValue()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                string cancelValue = "Cancel";
+                cancelationSource.Cancel(cancelValue);
+                Assert.AreEqual(cancelValue, cancelationToken.CancelationValue);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenNullValueCannotBeGottenAsString0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel();
+                string val;
+                Assert.IsFalse(cancelationToken.TryGetCancelationValueAs(out val));
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenNullValueCannotBeGottenAsString1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel(default(string));
+                string val;
+                Assert.IsFalse(cancelationToken.TryGetCancelationValueAs(out val));
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenStringValueCanBeGottenAsString()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel("Cancel");
+                string val;
+                Assert.IsTrue(cancelationToken.TryGetCancelationValueAs(out val));
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RetainedCancelationTokenFromSourceCanBeCanceledAfterSourceIsDisposed()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationToken.Retain();
+                cancelationSource.Dispose();
+                Assert.IsTrue(cancelationToken.CanBeCanceled);
+                cancelationToken.Release();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void ReleasedCancelationTokenFromSourceCanBeCanceledAfterSourceIsDisposed()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationToken.Retain();
+                cancelationSource.Dispose();
+                cancelationToken.Release();
+                Assert.IsFalse(cancelationToken.CanBeCanceled);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RetainedCancelationTokenFromSourceCancelationIsRequestedAfterSourceIsDisposed0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel();
+                cancelationToken.Retain();
+                cancelationSource.Dispose();
+                Assert.IsTrue(cancelationToken.IsCancelationRequested);
+                cancelationToken.Release();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RetainedCancelationTokenFromSourceCancelationIsRequestedAfterSourceIsDisposed1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel("Cancel");
+                cancelationToken.Retain();
+                cancelationSource.Dispose();
+                Assert.IsTrue(cancelationToken.IsCancelationRequested);
+                cancelationToken.Release();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void ReleasedCancelationTokenFromSourceCancelationIsNotRequestedAfterSourceIsDisposed0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel();
+                cancelationToken.Retain();
+                cancelationSource.Dispose();
+                cancelationToken.Release();
+                Assert.IsFalse(cancelationToken.IsCancelationRequested);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void ReleasedCancelationTokenFromSourceCancelationIsNotRequestedAfterSourceIsDisposed1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel("Cancel");
+                cancelationToken.Retain();
+                cancelationSource.Dispose();
+                cancelationToken.Release();
+                Assert.IsFalse(cancelationToken.IsCancelationRequested);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenThrowIfCancelationRequested0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel();
+                bool caughtException = false;
+                try
                 {
-                    Assert.AreEqual(cancelReason, r.Value);
-                    canceled = true;
+                    cancelationToken.ThrowIfCancelationRequested();
+                }
+                catch (CancelException)
+                {
+                    caughtException = true;
+                }
+                cancelationSource.Dispose();
+                Assert.IsTrue(caughtException);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenThrowIfCancelationRequested1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel("Cancel");
+                bool caughtException = false;
+                try
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                }
+                catch (CancelException)
+                {
+                    caughtException = true;
+                }
+                cancelationSource.Dispose();
+                Assert.IsTrue(caughtException);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+        }
+
+        public class Registration
+        {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = null;
+            }
+
+            [TearDown]
+            public void Teardown()
+            {
+                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            }
+
+            [Test]
+            public void NewCancelationRegistrationIsNotRegistered()
+            {
+                CancelationRegistration cancelationRegistration = new CancelationRegistration();
+                Assert.IsFalse(cancelationRegistration.IsRegistered);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RegistrationFromCancelationTokenIsRegistered0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(_ => { });
+                Assert.IsTrue(cancelationRegistration.IsRegistered);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RegistrationFromCancelationTokenIsRegistered1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, (i, _) => { });
+                Assert.IsTrue(cancelationRegistration.IsRegistered);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RegistrationFromCancelationTokenIsNotRegisteredAfterInvoked0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(_ => { });
+                cancelationSource.Cancel();
+                Assert.IsFalse(cancelationRegistration.IsRegistered);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RegistrationFromCancelationTokenIsNotRegisteredAfterInvoked1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, (i, _) => { });
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RegistrationFromCancelationTokenIsNotRegisteredAfterInvoked2()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                CancelationRegistration cancelationRegistration = new CancelationRegistration();
+                cancelationRegistration = cancelationToken.Register(_ => Assert.IsFalse(cancelationRegistration.IsRegistered));
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RegistrationFromCancelationTokenIsNotRegisteredAfterInvoked3()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                CancelationRegistration cancelationRegistration = new CancelationRegistration();
+                cancelationRegistration = cancelationToken.Register(0, (i, _) => Assert.IsFalse(cancelationRegistration.IsRegistered));
+                cancelationSource.Cancel();
+                Assert.IsFalse(cancelationRegistration.IsRegistered);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RegistrationFromCancelationTokenIsNotRegisteredAfterSourceIsDisposed0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(_ => { });
+                cancelationSource.Dispose();
+                Assert.IsFalse(cancelationRegistration.IsRegistered);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RegistrationFromCancelationTokenIsNotRegisteredAfterSourceIsDisposed1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, (i, _) => { });
+                cancelationSource.Dispose();
+                Assert.IsFalse(cancelationRegistration.IsRegistered);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenRegisterCallbackIsInvoked0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                cancelationToken.Register(_ => invoked = true);
+                cancelationSource.Cancel();
+                Assert.IsTrue(invoked);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenRegisterCallbackIsInvoked1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                cancelationToken.Register(0, (i, _) => invoked = true);
+                cancelationSource.Cancel();
+                Assert.IsTrue(invoked);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenRegisterCallbackIsInvoked2()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                cancelationToken.Register(_ => invoked = true);
+                cancelationSource.Cancel("Cancel");
+                Assert.IsTrue(invoked);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenRegisterCallbackIsInvoked3()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                cancelationToken.Register(0, (i, _) => invoked = true);
+                cancelationSource.Cancel("Cancel");
+                Assert.IsTrue(invoked);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationRegistrationUnregisterCallbackIsNotInvoked0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(_ => invoked = true);
+                cancelationRegistration.Unregister();
+                cancelationSource.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationRegistrationUnregisterCallbackIsNotInvoked1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, (i, _) => invoked = true);
+                cancelationRegistration.Unregister();
+                cancelationSource.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationRegistrationUnregisterCallbackIsNotInvoked2()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                CancelationRegistration cancelationRegistration = new CancelationRegistration();
+                cancelationToken.Register(_ => cancelationRegistration.Unregister());
+                cancelationRegistration = cancelationToken.Register(_ => invoked = true);
+                cancelationSource.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationRegistrationUnregisterCallbackIsNotInvoked3()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                CancelationRegistration cancelationRegistration = new CancelationRegistration();
+                cancelationToken.Register(_ => cancelationRegistration.Unregister());
+                cancelationRegistration = cancelationToken.Register(0, (i, _) => invoked = true);
+                cancelationSource.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationTokenRegisterCaptureVariableMatches()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                string expected = "Captured";
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(expected, (cv, _) => Assert.AreEqual(expected, cv));
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RegisteredCallbacksAreInvokedAfterSourceIsDisposed()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                // This should never be done in practice!
+                cancelationToken.Register(_ => cancelationSource.Dispose());
+                cancelationToken.Register(_ => invoked = true);
+                cancelationSource.Cancel();
+                Assert.IsTrue(invoked);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RegisteredCallbackIsRegisteredAfterSourceIsDisposedDuringInvocation()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                // This should never be done in practice!
+                CancelationRegistration cancelationRegistration = new CancelationRegistration();
+                cancelationToken.Register(_ =>
+                {
+                    cancelationSource.Dispose();
+                    Assert.IsTrue(cancelationRegistration.IsRegistered);
                 });
-                cancelationSource.Cancel(cancelReason);
-                Promise.Manager.HandleCompletes();
-
-                Assert.True(canceled);
-
-                // Clean up.
-                cancelationSource.Dispose();
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
-            }
-
-            [Test]
-            public void ItMustNotBeCalledBeforePromiseIsCanceled()
-            {
-                string cancelReason = "Cancel value";
-                var canceled = false;
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                deferred.Promise.CatchCancelation(r =>
-                {
-                    Assert.AreEqual(cancelReason, r.Value);
-                    canceled = true;
-                });
-                Promise.Manager.HandleCompletes();
-
-                Assert.False(canceled);
-
-                cancelationSource.Cancel(cancelReason);
-                Promise.Manager.HandleCompletes();
-
-                Assert.True(canceled);
-
-                // Clean up.
-                cancelationSource.Dispose();
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
-            }
-
-            [Test]
-            public void ItMustNotBeCalledMoreThanOnce()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                deferred.Retain();
-                var cancelCount = 0;
-                deferred.Promise.CatchCancelation(r => ++cancelCount);
-                cancelationSource.Cancel("Cancel value");
-                Promise.Manager.HandleCompletes();
-
-                Assert.Throws<InvalidOperationException>(() =>
-                    cancelationSource.Cancel("Cancel value")
-                );
-
-                deferred.Release();
-                Promise.Manager.HandleCompletes();
-
-                Assert.AreEqual(1, cancelCount);
-
-                // Clean up.
-                cancelationSource.Dispose();
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
-            }
-        }
-
-        [Test]
-        public void OnCanceledMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-            bool canceled = false;
-            deferred.Promise.CatchCancelation(e => canceled = true);
-            cancelationSource.Cancel("Cancel value");
-            Assert.False(canceled);
-
-
-            Promise.Manager.HandleCompletes();
-            Assert.True(canceled);
-
-            // Clean up.
-            cancelationSource.Dispose();
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        public class CatchCancelationMayBeCalledMultipleTimesOnTheSamePromise
-        {
-            [SetUp]
-            public void Setup()
-            {
-                TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
-                Promise.Config.UncaughtRejectionHandler = null;
-            }
-
-            [TearDown]
-            public void Teardown()
-            {
-                Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
-            }
-
-            [Test]
-            public void IfWhenPromiseCancelationIsCanceledAllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-                int counter = 0;
-
-                deferred.Promise.CatchCancelation(e => Assert.AreEqual(0, counter++));
-                deferred.Promise.CatchCancelation(e => Assert.AreEqual(1, counter++));
-                deferred.Promise.CatchCancelation(e => Assert.AreEqual(2, counter++));
-
+                cancelationRegistration = cancelationToken.Register(_ => { });
                 cancelationSource.Cancel();
-                Promise.Manager.HandleCompletes();
-
-                Assert.AreEqual(3, counter);
 
                 // Clean up.
-                cancelationSource.Dispose();
                 GC.Collect();
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
-        }
-
-        [Test]
-        public void IfPromiseIsCanceledOnResolveAndOnRejectedMustNotBeInvoked()
-        {
-            CancelationSource cancelationSource1 = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource1.Token);
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-            CancelationSource cancelationSource2 = CancelationSource.New();
-            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
-            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
-
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been canceled.");
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been canceled.");
-
-            TestHelper.AddCallbacks<int, object, string>(deferred.Promise,
-                onResolve: resolveAssert,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert);
-            TestHelper.AddCallbacks<int, bool, object, string>(deferredInt.Promise,
-                onResolve: _ => resolveAssert(),
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert);
-
-            cancelationSource1.Cancel();
-            cancelationSource2.Cancel();
-            Promise.Manager.HandleCompletes();
-
-            // Clean up.
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void CancelationsDoNotPropagateToRoot()
-        {
-            var deferred = Promise.NewDeferred();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-            CancelationSource cancelationSource = CancelationSource.New();
-
-            bool resolved = false;
-
-            deferred.Promise
-                .Then(() => resolved = true)
-                .Then(_ => Assert.Fail("Promise was resolved when it should have been canceled."), cancelationSource.Token)
-                .Finally(cancelationSource.Dispose);
-
-            cancelationSource.Cancel();
-            deferred.Resolve();
-            Promise.Manager.HandleCompletes();
-
-            Assert.AreEqual(true, resolved);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void CancelationsPropagateToBranches()
-        {
-            Promise.Config.UncaughtRejectionHandler = UnityEngine.Debug.LogException;
-
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-            bool invoked = false;
-
-            deferred.Promise
-                .Then(() => { })
-                .CatchCancelation(e => invoked = true);
-
-            cancelationSource.Cancel();
-            Promise.Manager.HandleCompletes();
-
-            Assert.AreEqual(true, invoked);
-
-            // Clean up.
-            cancelationSource.Dispose();
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void IfPromiseIsCanceledAndAPreviousPromiseIsAlsoCanceledPromiseMustBeCanceledWithTheInitialCancelReason()
-        {
-            var deferred = Promise.NewDeferred();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-            bool invoked = false;
-
-            object cancelValue = "Cancel";
-            CancelationSource cancelationSource = CancelationSource.New();
-
-            deferred.Promise
-                .Then(() => { }, cancelationSource.Token)
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(cancelValue, reason.Value);
-                    invoked = true;
-                })
-                .Finally(cancelationSource.Dispose);
-
-            cancelationSource.Cancel(cancelValue);
-            deferred.Resolve();
-            Promise.Manager.HandleCompletes();
-
-            Assert.AreEqual(true, invoked);
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void APromiseMayBeCanceledWhenItIsPending()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            string cancelValue = "Cancel";
-
-            Promise.Resolved()
-                .Then(() => cancelationSource.Cancel(cancelValue))
-                .Then(() => { }, cancelationSource.Token)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
-                    () => Assert.Fail("Promise was rejected when it should have been canceled."))
-                .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value))
-                .Finally(cancelationSource.Dispose);
-
-            Promise.Manager.HandleCompletes();
-
-            // Clean up.
-            Promise.Manager.HandleCompletesAndProgress();
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
         }
     }
 }

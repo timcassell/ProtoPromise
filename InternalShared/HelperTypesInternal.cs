@@ -4,6 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0034 // Simplify 'default' expression
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -349,28 +351,51 @@ namespace Proto.Promises
                 }
             }
 
-            public void Unregister(uint order)
-            {
-                _registeredCallbacks.RemoveAt(IndexOf(order));
-            }
-
-            public bool TryUnregister(uint order)
+            public bool IsRegistered(ushort tokenId, uint order)
             {
                 int index = IndexOf(order);
-                if (index >= 0)
+                return index >= 0 && (tokenId == TokenId & _registeredCallbacks[index].callback != null);
+            }
+
+            public void Unregister(uint order)
+            {
+                int index = IndexOf(order);
+                RegisteredDelegate del = _registeredCallbacks[index];
+                if (_isInvoking)
+                {
+                    _registeredCallbacks[index] = new RegisteredDelegate(del.order);
+                }
+                else
                 {
                     _registeredCallbacks.RemoveAt(index);
-                    return true;
+                }
+                del.callback.Dispose();
+            }
+
+            public bool TryUnregister(ushort tokenId, uint order)
+            {
+                int index = IndexOf(order);
+                if (tokenId == TokenId & index >= 0)
+                {
+                    RegisteredDelegate del = _registeredCallbacks[index];
+                    if (!_isInvoking)
+                    {
+                        _registeredCallbacks.RemoveAt(index);
+                        del.callback.Dispose();
+                        return true;
+                    }
+                    if (del.callback != null)
+                    {
+                        _registeredCallbacks[index] = new RegisteredDelegate(del.order);
+                        del.callback.Dispose();
+                        return true;
+                    }
                 }
                 return false;
             }
 
-            public int IndexOf(uint order)
+            private int IndexOf(uint order)
             {
-                if (_isDisposed | ValueContainer != null)
-                {
-                    return -1;
-                }
                 return _registeredCallbacks.BinarySearch(new RegisteredDelegate(order));
             }
 
@@ -390,16 +415,21 @@ namespace Proto.Promises
             private void InvokeCallbacks()
             {
                 // Retain in case this is disposed while executing callbacks.
-                Retain();
+                RetainInternal();
                 Unlink();
                 _isInvoking = true;
-                foreach (var del in _registeredCallbacks)
+                for (int i = 0, max = _registeredCallbacks.Count; i < max; ++i)
                 {
-                    del.callback.Invoke(ValueContainer);
+                    RegisteredDelegate del = _registeredCallbacks[i];
+                    _registeredCallbacks[i] = default(RegisteredDelegate);
+                    if (del.callback != null)
+                    {
+                        del.callback.Invoke(ValueContainer);
+                    }
                 }
                 _registeredCallbacks.Clear();
                 _isInvoking = false;
-                Release();
+                ReleaseInternal();
             }
 
             public void Retain()
@@ -409,7 +439,7 @@ namespace Proto.Promises
                 {
                     throw new OverflowException();
                 }
-                ++_retainCounter;
+                RetainInternal();
             }
 
             public void Release()
@@ -418,6 +448,16 @@ namespace Proto.Promises
                 {
                     throw new InvalidOperationException("You must call Retain before you call Release!", GetFormattedStacktrace(1));
                 }
+                ReleaseInternal();
+            }
+
+            private void RetainInternal()
+            {
+                ++_retainCounter;
+            }
+
+            private void ReleaseInternal()
+            {
                 // If SourceId is different from TokenId, Dispose was called while this was retained.
                 if (--_retainCounter == 0 & SourceId != TokenId)
                 {
@@ -436,7 +476,10 @@ namespace Proto.Promises
                 {
                     foreach (var del in _registeredCallbacks)
                     {
-                        del.callback.Dispose();
+                        if (del.callback != null)
+                        {
+                            del.callback.Dispose();
+                        }
                     }
                     _registeredCallbacks.Clear();
                 }

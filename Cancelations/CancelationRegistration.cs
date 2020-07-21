@@ -10,6 +10,7 @@ namespace Proto.Promises
     {
         private readonly Internal.CancelationRef _ref;
         private readonly uint _order;
+        private readonly ushort _id;
 
         /// <summary>
         /// FOR INTERNAL USE ONLY!
@@ -17,17 +18,18 @@ namespace Proto.Promises
         internal CancelationRegistration(Internal.CancelationRef cancelationRef, Internal.ICancelDelegate cancelDelegate)
         {
             _ref = cancelationRef;
+            _id = _ref.TokenId;
             _order = _ref.Register(cancelDelegate);
         }
 
         /// <summary>
-        /// Get whether the callback is registered and the associated <see cref="CancelationToken"/> has not been canceled.
+        /// Get whether the callback is registered and has not been invoked.
         /// </summary>
         public bool IsRegistered
         {
             get
             {
-                return _ref != null && _ref.IndexOf(_order) >= 0;
+                return _ref != null && _ref.IsRegistered(_id, _order);
             }
         }
 
@@ -46,14 +48,14 @@ namespace Proto.Promises
         /// <summary>
         /// Try to unregister the callback from the associated <see cref="CancelationToken"/>. Returns true if the callback was successfully unregistered, false otherwise.
         /// </summary>
-        /// <returns>true if the callback was previously registered, false otherwise</returns>
+        /// <returns>true if the callback was previously registered and not yet invoked, false otherwise</returns>
         public bool TryUnregister()
         {
             if (_ref == null)
             {
                 return false;
             }
-            return _ref.TryUnregister(_order);
+            return _ref.TryUnregister(_id, _order);
         }
 
         public bool Equals(CancelationRegistration other)
