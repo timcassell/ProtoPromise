@@ -6,6 +6,8 @@
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
+using System;
+
 namespace Proto.Promises
 {
     partial class Promise

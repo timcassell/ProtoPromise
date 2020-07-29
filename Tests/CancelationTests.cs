@@ -977,6 +977,51 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
+
+            [Test]
+            public void RegisteredCallbackExceptionPropagatesToCancelCaller()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationToken.Register(_ =>
+                {
+                    throw new Exception();
+                });
+                Assert.Throws<AggregateException>(cancelationSource.Cancel);
+                cancelationSource.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void RegisteredCallbacksAreInvokedEvenWhenAnExceptionOccurs()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                int callbackCount = 0;
+                cancelationToken.Register(_ => ++callbackCount);
+                cancelationToken.Register(_ =>
+                {
+                    ++callbackCount;
+                    throw new Exception();
+                });
+                cancelationToken.Register(_ => ++callbackCount);
+                try
+                {
+                    cancelationSource.Cancel();
+                }
+                catch (Exception) { }
+                cancelationSource.Dispose();
+                Assert.AreEqual(3, callbackCount);
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
         }
     }
 }

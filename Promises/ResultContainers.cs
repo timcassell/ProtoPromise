@@ -20,6 +20,9 @@ namespace Proto.Promises
         private readonly ulong _id;
 #endif
 
+        /// <summary>
+        /// FOR INTERNAL USE ONLY!
+        /// </summary>
         internal ReasonContainer(Internal.IValueContainer valueContainer)
         {
             _valueContainer = valueContainer;
@@ -91,6 +94,9 @@ namespace Proto.Promises
             private readonly ulong _id;
 #endif
 
+            /// <summary>
+            /// FOR INTERNAL USE ONLY!
+            /// </summary>
             internal ResultContainer(Internal.IValueContainer valueContainer)
             {
                 _valueContainer = valueContainer;
@@ -206,6 +212,9 @@ namespace Proto.Promises
             private readonly ulong _id;
 #endif
 
+            /// <summary>
+            /// FOR INTERNAL USE ONLY!
+            /// </summary>
             internal ResultContainer(Internal.IValueContainer valueContainer)
             {
                 _valueContainer = valueContainer;

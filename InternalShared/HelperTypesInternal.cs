@@ -106,25 +106,17 @@ namespace Proto.Promises
 
             void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
-                _valueContainer = valueContainer;
-                _valueContainer.Retain();
-                Invoke();
+                // Don't catch exceptions from cancelation token callbacks.
+                Invoke(_valueContainer);
+                _ClearCurrentInvoker();
             }
 
             void ITreeHandleable.Handle()
             {
-                Invoke();
-            }
-
-            private void Invoke()
-            {
-                _SetCurrentInvoker(this);
-                var callback = _onCanceled;
                 var container = _valueContainer;
-                Dispose();
                 try
                 {
-                    callback.Invoke(new ReasonContainer(container));
+                    Invoke(container);
                 }
                 catch (Exception e)
                 {
@@ -132,6 +124,14 @@ namespace Proto.Promises
                 }
                 container.Release();
                 _ClearCurrentInvoker();
+            }
+
+            private void Invoke(IValueContainer container)
+            {
+                _SetCurrentInvoker(this);
+                var callback = _onCanceled;
+                Dispose();
+                callback.Invoke(new ReasonContainer(container));
             }
 
             public void Dispose()
@@ -205,26 +205,17 @@ namespace Proto.Promises
 
             void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
-                _valueContainer = valueContainer;
-                _valueContainer.Retain();
-                Invoke();
+                // Don't catch exceptions from cancelation token callbacks.
+                Invoke(_valueContainer);
+                _ClearCurrentInvoker();
             }
 
             void ITreeHandleable.Handle()
             {
-                Invoke();
-            }
-
-            private void Invoke()
-            {
-                _SetCurrentInvoker(this);
-                var value = _capturedValue;
-                var callback = _onCanceled;
                 var container = _valueContainer;
-                Dispose();
                 try
                 {
-                    callback.Invoke(value, new ReasonContainer(container));
+                    Invoke(container);
                 }
                 catch (Exception e)
                 {
@@ -232,6 +223,15 @@ namespace Proto.Promises
                 }
                 container.Release();
                 _ClearCurrentInvoker();
+            }
+
+            private void Invoke(IValueContainer container)
+            {
+                _SetCurrentInvoker(this);
+                var capturedValue = _capturedValue;
+                var callback = _onCanceled;
+                Dispose();
+                callback.Invoke(capturedValue, new ReasonContainer(container));
             }
 
             public void Dispose()
@@ -416,20 +416,37 @@ namespace Proto.Promises
             {
                 // Retain in case this is disposed while executing callbacks.
                 RetainInternal();
-                Unlink();
                 _isInvoking = true;
+                Unlink();
+                List<Exception> exceptions = null;
                 for (int i = 0, max = _registeredCallbacks.Count; i < max; ++i)
                 {
                     RegisteredDelegate del = _registeredCallbacks[i];
                     _registeredCallbacks[i] = default(RegisteredDelegate);
                     if (del.callback != null)
                     {
-                        del.callback.Invoke(ValueContainer);
+                        try
+                        {
+                            del.callback.Invoke(ValueContainer);
+                        }
+                        catch (Exception e)
+                        {
+                            if (exceptions == null)
+                            {
+                                exceptions = new List<Exception>();
+                            }
+                            exceptions.Add(e);
+                        }
                     }
                 }
                 _registeredCallbacks.Clear();
                 _isInvoking = false;
                 ReleaseInternal();
+                if (exceptions != null)
+                {
+                    // Propagate exceptions to caller as aggregate.
+                    throw new AggregateException(exceptions);
+                }
             }
 
             public void Retain()
