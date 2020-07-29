@@ -30,7 +30,7 @@ namespace Proto.Promises
         protected bool _wasWaitedOn;
 
         Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
-        protected virtual ushort Id { get; }
+        protected virtual ushort Id { get { return 0; } }
 
         ~Promise()
         {

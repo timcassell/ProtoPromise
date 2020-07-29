@@ -33,11 +33,13 @@ namespace Proto.Promises
         static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames);
 
         static partial void SetCreatedStacktrace(Internal.ITraceable traceable, int skipFrames);
-        static partial void SetCreatedAndRejectedStacktrace(Internal.IRejectValueContainer unhandledException, int rejectSkipFrames, Internal.ITraceable traceable);
         partial void SetNotDisposed();
         static partial void SetCurrentInvoker(Internal.ITraceable current);
         static partial void ClearCurrentInvoker();
 #if PROMISE_DEBUG
+        // TODO: Check thread at all public access.
+        //private static readonly System.Threading.Thread initialThread = System.Threading.Thread.CurrentThread;
+
         private static readonly object disposedObject = DisposedChecker.instance;
 
         private static int idCounter;
@@ -64,11 +66,6 @@ namespace Proto.Promises
         static partial void SetCreatedStacktrace(Internal.ITraceable traceable, int skipFrames)
         {
             Internal.SetCreatedStacktrace(traceable, skipFrames + 1);
-        }
-
-        static partial void SetCreatedAndRejectedStacktrace(Internal.IRejectValueContainer unhandledException, int rejectSkipFrames, Internal.ITraceable traceable)
-        {
-            Internal.SetCreatedAndRejectedStacktrace(unhandledException, rejectSkipFrames + 1, traceable);
         }
 
         partial void ValidateReturn(Promise other)
@@ -115,7 +112,7 @@ namespace Proto.Promises
             const string argName = "progress";
             if (value < 0f || value > 1f || float.IsNaN(value))
             {
-                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1.");
+                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1.", Internal.GetFormattedStacktrace(skipFrames + 1));
             }
         }
 

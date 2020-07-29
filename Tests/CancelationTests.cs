@@ -710,6 +710,7 @@ namespace Proto.Promises.Tests
                 CancelationToken cancelationToken = cancelationSource.Token;
                 CancelationRegistration cancelationRegistration = cancelationToken.Register(0, (i, _) => { });
                 cancelationSource.Cancel();
+                Assert.IsFalse(cancelationRegistration.IsRegistered);
                 cancelationSource.Dispose();
 
                 // Clean up.
@@ -742,7 +743,6 @@ namespace Proto.Promises.Tests
                 CancelationRegistration cancelationRegistration = new CancelationRegistration();
                 cancelationRegistration = cancelationToken.Register(0, (i, _) => Assert.IsFalse(cancelationRegistration.IsRegistered));
                 cancelationSource.Cancel();
-                Assert.IsFalse(cancelationRegistration.IsRegistered);
                 cancelationSource.Dispose();
 
                 // Clean up.
@@ -929,7 +929,7 @@ namespace Proto.Promises.Tests
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 string expected = "Captured";
-                CancelationRegistration cancelationRegistration = cancelationToken.Register(expected, (cv, _) => Assert.AreEqual(expected, cv));
+                cancelationToken.Register(expected, (cv, _) => Assert.AreEqual(expected, cv));
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
 
