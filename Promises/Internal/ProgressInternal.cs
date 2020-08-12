@@ -106,6 +106,7 @@ namespace Proto.Promises
         static partial void ClearPooledProgress();
 
 #if !PROMISE_PROGRESS
+#pragma warning disable IDE0060 // Remove unused parameter
         protected void ReportProgress(float progress) { }
 
         static protected void ThrowProgressException(int skipFrames)
@@ -118,15 +119,16 @@ namespace Proto.Promises
             ThrowProgressException(skipFrames + 1);
         }
 
-        protected void SubscribeProgress(object onProgress)
+        protected void SubscribeProgress(object onProgress, object cancelationToken)
         {
             ThrowProgressException(2);
         }
 
-        protected void SubscribeProgress(object capturedValue, object onProgress)
+        protected void SubscribeProgress(object capturedValue, object onProgress, object cancelationToken)
         {
             ThrowProgressException(2);
         }
+#pragma warning restore IDE0060 // Remove unused parameter
 #else
         private ValueLinkedStackZeroGC<InternalProtected.IProgressListener> _progressListeners;
         private InternalProtected.UnsignedFixed32 _waitDepthAndProgress;
@@ -203,14 +205,14 @@ namespace Proto.Promises
             return (previous = _valueOrPrevious as Promise) != null;
         }
 
-        protected void SubscribeProgress(Action<float> onProgress)
+        protected void SubscribeProgress(Action<float> onProgress, CancelationToken cancelationToken)
         {
             ValidateOperation(this, 2);
             ValidateArgument(onProgress, "onProgress", 2);
 
             if (_state == State.Pending)
             {
-                InternalProtected.IProgressListener progressListener = InternalProtected.ProgressDelegate.GetOrCreate(onProgress, this);
+                InternalProtected.IProgressListener progressListener = InternalProtected.ProgressDelegate.GetOrCreate(onProgress, this, cancelationToken);
 
                 // Directly add to listeners for this promise.
                 // Sets promise to the one this is waiting on. Returns false if not waiting on another promise.
@@ -232,14 +234,14 @@ namespace Proto.Promises
             // Don't report progress if the promise is canceled or rejected.
         }
 
-        protected void SubscribeProgress<TCapture>(TCapture capturedValue, Action<TCapture, float> onProgress)
+        protected void SubscribeProgress<TCapture>(TCapture capturedValue, Action<TCapture, float> onProgress, CancelationToken cancelationToken)
         {
             ValidateOperation(this, 2);
             ValidateArgument(onProgress, "onProgress", 2);
 
             if (_state == State.Pending)
             {
-                InternalProtected.IProgressListener progressListener = InternalProtected.ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, this);
+                InternalProtected.IProgressListener progressListener = InternalProtected.ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, this, cancelationToken);
 
                 // Directly add to listeners for this promise.
                 // Sets promise to the one this is waiting on. Returns false if not waiting on another promise.
@@ -450,7 +452,7 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public abstract class ProgressDelegateBase : IProgressListener, Internal.ITreeHandleable, IInvokable, Internal.ITraceable
+            public abstract class ProgressDelegateBase : IProgressListener, Internal.ITreeHandleable, IInvokable, Internal.ITraceable, Internal.ICancelDelegate
             {
 #if PROMISE_DEBUG
                 Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
@@ -464,10 +466,11 @@ namespace Proto.Promises
                 private bool _done;
                 private bool _suspended;
                 private bool _canceled;
+                private CancelationRegistration _cancelationRegistration;
 
                 protected ProgressDelegateBase() { }
 
-                protected void Reset(Promise owner)
+                protected void Reset(Promise owner, CancelationToken cancelationToken)
                 {
                     _owner = owner;
                     _handling = false;
@@ -476,6 +479,10 @@ namespace Proto.Promises
                     _canceled = false;
                     _current = default(UnsignedFixed32);
                     SetCreatedStacktrace(this, 4);
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        _cancelationRegistration = cancelationToken.RegisterInternal(this);
+                    }
                 }
 
                 protected abstract void Invoke(float progress);
@@ -596,6 +603,7 @@ namespace Proto.Promises
 
                 void Internal.ITreeHandleable.Handle()
                 {
+                    _cancelationRegistration.TryUnregister();
                     InvokeAndCatch(1f);
                     _retainCounter = 0;
                     _canceled = true;
@@ -605,7 +613,16 @@ namespace Proto.Promises
                 protected virtual void Dispose()
                 {
                     _owner = null;
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
+
+                void Internal.ICancelDelegate.Invoke(Internal.ICancelValueContainer valueContainer)
+                {
+                    // TODO: Remove this from the owner's progress listeners and dispose.
+                    _canceled = true;
+                }
+
+                void Internal.ICancelDelegate.Dispose() { }
 
                 void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue) { throw new System.InvalidOperationException(); }
                 void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
@@ -635,11 +652,11 @@ namespace Proto.Promises
 
                 private ProgressDelegate() { }
 
-                public static ProgressDelegate GetOrCreate(Action<float> onProgress, Promise owner)
+                public static ProgressDelegate GetOrCreate(Action<float> onProgress, Promise owner, CancelationToken cancelationToken = default(CancelationToken))
                 {
                     var progress = _pool.IsNotEmpty ? (ProgressDelegate) _pool.Pop() : new ProgressDelegate();
                     progress._onProgress = onProgress;
-                    progress.Reset(owner);
+                    progress.Reset(owner, cancelationToken);
                     return progress;
                 }
 
@@ -674,12 +691,12 @@ namespace Proto.Promises
 
                 private ProgressDelegateCapture() { }
 
-                public static ProgressDelegateCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture, float> onProgress, Promise owner)
+                public static ProgressDelegateCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture, float> onProgress, Promise owner, CancelationToken cancelationToken = default(CancelationToken))
                 {
                     var progress = _pool.IsNotEmpty ? (ProgressDelegateCapture<TCapture>) _pool.Pop() : new ProgressDelegateCapture<TCapture>();
                     progress._capturedValue = capturedValue;
                     progress._onProgress = onProgress;
-                    progress.Reset(owner);
+                    progress.Reset(owner, cancelationToken);
                     return progress;
                 }
 

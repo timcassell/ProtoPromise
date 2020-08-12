@@ -49,7 +49,7 @@ namespace Proto.Promises
 #endif
 
         [DebuggerNonUserCode]
-        public sealed class CancelDelegate : ICancelDelegate, ITreeHandleable, ITraceable
+        public sealed class CancelDelegate<TCanceler> : ICancelDelegate, ITreeHandleable, ITraceable where TCanceler : IDelegateCancel
         {
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
@@ -58,8 +58,7 @@ namespace Proto.Promises
 
             private static ValueLinkedStack<ITreeHandleable> _pool;
 
-            private Action<ReasonContainer> _onCanceled;
-            private IValueContainer _valueContainer;
+            public TCanceler canceler;
 
             private CancelDelegate() { }
 
@@ -68,10 +67,9 @@ namespace Proto.Promises
                 OnClearPool += () => _pool.Clear();
             }
 
-            public static CancelDelegate GetOrCreate(Action<ReasonContainer> onCanceled)
+            public static CancelDelegate<TCanceler> GetOrCreate()
             {
-                var del = _pool.IsNotEmpty ? (CancelDelegate) _pool.Pop() : new CancelDelegate();
-                del._onCanceled = onCanceled;
+                var del = _pool.IsNotEmpty ? (CancelDelegate<TCanceler>) _pool.Pop() : new CancelDelegate<TCanceler>();
                 _SetCreatedStacktrace(del, 2);
                 return del;
             }
@@ -80,8 +78,7 @@ namespace Proto.Promises
             {
                 if (valueContainer.GetState() == Promise.State.Canceled)
                 {
-                    valueContainer.Retain();
-                    _valueContainer = valueContainer;
+                    canceler.SetValue(valueContainer);
                     handleQueue.Push(this);
                 }
                 else
@@ -94,8 +91,7 @@ namespace Proto.Promises
             {
                 if (valueContainer.GetState() == Promise.State.Canceled)
                 {
-                    valueContainer.Retain();
-                    _valueContainer = valueContainer;
+                    canceler.SetValue(valueContainer);
                     AddToHandleQueueBack(this);
                 }
                 else
@@ -106,139 +102,42 @@ namespace Proto.Promises
 
             void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
-                // Don't catch exceptions from cancelation token callbacks.
-                Invoke(_valueContainer);
-                _ClearCurrentInvoker();
+                _SetCurrentInvoker(this);
+                TCanceler callback = canceler;
+                Dispose();
+                try
+                {
+                    callback.InvokeFromToken(valueContainer, this);
+                }
+                finally
+                {
+                    _ClearCurrentInvoker();
+                }
             }
 
             void ITreeHandleable.Handle()
             {
-                var container = _valueContainer;
+                _SetCurrentInvoker(this);
+                TCanceler callback = canceler;
+                Dispose();
+                callback.MaybeUnregisterCancelation();
                 try
                 {
-                    Invoke(container);
+                    callback.InvokeFromPromise(this);
                 }
                 catch (Exception e)
                 {
                     AddRejectionToUnhandledStack(e, this);
                 }
-                container.Release();
-                _ClearCurrentInvoker();
-            }
-
-            private void Invoke(IValueContainer container)
-            {
-                _SetCurrentInvoker(this);
-                var callback = _onCanceled;
-                Dispose();
-                callback.Invoke(new ReasonContainer(container));
+                finally
+                {
+                    _ClearCurrentInvoker();
+                }
             }
 
             public void Dispose()
             {
-                _onCanceled = null;
-                _valueContainer = null;
-                if (Promise.Config.ObjectPooling != Promise.PoolType.None)
-                {
-                    _pool.Push(this);
-                }
-            }
-        }
-
-        [DebuggerNonUserCode]
-        public sealed class CancelDelegateCapture<TCapture> : ICancelDelegate, ITreeHandleable, ITraceable
-        {
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-#endif
-            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
-
-            private static ValueLinkedStack<ITreeHandleable> _pool;
-
-            private TCapture _capturedValue;
-            private Action<TCapture, ReasonContainer> _onCanceled;
-            private IValueContainer _valueContainer;
-
-            private CancelDelegateCapture() { }
-
-            static CancelDelegateCapture()
-            {
-                OnClearPool += () => _pool.Clear();
-            }
-
-            public static CancelDelegateCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture, ReasonContainer> onCanceled)
-            {
-                var del = _pool.IsNotEmpty ? (CancelDelegateCapture<TCapture>) _pool.Pop() : new CancelDelegateCapture<TCapture>();
-                del._onCanceled = onCanceled;
-                del._capturedValue = capturedValue;
-                _SetCreatedStacktrace(del, 2);
-                return del;
-            }
-
-            void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
-            {
-                if (valueContainer.GetState() == Promise.State.Canceled)
-                {
-                    valueContainer.Retain();
-                    _valueContainer = valueContainer;
-                    handleQueue.Push(this);
-                }
-                else
-                {
-                    Dispose();
-                }
-            }
-
-            void ITreeHandleable.MakeReadyFromSettled(IValueContainer valueContainer)
-            {
-                if (valueContainer.GetState() == Promise.State.Canceled)
-                {
-                    valueContainer.Retain();
-                    _valueContainer = valueContainer;
-                    AddToHandleQueueBack(this);
-                }
-                else
-                {
-                    Dispose();
-                }
-            }
-
-            void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
-            {
-                // Don't catch exceptions from cancelation token callbacks.
-                Invoke(_valueContainer);
-                _ClearCurrentInvoker();
-            }
-
-            void ITreeHandleable.Handle()
-            {
-                var container = _valueContainer;
-                try
-                {
-                    Invoke(container);
-                }
-                catch (Exception e)
-                {
-                    AddRejectionToUnhandledStack(e, this);
-                }
-                container.Release();
-                _ClearCurrentInvoker();
-            }
-
-            private void Invoke(IValueContainer container)
-            {
-                _SetCurrentInvoker(this);
-                var capturedValue = _capturedValue;
-                var callback = _onCanceled;
-                Dispose();
-                callback.Invoke(capturedValue, new ReasonContainer(container));
-            }
-
-            public void Dispose()
-            {
-                _capturedValue = default(TCapture);
-                _onCanceled = null;
-                _valueContainer = null;
+                canceler = default(TCanceler);
                 if (Promise.Config.ObjectPooling != Promise.PoolType.None)
                 {
                     _pool.Push(this);

@@ -156,7 +156,9 @@ namespace Proto.Promises
                 callback.Invoke(new ReasonContainer(_ref.ValueContainer));
                 return default(CancelationRegistration);
             }
-            return new CancelationRegistration(_ref, Internal.CancelDelegate.GetOrCreate(callback));
+            var cancelDelegate = Internal.CancelDelegate<Internal.CancelDelegateToken>.GetOrCreate();
+            cancelDelegate.canceler = new Internal.CancelDelegateToken(callback);
+            return new CancelationRegistration(_ref, cancelDelegate);
         }
 
         /// <summary>
@@ -177,7 +179,9 @@ namespace Proto.Promises
                 callback.Invoke(captureValue, new ReasonContainer(_ref.ValueContainer));
                 return default(CancelationRegistration);
             }
-            return new CancelationRegistration(_ref, Internal.CancelDelegateCapture<TCapture>.GetOrCreate(captureValue, callback));
+            var cancelDelegate = Internal.CancelDelegate<Internal.CancelDelegateToken<TCapture>>.GetOrCreate();
+            cancelDelegate.canceler = new Internal.CancelDelegateToken<TCapture>(ref captureValue, callback);
+            return new CancelationRegistration(_ref, cancelDelegate);
         }
 
         /// <summary>

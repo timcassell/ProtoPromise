@@ -91,28 +91,43 @@ namespace Proto.Promises
         /// <summary>
         /// Add a progress listener. Returns this.
         /// <para/><paramref name="onProgress"/> will be invoked with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
 #if !PROMISE_PROGRESS
         [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
-        public Promise Progress(Action<float> onProgress)
+        public Promise Progress(Action<float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
-            SubscribeProgress(onProgress);
+            SubscribeProgress(onProgress, cancelationToken);
             return this;
         }
 
         /// <summary>
         /// Add a cancel callback. Returns this.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with the cancelation reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public Promise CatchCancelation(Action<ReasonContainer> onCanceled)
+        public Promise CatchCancelation(Action<ReasonContainer> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
             if (_state == State.Pending | _state == State.Canceled)
             {
-                AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled));
+                if (cancelationToken.CanBeCanceled)
+                {
+                    var cancelDelegate = Internal.CancelDelegate<Internal.CancelDelegatePromiseCancel>.GetOrCreate();
+                    cancelDelegate.canceler = new Internal.CancelDelegatePromiseCancel(onCanceled, this, cancelationToken.RegisterInternal(cancelDelegate));
+                    AddWaiter(cancelDelegate);
+                }
+                else
+                {
+                    var cancelDelegate = Internal.CancelDelegate<Internal.CancelDelegatePromise>.GetOrCreate();
+                    cancelDelegate.canceler = new Internal.CancelDelegatePromise(onCanceled);
+                    AddWaiter(cancelDelegate);
+                }
             }
             return this;
         }
@@ -1073,29 +1088,30 @@ namespace Proto.Promises
         /// <summary>
         /// Add a progress listener. Returns this.
         /// <para/><paramref name="onProgress"/> will be invoked with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
 #if !PROMISE_PROGRESS
         [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
-        public new Promise<T> Progress(Action<float> onProgress)
+        public new Promise<T> Progress(Action<float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
-            SubscribeProgress(onProgress);
+            SubscribeProgress(onProgress, cancelationToken);
             return this;
         }
 
         /// <summary>
         /// Add a cancel callback. Returns this.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with the cancelation reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public new Promise<T> CatchCancelation(Action<ReasonContainer> onCanceled)
+        public new Promise<T> CatchCancelation(Action<ReasonContainer> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
-            if (_state == State.Pending | _state == State.Canceled)
-            {
-                AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled));
-            }
+            base.CatchCancelation(onCanceled, cancelationToken);
             return this;
         }
 
@@ -1108,7 +1124,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(InternalProtected.FinallyDelegate.GetOrCreate(onFinally));
+            base.Finally(onFinally);
             return this;
         }
 

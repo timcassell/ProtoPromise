@@ -6,8 +6,6 @@
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
-using System;
-
 namespace Proto.Promises
 {
     partial class Promise
@@ -157,7 +155,7 @@ namespace Proto.Promises
             /// Report progress between 0 and 1.
             /// </summary>
 #if !PROMISE_PROGRESS
-            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
+            [System.Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
             public void ReportProgress(float progress)
             {
@@ -331,7 +329,7 @@ namespace Proto.Promises
             /// Report progress between 0 and 1.
             /// </summary>
 #if !PROMISE_PROGRESS
-            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
+            [System.Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
             public void ReportProgress(float progress)
             {
@@ -533,7 +531,7 @@ namespace Proto.Promises
             /// Report progress between 0 and 1.
             /// </summary>
 #if !PROMISE_PROGRESS
-            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
+            [System.Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
             public void ReportProgress(float progress)
             {

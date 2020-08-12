@@ -68,7 +68,7 @@ namespace Proto.Utils
     [System.Diagnostics.DebuggerNonUserCode]
     public struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
     {
-        T _first;
+        private T _first;
 
         public bool IsEmpty { get { return _first == null; } }
         public bool IsNotEmpty { get { return _first != null; } }
@@ -158,8 +158,8 @@ namespace Proto.Utils
     [System.Diagnostics.DebuggerNonUserCode]
     public struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
     {
-        T _first;
-        T _last;
+        private T _first;
+        private T _last;
 
         public bool IsEmpty { get { return _first == null; } }
         public bool IsNotEmpty { get { return _first != null; } }
@@ -362,23 +362,23 @@ namespace Proto.Utils
     {
         public struct Enumerator : IEnumerator<T>
         {
-            Enumerator<ReusableValueContainer<T>> enumerator;
+            private Enumerator<ReusableValueContainer<T>> _enumerator;
 
             public Enumerator(ValueLinkedStackZeroGC<T> stack)
             {
-                enumerator = stack._stack.GetEnumerator();
+                _enumerator = stack._stack.GetEnumerator();
             }
 
             public bool MoveNext()
             {
-                return enumerator.MoveNext();
+                return _enumerator.MoveNext();
             }
 
             public T Current
             {
                 get
                 {
-                    return enumerator.Current.Value;
+                    return _enumerator.Current.Value;
                 }
             }
 
@@ -457,23 +457,23 @@ namespace Proto.Utils
     {
         public struct Enumerator : IEnumerator<T>
         {
-            Enumerator<ReusableValueContainer<T>> enumerator;
+            private Enumerator<ReusableValueContainer<T>> _enumerator;
 
             public Enumerator(ValueLinkedQueueZeroGC<T> queue)
             {
-                enumerator = queue._queue.GetEnumerator();
+                _enumerator = queue._queue.GetEnumerator();
             }
 
             public bool MoveNext()
             {
-                return enumerator.MoveNext();
+                return _enumerator.MoveNext();
             }
 
             public T Current
             {
                 get
                 {
-                    return enumerator.Current.Value;
+                    return _enumerator.Current.Value;
                 }
             }
 
@@ -592,20 +592,20 @@ namespace Proto.Utils
     [System.Diagnostics.DebuggerNonUserCode]
     public struct ArrayEnumerator<T> : IEnumerator<T>
     {
-        private T[] collection;
-        private int index;
+        private readonly T[] _collection;
+        private int _index;
 
         public ArrayEnumerator(T[] array)
         {
-            index = -1;
-            collection = array;
+            _index = -1;
+            _collection = array;
         }
 
         public T Current
         {
             get
             {
-                return collection[index];
+                return _collection[_index];
             }
         }
 
@@ -615,7 +615,7 @@ namespace Proto.Utils
 
         bool IEnumerator.MoveNext()
         {
-            return ++index < collection.Length;
+            return ++_index < _collection.Length;
         }
 
         void IEnumerator.Reset()

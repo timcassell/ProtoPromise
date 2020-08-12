@@ -45,7 +45,6 @@ namespace Proto.Promises
             CancelCallbacks();
 
             object currentValue = _valueOrPrevious;
-            //_valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
             _valueOrPrevious = valueContainer;
             valueContainer.Retain();
 
@@ -56,15 +55,10 @@ namespace Proto.Promises
             }
 
             // Otherwise, the promise is either waiting for its previous, or it's in the handle queue.
-#if CSHARP_7_OR_LATER
-            if (currentValue is Promise previous)
-#else
-            Promise previous = currentValue as Promise;
-            if (previous != null)
-#endif
+            if (currentValue is Promise)
             {
                 // Remove this from previous' next branches.
-                previous._nextBranches.Remove(this);
+                ((Internal.ITreeHandleableCollection) currentValue).Remove(this);
                 Internal.AddToHandleQueueBack(this);
             }
             else

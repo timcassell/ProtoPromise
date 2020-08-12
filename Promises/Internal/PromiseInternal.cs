@@ -21,7 +21,7 @@ using Proto.Utils;
 
 namespace Proto.Promises
 {
-    partial class Promise : Internal.ITreeHandleable, Internal.ITraceable
+    partial class Promise : Internal.ITreeHandleable, Internal.ITraceable, Internal.ITreeHandleableCollection
     {
         private ValueLinkedStack<Internal.ITreeHandleable> _nextBranches;
         protected object _valueOrPrevious;
@@ -65,6 +65,11 @@ namespace Proto.Promises
             valueContainer.Retain();
             _valueOrPrevious = valueContainer;
             Internal.AddToHandleQueueBack(this);
+        }
+
+        void Internal.ITreeHandleableCollection.Remove(Internal.ITreeHandleable treeHandleable)
+        {
+            _nextBranches.Remove(treeHandleable);
         }
 
         protected virtual void Reset()
@@ -402,7 +407,7 @@ namespace Proto.Promises
                     }
                 }
 
-                private ushort id;
+                private ushort id = 1;
                 protected override ushort Id { get { return id; } }
 
                 private DeferredPromiseVoid() { }
@@ -455,7 +460,7 @@ namespace Proto.Promises
                     }
                 }
 
-                private ushort id;
+                private ushort id = 1;
                 protected override ushort Id { get { return id; } }
 
                 private DeferredPromise() { }
@@ -509,7 +514,7 @@ namespace Proto.Promises
                 }
 
                 private CancelationRegistration _cancelationRegistration;
-                private ushort id;
+                private ushort id = 1;
                 protected override ushort Id { get { return id; } }
 
                 private DeferredPromiseCancelVoid() { }
@@ -570,7 +575,7 @@ namespace Proto.Promises
                 }
 
                 private CancelationRegistration _cancelationRegistration;
-                private ushort id;
+                private ushort id = 1;
                 protected override ushort Id { get { return id; } }
 
                 private DeferredPromiseCancel() { }
@@ -1236,6 +1241,7 @@ namespace Proto.Promises
                 }
 
                 public TContinuer continuer;
+                // TODO: move this into TContinuer
                 private bool _canceled;
 
                 private PromiseContinue() { }
@@ -1292,6 +1298,7 @@ namespace Proto.Promises
                 }
 
                 public TContinuer continuer;
+                // TODO: move this into TContinuer
                 private bool _canceled;
 
                 private PromiseContinue() { }
@@ -1348,6 +1355,7 @@ namespace Proto.Promises
                 }
 
                 public TContinuer continuer;
+                // TODO: move this into TContinuer
                 private bool _canceled;
 
                 private PromiseContinuePromise() { }
@@ -1411,6 +1419,7 @@ namespace Proto.Promises
                 }
 
                 public TContinuer continuer;
+                // TODO: move this into TContinuer
                 private bool _canceled;
 
                 private PromiseContinuePromise() { }

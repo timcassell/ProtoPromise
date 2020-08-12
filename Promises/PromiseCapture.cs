@@ -20,28 +20,43 @@ namespace Proto.Promises
         /// <summary>
         /// Capture a value and add a progress listener. Returns this.
         /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
 #if !PROMISE_PROGRESS
         [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
-        public Promise Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress)
+        public Promise Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
-            SubscribeProgress(progressCaptureValue, onProgress);
+            SubscribeProgress(progressCaptureValue, onProgress, cancelationToken);
             return this;
         }
 
         /// <summary>
         /// Capture a value and add a cancel callback. Returns this.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and the cancelation reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, ReasonContainer> onCanceled)
+        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, ReasonContainer> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
             if (_state == State.Pending | _state == State.Canceled)
             {
-                AddWaiter(Internal.CancelDelegateCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled));
+                if (cancelationToken.CanBeCanceled)
+                {
+                    var cancelDelegate = Internal.CancelDelegate<Internal.CancelDelegatePromiseCancel<TCaptureCancel>>.GetOrCreate();
+                    cancelDelegate.canceler = new Internal.CancelDelegatePromiseCancel<TCaptureCancel>(ref cancelCaptureValue, onCanceled, this, cancelationToken.RegisterInternal(cancelDelegate));
+                    AddWaiter(cancelDelegate);
+                }
+                else
+                {
+                    var cancelDelegate = Internal.CancelDelegate<Internal.CancelDelegatePromise<TCaptureCancel>>.GetOrCreate();
+                    cancelDelegate.canceler = new Internal.CancelDelegatePromise<TCaptureCancel>(ref cancelCaptureValue, onCanceled);
+                    AddWaiter(cancelDelegate);
+                }
             }
             return this;
         }
@@ -2097,29 +2112,30 @@ namespace Proto.Promises
         /// <summary>
         /// Capture a value and add a progress listener. Returns this.
         /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
 #if !PROMISE_PROGRESS
         [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
-        public new Promise<T> Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress)
+        public new Promise<T> Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
-            SubscribeProgress(progressCaptureValue, onProgress);
+            SubscribeProgress(progressCaptureValue, onProgress, cancelationToken);
             return this;
         }
 
         /// <summary>
         /// Capture a value and add a cancel callback. Returns this.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and the cancelation reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public new Promise<T> CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, ReasonContainer> onCanceled)
+        public new Promise<T> CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel, ReasonContainer> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
-            if (_state == State.Pending | _state == State.Canceled)
-            {
-                AddWaiter(Internal.CancelDelegateCapture<TCaptureCancel>.GetOrCreate(cancelCaptureValue, onCanceled));
-            }
+            base.CatchCancelation(cancelCaptureValue, onCanceled, cancelationToken);
             return this;
         }
 
@@ -2132,7 +2148,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(InternalProtected.FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(ref finallyCaptureValue, onFinally));
+            base.Finally(finallyCaptureValue, onFinally);
             return this;
         }
 
