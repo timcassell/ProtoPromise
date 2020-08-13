@@ -20,19 +20,6 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void AccessingCancelExceptionOrRejectExceptionInNormalCodeThrows()
-        {
-            Assert.Throws<InvalidOperationException>(() => Promise.CancelException());
-            Assert.Throws<InvalidOperationException>(() => Promise.CancelException("Cancel!"));
-            Assert.Throws<InvalidOperationException>(() => Promise.RejectException("Reject!"));
-
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
         public void AccessingCancelExceptionOrRejectExceptionInOnResolvedDoesNotThrow()
         {
             var promise1 = Promise.Resolved();

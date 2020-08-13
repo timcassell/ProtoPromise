@@ -12,7 +12,7 @@
 #if CSHARP_7_OR_LATER
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0060 // Remove unused parameter
 
 using System;
 using System.Diagnostics;
@@ -170,7 +170,6 @@ namespace Proto.Promises.Async.CompilerServices
     public struct PromiseMethodBuilder
     {
         private Promise.Deferred _deferred;
-        private IAsyncStateMachine _stateMachine;
         private Action _continuation;
 
         [DebuggerHidden]
@@ -185,20 +184,28 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         public void SetException(Exception exception)
         {
-            if (exception is OperationCanceledException ex)
+            if (exception is OperationCanceledException)
             {
                 if (!_deferred.IsValid)
                 {
-                    Task = Promise.Canceled(ex);
+                    Task = Promise.Canceled(exception);
                 }
                 else
                 {
-                    ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref ex));
-                    _deferred = default(Promise.Deferred);
+                    ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref exception));
                 }
             }
             else
             {
+                if (exception is RethrowException)
+                {
+#if PROMISE_DEBUG
+                    string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(exception, true) });
+#else
+                    string stacktrace = new StackTrace(exception, true).ToString();
+#endif
+                    exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+                }
                 if (!_deferred.IsValid)
                 {
                     Task = Promise.Rejected(exception);
@@ -206,9 +213,10 @@ namespace Proto.Promises.Async.CompilerServices
                 else
                 {
                     _deferred.Reject(exception);
-                    _deferred = default(Promise.Deferred);
                 }
             }
+            _deferred = default;
+            _continuation = null;
         }
 
         [DebuggerHidden]
@@ -221,7 +229,8 @@ namespace Proto.Promises.Async.CompilerServices
             else
             {
                 _deferred.Resolve();
-                _deferred = default(Promise.Deferred);
+                _deferred = default;
+                _continuation = null;
             }
         }
 
@@ -248,43 +257,21 @@ namespace Proto.Promises.Async.CompilerServices
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
-            Internal.invokingCallback = true;
-            try
-            {
-                stateMachine.MoveNext();
-            }
-            finally
-            {
-                Internal.invokingCallback = false;
-            }
+            stateMachine.MoveNext();
         }
 
         [DebuggerHidden]
         public void SetStateMachine(IAsyncStateMachine stateMachine) { }
 
         [DebuggerHidden]
-        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
+        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine)
+            where TStateMachine : IAsyncStateMachine
         {
-            if (_continuation == null)
+            if (_continuation is null)
             {
                 _deferred = Promise.Deferred.New();
                 Task = _deferred.Promise;
-                _stateMachine = stateMachine;
-                _continuation = MoveNext;
-            }
-        }
-
-        [DebuggerHidden]
-        private void MoveNext()
-        {
-            Internal.invokingCallback = true;
-            try
-            {
-                _stateMachine.MoveNext();
-            }
-            finally
-            {
-                Internal.invokingCallback = false;
+                _continuation = stateMachine.MoveNext;
             }
         }
     }
@@ -296,7 +283,6 @@ namespace Proto.Promises.Async.CompilerServices
     public struct PromiseMethodBuilder<T>
     {
         private Promise<T>.Deferred _deferred;
-        private IAsyncStateMachine _stateMachine;
         private Action _continuation;
 
         [DebuggerHidden]
@@ -311,20 +297,28 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         public void SetException(Exception exception)
         {
-            if (exception is OperationCanceledException ex)
+            if (exception is OperationCanceledException)
             {
                 if (!_deferred.IsValid)
                 {
-                    Task = Promise.Canceled<T, OperationCanceledException>(ex);
+                    Task = Promise.Canceled<T, Exception>(exception);
                 }
                 else
                 {
-                    ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref ex));
-                    _deferred = default(Promise<T>.Deferred);
+                    ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref exception));
                 }
             }
             else
             {
+                if (exception is RethrowException)
+                {
+#if PROMISE_DEBUG
+                    string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(exception, true) });
+#else
+                    string stacktrace = new StackTrace(exception, true).ToString();
+#endif
+                    exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+                }
                 if (!_deferred.IsValid)
                 {
                     Task = Promise.Rejected<T, Exception>(exception);
@@ -332,9 +326,10 @@ namespace Proto.Promises.Async.CompilerServices
                 else
                 {
                     _deferred.Reject(exception);
-                    _deferred = default(Promise<T>.Deferred);
                 }
             }
+            _deferred = default;
+            _continuation = null;
         }
 
         [DebuggerHidden]
@@ -347,7 +342,8 @@ namespace Proto.Promises.Async.CompilerServices
             else
             {
                 _deferred.Resolve(result);
-                _deferred = default(Promise<T>.Deferred);
+                _deferred = default;
+                _continuation = null;
             }
         }
 
@@ -374,43 +370,21 @@ namespace Proto.Promises.Async.CompilerServices
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
-            Internal.invokingCallback = true;
-            try
-            {
-                stateMachine.MoveNext();
-            }
-            finally
-            {
-                Internal.invokingCallback = false;
-            }
+            stateMachine.MoveNext();
         }
 
         [DebuggerHidden]
         public void SetStateMachine(IAsyncStateMachine stateMachine) { }
 
         [DebuggerHidden]
-        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
+        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine)
+            where TStateMachine : IAsyncStateMachine
         {
-            if (_continuation == null)
+            if (_continuation is null)
             {
                 _deferred = Promise<T>.Deferred.New();
                 Task = _deferred.Promise;
-                _stateMachine = stateMachine;
-                _continuation = MoveNext;
-            }
-        }
-
-        [DebuggerHidden]
-        private void MoveNext()
-        {
-            Internal.invokingCallback = true;
-            try
-            {
-                _stateMachine.MoveNext();
-            }
-            finally
-            {
-                Internal.invokingCallback = false;
+                _continuation = stateMachine.MoveNext;
             }
         }
     }

@@ -202,19 +202,32 @@ namespace Proto.Promises
             Internal.IValueContainer container = (Internal.IValueContainer) _valueOrPrevious;
             _valueOrPrevious = null;
             SetCurrentInvoker(this);
-            Internal.invokingCallback = true;
             try
             {
                 Execute(container);
                 container.Release();
             }
-            catch (RethrowException)
+            catch (RethrowException e)
             {
-                _state = container.GetState();
-                _valueOrPrevious = container;
-                HandleBranches();
-                CancelProgressListeners();
-                ReleaseInternal();
+                if (!Internal.invokingRejected)
+                {
+                    container.Release();
+#if PROMISE_DEBUG
+                    string stacktrace = Internal.FormatStackTrace(new System.Diagnostics.StackTrace[1] { new System.Diagnostics.StackTrace(e, true) });
+#else
+                    string stacktrace = new System.Diagnostics.StackTrace(e, true).ToString();
+#endif
+                    Exception exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+                    RejectOrCancelInternal(Internal.CreateCancelContainer(ref exception));
+                }
+                else
+                {
+                    _state = container.GetState();
+                    _valueOrPrevious = container;
+                    HandleBranches();
+                    CancelProgressListeners();
+                    ReleaseInternal();
+                }
             }
             catch (OperationCanceledException e)
             {
@@ -228,7 +241,6 @@ namespace Proto.Promises
             }
             finally
             {
-                Internal.invokingCallback = false;
                 Internal.invokingRejected = false;
                 ClearCurrentInvoker();
             }

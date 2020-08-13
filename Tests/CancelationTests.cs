@@ -151,6 +151,281 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletesAndProgress();
                 LogAssert.NoUnexpectedReceived();
             }
+
+            [Test]
+            public void CancelationSource2WithTokenCancelationRequestedAfterToken1Canceled()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token);
+                cancelationSource1.Cancel();
+                Assert.IsTrue(cancelationSource2.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource1WithTokenNotCancelationRequestedAfterToken2Canceled()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token);
+                cancelationSource2.Cancel();
+                Assert.IsFalse(cancelationSource1.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource2CanceledWithSameValueAsToken1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token);
+                string cancelValue = "CancelValue";
+                cancelationSource2.Token.Register(reason => Assert.AreEqual(cancelValue, reason.Value));
+                cancelationSource1.Cancel(cancelValue);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken1Canceled_0()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                cancelationSource1.Cancel();
+                Assert.IsTrue(cancelationSource3.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken2Canceled_0()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                cancelationSource2.Cancel();
+                Assert.IsTrue(cancelationSource3.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource1WithTokensNotCancelationRequestedAfterToken2Canceled_0()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                cancelationSource2.Cancel();
+                Assert.IsFalse(cancelationSource1.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource1And2WithTokensNotCancelationRequestedAfterToken3Canceled_0()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                cancelationSource3.Cancel();
+                Assert.IsFalse(cancelationSource1.IsCancelationRequested);
+                Assert.IsFalse(cancelationSource2.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource3CanceledWithSameValueAsToken1_0()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                string cancelValue = "CancelValue";
+                cancelationSource3.Token.Register(reason => Assert.AreEqual(cancelValue, reason.Value));
+                cancelationSource1.Cancel(cancelValue);
+                cancelationSource2.Cancel("Different value");
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource3CanceledWithSameValueAsToken2_0()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                string cancelValue = "CancelValue";
+                cancelationSource3.Token.Register(reason => Assert.AreEqual(cancelValue, reason.Value));
+                cancelationSource2.Cancel(cancelValue);
+                cancelationSource1.Cancel("Different value");
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken1Canceled_1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
+                cancelationSource1.Cancel();
+                Assert.IsTrue(cancelationSource3.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken2Canceled_1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
+                cancelationSource2.Cancel();
+                Assert.IsTrue(cancelationSource3.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource1WithTokensNotCancelationRequestedAfterToken2Canceled_1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
+                cancelationSource2.Cancel();
+                Assert.IsFalse(cancelationSource1.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource1And2WithTokensNotCancelationRequestedAfterToken3Canceled_1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
+                cancelationSource3.Cancel();
+                Assert.IsFalse(cancelationSource1.IsCancelationRequested);
+                Assert.IsFalse(cancelationSource2.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource3CanceledWithSameValueAsToken1_1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
+                string cancelValue = "CancelValue";
+                cancelationSource3.Token.Register(reason => Assert.AreEqual(cancelValue, reason.Value));
+                cancelationSource1.Cancel(cancelValue);
+                cancelationSource2.Cancel("Different value");
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
+
+            [Test]
+            public void CancelationSource3CanceledWithSameValueAsToken2_1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
+                string cancelValue = "CancelValue";
+                cancelationSource3.Token.Register(reason => Assert.AreEqual(cancelValue, reason.Value));
+                cancelationSource2.Cancel(cancelValue);
+                cancelationSource1.Cancel("Different value");
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+
+                // Clean up.
+                GC.Collect();
+                Promise.Manager.HandleCompletesAndProgress();
+                LogAssert.NoUnexpectedReceived();
+            }
         }
 
         public class Token

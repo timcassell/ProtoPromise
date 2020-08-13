@@ -390,14 +390,18 @@ namespace Proto.Promises
                 // In case Dispose is called from a callback.
                 if (!_isInvoking)
                 {
-                    foreach (var del in _registeredCallbacks)
+                    _isInvoking = true;
+                    for (int i = 0, max = _registeredCallbacks.Count; i < max; ++i)
                     {
+                        RegisteredDelegate del = _registeredCallbacks[i];
+                        _registeredCallbacks[i] = default(RegisteredDelegate);
                         if (del.callback != null)
                         {
                             del.callback.Dispose();
                         }
                     }
                     _registeredCallbacks.Clear();
+                    _isInvoking = false;
                 }
                 if (_retainCounter == 0)
                 {
@@ -436,6 +440,8 @@ namespace Proto.Promises
                 ValueContainer.Retain();
                 InvokeCallbacks();
             }
+
+            void ICancelDelegate.Dispose() { }
         }
     }
 }

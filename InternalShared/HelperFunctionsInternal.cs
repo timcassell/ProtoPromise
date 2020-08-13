@@ -6,6 +6,8 @@
 
 #pragma warning disable RECS0085 // When initializing explicitly typed local variable or array type, array creation expression can be replaced with array initializer.
 #pragma warning disable IDE1006 // Naming Styles
+#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0041 // Use 'is null' check
 
 using System;
 using System.Collections.Generic;
@@ -23,7 +25,7 @@ namespace Proto.Promises
     /// </summary>
     internal static partial class Internal
     {
-        public static bool invokingCallback, invokingRejected;
+        public static bool invokingRejected;
 
         public static event Action OnClearPool;
 
@@ -303,7 +305,7 @@ namespace Proto.Promises
         }
 
         // Generate stack trace if traceable is null.
-        public static void AddRejectionToUnhandledStack<TReject>(TReject unhandledValue, Internal.ITraceable traceable)
+        public static void AddRejectionToUnhandledStack<TReject>(TReject unhandledValue, ITraceable traceable)
         {
 #if CSHARP_7_OR_LATER
             if (((object) unhandledValue) is ICantHandleException ex)
