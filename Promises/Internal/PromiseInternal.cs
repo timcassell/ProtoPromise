@@ -1129,7 +1129,7 @@ namespace Proto.Promises
 #endif
                 protected override void Execute(Internal.IValueContainer valueContainer)
                 {
-                    if (resolver.IsNull)
+                    if (rejecter.IsNull)
                     {
                         // The returned promise is handling this.
                         HandleSelf(valueContainer);
@@ -1198,7 +1198,7 @@ namespace Proto.Promises
 #endif
                 protected override void Execute(Internal.IValueContainer valueContainer)
                 {
-                    if (resolver.IsNull)
+                    if (rejecter.IsNull)
                     {
                         // The returned promise is handling this.
                         HandleSelf(valueContainer);
@@ -1253,8 +1253,6 @@ namespace Proto.Promises
                 }
 
                 public TContinuer continuer;
-                // TODO: move this into TContinuer
-                private bool _canceled;
 
                 private PromiseContinue() { }
 
@@ -1267,7 +1265,7 @@ namespace Proto.Promises
 
                 protected override void CancelCallbacks()
                 {
-                    _canceled = true;
+                    continuer.CancelCallback();
                 }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
@@ -1277,21 +1275,12 @@ namespace Proto.Promises
                 {
                     var callback = continuer;
                     continuer = default(TContinuer);
-                    if (_canceled)
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                    else
-                    {
-                        continuer.MaybeUnregisterCancelation();
-                        callback.Invoke(valueContainer);
-                        ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
-                    }
+                    callback.Invoke(valueContainer, this);
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            internal sealed class PromiseContinue<TResult, TContinuer> : PromiseIntermediate<TResult> where TContinuer : IDelegateContinue<TResult>
+            internal sealed class PromiseContinue<TResult, TContinuer> : PromiseIntermediate<TResult> where TContinuer : IDelegateContinue
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
@@ -1310,8 +1299,6 @@ namespace Proto.Promises
                 }
 
                 public TContinuer continuer;
-                // TODO: move this into TContinuer
-                private bool _canceled;
 
                 private PromiseContinue() { }
 
@@ -1324,7 +1311,7 @@ namespace Proto.Promises
 
                 protected override void CancelCallbacks()
                 {
-                    _canceled = true;
+                    continuer.CancelCallback();
                 }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
@@ -1334,21 +1321,12 @@ namespace Proto.Promises
                 {
                     var callback = continuer;
                     continuer = default(TContinuer);
-                    if (_canceled)
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                    else
-                    {
-                        continuer.MaybeUnregisterCancelation();
-                        TResult result = callback.Invoke(valueContainer);
-                        ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
-                    }
+                    callback.Invoke(valueContainer, this);
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            internal sealed class PromiseContinuePromise<TContinuer> : PromiseWaitPromise where TContinuer : IDelegateContinue<Promise>
+            internal sealed class PromiseContinuePromise<TContinuer> : PromiseWaitPromise where TContinuer : IDelegateContinuePromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
@@ -1367,8 +1345,6 @@ namespace Proto.Promises
                 }
 
                 public TContinuer continuer;
-                // TODO: move this into TContinuer
-                private bool _canceled;
 
                 private PromiseContinuePromise() { }
 
@@ -1381,7 +1357,7 @@ namespace Proto.Promises
 
                 protected override void CancelCallbacks()
                 {
-                    _canceled = true;
+                    continuer.CancelCallback();
                 }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
@@ -1398,21 +1374,12 @@ namespace Proto.Promises
 
                     var callback = continuer;
                     continuer = default(TContinuer);
-                    if (_canceled)
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                    else
-                    {
-                        continuer.MaybeUnregisterCancelation();
-                        Promise result = callback.Invoke(valueContainer);
-                        WaitFor(result);
-                    }
+                    callback.Invoke(valueContainer, this);
                 }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            internal sealed class PromiseContinuePromise<TPromise, TContinuer> : PromiseWaitPromise<TPromise> where TContinuer : IDelegateContinue<Promise<TPromise>>
+            internal sealed class PromiseContinuePromise<TPromise, TContinuer> : PromiseWaitPromise<TPromise> where TContinuer : IDelegateContinuePromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
@@ -1431,8 +1398,6 @@ namespace Proto.Promises
                 }
 
                 public TContinuer continuer;
-                // TODO: move this into TContinuer
-                private bool _canceled;
 
                 private PromiseContinuePromise() { }
 
@@ -1445,7 +1410,7 @@ namespace Proto.Promises
 
                 protected override void CancelCallbacks()
                 {
-                    _canceled = true;
+                    continuer.CancelCallback();
                 }
 
 #if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
@@ -1462,16 +1427,7 @@ namespace Proto.Promises
 
                     var callback = continuer;
                     continuer = default(TContinuer);
-                    if (_canceled)
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                    }
-                    else
-                    {
-                        continuer.MaybeUnregisterCancelation();
-                        Promise<TPromise> result = callback.Invoke(valueContainer);
-                        WaitFor(result);
-                    }
+                    callback.Invoke(valueContainer, this);
                 }
             }
             #endregion

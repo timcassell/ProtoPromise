@@ -14,7 +14,6 @@
             {
                 void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner);
                 void MaybeUnregisterCancelation();
-                bool IsNull { get; }
             }
 
             internal interface IDelegateResolvePromise
@@ -32,19 +31,19 @@
             internal interface IDelegateRejectPromise
             {
                 void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner);
+                bool IsNull { get; }
             }
 
             internal interface IDelegateContinue
             {
-                void Invoke(Internal.IValueContainer valueContainer);
-                void MaybeUnregisterCancelation();
-                bool IsNull { get; }
+                void Invoke(Internal.IValueContainer valueContainer, Promise owner);
+                void CancelCallback();
             }
 
-            internal interface IDelegateContinue<T>
+            internal interface IDelegateContinuePromise
             {
-                T Invoke(Internal.IValueContainer valueContainer);
-                void MaybeUnregisterCancelation();
+                void Invoke(Internal.IValueContainer valueContainer, Promise owner);
+                void CancelCallback();
                 bool IsNull { get; }
             }
         }

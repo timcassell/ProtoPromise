@@ -292,8 +292,8 @@ namespace Proto.Promises
             }
             else
             {
-                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegatePassthrough, InternalProtected.DelegateVoidVoid>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthrough(true);
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateVoidVoid>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
                 promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
                 HookupNewPromise(promise);
                 return promise;
@@ -325,8 +325,8 @@ namespace Proto.Promises
             }
             else
             {
-                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegatePassthrough, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthrough(true);
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
                 promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
                 HookupNewPromise(promise);
                 return promise;
@@ -357,8 +357,8 @@ namespace Proto.Promises
             }
             else
             {
-                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegatePassthrough, InternalProtected.DelegateVoidPromise>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthrough(true);
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateVoidPromise>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
                 promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
                 HookupNewPromise(promise);
                 return promise;
@@ -390,8 +390,8 @@ namespace Proto.Promises
             }
             else
             {
-                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegatePassthrough, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthrough(true);
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
                 promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
                 HookupNewPromise(promise);
                 return promise;
@@ -1025,15 +1025,15 @@ namespace Proto.Promises
 
             if (cancelationToken.CanBeCanceled)
             {
-                var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueVoidResultCancel<Promise>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueVoidResultCancel<Promise>(onContinue, cancelationToken.RegisterInternal(promise));
+                var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueVoidPromiseCancel>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueVoidPromiseCancel(onContinue, cancelationToken.RegisterInternal(promise));
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
             else
             {
-                var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueVoidResult<Promise>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueVoidResult<Promise>(onContinue);
+                var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueVoidPromise>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueVoidPromise(onContinue);
                 HookupNewPromise(promise);
                 return promise;
             }
@@ -1053,15 +1053,15 @@ namespace Proto.Promises
 
             if (cancelationToken.CanBeCanceled)
             {
-                var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueVoidResultCancel<Promise<TResult>>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueVoidResultCancel<Promise<TResult>>(onContinue, cancelationToken.RegisterInternal(promise));
+                var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueVoidPromiseTCancel<TResult>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueVoidPromiseTCancel<TResult>(onContinue, cancelationToken.RegisterInternal(promise));
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
             else
             {
-                var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueVoidResult<Promise<TResult>>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueVoidResult<Promise<TResult>>(onContinue);
+                var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueVoidPromiseT<TResult>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueVoidPromiseT<TResult>(onContinue);
                 HookupNewPromise(promise);
                 return promise;
             }
@@ -1275,8 +1275,8 @@ namespace Proto.Promises
             }
             else
             {
-                var promise = InternalProtected.PromiseResolveReject<T, InternalProtected.DelegatePassthrough, InternalProtected.DelegateVoidResult<T>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthrough(true);
+                var promise = InternalProtected.PromiseResolveReject<T, InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateVoidResult<T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
                 promise.rejecter = new InternalProtected.DelegateVoidResult<T>(onRejected);
                 HookupNewPromise(promise);
                 return promise;
@@ -1308,8 +1308,8 @@ namespace Proto.Promises
             }
             else
             {
-                var promise = InternalProtected.PromiseResolveReject<T, InternalProtected.DelegatePassthrough, InternalProtected.DelegateArgResult<TReject, T>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthrough(true);
+                var promise = InternalProtected.PromiseResolveReject<T, InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateArgResult<TReject, T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
                 promise.rejecter = new InternalProtected.DelegateArgResult<TReject, T>(onRejected);
                 HookupNewPromise(promise);
                 return promise;
@@ -1340,8 +1340,8 @@ namespace Proto.Promises
             }
             else
             {
-                var promise = InternalProtected.PromiseResolveRejectPromise<T, InternalProtected.DelegatePassthrough, InternalProtected.DelegateVoidPromiseT<T>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthrough(true);
+                var promise = InternalProtected.PromiseResolveRejectPromise<T, InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateVoidPromiseT<T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
                 promise.rejecter = new InternalProtected.DelegateVoidPromiseT<T>(onRejected);
                 HookupNewPromise(promise);
                 return promise;
@@ -1372,8 +1372,8 @@ namespace Proto.Promises
             }
             else
             {
-                var promise = InternalProtected.PromiseResolveRejectPromise<T, InternalProtected.DelegatePassthrough, InternalProtected.DelegateArgPromiseT<TReject, T>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthrough(true);
+                var promise = InternalProtected.PromiseResolveRejectPromise<T, InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateArgPromiseT<TReject, T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
                 promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, T>(onRejected);
                 HookupNewPromise(promise);
                 return promise;
@@ -2007,15 +2007,15 @@ namespace Proto.Promises
 
             if (cancelationToken.CanBeCanceled)
             {
-                var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueArgResultCancel<T, Promise>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueArgResultCancel<T, Promise>(onContinue, cancelationToken.RegisterInternal(promise));
+                var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueArgPromiseCancel<T>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueArgPromiseCancel<T>(onContinue, cancelationToken.RegisterInternal(promise));
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
             else
             {
-                var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueArgResult<T, Promise>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueArgResult<T, Promise>(onContinue);
+                var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueArgPromise<T>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueArgPromise<T>(onContinue);
                 HookupNewPromise(promise);
                 return promise;
             }
@@ -2035,15 +2035,15 @@ namespace Proto.Promises
 
             if (cancelationToken.CanBeCanceled)
             {
-                var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueArgResultCancel<T, Promise<TResult>>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueArgResultCancel<T, Promise<TResult>>(onContinue, cancelationToken.RegisterInternal(promise));
+                var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueArgPromiseTCancel<T, TResult>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueArgPromiseTCancel<T, TResult>(onContinue, cancelationToken.RegisterInternal(promise));
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
             else
             {
-                var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueArgResult<T, Promise<TResult>>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueArgResult<T, Promise<TResult>>(onContinue);
+                var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueArgPromiseT<T, TResult>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueArgPromiseT<T, TResult>(onContinue);
                 HookupNewPromise(promise);
                 return promise;
             }
