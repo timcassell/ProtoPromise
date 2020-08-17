@@ -610,6 +610,73 @@ namespace Proto.Promises.Tests
 
             TestHelper.Cleanup();
         }
+
+        [Test]
+        public void OnProgressWillBeInvokedProperlyFromARecoveredPromise()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+            var deferred3 = Promise.NewDeferred();
+
+            float progress = float.NaN;
+
+            CancelationSource cancelationSource = CancelationSource.New();
+
+            deferred1.Promise
+                .Then(() => deferred2.Promise, cancelationSource.Token)
+                .ContinueWith(_ => deferred3.Promise)
+                .Progress(p => progress = p);
+
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0f, progress, 0f);
+
+            deferred1.ReportProgress(0.25f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.25f / 3f, progress, TestHelper.progressEpsilon);
+
+            cancelationSource.Cancel();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.25f / 3f, progress, TestHelper.progressEpsilon);
+
+            deferred1.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.25f / 3f, progress, TestHelper.progressEpsilon);
+
+            deferred2.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
+
+            deferred1.ReportProgress(0.7f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
+
+            deferred3.ReportProgress(0.25f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(2.25f / 3f, progress, TestHelper.progressEpsilon);
+
+            deferred1.ReportProgress(0.8f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(2.25f / 3f, progress, TestHelper.progressEpsilon);
+
+            deferred3.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(2.5f / 3f, progress, TestHelper.progressEpsilon);
+
+            deferred3.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
+
+            deferred1.ReportProgress(0.8f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
+
+            deferred1.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
+
+            cancelationSource.Dispose();
+            TestHelper.Cleanup();
+        }
     }
 }
 #endif

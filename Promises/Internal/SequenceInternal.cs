@@ -1,6 +1,22 @@
 ﻿#pragma warning disable IDE0017 // Simplify object initialization
 
-using System; using System.Collections.Generic;  namespace Proto.Promises {     partial class Promise     {         partial class InternalProtected         {             public static Promise CreateSequence<TEnumerator>(TEnumerator promiseFuncs, CancelationToken cancelationToken = default(CancelationToken)) where TEnumerator : IEnumerator<Func<Promise>>             {                 ValidateArgument(promiseFuncs, "promiseFuncs", 2);                  if (!promiseFuncs.MoveNext())                 {                     return Resolved();                 }
+using System;
+using System.Collections.Generic;
+
+namespace Proto.Promises
+{
+    partial class Promise
+    {
+        partial class InternalProtected
+        {
+            public static Promise CreateSequence<TEnumerator>(TEnumerator promiseFuncs, CancelationToken cancelationToken = default(CancelationToken)) where TEnumerator : IEnumerator<Func<Promise>>
+            {
+                ValidateArgument(promiseFuncs, "promiseFuncs", 2);
+
+                if (!promiseFuncs.MoveNext())
+                {
+                    return Resolved();
+                }
 
                 // Invoke funcs async and normalize the progress.
                 Promise rootPromise;
@@ -23,5 +39,15 @@ using System; using System.Collections.Generic;  namespace Proto.Promises�
                     newPromise._valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
                     rootPromise = newPromise;
                 }
-                rootPromise.ResetDepth();                  Promise promise = rootPromise;                 while (promiseFuncs.MoveNext())                 {                     promise = promise.Then(promiseFuncs.Current, cancelationToken);                 }
-                Internal.AddToHandleQueueBack(rootPromise);                 return promise;             }         }     } }
+                rootPromise.ResetDepth();
+
+                Promise promise = rootPromise;
+                while (promiseFuncs.MoveNext())
+                {
+                    promise = promise.Then(promiseFuncs.Current, cancelationToken);
+                }
+                Internal.AddToHandleQueueBack(rootPromise); return promise;
+            }
+        }
+    }
+}
