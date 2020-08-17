@@ -37,6 +37,8 @@ namespace Proto.Promises
             void MakeReadyFromSettled(IValueContainer valueContainer);
         }
 
+        public interface IDisposableTreeHandleable : ITreeHandleable, IDisposable { }
+
         public interface ITreeHandleableCollection
         {
             void Remove(ITreeHandleable treeHandleable);
@@ -79,10 +81,10 @@ namespace Proto.Promises
 
         internal interface IDelegateCancel
         {
-            void InvokeFromToken(IValueContainer valueContainer, ITreeHandleable owner);
+            void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner);
             void SetValue(IValueContainer valueContainer);
             void InvokeFromPromise(ITraceable owner);
-            void MaybeUnregisterCancelation();
+            void MaybeDispose(IDisposable owner);
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable IDE1006 // Naming Styles
+
+using System;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
@@ -54,10 +56,7 @@ namespace Proto.Promises.Tests
 
                 Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
         }
 
@@ -101,10 +100,7 @@ namespace Proto.Promises.Tests
 
                 Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -141,10 +137,7 @@ namespace Proto.Promises.Tests
 
                 deferred.Release();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
         }
 
@@ -188,10 +181,7 @@ namespace Proto.Promises.Tests
 
                 Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -235,10 +225,7 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(expected, rejection);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -278,10 +265,7 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(expected, rejection);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
         }
     }

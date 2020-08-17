@@ -12,7 +12,6 @@
 #if PROMISE_PROGRESS
 using System;
 using NUnit.Framework;
-using UnityEngine.TestTools;
 
 namespace Proto.Promises.Tests
 {
@@ -55,10 +54,42 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve();
 
-            // Clean up.
-            GC.Collect();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void OnProgressMayBeInvokedWithTheCapturedValueWhenThePromisesProgressHasChanged()
+        {
+            var deferred = Promise.NewDeferred();
+            Assert.AreEqual(Promise.State.Pending, deferred.State);
+
+            float progress = float.NaN;
+            string capturedValue = "Capture Value";
+
+            deferred.Promise.Progress(
+                capturedValue,
+                (cv, p) =>
+                {
+                    Assert.AreEqual(capturedValue, cv);
+                    progress = p;
+                });
+
             Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            Assert.AreEqual(0f, progress, 0f);
+
+            deferred.ReportProgress(0.25f);
+            Promise.Manager.HandleCompletesAndProgress();
+
+            deferred.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+
+            deferred.ReportProgress(0.75f);
+            Promise.Manager.HandleCompletesAndProgress();
+
+            deferred.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -75,10 +106,7 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, 0f);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -96,10 +124,7 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -129,10 +154,7 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -150,11 +172,8 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
-            // Clean up.
             cancelationSource.Dispose();
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -185,10 +204,7 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -228,10 +244,7 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -263,11 +276,64 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
-            // Clean up.
             cancelationSource.Dispose();
-            GC.Collect();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenTokenIsCanceled0()
+        {
+            var deferred = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+
+            float progress = float.NaN;
+
+            deferred.Promise
+                .Progress(p => progress = p, cancelationSource.Token);
+
+            deferred.ReportProgress(0.25f);
             Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+
+            cancelationSource.Cancel();
+            deferred.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+
+            deferred.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+
+            cancelationSource.Dispose();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenTokenIsCanceled1()
+        {
+            var deferred = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+
+            float progress = float.NaN;
+
+            deferred.Promise
+                .Progress(1, (cv, p) => progress = p, cancelationSource.Token);
+
+            deferred.ReportProgress(0.25f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+
+            cancelationSource.Cancel();
+            deferred.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+
+            deferred.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+
+            cancelationSource.Dispose();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -321,10 +387,7 @@ namespace Proto.Promises.Tests
             Assert.IsTrue(secondInvoked);
             Assert.IsFalse(firstInvoked);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -345,10 +408,7 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, 0f);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
 #if PROMISE_DEBUG
@@ -376,10 +436,7 @@ namespace Proto.Promises.Tests
 
             deferredInt.Resolve(0);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletes();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -405,10 +462,7 @@ namespace Proto.Promises.Tests
             deferred.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 #endif
 
@@ -446,10 +500,7 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, 0f);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -485,10 +536,7 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, 0f);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -524,10 +572,7 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, 0f);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -563,10 +608,7 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, 0f);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
     }
 }

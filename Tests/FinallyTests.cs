@@ -6,7 +6,6 @@
 
 using System;
 using NUnit.Framework;
-using UnityEngine.TestTools;
 
 namespace Proto.Promises.Tests
 {
@@ -44,10 +43,7 @@ namespace Proto.Promises.Tests
             deferred.Resolve();
             deferredInt.Resolve(0);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 #endif
 
@@ -70,10 +66,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(true, voidFinallyFired);
             Assert.AreEqual(true, intFinallyFired);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -99,10 +92,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(true, voidFinallyFired);
             Assert.AreEqual(true, intFinallyFired);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -146,12 +136,10 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(true, voidFinallyFired);
             Assert.AreEqual(true, intFinallyFired);
 
-            // Clean up.
             cancelationSource1.Dispose();
             cancelationSource2.Dispose();
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+
+            TestHelper.Cleanup();
         }
     }
 }

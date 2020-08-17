@@ -539,7 +539,7 @@ namespace Proto.Promises
 
                 void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount)
                 {
-                    if (sender == _owner)
+                    if (sender == _owner & !_canceled)
                     {
                         // Add to front of handle queue to invoke this with a value of 1.
                         _canceled = true;

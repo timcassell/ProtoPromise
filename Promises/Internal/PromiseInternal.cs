@@ -186,6 +186,7 @@ namespace Proto.Promises
             }
             else
             {
+                SetDepth(newPromise);
                 Internal.AddToHandleQueueBack(newPromise);
             }
         }

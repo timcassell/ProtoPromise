@@ -4,9 +4,10 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE1006 // Naming Styles
+
 using System;
 using NUnit.Framework;
-using UnityEngine.TestTools;
 
 namespace Proto.Promises.Tests
 {
@@ -108,18 +109,16 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
-                TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
+                (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
                 TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                 TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
                 TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
                 (TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks +
-                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2,
-                exceptionCounter);
+                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2) * 2,
+                exceptionCounter
+            );
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 #endif
 
@@ -462,39 +461,40 @@ namespace Proto.Promises.Tests
 
                 resolveWaitDeferred.Resolve();
                 Promise.Manager.HandleCompletes();
-                expectedCompleteCount += TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveTPromiseVoidCallbacks +
+                expectedCompleteCount +=
+                    (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveTPromiseVoidCallbacks +
                     TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectTPromiseVoidCallbacks +
-                    ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueTPromiseVoidCallbacks) * 2);
+                    ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueTPromiseVoidCallbacks) * 2)) * 2;
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
                 resolveWaitDeferredInt.Resolve(0);
                 Promise.Manager.HandleCompletes();
-                expectedCompleteCount += TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
+                expectedCompleteCount +=
+                    (TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                     TestHelper.rejectVoidPromiseConvertCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                    (TestHelper.continueVoidPromiseConvertCallbacks * 4);
+                    (TestHelper.continueVoidPromiseConvertCallbacks * 4)) * 2;
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
                 rejectWaitDeferred.Reject("Fail inner");
                 Promise.Manager.HandleCompletes();
-                expectedCompleteCount += TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveTPromiseVoidCallbacks +
+                expectedCompleteCount +=
+                    (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveTPromiseVoidCallbacks +
                     TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectTPromiseVoidCallbacks +
-                    ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueTPromiseVoidCallbacks) * 2);
+                    ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueTPromiseVoidCallbacks) * 2)) * 2;
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
                 rejectWaitDeferredInt.Reject("Fail inner");
                 Promise.Manager.HandleCompletes();
-                expectedCompleteCount += TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
+                expectedCompleteCount +=
+                    (TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                     TestHelper.rejectVoidPromiseConvertCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                    (TestHelper.continueVoidPromiseConvertCallbacks * 4);
+                    (TestHelper.continueVoidPromiseConvertCallbacks * 4)) * 2;
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -647,18 +647,22 @@ namespace Proto.Promises.Tests
                     resolveWaitDeferredInt.Resolve(resolveValue);
                     Promise.Manager.HandleCompletes();
 
-                    Assert.AreEqual(TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                        TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks + (TestHelper.continueVoidPromiseConvertCallbacks * 4),
-                        resolveCounter);
+                    Assert.AreEqual(
+                        (TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
+                        TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks + (TestHelper.continueVoidPromiseConvertCallbacks * 4)) * 2,
+                        resolveCounter
+                    );
                     firstRun = false;
                     goto RunAgain;
                 }
 
                 Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                    TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks + (TestHelper.continueVoidPromiseConvertCallbacks * 4),
-                    resolveCounter);
+                Assert.AreEqual(
+                    (TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
+                    TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks + (TestHelper.continueVoidPromiseConvertCallbacks * 4)) * 2,
+                    resolveCounter
+                );
 
                 resolveDeferred.Release();
                 resolveDeferredInt.Release();
@@ -667,10 +671,7 @@ namespace Proto.Promises.Tests
 
                 resolveWaitDeferredInt.Release();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -873,26 +874,30 @@ namespace Proto.Promises.Tests
                     rejectWaitDeferredInt.Reject(rejectValue);
                     Promise.Manager.HandleCompletes();
 
-                    Assert.AreEqual(TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
+                    Assert.AreEqual(
+                        (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
                         TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                         TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
                         TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks +
                         TestHelper.rejectTPromiseTCallbacks +
                         ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks +
-                        TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2),
-                        rejectCounter);
+                        TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2)) * 2,
+                        rejectCounter
+                    );
                     firstRun = false;
                     goto RunAgain;
                 }
 
                 Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
+                Assert.AreEqual(
+                    (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
                     TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                     TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
                     TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks +
-                    TestHelper.rejectTPromiseTCallbacks + ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 4),
-                    rejectCounter);
+                    TestHelper.rejectTPromiseTCallbacks + ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 4)) * 2,
+                    rejectCounter
+                );
 
                 resolveDeferred.Release();
                 resolveDeferredInt.Release();
@@ -902,10 +907,7 @@ namespace Proto.Promises.Tests
                 rejectWaitDeferred.Release();
                 rejectWaitDeferredInt.Release();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
         }
 
@@ -978,17 +980,16 @@ namespace Proto.Promises.Tests
 
             Promise.Manager.HandleCompletes();
 
-            Assert.AreEqual(TestHelper.resolveVoidVoidCallbacks +
+            Assert.AreEqual(
+                (TestHelper.resolveVoidVoidCallbacks +
                 TestHelper.resolveTVoidCallbacks +
                 TestHelper.rejectVoidVoidCallbacks +
                 TestHelper.rejectTVoidCallbacks +
-                ((TestHelper.continueVoidVoidCallbacks + TestHelper.continueTVoidCallbacks) * 2),
-                resolveCounter);
+                ((TestHelper.continueVoidVoidCallbacks + TestHelper.continueTVoidCallbacks) * 2)) * 2,
+                resolveCounter
+            );
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -1068,17 +1069,16 @@ namespace Proto.Promises.Tests
 
             Promise.Manager.HandleCompletes();
 
-            Assert.AreEqual(TestHelper.resolveVoidConvertCallbacks +
+            Assert.AreEqual(
+                (TestHelper.resolveVoidConvertCallbacks +
                 TestHelper.resolveTConvertCallbacks +
                 TestHelper.rejectVoidConvertCallbacks +
                 TestHelper.rejectTConvertCallbacks + TestHelper.rejectTTCallbacks +
-                (TestHelper.continueVoidConvertCallbacks * 4),
-                resolveCounter);
+                (TestHelper.continueVoidConvertCallbacks * 4)) * 2,
+                resolveCounter
+            );
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         // If a promise is resolved with a thenable that participates in a circular thenable chain, such that the recursive
@@ -1169,18 +1169,16 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
-                TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
+                (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
                 TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                 TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
                 TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
                 (TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks +
-                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2,
-                exceptionCounter);
+                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2) * 2,
+                exceptionCounter
+            );
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 #endif
     }

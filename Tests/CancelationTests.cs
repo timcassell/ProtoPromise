@@ -9,7 +9,6 @@
 
 using System;
 using NUnit.Framework;
-using UnityEngine.TestTools;
 
 namespace Proto.Promises.Tests
 {
@@ -36,10 +35,7 @@ namespace Proto.Promises.Tests
                 CancelationSource cancelationSource = new CancelationSource();
                 Assert.IsFalse(cancelationSource.IsValid);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -51,10 +47,7 @@ namespace Proto.Promises.Tests
                 Assert.Throws<InvalidOperationException>(() => { cancelationSource.Cancel("Cancel"); });
                 Assert.Throws<InvalidOperationException>(() => { cancelationSource.Dispose(); });
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -64,10 +57,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationSource.IsValid);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -77,10 +67,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Dispose();
                 Assert.IsFalse(cancelationSource.IsValid);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -91,10 +78,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationSource.IsValid);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -105,10 +89,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationSource.IsValid);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -118,10 +99,7 @@ namespace Proto.Promises.Tests
                 Assert.IsFalse(cancelationSource.IsCancelationRequested);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -132,10 +110,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationSource.IsCancelationRequested);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -146,10 +121,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationSource.IsCancelationRequested);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -162,10 +134,7 @@ namespace Proto.Promises.Tests
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -178,10 +147,7 @@ namespace Proto.Promises.Tests
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -195,10 +161,7 @@ namespace Proto.Promises.Tests
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -213,10 +176,7 @@ namespace Proto.Promises.Tests
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -231,10 +191,7 @@ namespace Proto.Promises.Tests
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -249,10 +206,7 @@ namespace Proto.Promises.Tests
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -268,10 +222,7 @@ namespace Proto.Promises.Tests
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -288,10 +239,7 @@ namespace Proto.Promises.Tests
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -308,10 +256,7 @@ namespace Proto.Promises.Tests
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -326,10 +271,7 @@ namespace Proto.Promises.Tests
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -344,10 +286,7 @@ namespace Proto.Promises.Tests
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -362,10 +301,7 @@ namespace Proto.Promises.Tests
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -381,10 +317,7 @@ namespace Proto.Promises.Tests
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -401,10 +334,7 @@ namespace Proto.Promises.Tests
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -421,10 +351,7 @@ namespace Proto.Promises.Tests
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
         }
 
@@ -449,10 +376,7 @@ namespace Proto.Promises.Tests
                 CancelationToken cancelationToken = new CancelationToken();
                 Assert.IsFalse(cancelationToken.CanBeCanceled);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -461,10 +385,7 @@ namespace Proto.Promises.Tests
                 CancelationToken cancelationToken = new CancelationToken();
                 Assert.IsFalse(cancelationToken.IsCancelationRequested);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -475,10 +396,7 @@ namespace Proto.Promises.Tests
                 Assert.IsFalse(cancelationToken.IsCancelationRequested);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -490,10 +408,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationToken.IsCancelationRequested);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -505,10 +420,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationToken.IsCancelationRequested);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -523,10 +435,7 @@ namespace Proto.Promises.Tests
                 Assert.Throws<InvalidOperationException>(cancelationToken.Retain);
                 Assert.Throws<InvalidOperationException>(cancelationToken.Release);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -537,10 +446,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationToken.CanBeCanceled);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -551,10 +457,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Dispose();
                 Assert.IsFalse(cancelationToken.CanBeCanceled);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -566,10 +469,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationToken.IsCancelationRequested);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -581,10 +481,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationToken.IsCancelationRequested);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -596,10 +493,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Dispose();
                 Assert.IsFalse(cancelationToken.IsCancelationRequested);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -611,10 +505,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Dispose();
                 Assert.IsFalse(cancelationToken.IsCancelationRequested);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -626,10 +517,7 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(cancelationToken.CancelationValueType);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -641,10 +529,7 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(cancelationToken.CancelationValueType);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -656,10 +541,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationToken.CancelationValueType == typeof(string));
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -671,10 +553,7 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(cancelationToken.CancelationValue);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -686,10 +565,7 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(cancelationToken.CancelationValue);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -702,10 +578,7 @@ namespace Proto.Promises.Tests
                 Assert.AreEqual(cancelValue, cancelationToken.CancelationValue);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -718,10 +591,7 @@ namespace Proto.Promises.Tests
                 Assert.IsFalse(cancelationToken.TryGetCancelationValueAs(out val));
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -734,10 +604,7 @@ namespace Proto.Promises.Tests
                 Assert.IsFalse(cancelationToken.TryGetCancelationValueAs(out val));
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -750,10 +617,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationToken.TryGetCancelationValueAs(out val));
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -766,10 +630,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationToken.CanBeCanceled);
                 cancelationToken.Release();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -782,10 +643,7 @@ namespace Proto.Promises.Tests
                 cancelationToken.Release();
                 Assert.IsFalse(cancelationToken.CanBeCanceled);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -799,10 +657,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationToken.IsCancelationRequested);
                 cancelationToken.Release();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -816,10 +671,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationToken.IsCancelationRequested);
                 cancelationToken.Release();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -833,10 +685,7 @@ namespace Proto.Promises.Tests
                 cancelationToken.Release();
                 Assert.IsFalse(cancelationToken.IsCancelationRequested);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -850,10 +699,7 @@ namespace Proto.Promises.Tests
                 cancelationToken.Release();
                 Assert.IsFalse(cancelationToken.IsCancelationRequested);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -874,10 +720,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Dispose();
                 Assert.IsTrue(caughtException);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -898,10 +741,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Dispose();
                 Assert.IsTrue(caughtException);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
         }
 
@@ -926,10 +766,7 @@ namespace Proto.Promises.Tests
                 CancelationRegistration cancelationRegistration = new CancelationRegistration();
                 Assert.IsFalse(cancelationRegistration.IsRegistered);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -941,10 +778,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationRegistration.IsRegistered);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -956,10 +790,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(cancelationRegistration.IsRegistered);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -972,10 +803,7 @@ namespace Proto.Promises.Tests
                 Assert.IsFalse(cancelationRegistration.IsRegistered);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -988,10 +816,7 @@ namespace Proto.Promises.Tests
                 Assert.IsFalse(cancelationRegistration.IsRegistered);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1004,10 +829,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1020,10 +842,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1035,10 +854,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Dispose();
                 Assert.IsFalse(cancelationRegistration.IsRegistered);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1050,10 +866,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Dispose();
                 Assert.IsFalse(cancelationRegistration.IsRegistered);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1067,10 +880,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(invoked);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1084,10 +894,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(invoked);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1101,10 +908,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(invoked);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1118,10 +922,7 @@ namespace Proto.Promises.Tests
                 Assert.IsTrue(invoked);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1136,10 +937,7 @@ namespace Proto.Promises.Tests
                 Assert.IsFalse(invoked);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1154,10 +952,7 @@ namespace Proto.Promises.Tests
                 Assert.IsFalse(invoked);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1173,10 +968,7 @@ namespace Proto.Promises.Tests
                 Assert.IsFalse(invoked);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1192,10 +984,7 @@ namespace Proto.Promises.Tests
                 Assert.IsFalse(invoked);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1208,10 +997,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1226,10 +1012,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel();
                 Assert.IsTrue(invoked);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1247,10 +1030,7 @@ namespace Proto.Promises.Tests
                 cancelationRegistration = cancelationToken.Register(_ => { });
                 cancelationSource.Cancel();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1265,10 +1045,7 @@ namespace Proto.Promises.Tests
                 Assert.Throws<AggregateException>(cancelationSource.Cancel);
                 cancelationSource.Dispose();
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
 
             [Test]
@@ -1292,10 +1069,7 @@ namespace Proto.Promises.Tests
                 cancelationSource.Dispose();
                 Assert.AreEqual(3, callbackCount);
 
-                // Clean up.
-                GC.Collect();
-                Promise.Manager.HandleCompletesAndProgress();
-                LogAssert.NoUnexpectedReceived();
+                TestHelper.Cleanup();
             }
         }
     }

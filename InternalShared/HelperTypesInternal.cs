@@ -49,7 +49,7 @@ namespace Proto.Promises
 #endif
 
         [DebuggerNonUserCode]
-        public sealed class CancelDelegate<TCanceler> : ICancelDelegate, ITreeHandleable, ITraceable where TCanceler : IDelegateCancel
+        public sealed class CancelDelegate<TCanceler> : ICancelDelegate, IDisposableTreeHandleable, ITraceable where TCanceler : IDelegateCancel
         {
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
@@ -103,11 +103,10 @@ namespace Proto.Promises
             void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
                 _SetCurrentInvoker(this);
-                TCanceler callback = canceler;
-                Dispose();
                 try
                 {
-                    callback.InvokeFromToken(valueContainer, this);
+                    // Canceler will dispose this if it can.
+                    canceler.InvokeFromToken(valueContainer, this);
                 }
                 finally
                 {
@@ -120,7 +119,6 @@ namespace Proto.Promises
                 _SetCurrentInvoker(this);
                 TCanceler callback = canceler;
                 Dispose();
-                callback.MaybeUnregisterCancelation();
                 try
                 {
                     callback.InvokeFromPromise(this);
@@ -142,6 +140,11 @@ namespace Proto.Promises
                 {
                     _pool.Push(this);
                 }
+            }
+
+            void ICancelDelegate.Dispose()
+            {
+                canceler.MaybeDispose(this);
             }
         }
 

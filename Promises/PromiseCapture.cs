@@ -10,6 +10,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0017 // Simplify object initialization
 
 using System;
 
@@ -47,8 +48,14 @@ namespace Proto.Promises
             {
                 if (cancelationToken.CanBeCanceled)
                 {
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        // Don't hook up callback if token is already canceled.
+                        return this;
+                    }
                     var cancelDelegate = Internal.CancelDelegate<Internal.CancelDelegatePromiseCancel<TCaptureCancel>>.GetOrCreate();
-                    cancelDelegate.canceler = new Internal.CancelDelegatePromiseCancel<TCaptureCancel>(ref cancelCaptureValue, onCanceled, this, cancelationToken.RegisterInternal(cancelDelegate));
+                    cancelDelegate.canceler = new Internal.CancelDelegatePromiseCancel<TCaptureCancel>(ref cancelCaptureValue, onCanceled, this);
+                    cancelDelegate.canceler.cancelationRegistration = cancelationToken.RegisterInternal(cancelDelegate);
                     AddWaiter(cancelDelegate);
                 }
                 else
@@ -92,7 +99,8 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolve<InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -122,7 +130,8 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolve<TResult, InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -152,7 +161,8 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolvePromise<InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -182,7 +192,8 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolvePromise<TResult, InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -213,8 +224,9 @@ namespace Proto.Promises
 
             if (cancelationToken.CanBeCanceled)
             {
-                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegatePassthroughCancel, InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthroughCancel(cancelationToken.RegisterInternal(promise));
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>(ref rejectCaptureValue, onRejected);
                 MaybeHookupNewPromise(promise);
                 return promise;
@@ -246,8 +258,9 @@ namespace Proto.Promises
 
             if (cancelationToken.CanBeCanceled)
             {
-                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegatePassthroughCancel, InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthroughCancel(cancelationToken.RegisterInternal(promise));
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
                 MaybeHookupNewPromise(promise);
                 return promise;
@@ -278,8 +291,9 @@ namespace Proto.Promises
 
             if (cancelationToken.CanBeCanceled)
             {
-                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegatePassthroughCancel, InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthroughCancel(cancelationToken.RegisterInternal(promise));
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>(ref rejectCaptureValue, onRejected);
                 MaybeHookupNewPromise(promise);
                 return promise;
@@ -311,8 +325,9 @@ namespace Proto.Promises
 
             if (cancelationToken.CanBeCanceled)
             {
-                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegatePassthroughCancel, InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthroughCancel(cancelationToken.RegisterInternal(promise));
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
                 MaybeHookupNewPromise(promise);
                 return promise;
@@ -348,8 +363,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>, InternalProtected.DelegateVoidVoid>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -382,8 +398,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateVoidVoidCancel, InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -416,8 +433,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>, InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -451,8 +469,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -486,8 +505,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateVoidVoidCancel, InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -521,8 +541,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>, InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -555,8 +576,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidResult<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -589,8 +611,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateVoidResultCancel<TResult>, InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -623,8 +646,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>, InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -658,8 +682,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>, InternalProtected.DelegateArgResult<TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgResult<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -693,8 +718,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateVoidResultCancel<TResult>, InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -728,8 +754,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>, InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -762,8 +789,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>, InternalProtected.DelegateVoidPromise>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -796,8 +824,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidPromiseCancel, InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -830,8 +859,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>, InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -865,8 +895,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -900,8 +931,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidPromiseCancel, InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -935,8 +967,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>, InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -969,8 +1002,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidPromiseT<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1003,8 +1037,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidPromiseTCancel<TResult>, InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1037,8 +1072,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>, InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1072,8 +1108,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>, InternalProtected.DelegateArgPromiseT<TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1107,8 +1144,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidPromiseTCancel<TResult>, InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1142,8 +1180,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>, InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1176,8 +1215,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>, InternalProtected.DelegateVoidPromise>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1210,8 +1250,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidVoidCancel, InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1244,8 +1285,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>, InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1279,8 +1321,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1314,8 +1357,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidVoidCancel, InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1349,8 +1393,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>, InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidVoidCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1383,8 +1428,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidPromiseT<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1417,8 +1463,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidResultCancel<TResult>, InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1451,8 +1498,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>, InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1486,8 +1534,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>, InternalProtected.DelegateArgPromiseT<TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1521,8 +1570,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidResultCancel<TResult>, InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1556,8 +1606,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>, InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidResultCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1590,7 +1641,8 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>, InternalProtected.DelegateVoidVoid>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
                 MaybeHookupNewPromise(promise);
                 return promise;
@@ -1624,8 +1676,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidPromiseCancel, InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1658,8 +1711,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>, InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1693,8 +1747,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1728,8 +1783,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidPromiseCancel, InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1763,8 +1819,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>, InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseCancel<TCaptureResolve>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1797,8 +1854,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidResult<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1831,8 +1889,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidPromiseTCancel<TResult>, InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1865,8 +1924,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>, InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1900,8 +1960,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>, InternalProtected.DelegateArgResult<TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgResult<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1935,8 +1996,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidPromiseTCancel<TResult>, InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -1970,8 +2032,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>, InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureVoidPromiseTCancel<TCaptureResolve, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2002,8 +2065,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseContinue<InternalProtected.DelegateContinueCaptureVoidVoidCancel<TCapture>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueCaptureVoidVoidCancel<TCapture>(ref continueCaptureValue, onContinue, cancelationToken.RegisterInternal(promise));
-                HookupNewPromise(promise);
+                promise.continuer = new InternalProtected.DelegateContinueCaptureVoidVoidCancel<TCapture>(ref continueCaptureValue, onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
                 return promise;
             }
             else
@@ -2030,8 +2094,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseContinue<TResult, InternalProtected.DelegateContinueCaptureVoidResultCancel<TCapture, TResult>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueCaptureVoidResultCancel<TCapture, TResult>(ref continueCaptureValue, onContinue, cancelationToken.RegisterInternal(promise));
-                HookupNewPromise(promise);
+                promise.continuer = new InternalProtected.DelegateContinueCaptureVoidResultCancel<TCapture, TResult>(ref continueCaptureValue, onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
                 return promise;
             }
             else
@@ -2058,8 +2123,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueCaptureVoidPromiseCancel<TCapture>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueCaptureVoidPromiseCancel<TCapture>(ref continueCaptureValue, onContinue, cancelationToken.RegisterInternal(promise));
-                HookupNewPromise(promise);
+                promise.continuer = new InternalProtected.DelegateContinueCaptureVoidPromiseCancel<TCapture>(ref continueCaptureValue, onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
                 return promise;
             }
             else
@@ -2086,8 +2152,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueCaptureVoidPromiseTCancel<TCapture, TResult>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueCaptureVoidPromiseTCancel<TCapture, TResult>(ref continueCaptureValue, onContinue, cancelationToken.RegisterInternal(promise));
-                HookupNewPromise(promise);
+                promise.continuer = new InternalProtected.DelegateContinueCaptureVoidPromiseTCancel<TCapture, TResult>(ref continueCaptureValue, onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
                 return promise;
             }
             else
@@ -2170,7 +2237,8 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolve<InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2200,7 +2268,8 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolve<TResult, InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2230,7 +2299,8 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolvePromise<InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2260,7 +2330,8 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolvePromise<TResult, InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2291,8 +2362,9 @@ namespace Proto.Promises
 
             if (cancelationToken.CanBeCanceled)
             {
-                var promise = InternalProtected.PromiseResolveReject<T, InternalProtected.DelegatePassthroughCancel, InternalProtected.DelegateCaptureVoidResult<TCaptureReject, T>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthroughCancel(cancelationToken.RegisterInternal(promise));
+                var promise = InternalProtected.PromiseResolveReject<T, InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateCaptureVoidResult<TCaptureReject, T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidResult<TCaptureReject, T>(ref rejectCaptureValue, onRejected);
                 MaybeHookupNewPromise(promise);
                 return promise;
@@ -2324,8 +2396,9 @@ namespace Proto.Promises
 
             if (cancelationToken.CanBeCanceled)
             {
-                var promise = InternalProtected.PromiseResolveReject<T, InternalProtected.DelegatePassthroughCancel, InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, T>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthroughCancel(cancelationToken.RegisterInternal(promise));
+                var promise = InternalProtected.PromiseResolveReject<T, InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, T>(ref rejectCaptureValue, onRejected);
                 MaybeHookupNewPromise(promise);
                 return promise;
@@ -2356,8 +2429,9 @@ namespace Proto.Promises
 
             if (cancelationToken.CanBeCanceled)
             {
-                var promise = InternalProtected.PromiseResolveRejectPromise<T, InternalProtected.DelegatePassthroughCancel, InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, T>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthroughCancel(cancelationToken.RegisterInternal(promise));
+                var promise = InternalProtected.PromiseResolveRejectPromise<T, InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, T>(ref rejectCaptureValue, onRejected);
                 MaybeHookupNewPromise(promise);
                 return promise;
@@ -2389,8 +2463,9 @@ namespace Proto.Promises
 
             if (cancelationToken.CanBeCanceled)
             {
-                var promise = InternalProtected.PromiseResolveRejectPromise<T, InternalProtected.DelegatePassthroughCancel, InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, T>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegatePassthroughCancel(cancelationToken.RegisterInternal(promise));
+                var promise = InternalProtected.PromiseResolveRejectPromise<T, InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, T>(ref rejectCaptureValue, onRejected);
                 MaybeHookupNewPromise(promise);
                 return promise;
@@ -2426,8 +2501,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>, InternalProtected.DelegateVoidVoid>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2460,8 +2536,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateArgVoidCancel<T>, InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2494,8 +2571,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>, InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2529,8 +2607,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2564,8 +2643,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateArgVoidCancel<T>, InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2599,8 +2679,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>, InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2634,8 +2715,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidResult<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2668,8 +2750,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateArgResultCancel<T, TResult>, InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2702,8 +2785,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2737,8 +2821,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateArgResult<TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgResult<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2772,8 +2857,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateArgResultCancel<T, TResult>, InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2807,8 +2893,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2841,8 +2928,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>, InternalProtected.DelegateVoidPromise>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2875,8 +2963,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgPromiseCancel<T>, InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2909,8 +2998,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>, InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2944,8 +3034,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -2979,8 +3070,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgPromiseCancel<T>, InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3014,8 +3106,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>, InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3048,8 +3141,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidPromiseT<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3082,8 +3176,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgPromiseTCancel<T, TResult>, InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3116,8 +3211,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3151,8 +3247,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateArgPromiseT<TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3186,8 +3283,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgPromiseTCancel<T, TResult>, InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3221,8 +3319,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3255,8 +3354,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>, InternalProtected.DelegateVoidPromise>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3289,8 +3389,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgVoidCancel<T>, InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3323,8 +3424,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>, InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromise<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3358,8 +3460,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3393,8 +3496,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgVoidCancel<T>, InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3428,8 +3532,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>, InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgVoidCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromise<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3463,8 +3568,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidPromiseT<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3497,8 +3603,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgResultCancel<T, TResult>, InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3531,8 +3638,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidPromiseT<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3566,8 +3674,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateArgPromiseT<TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3601,8 +3710,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgResultCancel<T, TResult>, InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3636,8 +3746,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgResultCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgPromiseT<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3670,8 +3781,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>, InternalProtected.DelegateVoidVoid>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3704,8 +3816,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgPromiseCancel<T>, InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3738,8 +3851,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>, InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidVoid<TCaptureReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3773,8 +3887,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3808,8 +3923,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgPromiseCancel<T>, InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3843,8 +3959,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>, InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseCancel<TCaptureResolve, T>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgVoid<TCaptureReject, TReject>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3877,8 +3994,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateVoidResult<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3911,8 +4029,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgPromiseTCancel<T, TResult>, InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3945,8 +4064,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureVoidResult<TCaptureReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -3980,8 +4100,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateArgResult<TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateArgResult<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -4015,8 +4136,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgPromiseTCancel<T, TResult>, InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -4050,8 +4172,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>, InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>>.GetOrCreate();
-                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved, cancelationToken.RegisterInternal(promise));
+                promise.resolver = new InternalProtected.DelegateCaptureArgPromiseTCancel<TCaptureResolve, T, TResult>(ref resolveCaptureValue, onResolved);
                 promise.rejecter = new InternalProtected.DelegateCaptureArgResult<TCaptureReject, TReject, TResult>(ref rejectCaptureValue, onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
                 MaybeHookupNewPromise(promise);
                 return promise;
             }
@@ -4082,8 +4205,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseContinue<InternalProtected.DelegateContinueCaptureArgVoidCancel<TCapture, T>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueCaptureArgVoidCancel<TCapture, T>(ref continueCaptureValue, onContinue, cancelationToken.RegisterInternal(promise));
-                HookupNewPromise(promise);
+                promise.continuer = new InternalProtected.DelegateContinueCaptureArgVoidCancel<TCapture, T>(ref continueCaptureValue, onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
                 return promise;
             }
             else
@@ -4110,8 +4234,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseContinue<TResult, InternalProtected.DelegateContinueCaptureArgResultCancel<TCapture, T, TResult>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueCaptureArgResultCancel<TCapture, T, TResult>(ref continueCaptureValue, onContinue, cancelationToken.RegisterInternal(promise));
-                HookupNewPromise(promise);
+                promise.continuer = new InternalProtected.DelegateContinueCaptureArgResultCancel<TCapture, T, TResult>(ref continueCaptureValue, onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
                 return promise;
             }
             else
@@ -4138,8 +4263,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueCaptureArgPromiseCancel<TCapture, T>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueCaptureArgPromiseCancel<TCapture, T>(ref continueCaptureValue, onContinue, cancelationToken.RegisterInternal(promise));
-                HookupNewPromise(promise);
+                promise.continuer = new InternalProtected.DelegateContinueCaptureArgPromiseCancel<TCapture, T>(ref continueCaptureValue, onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
                 return promise;
             }
             else
@@ -4166,8 +4292,9 @@ namespace Proto.Promises
             if (cancelationToken.CanBeCanceled)
             {
                 var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueCaptureArgPromiseTCancel<TCapture, T, TResult>>.GetOrCreate();
-                promise.continuer = new InternalProtected.DelegateContinueCaptureArgPromiseTCancel<TCapture, T, TResult>(ref continueCaptureValue, onContinue, cancelationToken.RegisterInternal(promise));
-                HookupNewPromise(promise);
+                promise.continuer = new InternalProtected.DelegateContinueCaptureArgPromiseTCancel<TCapture, T, TResult>(ref continueCaptureValue, onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
                 return promise;
             }
             else

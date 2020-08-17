@@ -4,9 +4,7 @@
 #undef PROMISE_PROGRESS
 #endif
 
-using System;
 using NUnit.Framework;
-using UnityEngine.TestTools;
 
 namespace Proto.Promises.Tests
 {
@@ -46,10 +44,7 @@ namespace Proto.Promises.Tests
 
             deferred2.Resolve(1);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -73,10 +68,7 @@ namespace Proto.Promises.Tests
 
             deferred1.Resolve(1);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -103,10 +95,7 @@ namespace Proto.Promises.Tests
 
             deferred2.Resolve(5);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -133,10 +122,7 @@ namespace Proto.Promises.Tests
 
             deferred1.Resolve(5);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -164,11 +150,8 @@ namespace Proto.Promises.Tests
 
             deferred2.Resolve(5);
 
-            // Clean up.
             cancelationSource.Dispose();
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -196,11 +179,8 @@ namespace Proto.Promises.Tests
 
             deferred1.Resolve(5);
 
-            // Clean up.
             cancelationSource.Dispose();
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
 #if PROMISE_PROGRESS
@@ -244,10 +224,7 @@ namespace Proto.Promises.Tests
 
             deferred2.Resolve();
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -290,10 +267,7 @@ namespace Proto.Promises.Tests
 
             deferred2.Resolve(1);
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -312,10 +286,7 @@ namespace Proto.Promises.Tests
             deferred1.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -334,10 +305,7 @@ namespace Proto.Promises.Tests
             deferred1.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
 
-            // Clean up.
-            GC.Collect();
-            Promise.Manager.HandleCompletesAndProgress();
-            LogAssert.NoUnexpectedReceived();
+            TestHelper.Cleanup();
         }
 #endif
     }

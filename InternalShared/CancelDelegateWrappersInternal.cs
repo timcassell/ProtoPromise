@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable IDE0034 // Simplify 'default' expression
+
+using System;
 using System.Diagnostics;
 
 namespace Proto.Promises
@@ -35,9 +37,8 @@ namespace Proto.Promises
                 }
             }
 
-            public void MaybeUnregisterCancelation() { }
-
-            public void InvokeFromToken(IValueContainer valueContainer, ITreeHandleable owner) { throw new System.InvalidOperationException(); }
+            public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner) { throw new System.InvalidOperationException(); }
+            public void MaybeDispose(IDisposable owner) { throw new System.InvalidOperationException(); }
         }
 
         [DebuggerNonUserCode]
@@ -72,35 +73,40 @@ namespace Proto.Promises
                 }
             }
 
-            public void MaybeUnregisterCancelation() { }
-
-            public void InvokeFromToken(IValueContainer valueContainer, ITreeHandleable owner) { throw new System.InvalidOperationException(); }
+            public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner) { throw new System.InvalidOperationException(); }
+            public void MaybeDispose(IDisposable owner) { throw new System.InvalidOperationException(); }
         }
 
         [DebuggerNonUserCode]
         internal struct CancelDelegatePromiseCancel : IDelegateCancel
         {
+            public CancelationRegistration cancelationRegistration;
+
             private readonly Action<ReasonContainer> _callback;
-            private readonly CancelationRegistration _cancelationRegistration;
-            private readonly ITreeHandleableCollection _owner;
+            private readonly ITreeHandleableCollection _previous;
             private IValueContainer _valueContainer;
 
-            public CancelDelegatePromiseCancel(Action<ReasonContainer> callback, Promise owner, CancelationRegistration cancelationRegistration)
+            public CancelDelegatePromiseCancel(Action<ReasonContainer> callback, Promise previous)
             {
                 _callback = callback;
-                _cancelationRegistration = cancelationRegistration;
-                _owner = owner;
+                _previous = previous;
                 _valueContainer = null;
+                cancelationRegistration = default(CancelationRegistration);
             }
 
-            public void InvokeFromToken(IValueContainer valueContainer, ITreeHandleable owner)
+            public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
                 // When token is canceled, don't invoke the callback.
-                _owner.Remove(owner);
                 if (_valueContainer != null)
                 {
+                    // Owner is in the event queue, just release the container.
                     _valueContainer.Release();
                     _valueContainer = null;
+                }
+                else
+                {
+                    _previous.Remove(owner);
+                    owner.Dispose();
                 }
             }
 
@@ -112,13 +118,14 @@ namespace Proto.Promises
 
             public void InvokeFromPromise(ITraceable owner)
             {
-                if (_valueContainer != null)
+                if (_valueContainer == null)
                 {
                     // Make sure invocation is still valid in case this is canceled while waiting in the event queue.
                     return;
                 }
                 try
                 {
+                    cancelationRegistration.TryUnregister();
                     _callback.Invoke(new ReasonContainer(_valueContainer));
                 }
                 finally
@@ -127,38 +134,47 @@ namespace Proto.Promises
                 }
             }
 
-            public void MaybeUnregisterCancelation()
+            public void MaybeDispose(IDisposable owner)
             {
-                _cancelationRegistration.TryUnregister();
+                if (_valueContainer != null)
+                {
+                    owner.Dispose();
+                }
             }
         }
 
         [DebuggerNonUserCode]
         internal struct CancelDelegatePromiseCancel<TCapture> : IDelegateCancel
         {
+            public CancelationRegistration cancelationRegistration;
+
             private readonly TCapture _captureValue;
             private readonly Action<TCapture, ReasonContainer> _callback;
-            private readonly CancelationRegistration _cancelationRegistration;
-            private readonly ITreeHandleableCollection _owner;
+            private readonly ITreeHandleableCollection _previous;
             private IValueContainer _valueContainer;
 
-            public CancelDelegatePromiseCancel(ref TCapture captureValue, Action<TCapture, ReasonContainer> callback, Promise owner, CancelationRegistration cancelationRegistration)
+            public CancelDelegatePromiseCancel(ref TCapture captureValue, Action<TCapture, ReasonContainer> callback, Promise previous)
             {
                 _captureValue = captureValue;
                 _callback = callback;
-                _cancelationRegistration = cancelationRegistration;
-                _owner = owner;
+                cancelationRegistration = default(CancelationRegistration);
+                _previous = previous;
                 _valueContainer = null;
             }
 
-            public void InvokeFromToken(IValueContainer valueContainer, ITreeHandleable owner)
+            public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
                 // When token is canceled, don't invoke the callback.
-                _owner.Remove(owner);
                 if (_valueContainer != null)
                 {
+                    // Owner is in the event queue, just release the container.
                     _valueContainer.Release();
                     _valueContainer = null;
+                }
+                else
+                {
+                    _previous.Remove(owner);
+                    owner.Dispose();
                 }
             }
 
@@ -170,13 +186,14 @@ namespace Proto.Promises
 
             public void InvokeFromPromise(ITraceable owner)
             {
-                if (_valueContainer != null)
+                if (_valueContainer == null)
                 {
                     // Make sure invocation is still valid in case this is canceled while waiting in the event queue.
                     return;
                 }
                 try
                 {
+                    cancelationRegistration.TryUnregister();
                     _callback.Invoke(_captureValue, new ReasonContainer(_valueContainer));
                 }
                 finally
@@ -185,9 +202,12 @@ namespace Proto.Promises
                 }
             }
 
-            public void MaybeUnregisterCancelation()
+            public void MaybeDispose(IDisposable owner)
             {
-                _cancelationRegistration.TryUnregister();
+                if (_valueContainer != null)
+                {
+                    owner.Dispose();
+                }
             }
         }
 
@@ -201,14 +221,21 @@ namespace Proto.Promises
                 _callback = callback;
             }
 
-            public void InvokeFromToken(IValueContainer valueContainer, ITreeHandleable owner)
+            public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
-                _callback.Invoke(new ReasonContainer(valueContainer));
+                // Disposing the owner sets _callback to null, so copy to stack first.
+                var callback = _callback;
+                owner.Dispose();
+                callback.Invoke(new ReasonContainer(valueContainer));
+            }
+
+            public void MaybeDispose(IDisposable owner)
+            {
+                owner.Dispose();
             }
 
             public void SetValue(IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
             public void InvokeFromPromise(ITraceable owner) { throw new System.InvalidOperationException(); }
-            public void MaybeUnregisterCancelation() { throw new System.InvalidOperationException(); }
         }
 
         [DebuggerNonUserCode]
@@ -223,14 +250,22 @@ namespace Proto.Promises
                 _callback = callback;
             }
 
-            public void InvokeFromToken(IValueContainer valueContainer, ITreeHandleable owner)
+            public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
-                _callback.Invoke(_captureValue, new ReasonContainer(valueContainer));
+                // Disposing the owner sets fields to default, so copy to stack first.
+                var callback = _callback;
+                var capturevalue = _captureValue;
+                owner.Dispose();
+                callback.Invoke(capturevalue, new ReasonContainer(valueContainer));
+            }
+
+            public void MaybeDispose(IDisposable owner)
+            {
+                owner.Dispose();
             }
 
             public void SetValue(IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
             public void InvokeFromPromise(ITraceable owner) { throw new System.InvalidOperationException(); }
-            public void MaybeUnregisterCancelation() { throw new System.InvalidOperationException(); }
         }
     }
 }

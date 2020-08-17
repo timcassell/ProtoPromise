@@ -1,11 +1,14 @@
-﻿using System; using System.Collections.Generic;  namespace Proto.Promises {     partial class Promise     {         partial class InternalProtected         {             public static Promise CreateSequence<TEnumerator>(TEnumerator promiseFuncs, CancelationToken cancelationToken = default(CancelationToken)) where TEnumerator : IEnumerator<Func<Promise>>             {                 ValidateArgument(promiseFuncs, "promiseFuncs", 2);                  if (!promiseFuncs.MoveNext())                 {                     return Resolved();                 }
+﻿#pragma warning disable IDE0017 // Simplify object initialization
+
+using System; using System.Collections.Generic;  namespace Proto.Promises {     partial class Promise     {         partial class InternalProtected         {             public static Promise CreateSequence<TEnumerator>(TEnumerator promiseFuncs, CancelationToken cancelationToken = default(CancelationToken)) where TEnumerator : IEnumerator<Func<Promise>>             {                 ValidateArgument(promiseFuncs, "promiseFuncs", 2);                  if (!promiseFuncs.MoveNext())                 {                     return Resolved();                 }
 
                 // Invoke funcs async and normalize the progress.
                 Promise rootPromise;
                 if (cancelationToken.CanBeCanceled)
                 {
                     var newPromise = PromiseResolvePromise<DelegateVoidPromiseCancel>.GetOrCreate();
-                    newPromise.resolver = new DelegateVoidPromiseCancel(promiseFuncs.Current, cancelationToken.RegisterInternal(newPromise));
+                    newPromise.resolver = new DelegateVoidPromiseCancel(promiseFuncs.Current);
+                    newPromise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(newPromise);
                     // Set resolved value only if cancelation token wasn't already canceled (_valueOrPrevious will be a cancel value from being invoked synchronously).
                     if (newPromise._valueOrPrevious == null)
                     {
