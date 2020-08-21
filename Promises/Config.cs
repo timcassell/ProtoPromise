@@ -99,6 +99,11 @@ namespace Proto.Promises
             /// If this is not null, uncaught rejections get routed through this instead of being thrown.
             /// </summary>
             public static Action<UnhandledException> UncaughtRejectionHandler { get; set; }
+
+            /// <summary>
+            /// Warning handler.
+            /// </summary>
+            public static Action<string> WarningHandler { get; set; }
         }
     }
 }

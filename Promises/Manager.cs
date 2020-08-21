@@ -82,6 +82,18 @@ namespace Proto.Promises
                 ClearPooledProgress();
                 Internal.ClearPool();
             }
+
+            /// <summary>
+            /// Sends the message to <see cref="Config.WarningHandler"/> if it exists.
+            /// </summary>
+            public static void LogWarning(string message)
+            {
+                var temp = Config.WarningHandler;
+                if (temp != null)
+                {
+                    temp.Invoke(message);
+                }
+            }
         }
     }
 }

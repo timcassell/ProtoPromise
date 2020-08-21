@@ -1,5 +1,4 @@
-﻿#pragma warning disable IDE0034 // Simplify 'default' expression
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 
 namespace Proto.Promises
@@ -8,10 +7,9 @@ namespace Proto.Promises
     {
         static Promise()
         {
-#if UNITY_2017_3_OR_NEWER && (CSHARP_7_OR_LATER || CSHARP_7_3_OR_NEWER)
-            // Unity changed AggregateException logging to not include the InnerException, so make the default rejection handler route to UnityEngine.Debug.LogException.
+            // Set default rejection and warning handlers to route to UnityEngine.Debug.
             Config.UncaughtRejectionHandler = Debug.LogException;
-#endif
+            Config.WarningHandler = Debug.LogWarning;
 #if UNITY_EDITOR
             if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
 #endif
@@ -32,14 +30,14 @@ namespace Proto.Promises
         {
             if (_instance != null)
             {
-                Logger.LogWarning("There can only be one instance of PromiseBehaviour. Destroying new instance.");
+                Promise.Manager.LogWarning("There can only be one instance of PromiseBehaviour. Destroying new instance.");
                 Destroy(this);
                 return;
             }
             DontDestroyOnLoad(gameObject);
             gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
             _instance = this;
-            StartCoroutine(_Enumerator());
+            StartCoroutine(UpdateRoutine());
         }
 
         private void OnDestroy()
@@ -50,13 +48,13 @@ namespace Proto.Promises
             {
                 if (_instance == this)
                 {
-                    Logger.LogWarning("PromiseBehaviour destroyed! Promise callbacks will no longer be automatically invoked!");
+                    Promise.Manager.LogWarning("PromiseBehaviour destroyed! Promise callbacks will no longer be automatically invoked!");
                     _instance = null;
                 }
             }
         }
 
-        private IEnumerator _Enumerator()
+        private IEnumerator UpdateRoutine()
         {
             while (true)
             {

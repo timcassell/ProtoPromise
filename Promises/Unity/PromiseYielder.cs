@@ -259,7 +259,7 @@ namespace Proto.Promises
         {
             if (_instance != this)
             {
-                Logger.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
+                Promise.Manager.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
                 Destroy(this);
                 return;
             }
@@ -275,7 +275,7 @@ namespace Proto.Promises
             {
                 if (_instance == this)
                 {
-                    Logger.LogWarning("PromiseYielder destroyed! Any pending yield promises will not be resolved!");
+                    Promise.Manager.LogWarning("PromiseYielder destroyed! Any pending PromiseYielder.WaitFor promises will not be resolved!");
                     _instance = null;
                 }
             }

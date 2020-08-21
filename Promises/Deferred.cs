@@ -147,7 +147,7 @@ namespace Proto.Promises
                 else
                 {
                     Internal.AddRejectionToUnhandledStack(reason, null);
-                    Logger.LogWarning("DeferredBase.Reject - Deferred is not in the pending state.");
+                    Manager.LogWarning("DeferredBase.Reject - Deferred is not in the pending state.");
                 }
             }
 
@@ -171,7 +171,7 @@ namespace Proto.Promises
 
                 if (State != State.Pending)
                 {
-                    Logger.LogWarning("DeferredBase.ReportProgress - Deferred is not in the pending state.");
+                    Manager.LogWarning("DeferredBase.ReportProgress - Deferred is not in the pending state.");
                     return;
                 }
 
@@ -321,7 +321,7 @@ namespace Proto.Promises
                 else
                 {
                     Internal.AddRejectionToUnhandledStack(reason, null);
-                    Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
+                    Manager.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
                 }
             }
 
@@ -345,7 +345,7 @@ namespace Proto.Promises
 
                 if (State != State.Pending)
                 {
-                    Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
+                    Manager.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
                     return;
                 }
 
@@ -372,7 +372,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+                    Manager.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
                     return;
                 }
             }
@@ -523,7 +523,7 @@ namespace Proto.Promises
                 else
                 {
                     Internal.AddRejectionToUnhandledStack(reason, null);
-                    Logger.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
+                    Manager.LogWarning("Deferred.Reject - Deferred is not in the pending state.");
                 }
             }
 
@@ -547,7 +547,7 @@ namespace Proto.Promises
 
                 if (State != State.Pending)
                 {
-                    Logger.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
+                    Manager.LogWarning("Deferred.ReportProgress - Deferred is not in the pending state.");
                     return;
                 }
 
@@ -574,7 +574,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    Logger.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
+                    Manager.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
                     return;
                 }
             }
