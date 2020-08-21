@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -17,6 +12,7 @@
 #if CSHARP_7_OR_LATER
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
+#pragma warning disable IDE0060 // Remove unused parameter
 
 using System;
 using System.Diagnostics;
@@ -48,19 +44,6 @@ namespace Proto.Promises.Await
         bool IsCompleted { get; }
         void GetResult();
     }
-
-    public static class Extensions
-    {
-        public static IAwaiter GetAwaiter(this Promise promise)
-        {
-            return ((IAwaitable) promise).GetAwaiter();
-        }
-
-        public static IAwaiter<T> GetAwaiter<T>(this Promise<T> promise)
-        {
-            return ((IAwaitable<T>) promise).GetAwaiter();
-        }
-    }
 }
 
 namespace Proto.Promises
@@ -68,7 +51,10 @@ namespace Proto.Promises
     [AsyncMethodBuilder(typeof(Async.CompilerServices.PromiseMethodBuilder))]
     partial class Promise : IAwaitable, IAwaiter, ICriticalNotifyCompletion
     {
-        IAwaiter IAwaitable.GetAwaiter()
+        /// <summary>
+        /// Used to support the await keyword.
+        /// </summary>
+        public IAwaiter GetAwaiter()
         {
             ValidateOperation(this, 1);
 
@@ -121,7 +107,10 @@ namespace Proto.Promises
     [AsyncMethodBuilder(typeof(Async.CompilerServices.PromiseMethodBuilder<>))]
     partial class Promise<T> : IAwaitable<T>, IAwaiter<T>
     {
-        IAwaiter<T> IAwaitable<T>.GetAwaiter()
+        /// <summary>
+        /// Used to support the await keyword.
+        /// </summary>
+        public new IAwaiter<T> GetAwaiter()
         {
             ValidateOperation(this, 1);
 
@@ -177,6 +166,7 @@ namespace Proto.Promises.Async.CompilerServices
     /// <summary>
     /// This type and its members are intended for use by the compiler.
     /// </summary>
+    [DebuggerNonUserCode]
     public struct PromiseMethodBuilder
     {
         private Promise.Deferred _deferred;
@@ -194,45 +184,53 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         public void SetException(Exception exception)
         {
-#if PROMISE_CANCEL
-            if (exception is OperationCanceledException ex)
+            if (exception is OperationCanceledException)
             {
-                if (_deferred == null)
+                if (!_deferred.IsValid)
                 {
-                    Task = Promise.Canceled(ex);
+                    Task = Promise.Canceled(exception);
                 }
                 else
                 {
-                    _deferred.Cancel(ex);
-                    _deferred = null;
+                    ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref exception));
                 }
             }
             else
-#endif
             {
-                if (_deferred == null)
+                if (exception is RethrowException)
+                {
+#if PROMISE_DEBUG
+                    string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(exception, true) });
+#else
+                    string stacktrace = new StackTrace(exception, true).ToString();
+#endif
+                    exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+                }
+                if (!_deferred.IsValid)
                 {
                     Task = Promise.Rejected(exception);
                 }
                 else
                 {
                     _deferred.Reject(exception);
-                    _deferred = null;
                 }
             }
+            _deferred = default;
+            _continuation = null;
         }
 
         [DebuggerHidden]
         public void SetResult()
         {
-            if (_deferred == null)
+            if (!_deferred.IsValid)
             {
                 Task = Promise.Resolved();
             }
             else
             {
                 _deferred.Resolve();
-                _deferred = null;
+                _deferred = default;
+                _continuation = null;
             }
         }
 
@@ -259,40 +257,21 @@ namespace Proto.Promises.Async.CompilerServices
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
-            Promise.SetInvokingAsyncFunctionInternal(true);
-            try
-            {
-                stateMachine.MoveNext();
-            }
-            finally
-            {
-                Promise.SetInvokingAsyncFunctionInternal(false);
-            }
+            stateMachine.MoveNext();
         }
 
         [DebuggerHidden]
         public void SetStateMachine(IAsyncStateMachine stateMachine) { }
 
         [DebuggerHidden]
-        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
+        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine)
+            where TStateMachine : IAsyncStateMachine
         {
-            if (_continuation == null)
+            if (_continuation is null)
             {
-                _deferred = Promise.NewDeferred();
+                _deferred = Promise.Deferred.New();
                 Task = _deferred.Promise;
-                var sm = stateMachine;
-                _continuation = () =>
-                {
-                    Promise.SetInvokingAsyncFunctionInternal(true);
-                    try
-                    {
-                        sm.MoveNext();
-                    }
-                    finally
-                    {
-                        Promise.SetInvokingAsyncFunctionInternal(false);
-                    }
-                };
+                _continuation = stateMachine.MoveNext;
             }
         }
     }
@@ -300,6 +279,7 @@ namespace Proto.Promises.Async.CompilerServices
     /// <summary>
     /// This type and its members are intended for use by the compiler.
     /// </summary>
+    [DebuggerNonUserCode]
     public struct PromiseMethodBuilder<T>
     {
         private Promise<T>.Deferred _deferred;
@@ -317,45 +297,53 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         public void SetException(Exception exception)
         {
-#if PROMISE_CANCEL
-            if (exception is OperationCanceledException ex)
+            if (exception is OperationCanceledException)
             {
-                if (_deferred == null)
+                if (!_deferred.IsValid)
                 {
-                    Task = Promise.Canceled<T, OperationCanceledException>(ex);
+                    Task = Promise.Canceled<T, Exception>(exception);
                 }
                 else
                 {
-                    _deferred.Cancel(ex);
-                    _deferred = null;
+                    ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref exception));
                 }
             }
             else
-#endif
             {
-                if (_deferred == null)
+                if (exception is RethrowException)
+                {
+#if PROMISE_DEBUG
+                    string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(exception, true) });
+#else
+                    string stacktrace = new StackTrace(exception, true).ToString();
+#endif
+                    exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+                }
+                if (!_deferred.IsValid)
                 {
                     Task = Promise.Rejected<T, Exception>(exception);
                 }
                 else
                 {
                     _deferred.Reject(exception);
-                    _deferred = null;
                 }
             }
+            _deferred = default;
+            _continuation = null;
         }
 
         [DebuggerHidden]
         public void SetResult(T result)
         {
-            if (_deferred == null)
+            if (!_deferred.IsValid)
             {
                 Task = Promise.Resolved(result);
             }
             else
             {
                 _deferred.Resolve(result);
-                _deferred = null;
+                _deferred = default;
+                _continuation = null;
             }
         }
 
@@ -382,40 +370,21 @@ namespace Proto.Promises.Async.CompilerServices
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
-            Promise.SetInvokingAsyncFunctionInternal(true);
-            try
-            {
-                stateMachine.MoveNext();
-            }
-            finally
-            {
-                Promise.SetInvokingAsyncFunctionInternal(false);
-            }
+            stateMachine.MoveNext();
         }
 
         [DebuggerHidden]
         public void SetStateMachine(IAsyncStateMachine stateMachine) { }
 
         [DebuggerHidden]
-        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
+        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine)
+            where TStateMachine : IAsyncStateMachine
         {
-            if (_continuation == null)
+            if (_continuation is null)
             {
-                _deferred = Promise.NewDeferred<T>();
+                _deferred = Promise<T>.Deferred.New();
                 Task = _deferred.Promise;
-                var sm = stateMachine;
-                _continuation = () =>
-                {
-                    Promise.SetInvokingAsyncFunctionInternal(true);
-                    try
-                    {
-                        sm.MoveNext();
-                    }
-                    finally
-                    {
-                        Promise.SetInvokingAsyncFunctionInternal(false);
-                    }
-                };
+                _continuation = stateMachine.MoveNext;
             }
         }
     }

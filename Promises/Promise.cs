@@ -4,13 +4,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-// define PROTO_PROMISE_CANCEL_DISABLE to disable cancelations on promises.
-// If Cancelations are enabled, it breaks the Promises/A+ spec "2.1. Promise States", but allows breaking promise chains. Execution is also a little slower.
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 // define PROTO_PROMISE_PROGRESS_DISABLE to disable progress reports on promises.
 // If Progress is enabled, promises use more memory, and it creates an upper bound to the depth of a promise chain (see Config for details).
 #if !PROTO_PROMISE_PROGRESS_DISABLE
@@ -18,6 +11,9 @@
 #else
 #undef PROMISE_PROGRESS
 #endif
+
+#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0017 // Simplify object initialization
 
 using System;
 
@@ -30,18 +26,27 @@ namespace Proto.Promises
     /// or the reason why the <see cref="Promise"/> cannot be resolved.
     /// </summary>
     [System.Diagnostics.DebuggerNonUserCode]
-    public abstract partial class Promise : ICancelableAny, IRetainable
+    public abstract partial class Promise : IRetainable
     {
         public enum State : byte
         {
             Pending,
             Resolved,
             Rejected,
-#if !PROMISE_CANCEL
-            [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", false)]
-#endif
-            Canceled // This violates Promises/A+ 2.1 when CANCEL is enabled.
+            Canceled
         }
+
+        internal Promise()
+        {
+#if PROMISE_DEBUG
+            _id = idCounter++;
+#endif
+        }
+
+        /// <summary>
+        /// Get the type of the result of the asynchronous operation. Returns null if this instance is a non-value <see cref="Promise"/>.
+        /// </summary>
+        public virtual Type ResultType { get { return null; } }
 
         /// <summary>
         /// Retain this instance. Allows adding more callbacks and prevents uncaught rejections from being thrown until this is released.
@@ -71,7 +76,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             if (_userRetainCounter == 0)
             {
-                throw new InvalidOperationException("You must call Retain before you call Release!", GetFormattedStacktrace(1));
+                throw new InvalidOperationException("You must call Retain before you call Release!", Internal.GetFormattedStacktrace(1));
             }
             --_userRetainCounter;
 #endif
@@ -80,98 +85,58 @@ namespace Proto.Promises
                 // Set retain count to 1 and add to handle queue so this will be disposed asynchronously.
                 // This means the Promise object will still be usable until the next handle is ran.
                 _retainCounter = 1;
-                AddToHandleQueueFront(this);
+                Internal.AddToHandleQueueFront(this);
             }
-        }
-
-        /// <summary>
-        /// Returns a new <see cref="YieldInstruction"/> that can be yielded in a coroutine to wait until this is settled.
-        /// </summary>
-        public YieldInstruction ToYieldInstruction()
-        {
-            ValidateOperation(this, 1);
-
-            var yield = Internal.YieldInstructionVoid.GetOrCreate(this);
-            AddWaiter(yield);
-            return yield;
-        }
-
-        /// <summary>
-        /// Returns a new <see cref="Promise"/> that adopts the state of this. This is mostly useful for branches that you expect might be canceled, and you don't want all branches to be canceled.
-        /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. This is mostly useful for cancelations of branched promises. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", false)]
-#endif
-        public Promise ThenDuplicate()
-        {
-            ValidateOperation(this, 1);
-
-            var promise = GetDuplicate();
-            HookupNewPromise(promise);
-            return promise;
         }
 
         /// <summary>
         /// Add a progress listener. Returns this.
         /// <para/><paramref name="onProgress"/> will be invoked with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
 #if !PROMISE_PROGRESS
         [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
-        public Promise Progress(Action<float> onProgress)
+        public Promise Progress(Action<float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
-            SubscribeProgress(onProgress, 1);
+            SubscribeProgress(onProgress, cancelationToken);
             return this;
         }
 
         /// <summary>
         /// Add a cancel callback. Returns this.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with the cancelation reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
-        public Promise CatchCancelation(Action<ReasonContainer> onCanceled)
+        public Promise CatchCancelation(Action<ReasonContainer> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
-            ValidateCancel(1);
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
             if (_state == State.Pending | _state == State.Canceled)
             {
-                AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled, 1));
+                if (cancelationToken.CanBeCanceled)
+                {
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        // Don't hook up callback if token is already canceled.
+                        return this;
+                    }
+                    var cancelDelegate = Internal.CancelDelegate<Internal.CancelDelegatePromiseCancel>.GetOrCreate();
+                    cancelDelegate.canceler = new Internal.CancelDelegatePromiseCancel(onCanceled, this);
+                    cancelDelegate.canceler.cancelationRegistration = cancelationToken.RegisterInternal(cancelDelegate);
+                    AddWaiter(cancelDelegate);
+                }
+                else
+                {
+                    var cancelDelegate = Internal.CancelDelegate<Internal.CancelDelegatePromise>.GetOrCreate();
+                    cancelDelegate.canceler = new Internal.CancelDelegatePromise(onCanceled);
+                    AddWaiter(cancelDelegate);
+                }
             }
             return this;
-        }
-
-        /// <summary>
-        /// Cancels this promise and all promises that have been chained from this without a reason.
-        /// Does nothing if this promise isn't pending.
-        /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
-        public void Cancel()
-        {
-            ValidateCancel(1);
-            ValidateOperation(this, 1);
-
-            CancelDirectIfPending();
-        }
-
-        /// <summary>
-        /// Cancels this promise and all promises that have been chained from this with the provided cancel reason.
-        /// Does nothing if this promise isn't pending.
-        /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
-        public void Cancel<TCancel>(TCancel reason)
-        {
-            ValidateCancel(1);
-            ValidateOperation(this, 1);
-
-            CancelDirectIfPending(reason);
         }
 
         /// <summary>
@@ -183,7 +148,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, 1));
+            AddWaiter(InternalProtected.FinallyDelegate.GetOrCreate(onFinally));
             return this;
         }
 
@@ -191,69 +156,125 @@ namespace Proto.Promises
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise Then(Action onResolved)
+        public Promise Then(Action onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseVoidResolve0.GetOrCreate(onResolved, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolve<InternalProtected.DelegateVoidVoidCancel>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolve<InternalProtected.DelegateVoidVoid>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidVoid(onResolved);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<TResult> onResolved)
+        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseVoidResolve<TResult>.GetOrCreate(onResolved, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolve<TResult, InternalProtected.DelegateVoidResultCancel<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolve<TResult, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidResult<TResult>(onResolved);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise Then(Func<Promise> onResolved)
+        public Promise Then(Func<Promise> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseVoidResolvePromise0.GetOrCreate(onResolved, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolvePromise<InternalProtected.DelegateVoidPromiseCancel>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolvePromise<InternalProtected.DelegateVoidPromise>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromise(onResolved);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved)
+        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseVoidResolvePromise<TResult>.GetOrCreate(onResolved, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolvePromise<TResult, InternalProtected.DelegateVoidPromiseTCancel<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolvePromise<TResult, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseT<TResult>(onResolved);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
         #endregion
 
@@ -262,78 +283,134 @@ namespace Proto.Promises
         /// Add a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
-        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Catch(Action onRejected)
+        public Promise Catch(Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateVoidVoid>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateVoidVoid>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
+                promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Catch<TReject>(Action<TReject> onRejected)
+        public Promise Catch<TReject>(Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
+                promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Catch(Func<Promise> onRejected)
+        public Promise Catch(Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateVoidPromise>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateVoidPromise>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
+                promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Catch<TReject>(Func<TReject, Promise> onRejected)
+        public Promise Catch<TReject>(Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
+                promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
         #endregion
 
@@ -341,345 +418,569 @@ namespace Proto.Promises
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Action onResolved, Action onRejected)
+        public Promise Then(Action onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateVoidVoidCancel, InternalProtected.DelegateVoidVoid>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateVoidVoid, InternalProtected.DelegateVoidVoid>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidVoid(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Action onResolved, Action<TReject> onRejected)
+        public Promise Then<TReject>(Action onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateVoidVoidCancel, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateVoidVoid, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidVoid(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<TResult> onRejected)
+        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateVoidResultCancel<TResult>, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidResult<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateVoidResult<TResult>, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidResult<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidResult<TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, TResult> onRejected)
+        public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateVoidResultCancel<TResult>, InternalProtected.DelegateArgResult<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgResult<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateVoidResult<TResult>, InternalProtected.DelegateArgResult<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidResult<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgResult<TReject, TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Func<Promise> onResolved, Func<Promise> onRejected)
+        public Promise Then(Func<Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidPromiseCancel, InternalProtected.DelegateVoidPromise>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidPromise, InternalProtected.DelegateVoidPromise>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromise(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Func<Promise> onResolved, Func<TReject, Promise> onRejected)
+        public Promise Then<TReject>(Func<Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidPromiseCancel, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidPromise, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromise(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidPromiseTCancel<TResult>, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromiseT<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidPromiseT<TResult>, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseT<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromiseT<TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidPromiseTCancel<TResult>, InternalProtected.DelegateArgPromiseT<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidPromiseT<TResult>, InternalProtected.DelegateArgPromiseT<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseT<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Action onResolved, Func<Promise> onRejected)
+        public Promise Then(Action onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidVoidCancel, InternalProtected.DelegateVoidPromise>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidVoid, InternalProtected.DelegateVoidPromise>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidVoid(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Action onResolved, Func<TReject, Promise> onRejected)
+        public Promise Then<TReject>(Action onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidVoid.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidVoidCancel, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidVoidCancel(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidVoid, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidVoid(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidResultCancel<TResult>, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromiseT<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidResult<TResult>, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidResult<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromiseT<TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidResultCancel<TResult>, InternalProtected.DelegateArgPromiseT<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidResultCancel<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidResult<TResult>, InternalProtected.DelegateArgPromiseT<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidResult<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Func<Promise> onResolved, Action onRejected)
+        public Promise Then(Func<Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidPromiseCancel, InternalProtected.DelegateVoidVoid>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidPromise, InternalProtected.DelegateVoidVoid>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromise(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Func<Promise> onResolved, Action<TReject> onRejected)
+        public Promise Then<TReject>(Func<Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidPromise.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidPromiseCancel, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseCancel(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateVoidPromise, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromise(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<TResult> onRejected)
+        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidPromiseTCancel<TResult>, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidResult<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidPromiseT<TResult>, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseT<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidResult<TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, TResult> onRejected)
+        public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidPromiseTCancel<TResult>, InternalProtected.DelegateArgResult<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseTCancel<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgResult<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateVoidPromiseT<TResult>, InternalProtected.DelegateArgResult<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateVoidPromiseT<TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgResult<TReject, TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
         #endregion
 
@@ -687,61 +988,118 @@ namespace Proto.Promises
         /// <summary>
         /// Add a continuation callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise ContinueWith(Action<ResultContainer> onContinue)
+        public Promise ContinueWith(Action<ResultContainer> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueVoidVoid.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinue0.GetOrCreate(del, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+
+                var promise = InternalProtected.PromiseContinue<InternalProtected.DelegateContinueVoidVoidCancel>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueVoidVoidCancel(onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseContinue<InternalProtected.DelegateContinueVoidVoid>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueVoidVoid(onContinue);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
-        /// Add a continuation callback. Returns a new <see cref="Promise"/>.
-        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved with the returned value.
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, TResult> onContinue)
+        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, TResult> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueVoidResult<TResult>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinue<TResult>.GetOrCreate(del, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseContinue<TResult, InternalProtected.DelegateContinueVoidResultCancel<TResult>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueVoidResultCancel<TResult>(onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseContinue<TResult, InternalProtected.DelegateContinueVoidResult<TResult>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueVoidResult<TResult>(onContinue);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a continuation callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise ContinueWith(Func<ResultContainer, Promise> onContinue)
+        public Promise ContinueWith(Func<ResultContainer, Promise> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueVoidResult<Promise>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinuePromise0.GetOrCreate(del, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueVoidPromiseCancel>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueVoidPromiseCancel(onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueVoidPromise>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueVoidPromise(onContinue);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a continuation callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, Promise<TResult>> onContinue)
+        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, Promise<TResult>> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueVoidResult<Promise<TResult>>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinuePromise<TResult>.GetOrCreate(del, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueVoidPromiseTCancel<TResult>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueVoidPromiseTCancel<TResult>(onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueVoidPromiseT<TResult>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueVoidPromiseT<TResult>(onContinue);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
         #endregion
     }
@@ -755,63 +1113,40 @@ namespace Proto.Promises
     [System.Diagnostics.DebuggerNonUserCode]
     public abstract partial class Promise<T> : Promise
     {
-        /// <summary>
-        /// Returns a new <see cref="Promise{T}.YieldInstruction"/> that can be yielded in a coroutine to wait until this is settled.
-        /// </summary>
-        public new YieldInstruction ToYieldInstruction()
-        {
-            ValidateOperation(this, 1);
-            
-            var yield = Internal.YieldInstruction<T>.GetOrCreate(this);
-            AddWaiter(yield);
-            return yield;
-        }
+        internal Promise() { }
 
         /// <summary>
-        /// Returns a new <see cref="Promise{T}"/> that adopts the state of this. This is mostly useful for branches that you expect might be canceled, and you don't want all branches to be canceled.
+        /// Get the type of the result of the asynchronous operation. Returns typeof(<typeparamref name="T"/>).
         /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. This is mostly useful for cancelations of branched promises. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", false)]
-#endif
-        public new Promise<T> ThenDuplicate()
-        {
-            ValidateOperation(this, 1);
-
-            var promise = Internal.DuplicatePromise<T>.GetOrCreate(1);
-            HookupNewPromise(promise);
-            return promise;
-        }
+        public override sealed Type ResultType { get { return typeof(T); } }
 
         /// <summary>
         /// Add a progress listener. Returns this.
         /// <para/><paramref name="onProgress"/> will be invoked with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
 #if !PROMISE_PROGRESS
         [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
-        public new Promise<T> Progress(Action<float> onProgress)
+        public new Promise<T> Progress(Action<float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
-            SubscribeProgress(onProgress, 1);
+            SubscribeProgress(onProgress, cancelationToken);
             return this;
         }
 
         /// <summary>
         /// Add a cancel callback. Returns this.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with the cancelation reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-#if !PROMISE_CANCEL
-        [Obsolete("Cancelations are disabled. Remove PROTO_PROMISE_CANCEL_DISABLE from your compiler symbols to enable cancelations.", true)]
-#endif
-        public new Promise<T> CatchCancelation(Action<ReasonContainer> onCanceled)
+        public new Promise<T> CatchCancelation(Action<ReasonContainer> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
-            ValidateCancel(1);
             ValidateOperation(this, 1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
-            if (_state == State.Pending | _state == State.Canceled)
-            {
-                AddWaiter(Internal.CancelDelegate.GetOrCreate(onCanceled, 1));
-            }
+            base.CatchCancelation(onCanceled, cancelationToken);
             return this;
         }
 
@@ -824,7 +1159,7 @@ namespace Proto.Promises
             ValidateOperation(this, 1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            AddWaiter(Internal.FinallyDelegate.GetOrCreate(onFinally, 1));
+            base.Finally(onFinally);
             return this;
         }
 
@@ -832,69 +1167,125 @@ namespace Proto.Promises
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise Then(Action<T> onResolved)
+        public Promise Then(Action<T> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseArgResolve<T>.GetOrCreate(onResolved, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolve<InternalProtected.DelegateArgVoidCancel<T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolve<InternalProtected.DelegateArgVoid<T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgVoid<T>(onResolved);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved)
+        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseArgResolve<T, TResult>.GetOrCreate(onResolved, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolve<TResult, InternalProtected.DelegateArgResultCancel<T, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolve<TResult, InternalProtected.DelegateArgResult<T, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgResult<T, TResult>(onResolved);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise Then(Func<T, Promise> onResolved)
+        public Promise Then(Func<T, Promise> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseArgResolvePromise<T>.GetOrCreate(onResolved, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolvePromise<InternalProtected.DelegateArgPromiseCancel<T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolvePromise<InternalProtected.DelegateArgPromise<T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromise<T>(onResolved);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved)
+        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            var promise = Internal.PromiseArgResolvePromise<T, TResult>.GetOrCreate(onResolved, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolvePromise<TResult, InternalProtected.DelegateArgPromiseTCancel<T, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolvePromise<TResult, InternalProtected.DelegateArgPromiseT<T, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseT<T, TResult>(onResolved);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
         #endregion
 
@@ -903,77 +1294,133 @@ namespace Proto.Promises
         /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved when it returns.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<T> Catch(Func<T> onRejected)
+        public Promise<T> Catch(Func<T> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateVoidResult<T>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveReject<T, InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateVoidResult<T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.rejecter = new InternalProtected.DelegateVoidResult<T>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveReject<T, InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateVoidResult<T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
+                promise.rejecter = new InternalProtected.DelegateVoidResult<T>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved when it returns.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<T> Catch<TReject>(Func<TReject, T> onRejected)
+        public Promise<T> Catch<TReject>(Func<TReject, T> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateArgResult<TReject, T>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveReject<T, InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateArgResult<TReject, T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.rejecter = new InternalProtected.DelegateArgResult<TReject, T>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveReject<T, InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateArgResult<TReject, T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
+                promise.rejecter = new InternalProtected.DelegateArgResult<TReject, T>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<T> Catch(Func<Promise<T>> onRejected)
+        public Promise<T> Catch(Func<Promise<T>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateVoidPromiseT<T>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<T, InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateVoidPromiseT<T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.rejecter = new InternalProtected.DelegateVoidPromiseT<T>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<T, InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateVoidPromiseT<T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
+                promise.rejecter = new InternalProtected.DelegateVoidPromiseT<T>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
         /// <para/>If/when this is canceled or rejected with any other reason or no reason, the new <see cref="Promise{T}"/> will be canceled or rejected with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<T> Catch<TReject>(Func<TReject, Promise<T>> onRejected)
+        public Promise<T> Catch<TReject>(Func<TReject, Promise<T>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegatePassthrough.GetOrCreate();
-            var rejectDelegate = Internal.DelegateArgPromiseT<TReject, T>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<T>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<T, InternalProtected.DelegateResolvePassthroughCancel, InternalProtected.DelegateArgPromiseT<TReject, T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthroughCancel(true);
+                promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, T>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<T, InternalProtected.DelegateResolvePassthrough, InternalProtected.DelegateArgPromiseT<TReject, T>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateResolvePassthrough();
+                promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, T>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
         #endregion
 
@@ -981,345 +1428,569 @@ namespace Proto.Promises
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Action<T> onResolved, Action onRejected)
+        public Promise Then(Action<T> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgVoid<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateArgVoidCancel<T>, InternalProtected.DelegateVoidVoid>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateArgVoid<T>, InternalProtected.DelegateVoidVoid>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgVoid<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Action<T> onResolved, Action<TReject> onRejected)
+        public Promise Then<TReject>(Action<T> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgVoid<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateArgVoidCancel<T>, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveReject<InternalProtected.DelegateArgVoid<T>, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgVoid<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, Func<TResult> onRejected)
+        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateArgResultCancel<T, TResult>, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidResult<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateArgResult<T, TResult>, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgResult<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidResult<TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<T, TResult> onResolved, Func<TReject, TResult> onRejected)
+        public Promise<TResult> Then<TResult, TReject>(Func<T, TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveReject<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateArgResultCancel<T, TResult>, InternalProtected.DelegateArgResult<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgResult<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveReject<TResult, InternalProtected.DelegateArgResult<T, TResult>, InternalProtected.DelegateArgResult<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgResult<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgResult<TReject, TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Func<T, Promise> onResolved, Func<Promise> onRejected)
+        public Promise Then(Func<T, Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgPromise<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgPromiseCancel<T>, InternalProtected.DelegateVoidPromise>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgPromise<T>, InternalProtected.DelegateVoidPromise>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromise<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Func<T, Promise> onResolved, Func<TReject, Promise> onRejected)
+        public Promise Then<TReject>(Func<T, Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgPromise<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgPromiseCancel<T>, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgPromise<T>, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromise<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgPromiseTCancel<T, TResult>, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromiseT<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgPromiseT<T, TResult>, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseT<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromiseT<TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<T, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TResult, TReject>(Func<T, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgPromiseTCancel<T, TResult>, InternalProtected.DelegateArgPromiseT<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgPromiseT<T, TResult>, InternalProtected.DelegateArgPromiseT<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseT<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Action<T> onResolved, Func<Promise> onRejected)
+        public Promise Then(Action<T> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgVoid<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidPromise.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgVoidCancel<T>, InternalProtected.DelegateVoidPromise>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgVoid<T>, InternalProtected.DelegateVoidPromise>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgVoid<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromise(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Action<T> onResolved, Func<TReject, Promise> onRejected)
+        public Promise Then<TReject>(Action<T> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgVoid<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgPromise<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgVoidCancel<T>, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgVoidCancel<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgVoid<T>, InternalProtected.DelegateArgPromise<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgVoid<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromise<TReject>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, Func<Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidPromiseT<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgResultCancel<T, TResult>, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromiseT<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgResult<T, TResult>, InternalProtected.DelegateVoidPromiseT<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgResult<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidPromiseT<TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<T, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected)
+        public Promise<TResult> Then<TResult, TReject>(Func<T, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgResult<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgPromiseT<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgResultCancel<T, TResult>, InternalProtected.DelegateArgPromiseT<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgResultCancel<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgResult<T, TResult>, InternalProtected.DelegateArgPromiseT<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgResult<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgPromiseT<TReject, TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Func<T, Promise> onResolved, Action onRejected)
+        public Promise Then(Func<T, Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgPromise<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidVoid.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgPromiseCancel<T>, InternalProtected.DelegateVoidVoid>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgPromise<T>, InternalProtected.DelegateVoidVoid>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromise<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidVoid(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise"/> will be resolved when it returns.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Func<T, Promise> onResolved, Action<TReject> onRejected)
+        public Promise Then<TReject>(Func<T, Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgPromise<T>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgVoid<TReject>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise0.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgPromiseCancel<T>, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseCancel<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<InternalProtected.DelegateArgPromise<T>, InternalProtected.DelegateArgVoid<TReject>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromise<T>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgVoid<TReject>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, Func<TResult> onRejected)
+        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateVoidResult<TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgPromiseTCancel<T, TResult>, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidResult<TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgPromiseT<T, TResult>, InternalProtected.DelegateVoidResult<TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseT<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateVoidResult<TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
-        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<T, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected)
+        public Promise<TResult> Then<TResult, TReject>(Func<T, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            var resolveDelegate = Internal.DelegateArgPromiseT<T, TResult>.GetOrCreate(onResolved);
-            var rejectDelegate = Internal.DelegateArgResult<TReject, TResult>.GetOrCreate(onRejected);
-            var promise = Internal.PromiseResolveRejectPromise<TResult>.GetOrCreate(resolveDelegate, rejectDelegate, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgPromiseTCancel<T, TResult>, InternalProtected.DelegateArgResult<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseTCancel<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgResult<TReject, TResult>(onRejected);
+                promise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseResolveRejectPromise<TResult, InternalProtected.DelegateArgPromiseT<T, TResult>, InternalProtected.DelegateArgResult<TReject, TResult>>.GetOrCreate();
+                promise.resolver = new InternalProtected.DelegateArgPromiseT<T, TResult>(onResolved);
+                promise.rejecter = new InternalProtected.DelegateArgResult<TReject, TResult>(onRejected);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
         #endregion
 
@@ -1327,62 +1998,118 @@ namespace Proto.Promises
         /// <summary>
         /// Add a continuation callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise ContinueWith(Action<ResultContainer> onContinue)
+        public Promise ContinueWith(Action<ResultContainer> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueArgVoid<T>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinue0.GetOrCreate(del, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseContinue<InternalProtected.DelegateContinueArgVoidCancel<T>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueArgVoidCancel<T>(onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseContinue<InternalProtected.DelegateContinueArgVoid<T>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueArgVoid<T>(onContinue);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
-        /// Add a continuation callback. Returns a new <see cref="Promise"/>.
-        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved with the returned value.
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, TResult> onContinue)
+        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, TResult> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueArgResult<T, TResult>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinue<TResult>.GetOrCreate(del, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseContinue<TResult, InternalProtected.DelegateContinueArgResultCancel<T, TResult>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueArgResultCancel<T, TResult>(onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseContinue<TResult, InternalProtected.DelegateContinueArgResult<T, TResult>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueArgResult<T, TResult>(onContinue);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
 
         /// <summary>
         /// Add a continuation callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled with its reason, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise ContinueWith(Func<ResultContainer, Promise> onContinue)
+        public Promise ContinueWith(Func<ResultContainer, Promise> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueArgResult<T, Promise>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinuePromise0.GetOrCreate(del, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueArgPromiseCancel<T>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueArgPromiseCancel<T>(onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseContinuePromise<InternalProtected.DelegateContinueArgPromise<T>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueArgPromise<T>(onContinue);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
 
         /// <summary>
         /// Add a continuation callback. Returns a new <see cref="Promise{T}"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled with its reason, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, Promise<TResult>> onContinue)
+        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, Promise<TResult>> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(this, 1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            var del = Internal.DelegateContinueArgResult<T, Promise<TResult>>.GetOrCreate(onContinue);
-            var promise = Internal.PromiseContinuePromise<TResult>.GetOrCreate(del, 1);
-            HookupNewPromise(promise);
-            return promise;
+            if (cancelationToken.CanBeCanceled)
+            {
+                var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueArgPromiseTCancel<T, TResult>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueArgPromiseTCancel<T, TResult>(onContinue);
+                promise.continuer.cancelationRegistration = cancelationToken.RegisterInternal(promise);
+                MaybeHookupNewPromise(promise);
+                return promise;
+            }
+            else
+            {
+                var promise = InternalProtected.PromiseContinuePromise<TResult, InternalProtected.DelegateContinueArgPromiseT<T, TResult>>.GetOrCreate();
+                promise.continuer = new InternalProtected.DelegateContinueArgPromiseT<T, TResult>(onContinue);
+                HookupNewPromise(promise);
+                return promise;
+            }
         }
         #endregion
     }

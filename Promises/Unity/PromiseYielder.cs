@@ -62,7 +62,7 @@ namespace Proto.Promises
 
                 if (_state == State.Pending)
                 {
-                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
                 }
 
                 if (_state == State.Resolved)
@@ -88,12 +88,10 @@ namespace Proto.Promises
                 ValidateYieldInstructionOperation(_value, 1);
 
                 ((IRetainable) _value).Release();
-                _value = DisposedObject;
+                _value = disposedObject;
             }
 
-            void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer,
-                ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue,
-                ref ValueLinkedQueue<Internal.ITreeHandleable> cancelQueue)
+            void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
             {
                 valueContainer.Retain();
                 _value = valueContainer;
@@ -108,7 +106,18 @@ namespace Proto.Promises
             }
 
             void Internal.ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
-            void Internal.ITreeHandleable.Cancel() { throw new System.InvalidOperationException(); }
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="YieldInstruction"/> that can be yielded in a coroutine to wait until this is settled.
+        /// </summary>
+        public YieldInstruction ToYieldInstruction()
+        {
+            ValidateOperation(this, 1);
+
+            var yield = InternalProtected.YieldInstructionVoid.GetOrCreate(this);
+            AddWaiter(yield);
+            return yield;
         }
     }
 
@@ -134,7 +143,7 @@ namespace Proto.Promises
 
                 if (_state == State.Pending)
                 {
-                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
                 }
 
                 if (_state == State.Resolved)
@@ -145,20 +154,32 @@ namespace Proto.Promises
                 throw ((Internal.IThrowable) _value).GetException();
             }
         }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}.YieldInstruction"/> that can be yielded in a coroutine to wait until this is settled.
+        /// </summary>
+        public new YieldInstruction ToYieldInstruction()
+        {
+            ValidateOperation(this, 1);
+
+            var yield = InternalProtected.YieldInstruction<T>.GetOrCreate(this);
+            AddWaiter(yield);
+            return yield;
+        }
     }
 
     partial class Promise
     {
-        partial class Internal
+        partial class InternalProtected
         {
             [System.Diagnostics.DebuggerNonUserCode]
             public sealed class YieldInstructionVoid : YieldInstruction
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static YieldInstructionVoid()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 private YieldInstructionVoid() { }
@@ -181,13 +202,13 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, ITreeHandleable
+            public sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, Internal.ITreeHandleable
             {
-                private static ValueLinkedStack<ITreeHandleable> _pool;
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
                 static YieldInstruction()
                 {
-                    OnClearPool += () => _pool.Clear();
+                    Internal.OnClearPool += () => _pool.Clear();
                 }
 
                 private YieldInstruction() { }
@@ -238,7 +259,7 @@ namespace Proto.Promises
         {
             if (_instance != this)
             {
-                Logger.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
+                Promise.Manager.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
                 Destroy(this);
                 return;
             }
@@ -254,7 +275,7 @@ namespace Proto.Promises
             {
                 if (_instance == this)
                 {
-                    Logger.LogWarning("PromiseYielder destroyed! Any pending yield promises will not be resolved!");
+                    Promise.Manager.LogWarning("PromiseYielder destroyed! Any pending PromiseYielder.WaitFor promises will not be resolved!");
                     _instance = null;
                 }
             }
@@ -304,7 +325,7 @@ namespace Proto.Promises
             void Complete()
             {
                 var deferred = onComplete;
-                onComplete = null;
+                onComplete = default(Promise.Deferred);
                 // Place this back in the pool before invoking in case the invocation will re-use this.
                 _pool.Push(this);
                 try
@@ -362,7 +383,7 @@ namespace Proto.Promises
             public void Complete()
             {
                 var deferred = onComplete;
-                onComplete = null;
+                onComplete = default(Promise<T>.Deferred);
                 T tempObj = Current;
                 Current = default(T);
                 // Place this back in the pool before invoking in case the invocation will re-use this.
@@ -392,7 +413,7 @@ namespace Proto.Promises
         {
             Routine<TYieldInstruction> routine = Routine<TYieldInstruction>.GetOrCreate();
             routine.Current = yieldInstruction;
-            routine.onComplete = Promise.NewDeferred<TYieldInstruction>();
+            routine.onComplete = Promise<TYieldInstruction>.Deferred.New();
 
             if (routine._continue)
             {
@@ -413,7 +434,7 @@ namespace Proto.Promises
         public static Promise WaitOneFrame()
         {
             Routine routine = Routine.GetOrCreate();
-            routine.onComplete = Promise.NewDeferred();
+            routine.onComplete = Promise.Deferred.New();
 
             if (routine._continue)
             {
@@ -429,3 +450,28 @@ namespace Proto.Promises
         }
     }
 }
+
+#if !UNITY_5_3_OR_NEWER
+namespace UnityEngine
+{
+    /// <summary>
+    /// Custom yield instruction. Use yield return StartCoroutine(customYieldInstruction)
+    /// </summary>
+    public abstract class CustomYieldInstruction : IEnumerator
+    {
+        public abstract bool keepWaiting { get; }
+
+        public object Current { get { return null; } }
+
+        public bool MoveNext()
+        {
+            return keepWaiting;
+        }
+
+        public void Reset()
+        {
+            throw new NotImplementedException();
+        }
+    }
+}
+#endif

@@ -4,13 +4,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-// define PROTO_PROMISE_CANCEL_DISABLE to disable cancelations on promises.
-// If Cancelations are enabled, it breaks the Promises/A+ spec "2.1. Promise States", but allows breaking promise chains. Execution is also a little slower.
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 // define PROTO_PROMISE_PROGRESS_DISABLE to disable progress reports on promises.
 // If Progress is enabled, promises use more memory, and it creates an upper bound to the depth of a promise chain (see Config for details).
 #if !PROTO_PROMISE_PROGRESS_DISABLE
@@ -22,7 +15,6 @@
 #pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0618 // Type or member is obsolete
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
 using System;
@@ -107,10 +99,11 @@ namespace Proto.Promises
             /// If this is not null, uncaught rejections get routed through this instead of being thrown.
             /// </summary>
             public static Action<UnhandledException> UncaughtRejectionHandler { get; set; }
-#if UNITY_2019_2_OR_NEWER
-                // Unity changed AggregateException logging to not include the InnerException, so make the default rejection handler route to UnityEngine.Debug.LogException.
-                = UnityEngine.Debug.LogException;
-#endif
+
+            /// <summary>
+            /// Warning handler.
+            /// </summary>
+            public static Action<string> WarningHandler { get; set; }
         }
     }
 }

@@ -1,5 +1,48 @@
 # Release Notes
 
+## v 0.10 - August 21, 2020
+
+API changes:
+
+- Added `Proto.Promises.{CancelationSource, CancelationToken, CancelationRegistration}` structs which can be used for synchronous cancelation callbacks.
+- Added optional `CancelationToken` parameter to `Promise.{Then, Catch, CatchCancelation, ContinueWith, Progress, Sequence, NewDeferred}`.
+- Added `Promise(<T>).Deferred.New(CancelationToken)` that does the same thing as `Promise.NewDeferred(<T>)(CancelationToken)`.
+- Changed Deferreds to structs with an implicit cast to DeferredBase (`DeferredBase.ToDeferred(<T>)()` to cast back explicitly).
+- Removed `DeferredBase.Cancel`, replaced with the cancelation token.
+- Removed `Promise.{Cancel, ThenDuplicate}`.
+- Removed `Proto.Logger`, replaced it with `Promise.Config.WarningHandler`.
+
+Behavior changes:
+
+- Changed `Promise.First` to suppress rejections from any promises passed in that did not result in the rejection of the returned promise.
+- Change `Deferred.Reject(null)` to convert to a `NullReferenceException` on any `T`. This means `Promise.Catch<T>` will never give a null value. This more closely matches normal `throw null;` behavior.
+- `CancelationSource.Cancel(null)` now converts cancelation to a non-value. This mean if `Promise.ReasonContainer.ValueType` is not null, `Promise.ReasonContainer.Value` is also not null, and if `Promise.ReasonContainer.TryGetValue<T>` succeeds, the value will not be null.
+- Removed requirement to include `Proto.Promises.Await` for awaiting promises in an async function.
+- Check to make sure `RethrowException` is used properly, change to `InvalidOperationException` if not.
+
+Optimizations:
+
+- Deferreds are now structs, removing the memory overhead of classes.
+- Added a static cached `Promise.Canceled()` void in RELEASE mode.
+- When canceled, promises are now unlinked from their previous.
+- No longer need check if promise is canceled when doing internal operations.
+- Removed skipFrame calculations since that's now handled in `Internal.FormatStackTrace` in DEBUG mode.
+- Pass by ref to pass large structs around internally more efficiently.
+- Changed delegate wrappers to structs and changed internal promises to use generics with constraints to optimize composition (and use less memory in some promise objects).
+- `PromiseMethodBuilder` caches `stateMachine.MoveNext` directly instead of lambda capturing.
+
+Misc:
+
+- Removed recursive type definitions so that Unity 2019.1.14 and older on .Net 4.X scripting runtime version will compile.
+- Removed PROTO_PROMISE_CANCEL_DISABLE preprocessor checks since cancelations no longer slow down normal execution.
+- No longer check for internal promise invoking when accessing `Promise.{RejectException, CancelException}`.
+- Consolidated Rejection and Cancelation value container creations. Handle all internal rejection/cancelation types to not wrap them.
+- Renamed asmdefs to include Proto in the names. Removed Utilities.asmdef.
+
+Known Issues:
+
+- A `Promise.Progress` callback subscribed to a promise chain where the chain is broken by a cancelation token and continued with `Promise.ContinueWith` reports incorrect progress (introduced in v 0.9 with `Promise.ContinueWith`).
+
 ## v 0.9 - April 12, 2020
 
 - New Async/Await support in C# 7.0 or later (see <a href="https://github.com/timcassell/ProtoPromise/blob/master/README.md#asyncawait">README</a>).

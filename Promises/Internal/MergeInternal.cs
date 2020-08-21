@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -15,11 +10,8 @@
 #endif
 
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
-#pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0618 // Type or member is obsolete
-#pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
 using System;
 using Proto.Utils;
@@ -28,19 +20,35 @@ namespace Proto.Promises
 {
     partial class Promise
     {
-        partial class Internal
+        partial class InternalProtected
         {
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class MergePromise<T> : PoolablePromise<T, MergePromise<T>>, IMultiTreeHandleable
+            internal sealed partial class MergePromise<T> : PromiseIntermediate<T>, IMultiTreeHandleable
             {
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+
+                static MergePromise()
+                {
+                    Internal.OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
-                Action<IValueContainer, ResolveContainer<T>, int> _onPromiseResolved;
+                Action<Internal.IValueContainer, Internal.ResolveContainer<T>, int> _onPromiseResolved;
                 private uint _waitCount;
                 private bool _pending;
 
                 private MergePromise() { }
 
-                public static MergePromise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved, int count, int skipFrames)
+                public static MergePromise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref T value, Action<Internal.IValueContainer, Internal.ResolveContainer<T>, int> onPromiseResolved, int count)
                 {
                     var promise = _pool.IsNotEmpty ? (MergePromise<T>) _pool.Pop() : new MergePromise<T>();
 
@@ -48,12 +56,12 @@ namespace Proto.Promises
                     promise._onPromiseResolved = onPromiseResolved;
 
                     promise._waitCount = (uint) count;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     promise._pending = true;
                     // Retain this until all promises resolve/reject/cancel.
                     promise.RetainInternal();
 
-                    var container = ResolveContainer<T>.GetOrCreate(value);
+                    var container = Internal.ResolveContainer<T>.GetOrCreate(ref value);
                     container.Retain();
                     promise._valueOrPrevious = container;
 
@@ -64,12 +72,15 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     HandleSelf(valueContainer);
                 }
 
-                bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, Promise owner, int index)
+                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, Promise owner, int index)
                 {
                     bool done = --_waitCount == 0;
                     bool handle = false;
@@ -79,14 +90,14 @@ namespace Proto.Promises
                         if (owner._state != State.Resolved)
                         {
                             _pending = false;
-                            ((ResolveContainer<T>) _valueOrPrevious).Release();
+                            ((Internal.ResolveContainer<T>) _valueOrPrevious).Release();
                             valueContainer.Retain();
                             _valueOrPrevious = valueContainer;
                             handle = true;
                         }
                         else
                         {
-                            _onPromiseResolved.Invoke(valueContainer, (ResolveContainer<T>) _valueOrPrevious, index);
+                            _onPromiseResolved.Invoke(valueContainer, (Internal.ResolveContainer<T>) _valueOrPrevious, index);
                             if (done)
                             {
                                 _pending = false;
@@ -126,13 +137,13 @@ namespace Proto.Promises
                 private bool _invokingProgress;
                 private bool _suspended;
 
-                protected override void Reset(int skipFrames)
+                protected override void Reset()
                 {
 #if PROMISE_DEBUG
                     checked
 #endif
                     {
-                        base.Reset(skipFrames + 1);
+                        base.Reset();
                         _currentAmount = default(UnsignedFixed32);
                         _invokingProgress = false;
                         _suspended = false;

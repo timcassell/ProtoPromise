@@ -1,6 +1,53 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG) #define PROMISE_DEBUG #else #undef PROMISE_DEBUG #endif #if !PROTO_PROMISE_CANCEL_DISABLE #define PROMISE_CANCEL #else #undef PROMISE_CANCEL #endif #if !PROTO_PROMISE_PROGRESS_DISABLE #define PROMISE_PROGRESS #else #undef PROMISE_PROGRESS #endif  using System; using System.Collections.Generic;  namespace Proto.Promises {     partial class Promise     {         partial class Internal         {             public static Promise _Sequence<TEnumerator>(TEnumerator promiseFuncs, int skipFrames) where TEnumerator : IEnumerator<Func<Promise>>             {                 ValidateArgument(promiseFuncs, "promiseFuncs", skipFrames + 1);                  if (!promiseFuncs.MoveNext())                 {                     return Resolved();                 }
+﻿#pragma warning disable IDE0017 // Simplify object initialization
+
+using System;
+using System.Collections.Generic;
+
+namespace Proto.Promises
+{
+    partial class Promise
+    {
+        partial class InternalProtected
+        {
+            public static Promise CreateSequence<TEnumerator>(TEnumerator promiseFuncs, CancelationToken cancelationToken = default(CancelationToken)) where TEnumerator : IEnumerator<Func<Promise>>
+            {
+                ValidateArgument(promiseFuncs, "promiseFuncs", 2);
+
+                if (!promiseFuncs.MoveNext())
+                {
+                    return Resolved();
+                }
 
                 // Invoke funcs async and normalize the progress.
-                Promise promise = PromiseVoidResolvePromise0.GetOrCreate(promiseFuncs.Current, skipFrames + 1);                 promise._valueOrPrevious = ResolveContainerVoid.GetOrCreate();                 promise.ResetDepth();                 AddToHandleQueueBack(promise);                  while (promiseFuncs.MoveNext())                 {                     promise = promise.Then(promiseFuncs.Current);                 }
-#if PROMISE_CANCEL                 return promise.ThenDuplicate(); // Prevents canceling only the very last callback.
-#else                 return promise; #endif             }         }     } }
+                Promise rootPromise;
+                if (cancelationToken.CanBeCanceled)
+                {
+                    var newPromise = PromiseResolvePromise<DelegateVoidPromiseCancel>.GetOrCreate();
+                    newPromise.resolver = new DelegateVoidPromiseCancel(promiseFuncs.Current);
+                    newPromise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(newPromise);
+                    // Set resolved value only if cancelation token wasn't already canceled (_valueOrPrevious will be a cancel value from being invoked synchronously).
+                    if (newPromise._valueOrPrevious == null)
+                    {
+                        newPromise._valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
+                    }
+                    rootPromise = newPromise;
+                }
+                else
+                {
+                    var newPromise = PromiseResolvePromise<DelegateVoidPromise>.GetOrCreate();
+                    newPromise.resolver = new DelegateVoidPromise(promiseFuncs.Current);
+                    newPromise._valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
+                    rootPromise = newPromise;
+                }
+                rootPromise.ResetDepth();
+
+                Promise promise = rootPromise;
+                while (promiseFuncs.MoveNext())
+                {
+                    promise = promise.Then(promiseFuncs.Current, cancelationToken);
+                }
+                Internal.AddToHandleQueueBack(rootPromise); return promise;
+            }
+        }
+    }
+}

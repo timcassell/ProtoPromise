@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_CANCEL_DISABLE
-#define PROMISE_CANCEL
-#else
-#undef PROMISE_CANCEL
-#endif
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
@@ -15,11 +10,8 @@
 #endif
 
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
-#pragma warning disable RECS0096 // Type parameter is never used
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0618 // Type or member is obsolete
-#pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
 using System;
 using System.Collections.Generic;
@@ -29,48 +21,64 @@ namespace Proto.Promises
 {
     partial class Promise
     {
-        partial class Internal
+        partial class InternalProtected
         {
-            public static Promise _First<TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise>
+            public static Promise CreateFirst<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
             {
-                ValidateArgument(promises, "promises", skipFrames + 1);
+                ValidateArgument(promises, "promises", 2);
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to First.", GetFormattedStacktrace(skipFrames + 1));
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(2));
                 }
                 int count;
-                var passThroughs = WrapInPassThroughs(promises, out count, skipFrames + 1);
-                return FirstPromise0.GetOrCreate(passThroughs, count, skipFrames + 1);
+                var passThroughs = WrapInPassThroughs(promises, out count);
+                return FirstPromise0.GetOrCreate(passThroughs, count);
             }
 
-            public static Promise<T> _First<T, TEnumerator>(TEnumerator promises, int skipFrames) where TEnumerator : IEnumerator<Promise<T>>
+            public static Promise<T> CreateFirst<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
             {
-                ValidateArgument(promises, "promises", skipFrames + 1);
+                ValidateArgument(promises, "promises", 2);
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to First.", GetFormattedStacktrace(skipFrames + 1));
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(2));
                 }
                 int count;
-                var passThroughs = WrapInPassThroughs<T, TEnumerator>(promises, out count, skipFrames + 1);
-                return FirstPromise<T>.GetOrCreate(passThroughs, count, skipFrames + 1);
+                var passThroughs = WrapInPassThroughs<T, TEnumerator>(promises, out count);
+                return FirstPromise<T>.GetOrCreate(passThroughs, count);
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class FirstPromise0 : PoolablePromise<FirstPromise0>, IMultiTreeHandleable
+            internal sealed partial class FirstPromise0 : PromiseIntermediate, IMultiTreeHandleable
             {
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+
+                static FirstPromise0()
+                {
+                    Internal.OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 private uint _waitCount;
 
                 private FirstPromise0() { }
 
-                public static Promise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count, int skipFrames)
+                public static Promise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
                 {
                     var promise = _pool.IsNotEmpty ? (FirstPromise0) _pool.Pop() : new FirstPromise0();
 
                     promise._passThroughs = promisePassThroughs;
 
                     promise._waitCount = (uint) count;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     // Retain this until all promises resolve/reject/cancel.
                     promise.RetainInternal();
 
@@ -82,18 +90,21 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     HandleSelf(valueContainer);
                 }
 
-                bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, Promise owner, int index)
+                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, Promise owner, int index)
                 {
+                    owner._wasWaitedOn = true;
                     bool done = --_waitCount == 0;
                     bool handle = _valueOrPrevious == null & (owner._state == State.Resolved | done);
                     if (handle)
                     {
-                        owner._wasWaitedOn = true;
                         valueContainer.Retain();
                         _valueOrPrevious = valueContainer;
                     }
@@ -115,21 +126,37 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            public sealed partial class FirstPromise<T> : PoolablePromise<T, FirstPromise<T>>, IMultiTreeHandleable
+            internal sealed partial class FirstPromise<T> : PromiseIntermediate<T>, IMultiTreeHandleable
             {
+                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+
+                static FirstPromise()
+                {
+                    Internal.OnClearPool += () => _pool.Clear();
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    if (Config.ObjectPooling == PoolType.All)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 private uint _waitCount;
 
                 private FirstPromise() { }
 
-                public static Promise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count, int skipFrames)
+                public static Promise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
                 {
                     var promise = _pool.IsNotEmpty ? (FirstPromise<T>) _pool.Pop() : new FirstPromise<T>();
 
                     promise._passThroughs = promisePassThroughs;
 
                     promise._waitCount = (uint) count;
-                    promise.Reset(skipFrames + 1);
+                    promise.Reset();
                     // Retain this until all promises resolve/reject/cancel.
                     promise.RetainInternal();
 
@@ -141,18 +168,21 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
+                private
+#endif
+                protected override void Execute(Internal.IValueContainer valueContainer)
                 {
                     HandleSelf(valueContainer);
                 }
 
-                bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, Promise owner, int index)
+                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, Promise owner, int index)
                 {
+                    owner._wasWaitedOn = true;
                     bool done = --_waitCount == 0;
                     bool handle = _valueOrPrevious == null & (owner._state == State.Resolved | done);
                     if (handle)
                     {
-                        owner._wasWaitedOn = true;
                         valueContainer.Retain();
                         _valueOrPrevious = valueContainer;
                     }
@@ -180,9 +210,9 @@ namespace Proto.Promises
                 private bool _invokingProgress;
                 private bool _suspended;
 
-                protected override void Reset(int skipFrames)
+                protected override void Reset()
                 {
-                    base.Reset(skipFrames + 1);
+                    base.Reset();
                     _currentAmount = default(UnsignedFixed32);
                     _invokingProgress = false;
                     _suspended = false;
@@ -286,9 +316,9 @@ namespace Proto.Promises
                 private bool _invokingProgress;
                 private bool _suspended;
 
-                protected override void Reset(int skipFrames)
+                protected override void Reset()
                 {
-                    base.Reset(skipFrames + 1);
+                    base.Reset();
                     _currentAmount = default(UnsignedFixed32);
                     _invokingProgress = false;
                     _suspended = false;

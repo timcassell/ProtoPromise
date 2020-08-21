@@ -5,9 +5,6 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable RECS0096 // Type parameter is never used
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-#pragma warning disable CS0618 // Type or member is obsolete
 
 using System;
 using System.Collections.Generic;
@@ -45,6 +42,23 @@ namespace Proto.Promises
     public class ArgumentNullException : System.ArgumentNullException
     {
         public ArgumentNullException(string paramName, string message, string stackTrace = null) : base(paramName, message)
+        {
+            _stackTrace = stackTrace;
+        }
+
+        private readonly string _stackTrace;
+        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+    }
+
+    [DebuggerNonUserCode]
+    public class ArgumentOutOfRangeException : System.ArgumentOutOfRangeException
+    {
+        public ArgumentOutOfRangeException(string paramName, string message, string stackTrace = null) : base(paramName, message)
+        {
+            _stackTrace = stackTrace;
+        }
+
+        public ArgumentOutOfRangeException(string paramName, object actualValue, string message, string stackTrace = null) : base(paramName, actualValue, message)
         {
             _stackTrace = stackTrace;
         }
@@ -101,10 +115,7 @@ namespace Proto.Promises
     [DebuggerNonUserCode]
     public class UnreleasedObjectException : Exception
     {
-        public static readonly UnreleasedObjectException instance =
-            new UnreleasedObjectException("An IRetainable object was garbage collected that was not released. You must release all IRetainable objects that you have retained.");
-
-        private UnreleasedObjectException(string message) : base(message) { }
+        public UnreleasedObjectException(string message) : base(message) { }
     }
 
 
@@ -118,11 +129,11 @@ namespace Proto.Promises
         private readonly Type _type;
         private readonly string _stackTrace;
 
-        protected UnhandledException(object value, Type valueType, string message, string stacktrace, Exception innerException) : base(message, innerException)
+        internal UnhandledException(object value, Type valueType, string message, string stackTrace, Exception innerException) : base(message, innerException)
         {
             _value = value;
             _type = valueType;
-            _stackTrace = stacktrace;
+            _stackTrace = stackTrace;
         }
 
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
@@ -152,7 +163,7 @@ namespace Proto.Promises
         private readonly object _value;
         private readonly Type _type;
 
-        protected CanceledException(object value, Type valueType, string message) : base(message)
+        internal CanceledException(object value, Type valueType, string message) : base(message)
         {
             _value = value;
             _type = valueType;
@@ -192,7 +203,7 @@ namespace Proto.Promises
     [DebuggerNonUserCode]
     public abstract class RejectException : Exception
     {
-        protected RejectException() { }
+        internal RejectException() { }
 
         public override string Message
         {
@@ -209,171 +220,13 @@ namespace Proto.Promises
     [DebuggerNonUserCode]
     public abstract class CancelException : OperationCanceledException
     {
-        protected CancelException() { }
+        internal CancelException() { }
 
         public override string Message
         {
             get
             {
                 return "This is used to cancel a Promise from an onResolved or onRejected handler.";
-            }
-        }
-    }
-
-
-    partial class Promise
-    {
-        partial class Internal
-        {
-            [DebuggerNonUserCode]
-            public sealed class UnhandledExceptionInternal : UnhandledException, IValueContainer, IRejectionContainer, IThrowable
-            {
-                public UnhandledExceptionInternal(object value, Type valueType, string message, string stacktrace, Exception innerException) :
-                    base(value, valueType, message, stacktrace, innerException)
-                { }
-
-                State IValueContainer.GetState()
-                {
-                    return State.Rejected;
-                }
-
-                void IValueContainer.Retain() { }
-                void IValueContainer.Release() { }
-                void IValueContainer.ReleaseAndMaybeAddToUnhandledStack()
-                {
-                    AddUnhandledException(this);
-                }
-
-                void IValueContainer.ReleaseAndAddToUnhandledStack()
-                {
-                    AddUnhandledException(this);
-                }
-
-                Exception IThrowable.GetException()
-                {
-                    return this;
-                }
-
-#if PROMISE_DEBUG
-                void IRejectionContainer.SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces) { }
-#endif
-            }
-
-            [DebuggerNonUserCode]
-            public sealed class CanceledExceptionInternal : CanceledException, IValueContainer, IThrowable
-            {
-                public CanceledExceptionInternal(object value, Type valueType, string message) :
-                    base(value, valueType, message)
-                { }
-
-                State IValueContainer.GetState()
-                {
-                    return State.Canceled;
-                }
-
-                void IValueContainer.Retain() { }
-                void IValueContainer.Release() { }
-                void IValueContainer.ReleaseAndMaybeAddToUnhandledStack() { }
-                void IValueContainer.ReleaseAndAddToUnhandledStack() { }
-
-                Exception IThrowable.GetException()
-                {
-                    return this;
-                }
-            }
-
-            [DebuggerNonUserCode]
-            public sealed class RejectionException : Exception
-            {
-                private readonly string _stackTrace;
-
-                public RejectionException(string message, string stacktrace, Exception innerException) : base(message, innerException)
-                {
-                    _stackTrace = stacktrace;
-                }
-
-                public override string StackTrace { get { return _stackTrace; } }
-            }
-
-            [DebuggerNonUserCode]
-            public sealed class RejectExceptionInternal<T> : RejectException, IExceptionToContainer, ICantHandleException
-            {
-                // We can reuse the same object.
-                private static readonly RejectExceptionInternal<T> _instance = new RejectExceptionInternal<T>();
-
-                public T Value { get; private set; }
-
-                public static RejectExceptionInternal<T> GetOrCreate(T value)
-                {
-                    _instance.Value = value;
-                    return _instance;
-                }
-
-                private RejectExceptionInternal() { }
-
-                public IValueContainer ToContainer(ITraceable traceable)
-                {
-                    var rejection = CreateRejection(Value);
-#if PROMISE_DEBUG
-                    rejection.SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
-#endif
-                    return rejection;
-                }
-
-                public void AddToUnhandledStack(ITraceable traceable)
-                {
-                    AddRejectionToUnhandledStack(Value, traceable);
-                }
-            }
-
-            [DebuggerNonUserCode]
-            public sealed class CancelExceptionVoidInternal : CancelException, IExceptionToContainer
-            {
-                // We can reuse the same object.
-                private static readonly CancelExceptionVoidInternal _instance = new CancelExceptionVoidInternal();
-
-                public static CancelExceptionVoidInternal GetOrCreate()
-                {
-                    return _instance;
-                }
-
-                private CancelExceptionVoidInternal() { }
-
-                public IValueContainer ToContainer(ITraceable traceable)
-                {
-                    return CancelContainerVoid.GetOrCreate();
-                }
-            }
-
-            [DebuggerNonUserCode]
-            public sealed class CancelExceptionInternal<T> : CancelException, IExceptionToContainer
-            {
-                // We can reuse the same object.
-                private static readonly CancelExceptionInternal<T> _instance = new CancelExceptionInternal<T>();
-
-                public T Value { get; private set; }
-
-                public static CancelExceptionInternal<T> GetOrCreate(T value)
-                {
-                    _instance.Value = value;
-                    return _instance;
-                }
-
-                private CancelExceptionInternal() { }
-
-                public IValueContainer ToContainer(ITraceable traceable)
-                {
-#if CSHARP_7_OR_LATER
-                    if (((object) Value) is CanceledExceptionInternal e)
-#else
-                    CanceledExceptionInternal e = Value as CanceledExceptionInternal;
-                    if (e != null)
-#endif
-                    {
-                        return e;
-                    }
-                    return CancelContainer<T>.GetOrCreate(Value);
-                }
             }
         }
     }
