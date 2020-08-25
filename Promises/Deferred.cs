@@ -376,6 +376,11 @@ namespace Proto.Promises
                     return;
                 }
             }
+
+            public static implicit operator DeferredBase(Deferred deferred)
+            {
+                return DeferredBase.Create(deferred);
+            }
         }
     }
 
@@ -577,6 +582,11 @@ namespace Proto.Promises
                     Manager.LogWarning("Deferred.Resolve - Deferred is not in the pending state.");
                     return;
                 }
+            }
+
+            public static implicit operator DeferredBase(Deferred deferred)
+            {
+                return DeferredBase.Create(deferred);
             }
         }
     }
