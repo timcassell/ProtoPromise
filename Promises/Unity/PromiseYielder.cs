@@ -289,6 +289,7 @@ namespace Proto.Promises
             }
         }
 
+        [System.Diagnostics.DebuggerNonUserCode]
         private class Routine : IEnumerator, ILinked<Routine>
         {
             Routine ILinked<Routine>.Next { get; set; }
@@ -344,6 +345,7 @@ namespace Proto.Promises
             void IEnumerator.Reset() { }
         }
 
+        [System.Diagnostics.DebuggerNonUserCode]
         private class Routine<T> : IEnumerator, ILinked<Routine<T>>
         {
             Routine<T> ILinked<Routine<T>>.Next { get; set; }

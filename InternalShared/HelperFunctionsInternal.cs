@@ -11,10 +11,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Proto.Utils;
 
 #if PROMISE_DEBUG
-using System.Diagnostics;
 using System.Linq;
 #endif
 
@@ -23,6 +23,7 @@ namespace Proto.Promises
     /// <summary>
     /// Members of this type are meant for INTERNAL USE ONLY! Do not use in user code! Use the documented public APIs.
     /// </summary>
+    [DebuggerNonUserCode]
     internal static partial class Internal
     {
         public static bool invokingRejected;
@@ -153,7 +154,7 @@ namespace Proto.Promises
             var trace = stackFrames
                 .Where(frame =>
                 {
-                    // Ignore DebuggerStepThrough and DebuggerHidden and DebuggerNonUserCode.
+                    // Ignore DebuggerNonUserCode and DebuggerHidden.
                     var methodType = frame.GetMethod();
                     return !methodType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
                         && !methodType.DeclaringType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)

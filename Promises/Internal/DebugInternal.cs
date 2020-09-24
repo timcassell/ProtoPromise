@@ -79,7 +79,7 @@ namespace Proto.Promises
             // Validate returned promise as not disposed.
             if (IsDisposed(other._valueOrPrevious))
             {
-                throw new InvalidReturnException("A disposed promise was returned.");
+                throw new InvalidReturnException("A disposed promise was returned.", Internal.GetFormattedStacktrace(other));
             }
 
             // A promise cannot wait on itself.
@@ -92,7 +92,7 @@ namespace Proto.Promises
             {
                 if (prev == this)
                 {
-                    throw new InvalidReturnException("Circular Promise chain detected.", ((Internal.ITraceable) other).Trace.ToString());
+                    throw new InvalidReturnException("Circular Promise chain detected.", Internal.GetFormattedStacktrace(other));
                 }
                 prev.BorrowPassthroughs(ref passThroughs);
             }

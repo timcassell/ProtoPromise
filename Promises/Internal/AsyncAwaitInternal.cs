@@ -173,12 +173,15 @@ namespace Proto.Promises.Async.CompilerServices
         private Action _continuation;
 
         [DebuggerHidden]
-        public Promise Task { get; private set; }
+        public Promise Task { get { return _deferred.Promise; } }
 
         [DebuggerHidden]
         public static PromiseMethodBuilder Create()
         {
-            return new PromiseMethodBuilder();
+            return new PromiseMethodBuilder()
+            {
+                _deferred = Promise.Deferred.New()
+            };
         }
 
         [DebuggerHidden]
@@ -186,14 +189,7 @@ namespace Proto.Promises.Async.CompilerServices
         {
             if (exception is OperationCanceledException)
             {
-                if (!_deferred.IsValid)
-                {
-                    Task = Promise.Canceled(exception);
-                }
-                else
-                {
-                    ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref exception));
-                }
+                ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref exception));
             }
             else
             {
@@ -206,32 +202,14 @@ namespace Proto.Promises.Async.CompilerServices
 #endif
                     exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
                 }
-                if (!_deferred.IsValid)
-                {
-                    Task = Promise.Rejected(exception);
-                }
-                else
-                {
-                    _deferred.Reject(exception);
-                }
+                _deferred.Reject(exception);
             }
-            _deferred = default;
-            _continuation = null;
         }
 
         [DebuggerHidden]
         public void SetResult()
         {
-            if (!_deferred.IsValid)
-            {
-                Task = Promise.Resolved();
-            }
-            else
-            {
-                _deferred.Resolve();
-                _deferred = default;
-                _continuation = null;
-            }
+            _deferred.Resolve();
         }
 
         [DebuggerHidden]
@@ -269,8 +247,6 @@ namespace Proto.Promises.Async.CompilerServices
         {
             if (_continuation is null)
             {
-                _deferred = Promise.Deferred.New();
-                Task = _deferred.Promise;
                 _continuation = stateMachine.MoveNext;
             }
         }
@@ -286,12 +262,15 @@ namespace Proto.Promises.Async.CompilerServices
         private Action _continuation;
 
         [DebuggerHidden]
-        public Promise<T> Task { get; private set; }
+        public Promise<T> Task { get { return _deferred.Promise; } }
 
         [DebuggerHidden]
         public static PromiseMethodBuilder<T> Create()
         {
-            return new PromiseMethodBuilder<T>();
+            return new PromiseMethodBuilder<T>()
+            {
+                _deferred = Promise<T>.Deferred.New()
+            };
         }
 
         [DebuggerHidden]
@@ -299,14 +278,7 @@ namespace Proto.Promises.Async.CompilerServices
         {
             if (exception is OperationCanceledException)
             {
-                if (!_deferred.IsValid)
-                {
-                    Task = Promise.Canceled<T, Exception>(exception);
-                }
-                else
-                {
-                    ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref exception));
-                }
+                ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref exception));
             }
             else
             {
@@ -319,32 +291,14 @@ namespace Proto.Promises.Async.CompilerServices
 #endif
                     exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
                 }
-                if (!_deferred.IsValid)
-                {
-                    Task = Promise.Rejected<T, Exception>(exception);
-                }
-                else
-                {
-                    _deferred.Reject(exception);
-                }
+                _deferred.Reject(exception);
             }
-            _deferred = default;
-            _continuation = null;
         }
 
         [DebuggerHidden]
         public void SetResult(T result)
         {
-            if (!_deferred.IsValid)
-            {
-                Task = Promise.Resolved(result);
-            }
-            else
-            {
-                _deferred.Resolve(result);
-                _deferred = default;
-                _continuation = null;
-            }
+            _deferred.Resolve(result);
         }
 
         [DebuggerHidden]
@@ -382,8 +336,6 @@ namespace Proto.Promises.Async.CompilerServices
         {
             if (_continuation is null)
             {
-                _deferred = Promise<T>.Deferred.New();
-                Task = _deferred.Promise;
                 _continuation = stateMachine.MoveNext;
             }
         }
