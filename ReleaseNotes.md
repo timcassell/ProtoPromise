@@ -1,5 +1,25 @@
 # Release Notes
 
+## v 0.11.0 - September 30, 2020
+
+Optimizations:
+
+- Added object pooling for allocation-free async Promise functions.
+- Removed LitePromises, using DeferredPromises for Promise.Resolved/Rejected/Canceled instead to reduce amount of code.
+
+Bug Fixes:
+
+- Fixed causality traces in async Promise functions.
+- Fixed aggregate exception not capturing the unhandled exceptions.
+- Fixed PromiseMethodBuilders for async Promise functions with the IL2CPP compiler. (v0.10.2)
+
+Misc:
+
+- Added message to unhandled exceptions, when not in DEBUG mode, to explain how to see causality traces.
+- Added implicit cast operators for `Promise.Deferred` -> `Promise.DeferredBase` and `Promise<T>.Deferred` -> `Promise.DeferredBase`. (v0.10.1)
+- Ignore Internal functions and PromiseYielder.Routines in causality traces. (v0.10.2)
+- Include causality trace from invalid returned promise. (v0.10.2)
+
 ## v 0.10 - August 21, 2020
 
 API changes:

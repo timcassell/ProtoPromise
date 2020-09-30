@@ -13,13 +13,11 @@ This library took inspiration from <a href="https://developer.mozilla.org/en-US/
 
 ## Latest Updates
 
-### v 0.10
+### v 0.11.0
 
-- Added `Proto.Promises.{CancelationSource, CancelationToken, CancelationRegistration}` structs which can be used for synchronous cancelation callbacks.
-- Added optional `CancelationToken` parameter to `Promise.{Then, Catch, CatchCancelation, ContinueWith, Progress, Sequence, NewDeferred}`.
-- Removed `Promise.{Cancel, ThenDuplicate}`.
-- Changed Deferreds to structs with an implicit cast to DeferredBase (`DeferredBase.ToDeferred(<T>)()` to cast back explicitly).
-- Change `Deferred.Reject(null)` to convert to a `NullReferenceException` on any `T`. This means `Promise.Catch<T>` will never give a null value. This more closely matches normal `throw null;` behavior.
+- Added object pooling for allocation-free `async Promise` functions.
+- Fixed causality traces in async Promise functions.
+- Fixed aggregate exception not capturing the unhandled exceptions.
 
 See <a href="https://github.com/timcassell/ProtoPromise/blob/master/ReleaseNotes.md">Release Notes</a> for detailed changes.
 
@@ -633,13 +631,9 @@ Promises are awaitable. This means you can use the `await` keyword to wait for t
 
 There are some pitfalls to using the async and await features.
 
-If you've used Tasks, you are probably used to them throwing the exception that actually occurred instead of an exception wrapper. Promises throw a wrapper exception because the promise can be rejected with _any_ value, not just an exception. It also contains the full causality trace.
+If you've used Tasks, you are probably used to them throwing the exception that actually occurred instead of an exception wrapper. Promises throw a wrapper exception because the promise can be rejected with _any_ value, not just an exception. It also contains the full causality trace. At least you can still catch `OperationCanceledException` to catch cancelations the same way as Tasks (and, unlike with the normal `Promise.Then` API where catching cancelations is optional, you probably _should_ catch cancelation exceptions in an async function).
 
-The other thing, and this is more of an issue than exceptions, is that you can't report progress to the promise returned from the async function. This is probably why the designers of Tasks chose to use `Progress<T>` passed into functions instead of implementing it directly into Tasks. Therefore, if you use async Promise functions, I recommend you disable promise progress (See [Compiler Options](#compiler-options)).
-
-Another issue is that, while promises don't need to create extra allocations every time if object pooling is enabled, `async Promise` functions do not use the same pooling trick. Because of that, `async Promise` functions will almost always allocate when they are called (the exception to this is when they complete synchronously).
-
-At least you can still catch `OperationCanceledException` to catch cancelations the same way as Tasks (and, unlike with the normal `Promise.Then` API where catching cancelations is optional, you probably _should_ catch cancelation exceptions in an async function).
+The other thing, and this is more of an issue than exception handling, is that you can't report progress to the promise returned from the async function. This is probably why the designers of Tasks chose to use `Progress<T>` passed into functions instead of implementing it directly into Tasks. Therefore, if you use async Promise functions, I recommend you disable promise progress (See [Compiler Options](#compiler-options)).
 
 ## Additional Information
 
