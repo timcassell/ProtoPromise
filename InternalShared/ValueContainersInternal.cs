@@ -157,9 +157,10 @@ namespace Proto.Promises
                 string outerStacktrace = _stackTraces.ToString();
                 message += Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
                     ? " -- This exception's Stacktrace contains the causality trace of all async callbacks that ran."
-                    : " -- Set Proto.Promises.Promise.Config.DebugCausalityTracer to Proto.Promises.Promise.TraceLevel.All to get a causality trace.";
+                    : " -- Set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
 #else
-                    string outerStacktrace = null;
+                string outerStacktrace = null;
+                message += " -- Enable DEBUG mode and set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
 #endif
                 return new UnhandledExceptionInternal(Value, type, message, outerStacktrace, innerException);
             }
@@ -259,7 +260,7 @@ namespace Proto.Promises
             {
                 bool valueIsNull = ReferenceEquals(Value, null);
                 Type type = valueIsNull ? typeof(T) : Value.GetType();
-                string message = "Promise was canceled with a reason, type: " + type + ", value: " + (valueIsNull ? "NULL" : Value.ToString());
+                string message = "Operation was canceled with a reason, type: " + type + ", value: " + (valueIsNull ? "NULL" : Value.ToString());
 
                 return new CanceledExceptionInternal(Value, type, message);
             }
@@ -297,7 +298,7 @@ namespace Proto.Promises
 
             Exception IThrowable.GetException()
             {
-                return new CanceledExceptionInternal(null, null, "Promise was canceled without a reason.");
+                return new CanceledExceptionInternal(null, null, "Operation was canceled without a reason.");
             }
 
             ICancelValueContainer ICancelationToContainer.ToContainer()

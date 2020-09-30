@@ -341,6 +341,9 @@ namespace Proto.Promises
             {
                 // unhandledValue is null, behave the same way .Net behaves if you throw null.
                 message = "An rejected null value was not handled.";
+#if !PROMISE_DEBUG
+                message += " -- Enable DEBUG mode and set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
+#endif
                 NullReferenceException nullRefEx = new NullReferenceException();
                 AddUnhandledException(new UnhandledExceptionInternal(nullRefEx, typeof(NullReferenceException), message, stackTrace, nullRefEx));
                 return;
@@ -351,6 +354,9 @@ namespace Proto.Promises
                 message = "A rejected value was not handled, type: " + type + ", value: " + unhandledValue.ToString();
                 innerException = null;
             }
+#if !PROMISE_DEBUG
+            message += " -- Enable DEBUG mode and set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
+#endif
             AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, unhandledValue.GetType(), message, stackTrace, innerException));
         }
 
@@ -394,8 +400,9 @@ namespace Proto.Promises
             }
 
 #if CSHARP_7_OR_LATER
+            var ex = new AggregateException(unhandledExceptions);
             unhandledExceptions.Clear();
-            throw new AggregateException(unhandledExceptions);
+            throw ex;
 #else
             // .Net 3.5 dumb compiler can't convert IEnumerable<UnhandledExceptionInternal> to IEnumerable<Exception>
             var exceptions = new List<Exception>();

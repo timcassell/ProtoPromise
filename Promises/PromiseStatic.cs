@@ -1088,8 +1088,15 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise Resolved()
         {
+#if PROMISE_DEBUG
+            // Make new promise in DEBUG mode for separate causality traces.
+            var promise = InternalProtected.DeferredPromiseVoid.GetOrCreate();
+            promise.ResolveDirect();
+            return promise;
+#else
             // Reuse a single resolved instance.
             return InternalProtected.SettledPromise.GetOrCreateResolved();
+#endif
         }
 
         /// <summary>
@@ -1097,7 +1104,7 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Resolved<T>(T value)
         {
-            var promise = InternalProtected.LitePromise<T>.GetOrCreate();
+            var promise = InternalProtected.DeferredPromise<T>.GetOrCreate();
             promise.ResolveDirect(ref value);
             return promise;
         }
@@ -1107,7 +1114,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Rejected<TReject>(TReject reason)
         {
-            var promise = InternalProtected.LitePromise0.GetOrCreate();
+            var promise = InternalProtected.DeferredPromiseVoid.GetOrCreate();
             promise.RejectDirect(ref reason, int.MinValue);
             return promise;
         }
@@ -1117,7 +1124,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Rejected<T, TReject>(TReject reason)
         {
-            var promise = InternalProtected.LitePromise<T>.GetOrCreate();
+            var promise = InternalProtected.DeferredPromise<T>.GetOrCreate();
             promise.RejectDirect(ref reason, int.MinValue);
             return promise;
         }
@@ -1127,7 +1134,15 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Canceled()
         {
+#if PROMISE_DEBUG
+            // Make new promise in DEBUG mode for separate causality traces.
+            var promise = InternalProtected.DeferredPromiseVoid.GetOrCreate();
+            promise.CancelDirect();
+            return promise;
+#else
+            // Reuse a single canceled instance.
             return InternalProtected.SettledPromise.GetOrCreateCanceled();
+#endif
         }
 
         /// <summary>
@@ -1135,7 +1150,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Canceled<TCancel>(TCancel reason)
         {
-            var promise = InternalProtected.LitePromise0.GetOrCreate();
+            var promise = InternalProtected.DeferredPromiseVoid.GetOrCreate();
             promise.CancelDirect(ref reason);
             return promise;
         }
@@ -1145,7 +1160,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Canceled<T>()
         {
-            var promise = InternalProtected.LitePromise<T>.GetOrCreate();
+            var promise = InternalProtected.DeferredPromise<T>.GetOrCreate();
             promise.CancelDirect();
             return promise;
         }
@@ -1155,7 +1170,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Canceled<T, TCancel>(TCancel reason)
         {
-            var promise = InternalProtected.LitePromise<T>.GetOrCreate();
+            var promise = InternalProtected.DeferredPromise<T>.GetOrCreate();
             promise.CancelDirect(ref reason);
             return promise;
         }

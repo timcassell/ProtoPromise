@@ -173,7 +173,7 @@ namespace Proto.Promises
             private DisposedChecker() { }
         }
 #else
-        public const object disposedObject = null;
+        private const object disposedObject = null;
 
         public override string ToString()
         {

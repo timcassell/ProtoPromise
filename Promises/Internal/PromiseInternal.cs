@@ -247,7 +247,7 @@ namespace Proto.Promises
             }
         }
 
-        private void ResolveDirect()
+        protected void ResolveDirect()
         {
             _state = State.Resolved;
             var resolveValue = Internal.ResolveContainerVoid.GetOrCreate();
@@ -392,7 +392,7 @@ namespace Proto.Promises
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            internal sealed partial class DeferredPromiseVoid : Promise, Internal.ITreeHandleable, Internal.ICancelDelegate
+            internal sealed partial class DeferredPromiseVoid : Promise, Internal.ITreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
@@ -437,15 +437,10 @@ namespace Proto.Promises
                 {
                     ReleaseInternal();
                 }
-
-                void Internal.ICancelDelegate.Invoke(Internal.ICancelValueContainer valueContainer)
-                {
-                    CancelDirect(ref valueContainer);
-                }
             }
 
             [System.Diagnostics.DebuggerNonUserCode]
-            internal sealed partial class DeferredPromise<T> : Promise<T>, Internal.ITreeHandleable, Internal.ICancelDelegate
+            internal sealed partial class DeferredPromise<T> : Promise<T>, Internal.ITreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
@@ -489,11 +484,6 @@ namespace Proto.Promises
                 void Internal.ITreeHandleable.Handle()
                 {
                     ReleaseInternal();
-                }
-
-                void Internal.ICancelDelegate.Invoke(Internal.ICancelValueContainer valueContainer)
-                {
-                    CancelDirect(ref valueContainer);
                 }
             }
 
@@ -619,28 +609,11 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROMISE_DEBUG
             [System.Diagnostics.DebuggerNonUserCode]
             internal sealed class SettledPromise : Promise
             {
                 private SettledPromise() { }
-
-#if PROMISE_DEBUG
-                public static Promise GetOrCreateResolved()
-                {
-                    // Create new because stack trace can be different.
-                    var promise = LitePromise0.GetOrCreate();
-                    promise.ResolveDirectFromSettled();
-                    return promise;
-                }
-
-                public static Promise GetOrCreateCanceled()
-                {
-                    // Create new because stack trace can be different.
-                    var promise = LitePromise0.GetOrCreate();
-                    promise.CancelDirect();
-                    return promise;
-                }
-#else
                 private static readonly SettledPromise _resolved = new SettledPromise()
                 {
                     _state = State.Resolved,
@@ -664,98 +637,10 @@ namespace Proto.Promises
                     // Reuse a single canceled instance.
                     return _canceled;
                 }
-#endif
 
                 protected override void Dispose() { }
             }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            internal sealed class LitePromise0 : Promise, Internal.ITreeHandleable
-            {
-                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
-
-                static LitePromise0()
-                {
-                    Internal.OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private LitePromise0() { }
-
-                public static LitePromise0 GetOrCreate()
-                {
-                    var promise = _pool.IsNotEmpty ? (LitePromise0) _pool.Pop() : new LitePromise0();
-                    promise.Reset();
-                    promise.ResetDepth();
-                    return promise;
-                }
-
-#if PROMISE_DEBUG
-                public void ResolveDirectFromSettled()
-                {
-                    _state = State.Resolved;
-                    _valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
-                    Internal.AddToHandleQueueFront(this);
-                }
 #endif
-
-                void Internal.ITreeHandleable.Handle()
-                {
-                    ReleaseInternal();
-                }
-            }
-
-            [System.Diagnostics.DebuggerNonUserCode]
-            internal sealed class LitePromise<T> : Promise<T>, Internal.ITreeHandleable
-            {
-                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
-
-                static LitePromise()
-                {
-                    Internal.OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
-                }
-
-                private LitePromise() { }
-
-                public static LitePromise<T> GetOrCreate()
-                {
-                    var promise = _pool.IsNotEmpty ? (LitePromise<T>) _pool.Pop() : new LitePromise<T>();
-                    promise.Reset();
-                    promise.ResetDepth();
-                    return promise;
-                }
-
-                public void ResolveDirect(ref T value)
-                {
-                    _state = State.Resolved;
-                    var val = Internal.ResolveContainer<T>.GetOrCreate(ref value);
-                    val.Retain();
-                    _valueOrPrevious = val;
-                    Internal.AddToHandleQueueFront(this);
-                }
-
-                void Internal.ITreeHandleable.Handle()
-                {
-                    ReleaseInternal();
-                }
-            }
 
             #region Resolve Promises
             // IDelegate to reduce the amount of classes I would have to write(Composition Over Inheritance).

@@ -27,7 +27,7 @@ namespace Proto.Promises
             Internal.AddToHandleQueueFront(this);
         }
 
-        private void CancelDirect<TCancel>(ref TCancel reason)
+        protected void CancelDirect<TCancel>(ref TCancel reason)
         {
             _state = State.Canceled;
             var cancelContainer = Internal.CreateCancelContainer(ref reason);

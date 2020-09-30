@@ -19,6 +19,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Security;
 using Proto.Promises.Await;
+using Proto.Utils;
 
 namespace Proto.Promises.Await
 {
@@ -161,6 +162,102 @@ namespace System.Runtime.CompilerServices
     }
 }
 
+#if PROMISE_DEBUG || ENABLE_IL2CPP
+// Fix for IL2CPP compile bug. https://issuetracker.unity3d.com/issues/il2cpp-incorrect-results-when-calling-a-method-from-outside-class-in-a-struct
+// Also use this in DEBUG mode for cleaner causality traces.
+namespace Proto.Promises
+{
+    partial class Internal
+    {
+        /// <summary>
+        /// This type and its members are intended for use by the compiler (async Promise functions).
+        /// </summary>
+        [DebuggerNonUserCode]
+        internal abstract class PromiseMethodContinuer : IDisposable
+        {
+            public abstract Action Continuation { get; }
+#if PROMISE_DEBUG
+            protected ITraceable _owner;
+#endif
+
+            private PromiseMethodContinuer() { }
+
+            public abstract void Dispose();
+
+            public static PromiseMethodContinuer GetOrCreate<TStateMachine>(ref TStateMachine stateMachine, ITraceable owner) where TStateMachine : IAsyncStateMachine
+            {
+                var continuer = Continuer<TStateMachine>.ReuseOrNew(ref stateMachine);
+#if PROMISE_DEBUG
+                continuer._owner = owner;
+#endif
+                return continuer;
+            }
+
+            /// <summary>
+            /// Generic class to reference the state machine without boxing it.
+            /// </summary>
+            [DebuggerNonUserCode]
+            private sealed class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
+            {
+                private static ValueLinkedStack<Continuer<TStateMachine>> _pool;
+
+                static Continuer()
+                {
+                    OnClearPool += () => _pool.Clear();
+                }
+
+                Continuer<TStateMachine> ILinked<Continuer<TStateMachine>>.Next { get; set; }
+                public override Action Continuation { get { return _continuation; } }
+                private readonly Action _continuation;
+                private TStateMachine _stateMachine;
+
+                private Continuer()
+                {
+                    _continuation = Continue;
+                }
+
+                public static Continuer<TStateMachine> ReuseOrNew(ref TStateMachine stateMachine)
+                {
+                    var continuer = _pool.IsNotEmpty ? _pool.Pop() : new Continuer<TStateMachine>();
+                    continuer._stateMachine = stateMachine;
+                    return continuer;
+                }
+
+                public override void Dispose()
+                {
+#if PROMISE_DEBUG
+                    _owner = null;
+#endif
+                    _stateMachine = default;
+                    if (Promise.Config.ObjectPooling != Promise.PoolType.None)
+                    {
+                        _pool.Push(this);
+                    }
+                }
+
+                private void Continue()
+                {
+#if PROMISE_DEBUG
+                    // Set current trace to the function's promise for execution, then set it back.
+                    var current = CurrentTrace;
+                    CurrentTrace = _owner.Trace;
+                    try
+                    {
+                        _stateMachine.MoveNext();
+                    }
+                    finally
+                    {
+                        CurrentTrace = current;
+                    }
+#else
+                    _stateMachine.MoveNext();
+#endif
+                }
+            }
+        }
+    }
+}
+
 namespace Proto.Promises.Async.CompilerServices
 {
     /// <summary>
@@ -169,47 +266,104 @@ namespace Proto.Promises.Async.CompilerServices
     [DebuggerNonUserCode]
     public struct PromiseMethodBuilder
     {
-        private Promise.Deferred _deferred;
-        private Action _continuation;
+        [DebuggerNonUserCode]
+        private sealed class AsyncPromise : Promise, Internal.ITreeHandleable
+        {
+            private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+
+            static AsyncPromise()
+            {
+                Internal.OnClearPool += () => _pool.Clear();
+            }
+
+            private Internal.PromiseMethodContinuer _continuer;
+
+            public void SetResult()
+            {
+                ResolveDirect();
+            }
+
+            public void SetException(Exception exception)
+            {
+                if (exception is OperationCanceledException)
+                {
+                    CancelDirect(ref exception);
+                }
+                else
+                {
+                    if (exception is RethrowException)
+                    {
+#if PROMISE_DEBUG
+                        string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(exception, true) });
+#else
+                        string stacktrace = new StackTrace(exception, true).ToString();
+#endif
+                        exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+                    }
+                    RejectDirect(ref exception, int.MinValue);
+                }
+            }
+
+            public static AsyncPromise GetOrCreate()
+            {
+                var promise = _pool.IsNotEmpty ? (AsyncPromise) _pool.Pop() : new AsyncPromise();
+                promise.Reset();
+                return promise;
+            }
+
+            public Action GetContinuation<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
+            {
+                if (_continuer is null)
+                {
+                    _continuer = Internal.PromiseMethodContinuer.GetOrCreate(ref stateMachine, this);
+                }
+                return _continuer.Continuation;
+            }
+
+            void Internal.ITreeHandleable.Handle()
+            {
+                ReleaseInternal();
+            }
+
+            protected override void Dispose()
+            {
+                base.Dispose();
+                if (_continuer != null)
+                {
+                    _continuer.Dispose();
+                    _continuer = null;
+                }
+                if (Config.ObjectPooling != PoolType.None)
+                {
+                    _pool.Push(this);
+                }
+            }
+        }
+
+        private AsyncPromise _promise;
 
         [DebuggerHidden]
-        public Promise Task { get { return _deferred.Promise; } }
+        public Promise Task { get { return _promise; } }
 
         [DebuggerHidden]
         public static PromiseMethodBuilder Create()
         {
             return new PromiseMethodBuilder()
             {
-                _deferred = Promise.Deferred.New()
+                _promise = AsyncPromise.GetOrCreate()
             };
         }
 
         [DebuggerHidden]
         public void SetException(Exception exception)
         {
-            if (exception is OperationCanceledException)
-            {
-                ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref exception));
-            }
-            else
-            {
-                if (exception is RethrowException)
-                {
-#if PROMISE_DEBUG
-                    string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(exception, true) });
-#else
-                    string stacktrace = new StackTrace(exception, true).ToString();
-#endif
-                    exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-                }
-                _deferred.Reject(exception);
-            }
+            _promise.SetException(exception);
         }
 
         [DebuggerHidden]
         public void SetResult()
         {
-            _deferred.Resolve();
+            _promise.SetResult();
         }
 
         [DebuggerHidden]
@@ -217,8 +371,7 @@ namespace Proto.Promises.Async.CompilerServices
             where TAwaiter : INotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
-            SetContinuation(ref stateMachine);
-            awaiter.OnCompleted(_continuation);
+            awaiter.OnCompleted(_promise.GetContinuation(ref stateMachine));
         }
 
         [DebuggerHidden]
@@ -227,8 +380,7 @@ namespace Proto.Promises.Async.CompilerServices
             where TAwaiter : ICriticalNotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
-            SetContinuation(ref stateMachine);
-            awaiter.UnsafeOnCompleted(_continuation);
+            awaiter.UnsafeOnCompleted(_promise.GetContinuation(ref stateMachine));
         }
 
         [DebuggerHidden]
@@ -240,16 +392,6 @@ namespace Proto.Promises.Async.CompilerServices
 
         [DebuggerHidden]
         public void SetStateMachine(IAsyncStateMachine stateMachine) { }
-
-        [DebuggerHidden]
-        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine)
-            where TStateMachine : IAsyncStateMachine
-        {
-            if (_continuation is null)
-            {
-                _continuation = stateMachine.MoveNext;
-            }
-        }
     }
 
     /// <summary>
@@ -258,47 +400,261 @@ namespace Proto.Promises.Async.CompilerServices
     [DebuggerNonUserCode]
     public struct PromiseMethodBuilder<T>
     {
-        private Promise<T>.Deferred _deferred;
-        private Action _continuation;
+        [DebuggerNonUserCode]
+        private sealed class AsyncPromise : Promise<T>, Internal.ITreeHandleable
+        {
+            private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+
+            static AsyncPromise()
+            {
+                Internal.OnClearPool += () => _pool.Clear();
+            }
+
+            private Internal.PromiseMethodContinuer _continuer;
+
+            public void SetResult(ref T result)
+            {
+                ResolveDirect(ref result);
+            }
+
+            public void SetException(Exception exception)
+            {
+                if (exception is OperationCanceledException)
+                {
+                    CancelDirect(ref exception);
+                }
+                else
+                {
+                    if (exception is RethrowException)
+                    {
+#if PROMISE_DEBUG
+                        string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(exception, true) });
+#else
+                        string stacktrace = new StackTrace(exception, true).ToString();
+#endif
+                        exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+                    }
+                    RejectDirect(ref exception, int.MinValue);
+                }
+            }
+
+            public static AsyncPromise GetOrCreate()
+            {
+                var promise = _pool.IsNotEmpty ? (AsyncPromise) _pool.Pop() : new AsyncPromise();
+                promise.Reset();
+                return promise;
+            }
+
+            public Action GetContinuation<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
+            {
+                if (_continuer is null)
+                {
+                    _continuer = Internal.PromiseMethodContinuer.GetOrCreate(ref stateMachine, this);
+                }
+                return _continuer.Continuation;
+            }
+
+            void Internal.ITreeHandleable.Handle()
+            {
+                ReleaseInternal();
+            }
+
+            protected override void Dispose()
+            {
+                base.Dispose();
+                if (_continuer != null)
+                {
+                    _continuer.Dispose();
+                    _continuer = null;
+                }
+                if (Config.ObjectPooling != PoolType.None)
+                {
+                    _pool.Push(this);
+                }
+            }
+        }
+
+        private AsyncPromise _promise;
 
         [DebuggerHidden]
-        public Promise<T> Task { get { return _deferred.Promise; } }
+        public Promise<T> Task { get { return _promise; } }
 
         [DebuggerHidden]
         public static PromiseMethodBuilder<T> Create()
         {
             return new PromiseMethodBuilder<T>()
             {
-                _deferred = Promise<T>.Deferred.New()
+                _promise = AsyncPromise.GetOrCreate()
             };
         }
 
         [DebuggerHidden]
         public void SetException(Exception exception)
         {
-            if (exception is OperationCanceledException)
-            {
-                ((Internal.ICancelDelegate) _deferred.Promise).Invoke(Internal.CreateCancelContainer(ref exception));
-            }
-            else
-            {
-                if (exception is RethrowException)
-                {
-#if PROMISE_DEBUG
-                    string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(exception, true) });
-#else
-                    string stacktrace = new StackTrace(exception, true).ToString();
-#endif
-                    exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-                }
-                _deferred.Reject(exception);
-            }
+            _promise.SetException(exception);
         }
 
         [DebuggerHidden]
         public void SetResult(T result)
         {
-            _deferred.Resolve(result);
+            _promise.SetResult(ref result);
+        }
+
+        [DebuggerHidden]
+        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            where TAwaiter : INotifyCompletion
+            where TStateMachine : IAsyncStateMachine
+        {
+            awaiter.OnCompleted(_promise.GetContinuation(ref stateMachine));
+        }
+
+        [DebuggerHidden]
+        [SecuritySafeCritical]
+        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            where TAwaiter : ICriticalNotifyCompletion
+            where TStateMachine : IAsyncStateMachine
+        {
+            awaiter.UnsafeOnCompleted(_promise.GetContinuation(ref stateMachine));
+        }
+
+        [DebuggerHidden]
+        public void Start<TStateMachine>(ref TStateMachine stateMachine)
+            where TStateMachine : IAsyncStateMachine
+        {
+            stateMachine.MoveNext();
+        }
+
+        [DebuggerHidden]
+        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
+    }
+}
+#else
+namespace Proto.Promises.Async.CompilerServices
+{
+    /// <summary>
+    /// This type and its members are intended for use by the compiler.
+    /// </summary>
+    [DebuggerNonUserCode]
+    public struct PromiseMethodBuilder
+    {
+        // Using a promise object as its own continuer saves 16 bytes of object overhead (x64).
+        [DebuggerNonUserCode]
+        private abstract class AsyncPromise : Promise
+        {
+            // Cache the delegate to prevent new allocations.
+            public readonly Action continuation;
+
+            public AsyncPromise()
+            {
+                continuation = ContinueMethod;
+            }
+
+            protected abstract void ContinueMethod();
+
+            public void SetResult()
+            {
+                ResolveDirect();
+            }
+
+            public void SetException(Exception exception)
+            {
+                if (exception is OperationCanceledException)
+                {
+                    CancelDirect(ref exception);
+                }
+                else
+                {
+                    if (exception is RethrowException)
+                    {
+                        string stacktrace = new StackTrace(exception, true).ToString();
+                        exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+                    }
+                    RejectDirect(ref exception, int.MinValue);
+                }
+            }
+        }
+
+        [DebuggerNonUserCode]
+        private sealed class AsyncPromise<TStateMachine> : AsyncPromise, Internal.ITreeHandleable where TStateMachine : IAsyncStateMachine
+        {
+            private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+
+            static AsyncPromise()
+            {
+                Internal.OnClearPool += () => _pool.Clear();
+            }
+
+            private TStateMachine _stateMachine;
+
+            public static AsyncPromise<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
+            {
+                var promise = _pool.IsNotEmpty ? (AsyncPromise<TStateMachine>) _pool.Pop() : new AsyncPromise<TStateMachine>();
+                promise.Reset();
+                promise._stateMachine = stateMachine;
+                return promise;
+            }
+
+            void Internal.ITreeHandleable.Handle()
+            {
+                ReleaseInternal();
+            }
+
+            protected override void Dispose()
+            {
+                base.Dispose();
+                _stateMachine = default;
+                if (Config.ObjectPooling != PoolType.None)
+                {
+                    _pool.Push(this);
+                }
+            }
+
+            protected override void ContinueMethod()
+            {
+                _stateMachine.MoveNext();
+            }
+        }
+
+        [DebuggerHidden]
+        public Promise Task { get; private set; }
+
+        [DebuggerHidden]
+        public static PromiseMethodBuilder Create()
+        {
+            return new PromiseMethodBuilder();
+        }
+
+        [DebuggerHidden]
+        public void SetException(Exception exception)
+        {
+            if (Task is null)
+            {
+                if (exception is OperationCanceledException e)
+                {
+                    Task = Promise.Canceled(e);
+                }
+                else
+                {
+                    Task = Promise.Rejected(exception);
+                }
+            }
+            else
+            {
+                ((AsyncPromise) Task).SetException(exception);
+            }
+        }
+
+        [DebuggerHidden]
+        public void SetResult()
+        {
+            if (Task is null)
+            {
+                Task = Promise.Resolved();
+            }
+            else
+            {
+                ((AsyncPromise) Task).SetResult();
+            }
         }
 
         [DebuggerHidden]
@@ -307,7 +663,7 @@ namespace Proto.Promises.Async.CompilerServices
             where TStateMachine : IAsyncStateMachine
         {
             SetContinuation(ref stateMachine);
-            awaiter.OnCompleted(_continuation);
+            awaiter.OnCompleted(((AsyncPromise) Task).continuation);
         }
 
         [DebuggerHidden]
@@ -317,7 +673,7 @@ namespace Proto.Promises.Async.CompilerServices
             where TStateMachine : IAsyncStateMachine
         {
             SetContinuation(ref stateMachine);
-            awaiter.UnsafeOnCompleted(_continuation);
+            awaiter.UnsafeOnCompleted(((AsyncPromise) Task).continuation);
         }
 
         [DebuggerHidden]
@@ -334,11 +690,177 @@ namespace Proto.Promises.Async.CompilerServices
         private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
-            if (_continuation is null)
+            if (Task is null)
             {
-                _continuation = stateMachine.MoveNext;
+                Task = AsyncPromise<TStateMachine>.GetOrCreate(ref stateMachine);
+            }
+        }
+    }
+    /// <summary>
+    /// This type and its members are intended for use by the compiler.
+    /// </summary>
+    [DebuggerNonUserCode]
+    public struct PromiseMethodBuilder<T>
+    {
+        // Using a promise object as its own continuer saves 16 bytes of object overhead (x64).
+        [DebuggerNonUserCode]
+        private abstract class AsyncPromise : Promise<T>
+        {
+            // Cache the delegate to prevent new allocations.
+            public readonly Action continuation;
+
+            public AsyncPromise()
+            {
+                continuation = ContinueMethod;
+            }
+
+            protected abstract void ContinueMethod();
+
+            public void SetResult(ref T result)
+            {
+                ResolveDirect(ref result);
+            }
+
+            public void SetException(Exception exception)
+            {
+                if (exception is OperationCanceledException)
+                {
+                    CancelDirect(ref exception);
+                }
+                else
+                {
+                    if (exception is RethrowException)
+                    {
+                        string stacktrace = new StackTrace(exception, true).ToString();
+                        exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+                    }
+                    RejectDirect(ref exception, int.MinValue);
+                }
+            }
+        }
+
+        [DebuggerNonUserCode]
+        private sealed class AsyncPromise<TStateMachine> : AsyncPromise, Internal.ITreeHandleable where TStateMachine : IAsyncStateMachine
+        {
+            private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+
+            static AsyncPromise()
+            {
+                Internal.OnClearPool += () => _pool.Clear();
+            }
+
+            private TStateMachine _stateMachine;
+
+            public static AsyncPromise<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
+            {
+                var promise = _pool.IsNotEmpty ? (AsyncPromise<TStateMachine>) _pool.Pop() : new AsyncPromise<TStateMachine>();
+                promise.Reset();
+                promise._stateMachine = stateMachine;
+                return promise;
+            }
+
+            void Internal.ITreeHandleable.Handle()
+            {
+                ReleaseInternal();
+            }
+
+            protected override void Dispose()
+            {
+                base.Dispose();
+                _stateMachine = default;
+                if (Config.ObjectPooling != PoolType.None)
+                {
+                    _pool.Push(this);
+                }
+            }
+
+            protected override void ContinueMethod()
+            {
+                _stateMachine.MoveNext();
+            }
+        }
+
+        [DebuggerHidden]
+        public Promise<T> Task { get; set; }
+
+        [DebuggerHidden]
+        public static PromiseMethodBuilder<T> Create()
+        {
+            return new PromiseMethodBuilder<T>();
+        }
+
+        [DebuggerHidden]
+        public void SetException(Exception exception)
+        {
+            if (Task is null)
+            {
+                if (exception is OperationCanceledException e)
+                {
+                    Task = Promise.Canceled<T, OperationCanceledException>(e);
+                }
+                else
+                {
+                    Task = Promise.Rejected<T, Exception>(exception);
+                }
+            }
+            else
+            {
+                ((AsyncPromise) Task).SetException(exception);
+            }
+        }
+
+        [DebuggerHidden]
+        public void SetResult(T result)
+        {
+            if (Task is null)
+            {
+                Task = Promise.Resolved(result);
+            }
+            else
+            {
+                ((AsyncPromise) Task).SetResult(ref result);
+            }
+        }
+
+        [DebuggerHidden]
+        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            where TAwaiter : INotifyCompletion
+            where TStateMachine : IAsyncStateMachine
+        {
+            SetContinuation(ref stateMachine);
+            awaiter.OnCompleted(((AsyncPromise) Task).continuation);
+        }
+
+        [DebuggerHidden]
+        [SecuritySafeCritical]
+        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            where TAwaiter : ICriticalNotifyCompletion
+            where TStateMachine : IAsyncStateMachine
+        {
+            SetContinuation(ref stateMachine);
+            awaiter.UnsafeOnCompleted(((AsyncPromise) Task).continuation);
+        }
+
+        [DebuggerHidden]
+        public void Start<TStateMachine>(ref TStateMachine stateMachine)
+            where TStateMachine : IAsyncStateMachine
+        {
+            stateMachine.MoveNext();
+        }
+
+        [DebuggerHidden]
+        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
+
+        [DebuggerHidden]
+        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine)
+            where TStateMachine : IAsyncStateMachine
+        {
+            if (Task is null)
+            {
+                Task = AsyncPromise<TStateMachine>.GetOrCreate(ref stateMachine);
             }
         }
     }
 }
+#endif
 #endif
