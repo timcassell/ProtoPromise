@@ -584,13 +584,12 @@ namespace Proto.Promises.Async.CompilerServices
                 Internal.OnClearPool += () => _pool.Clear();
             }
 
-            private TStateMachine _stateMachine;
+            public TStateMachine stateMachine;
 
-            public static AsyncPromise<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
+            public static AsyncPromise<TStateMachine> GetOrCreate()
             {
                 var promise = _pool.IsNotEmpty ? (AsyncPromise<TStateMachine>) _pool.Pop() : new AsyncPromise<TStateMachine>();
                 promise.Reset();
-                promise._stateMachine = stateMachine;
                 return promise;
             }
 
@@ -602,7 +601,7 @@ namespace Proto.Promises.Async.CompilerServices
             protected override void Dispose()
             {
                 base.Dispose();
-                _stateMachine = default;
+                stateMachine = default;
                 if (Config.ObjectPooling != PoolType.None)
                 {
                     _pool.Push(this);
@@ -611,20 +610,17 @@ namespace Proto.Promises.Async.CompilerServices
 
             protected override void ContinueMethod()
             {
-                _stateMachine.MoveNext();
+                stateMachine.MoveNext();
             }
         }
 
-        [DebuggerHidden]
         public Promise Task { get; private set; }
 
-        [DebuggerHidden]
         public static PromiseMethodBuilder Create()
         {
             return new PromiseMethodBuilder();
         }
 
-        [DebuggerHidden]
         public void SetException(Exception exception)
         {
             if (Task is null)
@@ -644,7 +640,6 @@ namespace Proto.Promises.Async.CompilerServices
             }
         }
 
-        [DebuggerHidden]
         public void SetResult()
         {
             if (Task is null)
@@ -657,45 +652,44 @@ namespace Proto.Promises.Async.CompilerServices
             }
         }
 
-        [DebuggerHidden]
         public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
             where TAwaiter : INotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
-            SetContinuation(ref stateMachine);
-            awaiter.OnCompleted(((AsyncPromise) Task).continuation);
+            awaiter.OnCompleted(GetContinuation(ref stateMachine));
         }
 
-        [DebuggerHidden]
         [SecuritySafeCritical]
         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
             where TAwaiter : ICriticalNotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
-            SetContinuation(ref stateMachine);
-            awaiter.UnsafeOnCompleted(((AsyncPromise) Task).continuation);
+            awaiter.UnsafeOnCompleted(GetContinuation(ref stateMachine));
         }
 
-        [DebuggerHidden]
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
             stateMachine.MoveNext();
         }
 
-        [DebuggerHidden]
         public void SetStateMachine(IAsyncStateMachine stateMachine) { }
 
-        [DebuggerHidden]
-        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine)
+        private Action GetContinuation<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
             if (Task is null)
             {
-                Task = AsyncPromise<TStateMachine>.GetOrCreate(ref stateMachine);
+                var promise = AsyncPromise<TStateMachine>.GetOrCreate();
+                // ORDER VERY IMPORTANT, Task must be set before copying stateMachine.
+                Task = promise;
+                promise.stateMachine = stateMachine;
+                return promise.continuation;
             }
+            return ((AsyncPromise) Task).continuation;
         }
     }
+
     /// <summary>
     /// This type and its members are intended for use by the compiler.
     /// </summary>
@@ -749,13 +743,12 @@ namespace Proto.Promises.Async.CompilerServices
                 Internal.OnClearPool += () => _pool.Clear();
             }
 
-            private TStateMachine _stateMachine;
+            public TStateMachine stateMachine;
 
-            public static AsyncPromise<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
+            public static AsyncPromise<TStateMachine> GetOrCreate()
             {
                 var promise = _pool.IsNotEmpty ? (AsyncPromise<TStateMachine>) _pool.Pop() : new AsyncPromise<TStateMachine>();
                 promise.Reset();
-                promise._stateMachine = stateMachine;
                 return promise;
             }
 
@@ -767,7 +760,7 @@ namespace Proto.Promises.Async.CompilerServices
             protected override void Dispose()
             {
                 base.Dispose();
-                _stateMachine = default;
+                stateMachine = default;
                 if (Config.ObjectPooling != PoolType.None)
                 {
                     _pool.Push(this);
@@ -776,20 +769,17 @@ namespace Proto.Promises.Async.CompilerServices
 
             protected override void ContinueMethod()
             {
-                _stateMachine.MoveNext();
+                stateMachine.MoveNext();
             }
         }
 
-        [DebuggerHidden]
         public Promise<T> Task { get; set; }
 
-        [DebuggerHidden]
         public static PromiseMethodBuilder<T> Create()
         {
             return new PromiseMethodBuilder<T>();
         }
 
-        [DebuggerHidden]
         public void SetException(Exception exception)
         {
             if (Task is null)
@@ -809,7 +799,6 @@ namespace Proto.Promises.Async.CompilerServices
             }
         }
 
-        [DebuggerHidden]
         public void SetResult(T result)
         {
             if (Task is null)
@@ -822,43 +811,41 @@ namespace Proto.Promises.Async.CompilerServices
             }
         }
 
-        [DebuggerHidden]
         public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
             where TAwaiter : INotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
-            SetContinuation(ref stateMachine);
-            awaiter.OnCompleted(((AsyncPromise) Task).continuation);
+            awaiter.OnCompleted(GetContinuation(ref stateMachine));
         }
 
-        [DebuggerHidden]
         [SecuritySafeCritical]
         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
             where TAwaiter : ICriticalNotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
-            SetContinuation(ref stateMachine);
-            awaiter.UnsafeOnCompleted(((AsyncPromise) Task).continuation);
+            awaiter.UnsafeOnCompleted(GetContinuation(ref stateMachine));
         }
 
-        [DebuggerHidden]
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
             stateMachine.MoveNext();
         }
 
-        [DebuggerHidden]
         public void SetStateMachine(IAsyncStateMachine stateMachine) { }
 
-        [DebuggerHidden]
-        private void SetContinuation<TStateMachine>(ref TStateMachine stateMachine)
+        private Action GetContinuation<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
             if (Task is null)
             {
-                Task = AsyncPromise<TStateMachine>.GetOrCreate(ref stateMachine);
+                var promise = AsyncPromise<TStateMachine>.GetOrCreate();
+                // ORDER VERY IMPORTANT, Task must be set before copying stateMachine.
+                Task = promise;
+                promise.stateMachine = stateMachine;
+                return promise.continuation;
             }
+            return ((AsyncPromise) Task).continuation;
         }
     }
 }
