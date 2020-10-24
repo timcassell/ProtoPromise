@@ -18,7 +18,9 @@ namespace Proto.Promises
     {
         partial class InternalProtected
         {
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateResolvePassthrough : IDelegateResolve, IDelegateResolvePromise
             {
                 public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
@@ -31,7 +33,9 @@ namespace Proto.Promises
             }
 
             #region Regular Delegates
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class FinallyDelegate : Internal.ITreeHandleable, Internal.ITraceable
             {
 #if PROMISE_DEBUG
@@ -100,7 +104,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateVoidVoid : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Action _callback;
@@ -127,7 +133,9 @@ namespace Proto.Promises
                 public void MaybeUnregisterCancelation() { }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateArgVoid<TArg> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Action<TArg> _callback;
@@ -166,7 +174,9 @@ namespace Proto.Promises
                 public void MaybeUnregisterCancelation() { }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateVoidResult<TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Func<TResult> _callback;
@@ -193,7 +203,9 @@ namespace Proto.Promises
                 public void MaybeUnregisterCancelation() { }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateArgResult<TArg, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Func<TArg, TResult> _callback;
@@ -234,7 +246,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateVoidPromise : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Func<Promise> _callback;
@@ -259,7 +273,9 @@ namespace Proto.Promises
                 public void MaybeUnregisterCancelation() { }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateArgPromise<TArg> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Func<TArg, Promise> _callback;
@@ -297,7 +313,9 @@ namespace Proto.Promises
                 public void MaybeUnregisterCancelation() { }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateVoidPromiseT<TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Func<Promise<TPromise>> _callback;
@@ -322,7 +340,9 @@ namespace Proto.Promises
                 public void MaybeUnregisterCancelation() { }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateArgPromiseT<TArg, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Func<TArg, Promise<TPromise>> _callback;
@@ -361,7 +381,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueVoidVoid : IDelegateContinue
             {
                 private readonly Action<ResultContainer> _callback;
@@ -380,7 +402,9 @@ namespace Proto.Promises
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueVoidResult<TResult> : IDelegateContinue
             {
                 private readonly Func<ResultContainer, TResult> _callback;
@@ -399,7 +423,9 @@ namespace Proto.Promises
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueArgVoid<TArg> : IDelegateContinue
             {
                 private readonly Action<Promise<TArg>.ResultContainer> _callback;
@@ -418,7 +444,9 @@ namespace Proto.Promises
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueArgResult<TArg, TResult> : IDelegateContinue
             {
                 private readonly Func<Promise<TArg>.ResultContainer, TResult> _callback;
@@ -438,7 +466,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueVoidPromise : IDelegateContinuePromise
             {
                 private readonly Func<ResultContainer, Promise> _callback;
@@ -459,7 +489,9 @@ namespace Proto.Promises
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueVoidPromiseT<TPromise> : IDelegateContinuePromise
             {
                 private readonly Func<ResultContainer, Promise<TPromise>> _callback;
@@ -480,7 +512,9 @@ namespace Proto.Promises
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueArgPromise<TArg> : IDelegateContinuePromise
             {
                 private readonly Func<Promise<TArg>.ResultContainer, Promise> _callback;
@@ -501,7 +535,9 @@ namespace Proto.Promises
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueArgPromiseT<TArg, TPromise> : IDelegateContinuePromise
             {
                 private readonly Func<Promise<TArg>.ResultContainer, Promise<TPromise>> _callback;
@@ -524,7 +560,9 @@ namespace Proto.Promises
             #endregion
 
             #region Delegates with capture value
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public sealed class FinallyDelegateCapture<TCapture> : Internal.ITreeHandleable, Internal.ITraceable
             {
 #if PROMISE_DEBUG
@@ -597,7 +635,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureVoidVoid<TCapture> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
@@ -626,7 +666,9 @@ namespace Proto.Promises
                 public void MaybeUnregisterCancelation() { }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureArgVoid<TCapture, TArg> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
@@ -667,7 +709,9 @@ namespace Proto.Promises
                 public void MaybeUnregisterCancelation() { }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureVoidResult<TCapture, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
@@ -696,7 +740,9 @@ namespace Proto.Promises
                 public void MaybeUnregisterCancelation() { }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureArgResult<TCapture, TArg, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
@@ -738,7 +784,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureVoidPromise<TCapture> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
@@ -765,7 +813,9 @@ namespace Proto.Promises
                 public void MaybeUnregisterCancelation() { }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureArgPromise<TCapture, TArg> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
@@ -805,7 +855,9 @@ namespace Proto.Promises
                 public void MaybeUnregisterCancelation() { }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureVoidPromiseT<TCapture, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
@@ -832,7 +884,9 @@ namespace Proto.Promises
                 public void MaybeUnregisterCancelation() { }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
@@ -873,7 +927,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureVoidVoid<TCapture> : IDelegateContinue
             {
                 private readonly TCapture _capturedValue;
@@ -894,7 +950,9 @@ namespace Proto.Promises
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureVoidResult<TCapture, TResult> : IDelegateContinue
             {
                 private readonly TCapture _capturedValue;
@@ -915,7 +973,9 @@ namespace Proto.Promises
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureArgVoid<TCapture, TArg> : IDelegateContinue
             {
                 private readonly TCapture _capturedValue;
@@ -936,7 +996,9 @@ namespace Proto.Promises
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureArgResult<TCapture, TArg, TResult> : IDelegateContinue
             {
                 private readonly TCapture _capturedValue;
@@ -958,7 +1020,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureVoidPromise<TCapture> : IDelegateContinuePromise
             {
                 private readonly TCapture _capturedValue;
@@ -981,7 +1045,9 @@ namespace Proto.Promises
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureVoidPromiseT<TCapture, TPromise> : IDelegateContinuePromise
             {
                 private readonly TCapture _capturedValue;
@@ -1004,7 +1070,9 @@ namespace Proto.Promises
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureArgPromise<TCapture, TArg> : IDelegateContinuePromise
             {
                 private readonly TCapture _capturedValue;
@@ -1027,7 +1095,9 @@ namespace Proto.Promises
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureArgPromiseT<TCapture, TArg, TPromise> : IDelegateContinuePromise
             {
                 private readonly TCapture _capturedValue;
@@ -1051,7 +1121,9 @@ namespace Proto.Promises
             }
             #endregion
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateResolvePassthroughCancel : IDelegateResolve, IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1078,7 +1150,9 @@ namespace Proto.Promises
             }
 
             #region Delegates with cancelation token
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateVoidVoidCancel : IDelegateResolve, IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1105,7 +1179,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateArgVoidCancel<TArg> : IDelegateResolve, IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1132,7 +1208,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateVoidResultCancel<TResult> : IDelegateResolve, IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1159,7 +1237,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateArgResultCancel<TArg, TResult> : IDelegateResolve, IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1187,7 +1267,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateVoidPromiseCancel : IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1213,7 +1295,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateArgPromiseCancel<TArg> : IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1240,7 +1324,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateVoidPromiseTCancel<TPromise> : IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1266,7 +1352,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateArgPromiseTCancel<TArg, TPromise> : IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1294,7 +1382,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueVoidVoidCancel : IDelegateContinue
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1331,7 +1421,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueVoidResultCancel<TResult> : IDelegateContinue
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1368,7 +1460,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueArgVoidCancel<TArg> : IDelegateContinue
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1410,7 +1504,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueArgResultCancel<TArg, TResult> : IDelegateContinue
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1448,7 +1544,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueVoidPromiseCancel : IDelegateContinuePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1485,7 +1583,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueVoidPromiseTCancel<TPromise> : IDelegateContinuePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1522,7 +1622,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueArgPromiseCancel<TArg> : IDelegateContinuePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1564,7 +1666,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueArgPromiseTCancel<TArg, TPromise> : IDelegateContinuePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1603,7 +1707,9 @@ namespace Proto.Promises
             #endregion
 
             #region Delegates with capture value and cancelation token
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureVoidVoidCancel<TCapture> : IDelegateResolve, IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1632,7 +1738,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureArgVoidCancel<TCapture, TArg> : IDelegateResolve, IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1661,7 +1769,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureVoidResultCancel<TCapture, TResult> : IDelegateResolve, IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1690,7 +1800,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureArgResultCancel<TCapture, TArg, TResult> : IDelegateResolve, IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1720,7 +1832,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureVoidPromiseCancel<TCapture> : IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1748,7 +1862,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureArgPromiseCancel<TCapture, TArg> : IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1777,7 +1893,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureVoidPromiseTCancel<TCapture, TPromise> : IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1805,7 +1923,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateCaptureArgPromiseTCancel<TCapture, TArg, TPromise> : IDelegateResolvePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1835,7 +1955,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureVoidVoidCancel<TCapture> : IDelegateContinue
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1874,7 +1996,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureVoidResultCancel<TCapture, TResult> : IDelegateContinue
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1913,7 +2037,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureArgVoidCancel<TCapture, TArg> : IDelegateContinue
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1952,7 +2078,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureArgResultCancel<TCapture, TArg, TResult> : IDelegateContinue
             {
                 public CancelationRegistration cancelationRegistration;
@@ -1992,7 +2120,9 @@ namespace Proto.Promises
             }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureVoidPromiseCancel<TCapture> : IDelegateContinuePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -2031,7 +2161,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureVoidPromiseTCancel<TCapture, TPromise> : IDelegateContinuePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -2070,7 +2202,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureArgPromiseCancel<TCapture, TArg> : IDelegateContinuePromise
             {
                 public CancelationRegistration cancelationRegistration;
@@ -2109,7 +2243,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal struct DelegateContinueCaptureArgPromiseTCancel<TCapture, TArg, TPromise> : IDelegateContinuePromise
             {
                 public CancelationRegistration cancelationRegistration;

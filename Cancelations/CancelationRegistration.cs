@@ -5,7 +5,9 @@ namespace Proto.Promises
     /// <summary>
     /// Represents a callback delegate that has been registered with a <see cref="CancelationToken"/>.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public struct CancelationRegistration : IEquatable<CancelationRegistration>
     {
         private readonly Internal.CancelationRef _ref;

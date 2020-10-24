@@ -172,7 +172,9 @@ namespace Proto.Promises
         /// <summary>
         /// This type and its members are intended for use by the compiler (async Promise functions).
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         internal abstract class PromiseMethodContinuer : IDisposable
         {
             public abstract Action Continuation { get; }
@@ -196,7 +198,9 @@ namespace Proto.Promises
             /// <summary>
             /// Generic class to reference the state machine without boxing it.
             /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode]
+#endif
             private sealed class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
             {
                 private static ValueLinkedStack<Continuer<TStateMachine>> _pool;
@@ -263,10 +267,14 @@ namespace Proto.Promises.Async.CompilerServices
     /// <summary>
     /// This type and its members are intended for use by the compiler.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public struct PromiseMethodBuilder
     {
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         private sealed class AsyncPromise : Promise, Internal.ITreeHandleable
         {
             private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -397,10 +405,14 @@ namespace Proto.Promises.Async.CompilerServices
     /// <summary>
     /// This type and its members are intended for use by the compiler.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public struct PromiseMethodBuilder<T>
     {
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         private sealed class AsyncPromise : Promise<T>, Internal.ITreeHandleable
         {
             private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -534,11 +546,15 @@ namespace Proto.Promises.Async.CompilerServices
     /// <summary>
     /// This type and its members are intended for use by the compiler.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public struct PromiseMethodBuilder
     {
         // Using a promise object as its own continuer saves 16 bytes of object overhead (x64).
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         private abstract class AsyncPromise : Promise
         {
             // Cache the delegate to prevent new allocations.
@@ -574,7 +590,9 @@ namespace Proto.Promises.Async.CompilerServices
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         private sealed class AsyncPromise<TStateMachine> : AsyncPromise, Internal.ITreeHandleable where TStateMachine : IAsyncStateMachine
         {
             private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -693,11 +711,15 @@ namespace Proto.Promises.Async.CompilerServices
     /// <summary>
     /// This type and its members are intended for use by the compiler.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public struct PromiseMethodBuilder<T>
     {
         // Using a promise object as its own continuer saves 16 bytes of object overhead (x64).
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         private abstract class AsyncPromise : Promise<T>
         {
             // Cache the delegate to prevent new allocations.
@@ -733,7 +755,9 @@ namespace Proto.Promises.Async.CompilerServices
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         private sealed class AsyncPromise<TStateMachine> : AsyncPromise, Internal.ITreeHandleable where TStateMachine : IAsyncStateMachine
         {
             private static ValueLinkedStack<Internal.ITreeHandleable> _pool;

@@ -47,7 +47,9 @@ namespace Proto.Promises
                 return RacePromise<T>.GetOrCreate(passThroughs, count);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class RacePromise0 : PromiseIntermediate, IMultiTreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -124,7 +126,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class RacePromise<T> : PromiseIntermediate<T>, IMultiTreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;

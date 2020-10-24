@@ -21,7 +21,6 @@ namespace Proto.Promises
 {
     partial class Promise
     {
-        [System.Diagnostics.DebuggerNonUserCode]
         partial class InternalProtected
         {
             public static Promise CreateAll<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
@@ -73,7 +72,9 @@ namespace Proto.Promises
                 }, count);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class AllPromise0 : PromiseIntermediate, IMultiTreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;

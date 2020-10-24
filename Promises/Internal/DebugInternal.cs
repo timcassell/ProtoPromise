@@ -165,7 +165,9 @@ namespace Proto.Promises
         }
 
         // This allows us to re-use a reference field without having to add another bool field.
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         private sealed class DisposedChecker
         {
             public static readonly DisposedChecker instance = new DisposedChecker();

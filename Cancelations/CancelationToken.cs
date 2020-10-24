@@ -13,7 +13,9 @@ namespace Proto.Promises
     /// <summary>
     /// Propagates notification that operations should be canceled.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public partial struct CancelationToken : IRetainable, IEquatable<CancelationToken>
     {
         private readonly Internal.CancelationRef _ref;

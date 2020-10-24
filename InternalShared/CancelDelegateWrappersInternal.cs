@@ -1,13 +1,14 @@
 ﻿#pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
-using System.Diagnostics;
 
 namespace Proto.Promises
 {
     internal static partial class Internal
     {
-        [DebuggerNonUserCode]
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
         internal struct CancelDelegatePromise : IDelegateCancel
         {
             private readonly Action<ReasonContainer> _callback;
@@ -41,7 +42,9 @@ namespace Proto.Promises
             public void MaybeDispose(IDisposable owner) { throw new System.InvalidOperationException(); }
         }
 
-        [DebuggerNonUserCode]
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
         internal struct CancelDelegatePromise<TCapture> : IDelegateCancel
         {
             private readonly TCapture _captureValue;
@@ -77,7 +80,9 @@ namespace Proto.Promises
             public void MaybeDispose(IDisposable owner) { throw new System.InvalidOperationException(); }
         }
 
-        [DebuggerNonUserCode]
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
         internal struct CancelDelegatePromiseCancel : IDelegateCancel
         {
             public CancelationRegistration cancelationRegistration;
@@ -143,7 +148,9 @@ namespace Proto.Promises
             }
         }
 
-        [DebuggerNonUserCode]
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
         internal struct CancelDelegatePromiseCancel<TCapture> : IDelegateCancel
         {
             public CancelationRegistration cancelationRegistration;
@@ -211,7 +218,9 @@ namespace Proto.Promises
             }
         }
 
-        [DebuggerNonUserCode]
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
         internal struct CancelDelegateToken : IDelegateCancel
         {
             private readonly Action<ReasonContainer> _callback;
@@ -238,7 +247,9 @@ namespace Proto.Promises
             public void InvokeFromPromise(ITraceable owner) { throw new System.InvalidOperationException(); }
         }
 
-        [DebuggerNonUserCode]
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
         internal struct CancelDelegateToken<TCapture> : IDelegateCancel
         {
             private readonly TCapture _captureValue;

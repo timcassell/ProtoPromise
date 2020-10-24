@@ -25,7 +25,9 @@ namespace Proto.Promises
     /// which registers callbacks to be invoked when the <see cref="Promise"/> is resolved,
     /// or the reason why the <see cref="Promise"/> cannot be resolved.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public abstract partial class Promise : IRetainable
     {
         public enum State : byte
@@ -1110,7 +1112,9 @@ namespace Proto.Promises
     /// which registers callbacks to be invoked with its resolve value when the <see cref="Promise{T}"/> is resolved,
     /// or the reason why the <see cref="Promise{T}"/> cannot be resolved.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public abstract partial class Promise<T> : Promise
     {
         internal Promise() { }

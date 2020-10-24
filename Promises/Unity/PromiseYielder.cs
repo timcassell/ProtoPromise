@@ -14,7 +14,9 @@ namespace Proto.Promises
         /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise"/> it came from has settled.
         /// An instance of this should be disposed when you are finished with it.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public abstract class YieldInstruction : CustomYieldInstruction, IDisposable, Internal.ITreeHandleable
         {
             Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
@@ -127,7 +129,9 @@ namespace Proto.Promises
         /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise{T}"/> it came from has settled.
         /// An instance of this should be disposed when you are finished with it.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public abstract new class YieldInstruction : Promise.YieldInstruction
         {
             internal YieldInstruction() { }
@@ -172,7 +176,9 @@ namespace Proto.Promises
     {
         partial class InternalProtected
         {
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public sealed class YieldInstructionVoid : YieldInstruction
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -201,7 +207,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, Internal.ITreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -235,7 +243,9 @@ namespace Proto.Promises
     /// <summary>
     /// Yielder used to wait for a yield instruction to complete in the form of a Promise, using Unity's coroutines.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public sealed class PromiseYielder : MonoBehaviour
     {
         static Action _onClearObjects;
@@ -289,7 +299,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         private class Routine : IEnumerator, ILinked<Routine>
         {
             Routine ILinked<Routine>.Next { get; set; }
@@ -345,7 +357,9 @@ namespace Proto.Promises
             void IEnumerator.Reset() { }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         private class Routine<T> : IEnumerator, ILinked<Routine<T>>
         {
             Routine<T> ILinked<Routine<T>>.Next { get; set; }

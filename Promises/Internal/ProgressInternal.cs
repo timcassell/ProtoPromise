@@ -354,7 +354,9 @@ namespace Proto.Promises
             /// Max Whole Number: 2^(32-<see cref="Config.ProgressDecimalBits"/>)
             /// Precision: 1/(2^<see cref="Config.ProgressDecimalBits"/>)
             /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public struct UnsignedFixed32
             {
                 private const uint DecimalMax = 1u << Config.ProgressDecimalBits;
@@ -451,7 +453,9 @@ namespace Proto.Promises
                 void CancelOrIncrementProgress(uint increment, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public abstract class ProgressDelegateBase : IProgressListener, Internal.ITreeHandleable, IInvokable, Internal.ITraceable, Internal.ICancelDelegate
             {
 #if PROMISE_DEBUG
@@ -628,7 +632,9 @@ namespace Proto.Promises
                 void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public sealed class ProgressDelegate : ProgressDelegateBase
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -666,7 +672,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public sealed class ProgressDelegateCapture<TCapture> : ProgressDelegateBase
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -949,6 +957,32 @@ namespace Proto.Promises
             }
 
             partial class DeferredPromise<T>
+            {
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    if (_state != State.Pending)
+                    {
+                        previous = null;
+                        return false;
+                    }
+                    return SubscribeProgressAndContinueLoop(ref progressListener, out previous);
+                }
+            }
+
+            partial class DeferredPromiseCancelVoid
+            {
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    if (_state != State.Pending)
+                    {
+                        previous = null;
+                        return false;
+                    }
+                    return SubscribeProgressAndContinueLoop(ref progressListener, out previous);
+                }
+            }
+
+            partial class DeferredPromiseCancel<T>
             {
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {

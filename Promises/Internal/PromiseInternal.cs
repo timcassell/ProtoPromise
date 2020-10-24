@@ -326,10 +326,15 @@ namespace Proto.Promises
             Internal.AddToHandleQueueBack(ref handleQueue);
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
         protected static partial class InternalProtected
         {
             // PromiseIntermediate is annoyingly necessary since private protected isn't available in old C# versions.
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal abstract partial class PromiseIntermediate : Promise
             {
 #if !CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
@@ -342,7 +347,9 @@ namespace Proto.Promises
 #endif
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal abstract partial class PromiseIntermediate<T> : Promise<T>
             {
 #if !CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
@@ -355,7 +362,9 @@ namespace Proto.Promises
 #endif
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal abstract partial class PromiseWaitPromise : PromiseIntermediate
             {
                 public void WaitFor(Promise other)
@@ -373,7 +382,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal abstract partial class PromiseWaitPromise<T> : PromiseIntermediate<T>
             {
                 public void WaitFor(Promise<T> other)
@@ -391,7 +402,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class DeferredPromiseVoid : Promise, Internal.ITreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -439,7 +452,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class DeferredPromise<T> : Promise<T>, Internal.ITreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -487,7 +502,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class DeferredPromiseCancelVoid : Promise, Internal.ITreeHandleable, Internal.ICancelDelegate
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -548,7 +565,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class DeferredPromiseCancel<T> : Promise<T>, Internal.ITreeHandleable, Internal.ICancelDelegate
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -610,7 +629,9 @@ namespace Proto.Promises
             }
 
 #if !PROMISE_DEBUG
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class SettledPromise : Promise
             {
                 private SettledPromise() { }
@@ -649,7 +670,9 @@ namespace Proto.Promises
             // The only downside is that more classes are created than if we just used straight interfaces (not a problem with JIT, but makes the code size larger with AOT).
 
             // Resolve types for more common .Then(onResolved) calls to be more efficient.
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolve<TResolver> : PromiseIntermediate where TResolver : IDelegateResolve
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -698,7 +721,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolve<T, TResolver> : PromiseIntermediate<T> where TResolver : IDelegateResolve
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -747,7 +772,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolvePromise<TResolver> : PromiseWaitPromise where TResolver : IDelegateResolvePromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -803,7 +830,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolvePromise<T, TResolver> : PromiseWaitPromise<T> where TResolver : IDelegateResolvePromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -861,7 +890,9 @@ namespace Proto.Promises
             #endregion
 
             #region Resolve or Reject Promises
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolveReject<TResolver, TRejecter> : PromiseIntermediate where TResolver : IDelegateResolve where TRejecter : IDelegateReject
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -920,7 +951,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolveReject<T, TResolver, TRejecter> : PromiseIntermediate<T> where TResolver : IDelegateResolve where TRejecter : IDelegateReject
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -979,7 +1012,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise where TResolver : IDelegateResolvePromise where TRejecter : IDelegateRejectPromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -1048,7 +1083,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolveRejectPromise<TPromise, TResolver, TRejecter> : PromiseWaitPromise<TPromise> where TResolver : IDelegateResolvePromise where TRejecter : IDelegateRejectPromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -1119,7 +1156,9 @@ namespace Proto.Promises
             #endregion
 
             #region Continue Promises
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseContinue<TContinuer> : PromiseIntermediate where TContinuer : IDelegateContinue
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -1165,7 +1204,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseContinue<TResult, TContinuer> : PromiseIntermediate<TResult> where TContinuer : IDelegateContinue
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -1211,7 +1252,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseContinuePromise<TContinuer> : PromiseWaitPromise where TContinuer : IDelegateContinuePromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -1264,7 +1307,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseContinuePromise<TPromise, TContinuer> : PromiseWaitPromise<TPromise> where TContinuer : IDelegateContinuePromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -1318,7 +1363,9 @@ namespace Proto.Promises
             }
             #endregion
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public sealed partial class PromisePassThrough : Internal.ITreeHandleable, IRetainable, ILinked<PromisePassThrough>
             {
                 private static ValueLinkedStack<PromisePassThrough> _pool;

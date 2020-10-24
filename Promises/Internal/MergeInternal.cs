@@ -22,7 +22,9 @@ namespace Proto.Promises
     {
         partial class InternalProtected
         {
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class MergePromise<T> : PromiseIntermediate<T>, IMultiTreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;

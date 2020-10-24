@@ -16,7 +16,9 @@ namespace Proto.Promises
     internal static partial class Internal
     {
 #if PROMISE_DEBUG
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         public class CausalityTrace
         {
             private readonly StackTrace _stackTrace;
@@ -48,7 +50,9 @@ namespace Proto.Promises
         }
 #endif
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         public sealed class CancelDelegate<TCanceler> : ICancelDelegate, IDisposableTreeHandleable, ITraceable where TCanceler : IDelegateCancel
         {
 #if PROMISE_DEBUG
@@ -148,7 +152,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         internal sealed class CancelationRef : ICancelDelegate, ILinked<CancelationRef>, ITraceable
         {
             private struct RegisteredDelegate : IComparable<RegisteredDelegate>

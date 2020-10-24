@@ -5,7 +5,9 @@ namespace Proto.Promises
     /// <summary>
     /// Cancelation source used to cancel promises.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public struct CancelationSource : ICancelableAny, IDisposable, IEquatable<CancelationSource>
     {
         private readonly Internal.CancelationRef _ref;

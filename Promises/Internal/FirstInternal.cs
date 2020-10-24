@@ -47,7 +47,9 @@ namespace Proto.Promises
                 return FirstPromise<T>.GetOrCreate(passThroughs, count);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class FirstPromise0 : PromiseIntermediate, IMultiTreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -125,7 +127,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class FirstPromise<T> : PromiseIntermediate<T>, IMultiTreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;

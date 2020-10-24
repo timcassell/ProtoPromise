@@ -12,7 +12,9 @@ namespace Proto.Promises
     /// Used to get the value of a rejection or cancelation.
     /// An instance of <see cref="ReasonContainer"/> is only valid during the invocation of the delegate it is passed into.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public partial struct ReasonContainer
     {
         private readonly Internal.IValueContainer _valueContainer;
@@ -86,7 +88,9 @@ namespace Proto.Promises
         /// Used to get the value of a settled <see cref="Promise"/>.
         /// An instance of <see cref="ResultContainer"/> is only valid during the invocation of the onContinue delegate it is passed into.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public partial struct ResultContainer
         {
             private readonly Internal.IValueContainer _valueContainer;
@@ -206,7 +210,9 @@ namespace Proto.Promises
         /// Used to get the value of a settled <see cref="Promise{T}"/>.
         /// An instance of <see cref="ResultContainer"/> is only valid during the invocation of the onContinue delegate it is passed into.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public new partial struct ResultContainer
         {
             private readonly Internal.IValueContainer _valueContainer;

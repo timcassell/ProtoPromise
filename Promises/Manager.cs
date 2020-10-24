@@ -7,7 +7,9 @@ namespace Proto.Promises
         /// <summary>
         /// Promise manager. This can be used to cleared pooled objects (if enabled) or manually handle promises (not recommended for RELEASE builds).
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public static class Manager
         {
             private static bool _willThrow;
