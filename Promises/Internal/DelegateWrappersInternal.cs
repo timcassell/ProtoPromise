@@ -92,12 +92,12 @@ namespace Proto.Promises
                     InvokeAndCatchAndDispose();
                 }
 
-                void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
+                void Internal.ITreeHandleable.MakeReady(Promise owner, Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
                 {
                     handleQueue.Push(this);
                 }
 
-                void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer)
+                void Internal.ITreeHandleable.MakeReadyFromSettled(Promise owner, Internal.IValueContainer valueContainer)
                 {
                     Internal.AddToHandleQueueBack(this);
                 }
@@ -623,12 +623,12 @@ namespace Proto.Promises
                     InvokeAndCatchAndDispose();
                 }
 
-                void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
+                void Internal.ITreeHandleable.MakeReady(Promise owner, Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
                 {
                     handleQueue.Push(this);
                 }
 
-                void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer)
+                void Internal.ITreeHandleable.MakeReadyFromSettled(Promise owner, Internal.IValueContainer valueContainer)
                 {
                     Internal.AddToHandleQueueBack(this);
                 }

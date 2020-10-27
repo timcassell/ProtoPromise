@@ -353,11 +353,11 @@ namespace Proto.Utils
         /// Don't try to access it after disposing! Results are undefined.
         /// </summary>
         /// <remarks>Call <see cref="Dispose"/> when you are finished using the
-        /// <see cref="T:ProtoPromise.ReusableValueContainer`1"/>. The <see cref="Dispose"/> method leaves the
-        /// <see cref="T:ProtoPromise.ReusableValueContainer`1"/> in an unusable state. After calling
+        /// <see cref="ReusableValueContainer{T}"/>. The <see cref="Dispose"/> method leaves the
+        /// <see cref="ReusableValueContainer{T}"/> in an unusable state. After calling
         /// <see cref="Dispose"/>, you must release all references to the
-        /// <see cref="T:ProtoPromise.ReusableValueContainer`1"/> so the garbage collector can reclaim the memory that
-        /// the <see cref="T:ProtoPromise.ReusableValueContainer`1"/> was occupying.</remarks>
+        /// <see cref="ReusableValueContainer{T}"/> so the garbage collector can reclaim the memory that
+        /// the <see cref="ReusableValueContainer{T}"/> was occupying.</remarks>
         public void Dispose()
         {
             Value = default(T);
@@ -444,6 +444,20 @@ namespace Proto.Utils
         public T Peek()
         {
             return _stack.Peek().Value;
+        }
+
+        // TODO: This creates new allocations if T is a struct. It's also just horribly inefficient (scans the linked list twice).
+        // Remove this method with the progress refactor.
+        internal void Remove(T item)
+        {
+            foreach (var node in _stack)
+            {
+                if (node.Value.Equals(item))
+                {
+                    _stack.Remove(node);
+                    return;
+                }
+            }
         }
 
         public Enumerator GetEnumerator()

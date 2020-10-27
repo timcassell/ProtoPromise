@@ -25,7 +25,7 @@ namespace Proto.Promises
             var passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>(InternalProtected.PromisePassThrough.GetOrCreate(promise1, 0));
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise2, 1));
 
-            return InternalProtected.AllPromise0.GetOrCreate(passThroughs, 2);
+            return InternalProtected.AllPromiseVoid.GetOrCreate(passThroughs, 2);
         }
 
         /// <summary>
@@ -41,7 +41,7 @@ namespace Proto.Promises
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise2, 1));
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise3, 2));
 
-            return InternalProtected.AllPromise0.GetOrCreate(passThroughs, 3);
+            return InternalProtected.AllPromiseVoid.GetOrCreate(passThroughs, 3);
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace Proto.Promises
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise3, 2));
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise4, 3));
 
-            return InternalProtected.AllPromise0.GetOrCreate(passThroughs, 4);
+            return InternalProtected.AllPromiseVoid.GetOrCreate(passThroughs, 4);
         }
 
         /// <summary>
@@ -137,7 +137,7 @@ namespace Proto.Promises
             var passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>(InternalProtected.PromisePassThrough.GetOrCreate(promise1, 0));
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise2, 0));
 
-            return InternalProtected.RacePromise0.GetOrCreate(passThroughs, 2);
+            return InternalProtected.RacePromiseVoid.GetOrCreate(passThroughs, 2);
         }
 
         /// <summary>
@@ -153,7 +153,7 @@ namespace Proto.Promises
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise2, 0));
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise3, 0));
 
-            return InternalProtected.RacePromise0.GetOrCreate(passThroughs, 3);
+            return InternalProtected.RacePromiseVoid.GetOrCreate(passThroughs, 3);
         }
 
         /// <summary>
@@ -171,7 +171,7 @@ namespace Proto.Promises
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise3, 0));
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise4, 0));
 
-            return InternalProtected.RacePromise0.GetOrCreate(passThroughs, 4);
+            return InternalProtected.RacePromiseVoid.GetOrCreate(passThroughs, 4);
         }
 
         /// <summary>
@@ -350,7 +350,7 @@ namespace Proto.Promises
             var passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>(InternalProtected.PromisePassThrough.GetOrCreate(promise1, 0));
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise2, 0));
 
-            return InternalProtected.FirstPromise0.GetOrCreate(passThroughs, 2);
+            return InternalProtected.FirstPromiseVoid.GetOrCreate(passThroughs, 2);
         }
 
         /// <summary>
@@ -366,7 +366,7 @@ namespace Proto.Promises
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise2, 0));
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise3, 0));
 
-            return InternalProtected.FirstPromise0.GetOrCreate(passThroughs, 3);
+            return InternalProtected.FirstPromiseVoid.GetOrCreate(passThroughs, 3);
         }
 
         /// <summary>
@@ -384,7 +384,7 @@ namespace Proto.Promises
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise3, 0));
             passThroughs.Push(InternalProtected.PromisePassThrough.GetOrCreate(promise4, 0));
 
-            return InternalProtected.FirstPromise0.GetOrCreate(passThroughs, 4);
+            return InternalProtected.FirstPromiseVoid.GetOrCreate(passThroughs, 4);
         }
 
         /// <summary>

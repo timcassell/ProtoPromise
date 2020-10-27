@@ -51,17 +51,17 @@ namespace Proto.Promises
             }
         }
 
-        void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
+        void Internal.ITreeHandleable.MakeReady(Promise owner, Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
         {
-            ((Promise) _valueOrPrevious)._wasWaitedOn = true;
+            owner._wasWaitedOn = true;
             valueContainer.Retain();
             _valueOrPrevious = valueContainer;
             handleQueue.Push(this);
         }
 
-        void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer)
+        void Internal.ITreeHandleable.MakeReadyFromSettled(Promise owner, Internal.IValueContainer valueContainer)
         {
-            ((Promise) _valueOrPrevious)._wasWaitedOn = true;
+            owner._wasWaitedOn = true;
             valueContainer.Retain();
             _valueOrPrevious = valueContainer;
             Internal.AddToHandleQueueBack(this);
@@ -94,7 +94,7 @@ namespace Proto.Promises
             }
             else
             {
-                waiter.MakeReadyFromSettled((Internal.IValueContainer) _valueOrPrevious);
+                waiter.MakeReadyFromSettled(this, (Internal.IValueContainer) _valueOrPrevious);
             }
         }
 
@@ -308,12 +308,18 @@ namespace Proto.Promises
         private void HandleBranches()
         {
             var valueContainer = (Internal.IValueContainer) _valueOrPrevious;
-            ValueLinkedQueue<Internal.ITreeHandleable> handleQueue = new ValueLinkedQueue<Internal.ITreeHandleable>();
             while (_nextBranches.IsNotEmpty)
             {
-                _nextBranches.Pop().MakeReady(valueContainer, ref handleQueue);
+                _nextBranches.Pop().MakeReady(this, valueContainer, ref Internal._handleQueue);
             }
-            Internal.AddToHandleQueueFront(ref handleQueue);
+
+            //// TODO: keeping this code around for when background threaded tasks are implemented.
+            //ValueLinkedQueue<Internal.ITreeHandleable> handleQueue = new ValueLinkedQueue<Internal.ITreeHandleable>();
+            //while (_nextBranches.IsNotEmpty)
+            //{
+            //    _nextBranches.Pop().MakeReady(this, valueContainer, ref handleQueue);
+            //}
+            //Internal.AddToHandleQueueFront(ref handleQueue);
         }
 
         private void AddBranchesToHandleQueueBack(Internal.IValueContainer valueContainer)
@@ -321,7 +327,7 @@ namespace Proto.Promises
             ValueLinkedQueue<Internal.ITreeHandleable> handleQueue = new ValueLinkedQueue<Internal.ITreeHandleable>();
             while (_nextBranches.IsNotEmpty)
             {
-                _nextBranches.Pop().MakeReady(valueContainer, ref handleQueue);
+                _nextBranches.Pop().MakeReady(this, valueContainer, ref handleQueue);
             }
             Internal.AddToHandleQueueBack(ref handleQueue);
         }
@@ -1384,6 +1390,8 @@ namespace Proto.Promises
                 private int _index;
                 private uint _retainCounter;
 
+                private PromisePassThrough() { }
+
                 public static PromisePassThrough GetOrCreate(Promise owner, int index)
                 {
                     ValidateElementNotNull(owner, "promises", "A promise was null", 2);
@@ -1393,10 +1401,11 @@ namespace Proto.Promises
                     passThrough.Owner = owner;
                     passThrough._index = index;
                     passThrough._retainCounter = 1u;
+                    passThrough.ResetProgress();
                     return passThrough;
                 }
 
-                private PromisePassThrough() { }
+                partial void ResetProgress();
 
                 internal void SetTargetAndAddToOwner(IMultiTreeHandleable target)
                 {
@@ -1404,19 +1413,19 @@ namespace Proto.Promises
                     Owner.AddWaiter(this);
                 }
 
-                void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
+                void Internal.ITreeHandleable.MakeReady(Promise owner, Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
                 {
                     var temp = Target;
-                    if (temp.Handle(valueContainer, Owner, _index))
+                    if (temp.Handle(valueContainer, this, _index))
                     {
                         handleQueue.Push(temp);
                     }
                 }
 
-                void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer)
+                void Internal.ITreeHandleable.MakeReadyFromSettled(Promise owner, Internal.IValueContainer valueContainer)
                 {
                     var temp = Target;
-                    if (temp.Handle(valueContainer, Owner, _index))
+                    if (temp.Handle(valueContainer, this, _index))
                     {
                         Internal.AddToHandleQueueBack(temp);
                     }

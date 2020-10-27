@@ -43,6 +43,7 @@ namespace Proto.Promises
         void Internal.ICancelDelegate.Invoke(Internal.ICancelValueContainer valueContainer)
         {
             CancelCallbacks();
+            CancelProgressListeners();
 
             object currentValue = _valueOrPrevious;
             _valueOrPrevious = valueContainer;

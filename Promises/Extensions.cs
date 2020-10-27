@@ -1,6 +1,5 @@
 ﻿#if CSHARP_7_OR_LATER
 using System.Threading.Tasks;
-using Proto.Promises.Await;
 #endif
 
 namespace Proto.Promises

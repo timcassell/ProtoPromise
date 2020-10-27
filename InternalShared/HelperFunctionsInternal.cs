@@ -277,7 +277,7 @@ namespace Proto.Promises
         }
 
         // Handle promises in a depth-first manner.
-        private static ValueLinkedQueue<ITreeHandleable> _handleQueue;
+        internal static ValueLinkedQueue<ITreeHandleable> _handleQueue;
         private static bool _runningHandles;
 
         public static void AddToHandleQueueFront(ITreeHandleable handleable)

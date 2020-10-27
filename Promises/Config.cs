@@ -73,6 +73,7 @@ namespace Proto.Promises
             /// Precision: 1/(N*2^<see cref="ProgressDecimalBits"/>) where N is the number of wait promises in the chain where Progress is subscribed.
             /// <para/>
             /// NOTE: promises that don't wait (.Then with an onResolved that simply returns a value or void) don't count towards the promise chain limit.
+            /// The limit is removed when progress is disabled (this is compiled with the symbol PROTO_PROMISE_PROGRESS_DISABLE defined).
             /// </summary>
             public const int ProgressDecimalBits = 13;
 #endif

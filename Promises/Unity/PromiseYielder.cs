@@ -93,14 +93,14 @@ namespace Proto.Promises
                 _value = disposedObject;
             }
 
-            void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
+            void Internal.ITreeHandleable.MakeReady(Promise owner, Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
             {
                 valueContainer.Retain();
                 _value = valueContainer;
                 _state = valueContainer.GetState();
             }
 
-            void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer)
+            void Internal.ITreeHandleable.MakeReadyFromSettled(Promise owner, Internal.IValueContainer valueContainer)
             {
                 valueContainer.Retain();
                 _value = valueContainer;
