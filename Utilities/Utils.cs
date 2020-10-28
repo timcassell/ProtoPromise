@@ -17,7 +17,9 @@ namespace Proto.Utils
         T Next { get; set; }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public struct Enumerator<T> : IEnumerator<T> where T : class, ILinked<T>
     {
         private T _current;
@@ -65,7 +67,9 @@ namespace Proto.Utils
     /// <summary>
     /// This structure is unsuitable for general purpose.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
     {
         private T _first;
@@ -155,7 +159,9 @@ namespace Proto.Utils
     /// <summary>
     /// This structure is unsuitable for general purpose.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
     {
         private T _first;
@@ -312,7 +318,9 @@ namespace Proto.Utils
     /// <summary>
     /// Reusable value container. Use <see cref="New(T)"/> to reuse a pooled instance or create a new instance, use <see cref="Dispose"/> to add the instance back to the pool.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public sealed class ReusableValueContainer<T> : IValueContainer<T>, IDisposable, ILinked<ReusableValueContainer<T>>
     {
 #pragma warning disable RECS0108 // Warns about static fields in generic types
@@ -345,11 +353,11 @@ namespace Proto.Utils
         /// Don't try to access it after disposing! Results are undefined.
         /// </summary>
         /// <remarks>Call <see cref="Dispose"/> when you are finished using the
-        /// <see cref="T:ProtoPromise.ReusableValueContainer`1"/>. The <see cref="Dispose"/> method leaves the
-        /// <see cref="T:ProtoPromise.ReusableValueContainer`1"/> in an unusable state. After calling
+        /// <see cref="ReusableValueContainer{T}"/>. The <see cref="Dispose"/> method leaves the
+        /// <see cref="ReusableValueContainer{T}"/> in an unusable state. After calling
         /// <see cref="Dispose"/>, you must release all references to the
-        /// <see cref="T:ProtoPromise.ReusableValueContainer`1"/> so the garbage collector can reclaim the memory that
-        /// the <see cref="T:ProtoPromise.ReusableValueContainer`1"/> was occupying.</remarks>
+        /// <see cref="ReusableValueContainer{T}"/> so the garbage collector can reclaim the memory that
+        /// the <see cref="ReusableValueContainer{T}"/> was occupying.</remarks>
         public void Dispose()
         {
             Value = default(T);
@@ -357,7 +365,9 @@ namespace Proto.Utils
         }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public struct ValueLinkedStackZeroGC<T> : IEnumerable<T>
     {
         public struct Enumerator : IEnumerator<T>
@@ -436,6 +446,20 @@ namespace Proto.Utils
             return _stack.Peek().Value;
         }
 
+        // TODO: This creates new allocations if T is a struct. It's also just horribly inefficient (scans the linked list twice).
+        // Remove this method with the progress refactor.
+        internal void Remove(T item)
+        {
+            foreach (var node in _stack)
+            {
+                if (node.Value.Equals(item))
+                {
+                    _stack.Remove(node);
+                    return;
+                }
+            }
+        }
+
         public Enumerator GetEnumerator()
         {
             return new Enumerator(this);
@@ -452,7 +476,9 @@ namespace Proto.Utils
         }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public struct ValueLinkedQueueZeroGC<T> : IEnumerable<T>
     {
         public struct Enumerator : IEnumerator<T>
@@ -589,7 +615,9 @@ namespace Proto.Utils
     /// <summary>
     /// Generic Array enumerator. Use this instead of the default <see cref="Array.GetEnumerator"/> for passing it around as an <see cref="IEnumerator{T}"/>.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public struct ArrayEnumerator<T> : IEnumerator<T>
     {
         private readonly T[] _collection;
@@ -626,7 +654,9 @@ namespace Proto.Utils
         }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public static class ArrayExtensions
     {
         /// <summary>

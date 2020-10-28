@@ -14,7 +14,9 @@ namespace Proto.Promises
         /// Deferred base. An instance of this can be used to report progress and reject the attached <see cref="Promises.Promise"/>.
         /// <para/>You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to resolve the attached <see cref="Promises.Promise"/>.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public struct DeferredBase : IRetainable
         {
             private readonly Promise _promise;
@@ -58,6 +60,8 @@ namespace Proto.Promises
             {
                 get
                 {
+                    ValidateThreadAccess(1);
+
                     return _promise != null && _id == _promise.Id;
                 }
             }
@@ -182,7 +186,9 @@ namespace Proto.Promises
         /// <summary>
         /// An instance of this is used to report progress and resolve or reject the attached <see cref="Promises.Promise"/>.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public struct Deferred
         {
             private readonly Promise _promise;
@@ -226,6 +232,8 @@ namespace Proto.Promises
             {
                 get
                 {
+                    ValidateThreadAccess(1);
+
                     return _promise != null && _id == _promise.Id;
                 }
             }
@@ -255,6 +263,8 @@ namespace Proto.Promises
             /// </summary>
             public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
             {
+                ValidateThreadAccess(1);
+
                 return new Deferred(cancelationToken);
             }
 
@@ -389,7 +399,9 @@ namespace Proto.Promises
         /// <summary>
         /// An instance of this is used to handle the state of the <see cref="Promise"/>.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public new struct Deferred
         {
             private readonly Promise<T> _promise;
@@ -433,6 +445,8 @@ namespace Proto.Promises
             {
                 get
                 {
+                    ValidateThreadAccess(1);
+
                     return _promise != null && _id == _promise.Id;
                 }
             }
@@ -462,6 +476,8 @@ namespace Proto.Promises
             /// </summary>
             public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
             {
+                ValidateThreadAccess(1);
+
                 return new Deferred(cancelationToken);
             }
 

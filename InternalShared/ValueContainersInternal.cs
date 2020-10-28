@@ -19,7 +19,9 @@ namespace Proto.Promises
 {
     internal static partial class Internal
     {
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public sealed class RejectionContainer<T> : ILinked<RejectionContainer<T>>, IRejectValueContainer, IValueContainer<T>, IRejectionToContainer, ICantHandleException
         {
             RejectionContainer<T> ILinked<RejectionContainer<T>>.Next { get; set; }
@@ -181,7 +183,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public sealed class CancelContainer<T> : ILinked<CancelContainer<T>>, ICancelValueContainer, IValueContainer<T>, ICancelationToContainer
         {
             CancelContainer<T> ILinked<CancelContainer<T>>.Next { get; set; }
@@ -271,7 +275,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public sealed class CancelContainerVoid : ICancelValueContainer, ICancelationToContainer
         {
             // We can reuse the same object.
@@ -307,7 +313,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public sealed class ResolveContainer<T> : ILinked<ResolveContainer<T>>, IValueContainer, IValueContainer<T>
         {
             ResolveContainer<T> ILinked<ResolveContainer<T>>.Next { get; set; }
@@ -384,7 +392,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public sealed class ResolveContainerVoid : IValueContainer
         {
             // We can reuse the same object.

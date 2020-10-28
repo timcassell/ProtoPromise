@@ -51,17 +51,17 @@ namespace Proto.Promises
             }
         }
 
-        void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
+        void Internal.ITreeHandleable.MakeReady(Promise owner, Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
         {
-            ((Promise) _valueOrPrevious)._wasWaitedOn = true;
+            owner._wasWaitedOn = true;
             valueContainer.Retain();
             _valueOrPrevious = valueContainer;
             handleQueue.Push(this);
         }
 
-        void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer)
+        void Internal.ITreeHandleable.MakeReadyFromSettled(Promise owner, Internal.IValueContainer valueContainer)
         {
-            ((Promise) _valueOrPrevious)._wasWaitedOn = true;
+            owner._wasWaitedOn = true;
             valueContainer.Retain();
             _valueOrPrevious = valueContainer;
             Internal.AddToHandleQueueBack(this);
@@ -94,7 +94,7 @@ namespace Proto.Promises
             }
             else
             {
-                waiter.MakeReadyFromSettled((Internal.IValueContainer) _valueOrPrevious);
+                waiter.MakeReadyFromSettled(this, (Internal.IValueContainer) _valueOrPrevious);
             }
         }
 
@@ -308,12 +308,18 @@ namespace Proto.Promises
         private void HandleBranches()
         {
             var valueContainer = (Internal.IValueContainer) _valueOrPrevious;
-            ValueLinkedQueue<Internal.ITreeHandleable> handleQueue = new ValueLinkedQueue<Internal.ITreeHandleable>();
             while (_nextBranches.IsNotEmpty)
             {
-                _nextBranches.Pop().MakeReady(valueContainer, ref handleQueue);
+                _nextBranches.Pop().MakeReady(this, valueContainer, ref Internal._handleQueue);
             }
-            Internal.AddToHandleQueueFront(ref handleQueue);
+
+            //// TODO: keeping this code around for when background threaded tasks are implemented.
+            //ValueLinkedQueue<Internal.ITreeHandleable> handleQueue = new ValueLinkedQueue<Internal.ITreeHandleable>();
+            //while (_nextBranches.IsNotEmpty)
+            //{
+            //    _nextBranches.Pop().MakeReady(this, valueContainer, ref handleQueue);
+            //}
+            //Internal.AddToHandleQueueFront(ref handleQueue);
         }
 
         private void AddBranchesToHandleQueueBack(Internal.IValueContainer valueContainer)
@@ -321,16 +327,21 @@ namespace Proto.Promises
             ValueLinkedQueue<Internal.ITreeHandleable> handleQueue = new ValueLinkedQueue<Internal.ITreeHandleable>();
             while (_nextBranches.IsNotEmpty)
             {
-                _nextBranches.Pop().MakeReady(valueContainer, ref handleQueue);
+                _nextBranches.Pop().MakeReady(this, valueContainer, ref handleQueue);
             }
             Internal.AddToHandleQueueBack(ref handleQueue);
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
         protected static partial class InternalProtected
         {
             // PromiseIntermediate is annoyingly necessary since private protected isn't available in old C# versions.
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
-            internal abstract partial class PromiseIntermediate : Promise
+#endif
+            internal abstract class PromiseIntermediate : Promise
             {
 #if !CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
                 protected override sealed void Execute(object valueContainer)
@@ -342,8 +353,10 @@ namespace Proto.Promises
 #endif
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
-            internal abstract partial class PromiseIntermediate<T> : Promise<T>
+#endif
+            internal abstract class PromiseIntermediate<T> : Promise<T>
             {
 #if !CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
                 protected override sealed void Execute(object valueContainer)
@@ -355,7 +368,9 @@ namespace Proto.Promises
 #endif
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal abstract partial class PromiseWaitPromise : PromiseIntermediate
             {
                 public void WaitFor(Promise other)
@@ -373,7 +388,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal abstract partial class PromiseWaitPromise<T> : PromiseIntermediate<T>
             {
                 public void WaitFor(Promise<T> other)
@@ -391,7 +408,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class DeferredPromiseVoid : Promise, Internal.ITreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -439,7 +458,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class DeferredPromise<T> : Promise<T>, Internal.ITreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -487,7 +508,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class DeferredPromiseCancelVoid : Promise, Internal.ITreeHandleable, Internal.ICancelDelegate
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -548,7 +571,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class DeferredPromiseCancel<T> : Promise<T>, Internal.ITreeHandleable, Internal.ICancelDelegate
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -610,7 +635,9 @@ namespace Proto.Promises
             }
 
 #if !PROMISE_DEBUG
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class SettledPromise : Promise
             {
                 private SettledPromise() { }
@@ -649,7 +676,9 @@ namespace Proto.Promises
             // The only downside is that more classes are created than if we just used straight interfaces (not a problem with JIT, but makes the code size larger with AOT).
 
             // Resolve types for more common .Then(onResolved) calls to be more efficient.
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolve<TResolver> : PromiseIntermediate where TResolver : IDelegateResolve
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -698,7 +727,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolve<T, TResolver> : PromiseIntermediate<T> where TResolver : IDelegateResolve
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -747,7 +778,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolvePromise<TResolver> : PromiseWaitPromise where TResolver : IDelegateResolvePromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -803,7 +836,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolvePromise<T, TResolver> : PromiseWaitPromise<T> where TResolver : IDelegateResolvePromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -861,7 +896,9 @@ namespace Proto.Promises
             #endregion
 
             #region Resolve or Reject Promises
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolveReject<TResolver, TRejecter> : PromiseIntermediate where TResolver : IDelegateResolve where TRejecter : IDelegateReject
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -920,7 +957,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolveReject<T, TResolver, TRejecter> : PromiseIntermediate<T> where TResolver : IDelegateResolve where TRejecter : IDelegateReject
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -979,7 +1018,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise where TResolver : IDelegateResolvePromise where TRejecter : IDelegateRejectPromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -1048,7 +1089,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseResolveRejectPromise<TPromise, TResolver, TRejecter> : PromiseWaitPromise<TPromise> where TResolver : IDelegateResolvePromise where TRejecter : IDelegateRejectPromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -1119,7 +1162,9 @@ namespace Proto.Promises
             #endregion
 
             #region Continue Promises
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseContinue<TContinuer> : PromiseIntermediate where TContinuer : IDelegateContinue
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -1165,7 +1210,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseContinue<TResult, TContinuer> : PromiseIntermediate<TResult> where TContinuer : IDelegateContinue
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -1211,7 +1258,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseContinuePromise<TContinuer> : PromiseWaitPromise where TContinuer : IDelegateContinuePromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -1264,7 +1313,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed class PromiseContinuePromise<TPromise, TContinuer> : PromiseWaitPromise<TPromise> where TContinuer : IDelegateContinuePromise
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -1318,7 +1369,9 @@ namespace Proto.Promises
             }
             #endregion
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public sealed partial class PromisePassThrough : Internal.ITreeHandleable, IRetainable, ILinked<PromisePassThrough>
             {
                 private static ValueLinkedStack<PromisePassThrough> _pool;
@@ -1337,6 +1390,8 @@ namespace Proto.Promises
                 private int _index;
                 private uint _retainCounter;
 
+                private PromisePassThrough() { }
+
                 public static PromisePassThrough GetOrCreate(Promise owner, int index)
                 {
                     ValidateElementNotNull(owner, "promises", "A promise was null", 2);
@@ -1346,10 +1401,11 @@ namespace Proto.Promises
                     passThrough.Owner = owner;
                     passThrough._index = index;
                     passThrough._retainCounter = 1u;
+                    passThrough.ResetProgress();
                     return passThrough;
                 }
 
-                private PromisePassThrough() { }
+                partial void ResetProgress();
 
                 internal void SetTargetAndAddToOwner(IMultiTreeHandleable target)
                 {
@@ -1357,19 +1413,19 @@ namespace Proto.Promises
                     Owner.AddWaiter(this);
                 }
 
-                void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
+                void Internal.ITreeHandleable.MakeReady(Promise owner, Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
                 {
                     var temp = Target;
-                    if (temp.Handle(valueContainer, Owner, _index))
+                    if (temp.Handle(valueContainer, this, _index))
                     {
                         handleQueue.Push(temp);
                     }
                 }
 
-                void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer)
+                void Internal.ITreeHandleable.MakeReadyFromSettled(Promise owner, Internal.IValueContainer valueContainer)
                 {
                     var temp = Target;
-                    if (temp.Handle(valueContainer, Owner, _index))
+                    if (temp.Handle(valueContainer, this, _index))
                     {
                         Internal.AddToHandleQueueBack(temp);
                     }

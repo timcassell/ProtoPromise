@@ -32,7 +32,7 @@ namespace Proto.Promises
                 }
                 int count;
                 var passThroughs = WrapInPassThroughs(promises, out count);
-                return RacePromise0.GetOrCreate(passThroughs, count);
+                return RacePromiseVoid.GetOrCreate(passThroughs, count);
             }
 
             public static Promise<T> CreateRace<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
@@ -47,12 +47,14 @@ namespace Proto.Promises
                 return RacePromise<T>.GetOrCreate(passThroughs, count);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
-            internal sealed partial class RacePromise0 : PromiseIntermediate, IMultiTreeHandleable
+#endif
+            internal sealed partial class RacePromiseVoid : PromiseIntermediate, IMultiTreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
 
-                static RacePromise0()
+                static RacePromiseVoid()
                 {
                     Internal.OnClearPool += () => _pool.Clear();
                 }
@@ -69,11 +71,11 @@ namespace Proto.Promises
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 private uint _waitCount;
 
-                private RacePromise0() { }
+                private RacePromiseVoid() { }
 
                 public static Promise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
                 {
-                    var promise = _pool.IsNotEmpty ? (RacePromise0) _pool.Pop() : new RacePromise0();
+                    var promise = _pool.IsNotEmpty ? (RacePromiseVoid) _pool.Pop() : new RacePromiseVoid();
 
                     promise._passThroughs = promisePassThroughs;
 
@@ -98,8 +100,9 @@ namespace Proto.Promises
                     HandleSelf(valueContainer);
                 }
 
-                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, Promise owner, int index)
+                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, PromisePassThrough passThrough, int index)
                 {
+                    Promise owner = passThrough.Owner;
                     bool handle = _valueOrPrevious == null;
                     if (handle)
                     {
@@ -124,7 +127,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal sealed partial class RacePromise<T> : PromiseIntermediate<T>, IMultiTreeHandleable
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -175,8 +180,9 @@ namespace Proto.Promises
                     HandleSelf(valueContainer);
                 }
 
-                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, Promise owner, int index)
+                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, PromisePassThrough passThrough, int index)
                 {
+                    Promise owner = passThrough.Owner;
                     bool handle = _valueOrPrevious == null;
                     if (handle)
                     {
@@ -202,18 +208,16 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class RacePromise0 : IInvokable
+            partial class RacePromiseVoid : IInvokable
             {
                 private UnsignedFixed32 _currentAmount;
                 private bool _invokingProgress;
-                private bool _suspended;
 
                 protected override void Reset()
                 {
                     base.Reset();
                     _currentAmount = default(UnsignedFixed32);
                     _invokingProgress = false;
-                    _suspended = false;
 
                     uint minWaitDepth = uint.MaxValue;
                     foreach (var passThrough in _passThroughs)
@@ -250,12 +254,15 @@ namespace Proto.Promises
                     return false;
                 }
 
+                protected override UnsignedFixed32 CurrentProgress()
+                {
+                    return _currentAmount;
+                }
+
                 void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
-                    _suspended = false;
                     // Use double for better precision.
-                    float progress = (float) ((double) senderAmount.ToUInt32() * (double) GetIncrementMultiplier() / (double) ownerAmount.GetIncrementedWholeTruncated().ToUInt32());
-                    var newAmount = new UnsignedFixed32(progress);
+                    var newAmount = new UnsignedFixed32(senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
                     if (newAmount > _currentAmount)
                     {
                         _currentAmount = newAmount;
@@ -268,26 +275,9 @@ namespace Proto.Promises
                     }
                 }
 
-                void IMultiTreeHandleable.CancelOrIncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
-                {
-                    _suspended = true;
-                    // Use double for better precision.
-                    float progress = (float) ((double) senderAmount.ToUInt32() * (double) GetIncrementMultiplier() / (double) ownerAmount.GetIncrementedWholeTruncated().ToUInt32());
-                    var newAmount = new UnsignedFixed32(progress);
-                    if (newAmount > _currentAmount)
-                    {
-                        _currentAmount = newAmount;
-                    }
-                }
-
-                protected override uint GetIncrementMultiplier()
-                {
-                    return _waitDepthAndProgress.WholePart + 1u;
-                }
-
                 void IInvokable.Invoke()
                 {
-                    if (_state != State.Pending | _suspended)
+                    if (_state != State.Pending)
                     {
                         ReleaseInternal();
                         return;
@@ -295,17 +285,9 @@ namespace Proto.Promises
 
                     _invokingProgress = false;
 
-                    uint multiplier = GetIncrementMultiplier();
-
-                    // Calculate the normalized progress.
-                    // Use double for better precision.
-                    float progress = (float) (_currentAmount.ToDouble() / multiplier);
-
-                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress) * multiplier;
-
                     foreach (var progressListener in _progressListeners)
                     {
-                        progressListener.IncrementProgress(this, increment);
+                        progressListener.SetProgress(this, _currentAmount);
                     }
 
                     ReleaseInternal();
@@ -316,14 +298,12 @@ namespace Proto.Promises
             {
                 private UnsignedFixed32 _currentAmount;
                 private bool _invokingProgress;
-                private bool _suspended;
 
                 protected override void Reset()
                 {
                     base.Reset();
                     _currentAmount = default(UnsignedFixed32);
                     _invokingProgress = false;
-                    _suspended = false;
 
                     uint minWaitDepth = uint.MaxValue;
                     foreach (var passThrough in _passThroughs)
@@ -360,12 +340,15 @@ namespace Proto.Promises
                     return false;
                 }
 
+                protected override UnsignedFixed32 CurrentProgress()
+                {
+                    return _currentAmount;
+                }
+
                 void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
-                    _suspended = false;
                     // Use double for better precision.
-                    float progress = (float) ((double) senderAmount.ToUInt32() * (double) GetIncrementMultiplier() / (double) ownerAmount.GetIncrementedWholeTruncated().ToUInt32());
-                    var newAmount = new UnsignedFixed32(progress);
+                    var newAmount = new UnsignedFixed32(senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
                     if (newAmount > _currentAmount)
                     {
                         _currentAmount = newAmount;
@@ -378,26 +361,9 @@ namespace Proto.Promises
                     }
                 }
 
-                void IMultiTreeHandleable.CancelOrIncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
-                {
-                    _suspended = true;
-                    // Use double for better precision.
-                    float progress = (float) ((double) senderAmount.ToUInt32() * (double) GetIncrementMultiplier() / (double) ownerAmount.GetIncrementedWholeTruncated().ToUInt32());
-                    var newAmount = new UnsignedFixed32(progress);
-                    if (newAmount > _currentAmount)
-                    {
-                        _currentAmount = newAmount;
-                    }
-                }
-
-                protected override uint GetIncrementMultiplier()
-                {
-                    return _waitDepthAndProgress.WholePart + 1u;
-                }
-
                 void IInvokable.Invoke()
                 {
-                    if (_state != State.Pending | _suspended)
+                    if (_state != State.Pending)
                     {
                         ReleaseInternal();
                         return;
@@ -405,17 +371,9 @@ namespace Proto.Promises
 
                     _invokingProgress = false;
 
-                    uint multiplier = GetIncrementMultiplier();
-
-                    // Calculate the normalized progress.
-                    // Use double for better precision.
-                    float progress = (float) (_currentAmount.ToDouble() / multiplier);
-
-                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress) * multiplier;
-
                     foreach (var progressListener in _progressListeners)
                     {
-                        progressListener.IncrementProgress(this, increment);
+                        progressListener.SetProgress(this, _currentAmount);
                     }
 
                     ReleaseInternal();

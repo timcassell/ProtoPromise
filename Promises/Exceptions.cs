@@ -14,7 +14,9 @@ using System.Globalization;
 
 namespace Proto.Promises
 {
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public class InvalidOperationException : System.InvalidOperationException
     {
         public InvalidOperationException(string message, string stackTrace = null) : base(message)
@@ -26,7 +28,9 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public class EmptyArgumentException : ArgumentException
     {
         public EmptyArgumentException(string paramName, string message, string stackTrace = null) : base(message, paramName)
@@ -38,7 +42,9 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public class ArgumentNullException : System.ArgumentNullException
     {
         public ArgumentNullException(string paramName, string message, string stackTrace = null) : base(paramName, message)
@@ -50,7 +56,9 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public class ArgumentOutOfRangeException : System.ArgumentOutOfRangeException
     {
         public ArgumentOutOfRangeException(string paramName, string message, string stackTrace = null) : base(paramName, message)
@@ -67,7 +75,9 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public class ElementNullException : System.ArgumentNullException
     {
         public ElementNullException(string paramName, string message, string stackTrace = null) : base(paramName, message)
@@ -79,7 +89,9 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public class PromiseDisposedException : ObjectDisposedException
     {
         public PromiseDisposedException(string message, string stackTrace = null) : base(message, default(Exception))
@@ -91,7 +103,9 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public class InvalidReturnException : System.InvalidOperationException
     {
         public InvalidReturnException(string message, string stackTrace = null, Exception innerException = null) : base(message, innerException)
@@ -103,7 +117,9 @@ namespace Proto.Promises
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public class UnhandledDeferredException : Exception
     {
         public static readonly UnhandledDeferredException instance =
@@ -112,7 +128,9 @@ namespace Proto.Promises
         private UnhandledDeferredException(string message) : base(message) { }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public class UnreleasedObjectException : Exception
     {
         public UnreleasedObjectException(string message) : base(message) { }
@@ -122,7 +140,9 @@ namespace Proto.Promises
     /// <summary>
     /// Exception that is thrown if a promise is rejected and that rejection is never handled.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public abstract class UnhandledException : Exception
     {
         private readonly object _value;
@@ -157,7 +177,9 @@ namespace Proto.Promises
     /// <summary>
     /// Exception that is thrown if an awaited promise is canceled.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public abstract class CanceledException : OperationCanceledException
     {
         private readonly object _value;
@@ -189,7 +211,9 @@ namespace Proto.Promises
     /// <summary>
     /// Special Exception that is used to rethrow a rejection from a Promise onRejected callback.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public sealed class RethrowException : Exception
     {
         internal static readonly RethrowException instance = new RethrowException();
@@ -200,7 +224,9 @@ namespace Proto.Promises
     /// <summary>
     /// Special Exception that is used to reject a Promise from an onResolved or onRejected callback.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public abstract class RejectException : Exception
     {
         internal RejectException() { }
@@ -217,7 +243,9 @@ namespace Proto.Promises
     /// <summary>
     /// Special Exception that is used to cancel a Promise from an onResolved or onRejected callback.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     public abstract class CancelException : OperationCanceledException
     {
         internal CancelException() { }

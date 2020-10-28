@@ -13,7 +13,9 @@ namespace Proto.Promises
     /// <summary>
     /// Propagates notification that operations should be canceled.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
+#endif
     public partial struct CancelationToken : IRetainable, IEquatable<CancelationToken>
     {
         private readonly Internal.CancelationRef _ref;
@@ -67,6 +69,7 @@ namespace Proto.Promises
         {
             get
             {
+                ValidateThreadAccess(1);
                 return _ref != null && _ref.TokenId == _id;
             }
         }
@@ -217,16 +220,24 @@ namespace Proto.Promises
 
         public override bool Equals(object obj)
         {
-            if (obj is CancelationSource)
+#if CSHARP_7_OR_LATER
+            if (obj is CancelationToken cancelationSource)
             {
-                return Equals((CancelationSource) obj);
+                return Equals(cancelationSource);
             }
+#else
+            if (obj is CancelationToken)
+            {
+                return Equals((CancelationToken) obj);
+            }
+#endif
             return false;
         }
 
         public override int GetHashCode()
         {
-            if (_ref == null)
+            var temp = _ref;
+            if (temp == null)
             {
                 return 0;
             }
@@ -234,7 +245,7 @@ namespace Proto.Promises
             {
                 int hash = 17;
                 hash = hash * 31 + _id.GetHashCode();
-                hash = hash * 31 + _ref.GetHashCode();
+                hash = hash * 31 + temp.GetHashCode();
                 return hash;
             }
         }
@@ -249,11 +260,18 @@ namespace Proto.Promises
             return !(c1 == c2);
         }
 
+        // Calls to these get compiled away in RELEASE mode
         static partial void ValidateArgument(object arg, string argName, int skipFrames);
+        static partial void ValidateThreadAccess(int skipFrames);
 #if PROMISE_DEBUG
         static partial void ValidateArgument(object arg, string argName, int skipFrames)
         {
             Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        }
+
+        static partial void ValidateThreadAccess(int skipFrames)
+        {
+            Internal.ValidateThreadAccess(skipFrames + 1);
         }
 #endif
     }

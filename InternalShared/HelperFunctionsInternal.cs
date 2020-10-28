@@ -23,7 +23,9 @@ namespace Proto.Promises
     /// <summary>
     /// Members of this type are meant for INTERNAL USE ONLY! Do not use in user code! Use the documented public APIs.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
+#endif
     internal static partial class Internal
     {
         public static bool invokingRejected;
@@ -44,6 +46,23 @@ namespace Proto.Promises
         static partial void _SetCurrentInvoker(ITraceable current);
         static partial void _ClearCurrentInvoker();
 #if PROMISE_DEBUG
+        private static readonly System.Threading.Thread _initialThread = System.Threading.Thread.CurrentThread;
+
+        public static void ValidateThreadAccess(int skipFrames, bool warn = true)
+        {
+            if (!ReferenceEquals(_initialThread, System.Threading.Thread.CurrentThread))
+            {
+                string message = "ProtoPromise library accessed from more than one thread. This is currently unsafe. All access should be from the UI/main thread.";
+                var temp = Promise.Config.WarningHandler;
+                if (!warn | temp == null)
+                {
+                    message += "\nPromise.Config.WarningHandler is null, set a warning handler to make this a warning instead of an exception.";
+                    throw new InvalidOperationException(message, GetFormattedStacktrace(skipFrames + 1));
+                }
+                temp.Invoke(message);
+            }
+        }
+
         static partial void _SetCreatedStacktrace(ITraceable traceable, int skipFrames)
         {
             SetCreatedStacktrace(traceable, skipFrames + 1);
@@ -275,7 +294,7 @@ namespace Proto.Promises
         }
 
         // Handle promises in a depth-first manner.
-        private static ValueLinkedQueue<ITreeHandleable> _handleQueue;
+        internal static ValueLinkedQueue<ITreeHandleable> _handleQueue;
         private static bool _runningHandles;
 
         public static void AddToHandleQueueFront(ITreeHandleable handleable)

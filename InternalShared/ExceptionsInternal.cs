@@ -13,7 +13,9 @@ namespace Proto.Promises
 {
     partial class Internal
     {
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         public sealed class UnhandledExceptionInternal : UnhandledException, IRejectionToContainer, IRejectValueContainer, ICantHandleException
         {
             private int _retainCounter;
@@ -77,7 +79,9 @@ namespace Proto.Promises
 #endif
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         public sealed class CanceledExceptionInternal : CanceledException, ICancelValueContainer, ICancelationToContainer
         {
             public CanceledExceptionInternal(object value, Type valueType, string message) :
@@ -105,7 +109,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         public sealed class RejectionException : Exception
         {
             private readonly string _stackTrace;
@@ -118,7 +124,9 @@ namespace Proto.Promises
             public override string StackTrace { get { return _stackTrace; } }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         public sealed class RejectExceptionInternal<T> : RejectException, IRejectionToContainer, ICantHandleException
         {
             // We can reuse the same object.
@@ -150,7 +158,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         public sealed class CancelExceptionVoidInternal : CancelException, ICancelationToContainer
         {
             // We can reuse the same object.
@@ -169,7 +179,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         public sealed class CancelExceptionInternal<T> : CancelException, ICancelationToContainer
         {
             // We can reuse the same object.

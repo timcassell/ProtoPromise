@@ -16,7 +16,9 @@ namespace Proto.Promises
     internal static partial class Internal
     {
 #if PROMISE_DEBUG
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         public class CausalityTrace
         {
             private readonly StackTrace _stackTrace;
@@ -48,7 +50,9 @@ namespace Proto.Promises
         }
 #endif
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         public sealed class CancelDelegate<TCanceler> : ICancelDelegate, IDisposableTreeHandleable, ITraceable where TCanceler : IDelegateCancel
         {
 #if PROMISE_DEBUG
@@ -74,7 +78,7 @@ namespace Proto.Promises
                 return del;
             }
 
-            void ITreeHandleable.MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+            void ITreeHandleable.MakeReady(Promise owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
             {
                 if (valueContainer.GetState() == Promise.State.Canceled)
                 {
@@ -87,7 +91,7 @@ namespace Proto.Promises
                 }
             }
 
-            void ITreeHandleable.MakeReadyFromSettled(IValueContainer valueContainer)
+            void ITreeHandleable.MakeReadyFromSettled(Promise owner, IValueContainer valueContainer)
             {
                 if (valueContainer.GetState() == Promise.State.Canceled)
                 {
@@ -148,7 +152,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
         internal sealed class CancelationRef : ICancelDelegate, ILinked<CancelationRef>, ITraceable
         {
             private struct RegisteredDelegate : IComparable<RegisteredDelegate>
@@ -257,21 +263,6 @@ namespace Proto.Promises
             {
                 int index = IndexOf(order);
                 return index >= 0 && (tokenId == TokenId & _registeredCallbacks[index].callback != null);
-            }
-
-            public void Unregister(uint order)
-            {
-                int index = IndexOf(order);
-                RegisteredDelegate del = _registeredCallbacks[index];
-                if (_isInvoking)
-                {
-                    _registeredCallbacks[index] = new RegisteredDelegate(del.order);
-                }
-                else
-                {
-                    _registeredCallbacks.RemoveAt(index);
-                }
-                del.callback.Dispose();
             }
 
             public bool TryUnregister(ushort tokenId, uint order)

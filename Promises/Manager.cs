@@ -7,7 +7,9 @@ namespace Proto.Promises
         /// <summary>
         /// Promise manager. This can be used to cleared pooled objects (if enabled) or manually handle promises (not recommended for RELEASE builds).
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
+#endif
         public static class Manager
         {
             private static bool _willThrow;
@@ -20,6 +22,8 @@ namespace Proto.Promises
             /// </summary>
             public static void HandleCompletes()
             {
+                ValidateThreadAccess(1, false);
+
                 bool willThrow = _willThrow;
                 _willThrow = true;
 
@@ -41,6 +45,8 @@ namespace Proto.Promises
             /// </summary>
             public static void HandleCompletesAndProgress()
             {
+                ValidateThreadAccess(1, false);
+
                 bool willThrow = _willThrow;
                 _willThrow = true;
 
@@ -62,6 +68,8 @@ namespace Proto.Promises
             /// </summary>
             public static void HandleProgress()
             {
+                ValidateThreadAccess(1, false);
+
                 bool willThrow = _willThrow;
                 _willThrow = true;
 
@@ -79,6 +87,8 @@ namespace Proto.Promises
             /// </summary>
             public static void ClearObjectPool()
             {
+                ValidateThreadAccess(1);
+
                 ClearPooledProgress();
                 Internal.ClearPool();
             }

@@ -33,8 +33,8 @@ namespace Proto.Promises
         public interface ITreeHandleable : ILinked<ITreeHandleable>
         {
             void Handle();
-            void MakeReady(IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue);
-            void MakeReadyFromSettled(IValueContainer valueContainer);
+            void MakeReady(Promise owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue);
+            void MakeReadyFromSettled(Promise owner, IValueContainer valueContainer);
         }
 
         public interface IDisposableTreeHandleable : ITreeHandleable, IDisposable { }

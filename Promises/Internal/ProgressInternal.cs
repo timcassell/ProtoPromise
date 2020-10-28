@@ -44,7 +44,7 @@ namespace Proto.Promises
 
         partial class InternalProtected
         {
-            partial class AllPromise0
+            partial class AllPromiseVoid
             {
                 protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
@@ -60,7 +60,7 @@ namespace Proto.Promises
                 }
             }
 
-            partial class RacePromise0
+            partial class RacePromiseVoid
             {
                 protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
@@ -76,7 +76,7 @@ namespace Proto.Promises
                 }
             }
 
-            partial class FirstPromise0
+            partial class FirstPromiseVoid
             {
                 protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
                 {
@@ -139,27 +139,43 @@ namespace Proto.Promises
             ValueLinkedStackZeroGC<InternalProtected.IInvokable>.ClearPooledNodes();
         }
 
-        // All and Race promises return a value depending on the promises they are waiting on. Other promises return 1.
-        protected virtual uint GetIncrementMultiplier()
-        {
-            return 1u;
-        }
+        private uint NextWholeProgress { get { return _waitDepthAndProgress.WholePart + 1u; } }
 
         partial void ResolveProgressListeners()
         {
-            uint increment = _waitDepthAndProgress.GetDifferenceToNextWholeAsUInt32() * GetIncrementMultiplier();
+            InternalProtected.UnsignedFixed32 progress = _waitDepthAndProgress.GetIncrementedWholeTruncated();
             while (_progressListeners.IsNotEmpty)
             {
-                _progressListeners.Pop().ResolveOrIncrementProgress(this, increment);
+                _progressListeners.Pop().ResolveOrSetProgress(this, progress);
             }
         }
 
         partial void CancelProgressListeners()
         {
-            uint increment = _waitDepthAndProgress.GetDifferenceToNextWholeAsUInt32() * GetIncrementMultiplier();
+            // TODO: this algorithm is O(n^3), refactor progress to reduce runtime costs of cancelations.
+            InternalProtected.UnsignedFixed32 progress = _waitDepthAndProgress.GetIncrementedWholeTruncated();
             while (_progressListeners.IsNotEmpty)
             {
-                _progressListeners.Pop().CancelOrIncrementProgress(this, increment);
+                var listener = _progressListeners.Pop();
+                listener.CancelOrSetProgress(this, progress);
+
+#if CSHARP_7_OR_LATER
+                object previous = _valueOrPrevious;
+                while (previous is Promise promise)
+                {
+                    promise._progressListeners.Remove(listener);
+                    listener.CancelOrSetProgress(promise, progress);
+                    previous = promise._valueOrPrevious;
+                }
+#else
+                Promise promise = _valueOrPrevious as Promise;
+                while (promise != null)
+                {
+                    promise._progressListeners.Remove(listener);
+                    listener.CancelOrSetProgress(promise, progress);
+                    promise = promise._valueOrPrevious as Promise;
+                }
+#endif
             }
         }
 
@@ -171,10 +187,10 @@ namespace Proto.Promises
                 return;
             }
 
-            uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
+            _waitDepthAndProgress.AssignNewDecimalPart(progress);
             foreach (var progressListener in _progressListeners)
             {
-                progressListener.IncrementProgress(this, increment);
+                progressListener.SetProgress(this, _waitDepthAndProgress);
             }
         }
 
@@ -220,7 +236,7 @@ namespace Proto.Promises
                 if (!SubscribeProgressAndContinueLoop(ref progressListener, out promise))
                 {
                     // This is the root of the promise tree.
-                    progressListener.SetInitialAmount(_waitDepthAndProgress);
+                    progressListener.SetInitialProgress(_waitDepthAndProgress);
                     return;
                 }
 
@@ -249,7 +265,7 @@ namespace Proto.Promises
                 if (!SubscribeProgressAndContinueLoop(ref progressListener, out promise))
                 {
                     // This is the root of the promise tree.
-                    progressListener.SetInitialAmount(_waitDepthAndProgress);
+                    progressListener.SetInitialProgress(_waitDepthAndProgress);
                     return;
                 }
 
@@ -297,22 +313,27 @@ namespace Proto.Promises
             switch (promise._state)
             {
                 case State.Pending:
-                    {
-                        progressListener.SetInitialAmount(promise._waitDepthAndProgress);
-                        break;
-                    }
+                {
+                    progressListener.SetInitialProgress(promise.CurrentProgress());
+                    break;
+                }
                 case State.Resolved:
-                    {
-                        progressListener.SetInitialAmount(promise._waitDepthAndProgress.GetIncrementedWholeTruncated());
-                        break;
-                    }
+                {
+                    progressListener.SetInitialProgress(promise._waitDepthAndProgress.GetIncrementedWholeTruncated());
+                    break;
+                }
                 default: // Rejected or Canceled:
-                    {
-                        progressListener.Retain();
-                        progressListener.CancelOrIncrementProgress(promise, promise._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32());
-                        break;
-                    }
+                {
+                    progressListener.Retain();
+                    progressListener.CancelOrSetProgress(promise, promise._waitDepthAndProgress);
+                    break;
+                }
             }
+        }
+
+        protected virtual InternalProtected.UnsignedFixed32 CurrentProgress()
+        {
+            return _waitDepthAndProgress;
         }
 
         // Handle progress.
@@ -354,11 +375,13 @@ namespace Proto.Promises
             /// Max Whole Number: 2^(32-<see cref="Config.ProgressDecimalBits"/>)
             /// Precision: 1/(2^<see cref="Config.ProgressDecimalBits"/>)
             /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public struct UnsignedFixed32
             {
-                private const uint DecimalMax = 1u << Config.ProgressDecimalBits;
-                private const uint DecimalMask = DecimalMax - 1u;
+                private const double DecimalMax = 1u << Config.ProgressDecimalBits;
+                private const uint DecimalMask = (1u << Config.ProgressDecimalBits) - 1u;
                 private const uint WholeMask = ~DecimalMask;
 
                 private uint _value;
@@ -368,14 +391,14 @@ namespace Proto.Promises
                     _value = wholePart << Config.ProgressDecimalBits;
                 }
 
-                public UnsignedFixed32(float decimalPart)
+                public UnsignedFixed32(double decimalPart)
                 {
                     // Don't bother rounding, we don't want to accidentally round to 1.0.
                     _value = (uint) (decimalPart * DecimalMax);
                 }
 
                 public uint WholePart { get { return _value >> Config.ProgressDecimalBits; } }
-                private double DecimalPart { get { return (double) DecimalPartAsUInt32 / (double) DecimalMax; } }
+                private double DecimalPart { get { return (double) DecimalPartAsUInt32 / DecimalMax; } }
                 private uint DecimalPartAsUInt32 { get { return _value & DecimalMask; } }
 
                 public uint ToUInt32()
@@ -388,18 +411,11 @@ namespace Proto.Promises
                     return (double) WholePart + DecimalPart;
                 }
 
-                public uint AssignNewDecimalPartAndGetDifferenceAsUInt32(float decimalPart)
+                public void AssignNewDecimalPart(float decimalPart)
                 {
-                    uint oldDecimalPart = DecimalPartAsUInt32;
                     // Don't bother rounding, we don't want to accidentally round to 1.0.
                     uint newDecimalPart = (uint) (decimalPart * DecimalMax);
                     _value = (_value & WholeMask) | newDecimalPart;
-                    return newDecimalPart - oldDecimalPart;
-                }
-
-                public uint GetDifferenceToNextWholeAsUInt32()
-                {
-                    return DecimalMax - DecimalPartAsUInt32;
                 }
 
                 public UnsignedFixed32 GetIncrementedWholeTruncated()
@@ -415,11 +431,6 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Increment(uint increment)
-                {
-                    _value += increment;
-                }
-
                 public static bool operator >(UnsignedFixed32 a, UnsignedFixed32 b)
                 {
                     return a._value > b._value;
@@ -431,6 +442,35 @@ namespace Proto.Promises
                 }
             }
 
+            /// <summary>
+            /// Max Whole Number: 2^(64-<see cref="Config.ProgressDecimalBits"/>)
+            /// Precision: 1/(2^<see cref="Config.ProgressDecimalBits"/>)
+            /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            public struct UnsignedFixed64 // Simplified compared to UnsignedFixed32 to remove unused functions.
+            {
+                private const double DecimalMax = 1ul << Config.ProgressDecimalBits;
+                private const ulong DecimalMask = (1ul << Config.ProgressDecimalBits) - 1ul;
+
+                private ulong _value;
+
+                public ulong WholePart { get { return _value >> Config.ProgressDecimalBits; } }
+                private double DecimalPart { get { return (double) DecimalPartAsUInt32 / DecimalMax; } }
+                private ulong DecimalPartAsUInt32 { get { return _value & DecimalMask; } }
+
+                public double ToDouble()
+                {
+                    return (double) WholePart + DecimalPart;
+                }
+
+                public void Increment(uint increment)
+                {
+                    _value += increment;
+                }
+            }
+
             public interface IInvokable
             {
                 void Invoke();
@@ -438,20 +478,21 @@ namespace Proto.Promises
 
             public interface IProgressListener
             {
-                void SetInitialAmount(UnsignedFixed32 amount);
-                void IncrementProgress(Promise sender, uint amount);
-                void ResolveOrIncrementProgress(Promise sender, uint amount);
-                void CancelOrIncrementProgress(Promise sender, uint amount);
+                void SetInitialProgress(UnsignedFixed32 progress);
+                void SetProgress(Promise sender, UnsignedFixed32 progress);
+                void ResolveOrSetProgress(Promise sender, UnsignedFixed32 progress);
+                void CancelOrSetProgress(Promise sender, UnsignedFixed32 progress);
                 void Retain();
             }
 
             partial interface IMultiTreeHandleable
             {
                 void IncrementProgress(uint increment, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount);
-                void CancelOrIncrementProgress(uint increment, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public abstract class ProgressDelegateBase : IProgressListener, Internal.ITreeHandleable, IInvokable, Internal.ITraceable, Internal.ICancelDelegate
             {
 #if PROMISE_DEBUG
@@ -520,9 +561,9 @@ namespace Proto.Promises
                     InvokeAndCatch((float) (_current.ToDouble() / expected));
                 }
 
-                private void IncrementProgress(uint amount)
+                private void SetProgress(UnsignedFixed32 progress)
                 {
-                    _current.Increment(amount);
+                    _current = progress;
                     _suspended = false;
                     if (!_handling & !_canceled)
                     {
@@ -532,12 +573,12 @@ namespace Proto.Promises
                     }
                 }
 
-                void IProgressListener.IncrementProgress(Promise sender, uint amount)
+                void IProgressListener.SetProgress(Promise sender, UnsignedFixed32 progress)
                 {
-                    IncrementProgress(amount);
+                    SetProgress(progress);
                 }
 
-                void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount)
+                void IProgressListener.ResolveOrSetProgress(Promise sender, UnsignedFixed32 progress)
                 {
                     if (sender == _owner & !_canceled)
                     {
@@ -547,20 +588,20 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        IncrementProgress(amount);
+                        SetProgress(progress);
                         Release();
                     }
                 }
 
-                void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
+                void IProgressListener.SetInitialProgress(UnsignedFixed32 progress)
                 {
-                    _current = amount;
+                    _current = progress;
                     _handling = true;
                     // Always add new listeners to the back.
                     AddToBackOfProgressQueue(this);
                 }
 
-                void IProgressListener.CancelOrIncrementProgress(Promise sender, uint amount)
+                void IProgressListener.CancelOrSetProgress(Promise sender, UnsignedFixed32 progress)
                 {
                     if (sender == _owner)
                     {
@@ -570,7 +611,7 @@ namespace Proto.Promises
                     else
                     {
                         _suspended = true;
-                        _current.Increment(amount);
+                        _current = progress;
                     }
                 }
 
@@ -624,11 +665,13 @@ namespace Proto.Promises
 
                 void Internal.ICancelDelegate.Dispose() { }
 
-                void Internal.ITreeHandleable.MakeReady(Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue) { throw new System.InvalidOperationException(); }
-                void Internal.ITreeHandleable.MakeReadyFromSettled(Internal.IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
+                void Internal.ITreeHandleable.MakeReady(Promise owner, Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue) { throw new System.InvalidOperationException(); }
+                void Internal.ITreeHandleable.MakeReadyFromSettled(Promise owner, Internal.IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public sealed class ProgressDelegate : ProgressDelegateBase
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -666,7 +709,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
+#endif
             public sealed class ProgressDelegateCapture<TCapture> : ProgressDelegateBase
             {
                 private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
@@ -770,28 +815,28 @@ namespace Proto.Promises
                     double expected = ((Promise) _valueOrPrevious)._waitDepthAndProgress.WholePart + 1u;
                     float progress = (float) (_currentAmount.ToDouble() / expected);
 
-                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
+                    _waitDepthAndProgress.AssignNewDecimalPart(progress);
 
                     foreach (var progressListener in _progressListeners)
                     {
-                        progressListener.IncrementProgress(this, increment);
+                        progressListener.SetProgress(this, _waitDepthAndProgress);
                     }
                     ReleaseInternal();
                 }
 
-                void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
+                void IProgressListener.SetInitialProgress(UnsignedFixed32 progress)
                 {
-                    _currentAmount = amount;
+                    _currentAmount = progress;
                     // Don't allow repool until this is removed from the progress queue.
                     RetainInternal();
                     _invokingProgress = true;
                     AddToFrontOfProgressQueue(this);
                 }
 
-                private void IncrementProgress(uint amount)
+                private void SetProgress(UnsignedFixed32 progress)
                 {
                     _suspended = false;
-                    _currentAmount.Increment(amount);
+                    _currentAmount = progress;
                     if (!_invokingProgress)
                     {
                         // Don't allow repool until this is removed from the progress queue.
@@ -801,21 +846,21 @@ namespace Proto.Promises
                     }
                 }
 
-                void IProgressListener.IncrementProgress(Promise sender, uint amount)
+                void IProgressListener.SetProgress(Promise sender, UnsignedFixed32 progress)
                 {
-                    IncrementProgress(amount);
+                    SetProgress(progress);
                 }
 
-                void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount)
+                void IProgressListener.ResolveOrSetProgress(Promise sender, UnsignedFixed32 progress)
                 {
-                    IncrementProgress(amount);
+                    SetProgress(progress);
                     ReleaseWithoutDisposeCheck();
                 }
 
-                void IProgressListener.CancelOrIncrementProgress(Promise sender, uint amount)
+                void IProgressListener.CancelOrSetProgress(Promise sender, UnsignedFixed32 progress)
                 {
                     _suspended = true;
-                    _currentAmount.Increment(amount);
+                    _currentAmount = progress;
                     ReleaseWithoutDisposeCheck();
                 }
             }
@@ -885,28 +930,28 @@ namespace Proto.Promises
                     double expected = ((Promise) _valueOrPrevious)._waitDepthAndProgress.WholePart + 1u;
                     float progress = (float) (_currentAmount.ToDouble() / expected);
 
-                    uint increment = _waitDepthAndProgress.AssignNewDecimalPartAndGetDifferenceAsUInt32(progress);
+                    _waitDepthAndProgress.AssignNewDecimalPart(progress);
 
                     foreach (var progressListener in _progressListeners)
                     {
-                        progressListener.IncrementProgress(this, increment);
+                        progressListener.SetProgress(this, _waitDepthAndProgress);
                     }
                     ReleaseInternal();
                 }
 
-                void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
+                void IProgressListener.SetInitialProgress(UnsignedFixed32 progress)
                 {
-                    _currentAmount = amount;
+                    _currentAmount = progress;
                     // Don't allow repool until this is removed from the progress queue.
                     RetainInternal();
                     _invokingProgress = true;
                     AddToFrontOfProgressQueue(this);
                 }
 
-                private void IncrementProgress(uint amount)
+                private void SetProgress(UnsignedFixed32 progress)
                 {
                     _suspended = false;
-                    _currentAmount.Increment(amount);
+                    _currentAmount = progress;
                     if (!_invokingProgress)
                     {
                         // Don't allow repool until this is removed from the progress queue.
@@ -916,21 +961,21 @@ namespace Proto.Promises
                     }
                 }
 
-                void IProgressListener.IncrementProgress(Promise sender, uint amount)
+                void IProgressListener.SetProgress(Promise sender, UnsignedFixed32 progress)
                 {
-                    IncrementProgress(amount);
+                    SetProgress(progress);
                 }
 
-                void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount)
+                void IProgressListener.ResolveOrSetProgress(Promise sender, UnsignedFixed32 progress)
                 {
-                    IncrementProgress(amount);
+                    SetProgress(progress);
                     ReleaseWithoutDisposeCheck();
                 }
 
-                void IProgressListener.CancelOrIncrementProgress(Promise sender, uint amount)
+                void IProgressListener.CancelOrSetProgress(Promise sender, UnsignedFixed32 progress)
                 {
                     _suspended = true;
-                    _currentAmount.Increment(amount);
+                    _currentAmount = progress;
                     ReleaseWithoutDisposeCheck();
                 }
             }
@@ -961,28 +1006,67 @@ namespace Proto.Promises
                 }
             }
 
+            partial class DeferredPromiseCancelVoid
+            {
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    if (_state != State.Pending)
+                    {
+                        previous = null;
+                        return false;
+                    }
+                    return SubscribeProgressAndContinueLoop(ref progressListener, out previous);
+                }
+            }
+
+            partial class DeferredPromiseCancel<T>
+            {
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                {
+                    if (_state != State.Pending)
+                    {
+                        previous = null;
+                        return false;
+                    }
+                    return SubscribeProgressAndContinueLoop(ref progressListener, out previous);
+                }
+            }
+
             partial class PromisePassThrough : IProgressListener
             {
-                public UnsignedFixed32 _progress;
+                private UnsignedFixed32 _currentProgress;
 
-                void IProgressListener.SetInitialAmount(UnsignedFixed32 amount)
+                void IProgressListener.SetInitialProgress(UnsignedFixed32 progress)
                 {
-                    Target.IncrementProgress(amount.ToUInt32(), amount, Owner._waitDepthAndProgress);
+                    _currentProgress = progress;
+                    Target.IncrementProgress(progress.ToUInt32(), progress, Owner._waitDepthAndProgress);
                 }
 
-                void IProgressListener.IncrementProgress(Promise sender, uint amount)
+                void IProgressListener.SetProgress(Promise sender, UnsignedFixed32 progress)
                 {
-                    Target.IncrementProgress(amount, sender._waitDepthAndProgress, Owner._waitDepthAndProgress);
+                    uint dif = progress.ToUInt32() - _currentProgress.ToUInt32();
+                    _currentProgress = progress;
+                    Target.IncrementProgress(dif, progress, Owner._waitDepthAndProgress);
                 }
 
-                void IProgressListener.ResolveOrIncrementProgress(Promise sender, uint amount)
+                void IProgressListener.ResolveOrSetProgress(Promise sender, UnsignedFixed32 progress)
                 {
                     Release();
                 }
 
-                void IProgressListener.CancelOrIncrementProgress(Promise sender, uint amount)
+                void IProgressListener.CancelOrSetProgress(Promise sender, UnsignedFixed32 progress)
                 {
                     Release();
+                }
+
+                public uint GetProgressDifferenceToCompletion()
+                {
+                    return Owner._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32() - _currentProgress.ToUInt32();
+                }
+                
+                partial void ResetProgress()
+                {
+                    _currentProgress = default(UnsignedFixed32);
                 }
             }
         }
