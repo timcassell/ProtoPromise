@@ -265,21 +265,6 @@ namespace Proto.Promises
                 return index >= 0 && (tokenId == TokenId & _registeredCallbacks[index].callback != null);
             }
 
-            public void Unregister(uint order)
-            {
-                int index = IndexOf(order);
-                RegisteredDelegate del = _registeredCallbacks[index];
-                if (_isInvoking)
-                {
-                    _registeredCallbacks[index] = new RegisteredDelegate(del.order);
-                }
-                else
-                {
-                    _registeredCallbacks.RemoveAt(index);
-                }
-                del.callback.Dispose();
-            }
-
             public bool TryUnregister(ushort tokenId, uint order)
             {
                 int index = IndexOf(order);

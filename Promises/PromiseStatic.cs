@@ -20,6 +20,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             var passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>(InternalProtected.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -34,6 +35,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -50,6 +52,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -68,6 +71,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(params Promise[] promises)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateAll(new ArrayEnumerator<Promise>(promises));
         }
 
@@ -77,6 +81,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(IEnumerable<Promise> promises)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateAll(promises.GetEnumerator());
         }
 
@@ -86,6 +91,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateAll(promises);
         }
 
@@ -95,6 +101,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<IList<T>> All<T>(params Promise<T>[] promises)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateAll(new ArrayEnumerator<Promise<T>>(promises), new List<T>(promises.Length));
         }
 
@@ -104,6 +111,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<IList<T>> All<T>(IEnumerable<Promise<T>> promises)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateAll(promises.GetEnumerator(), new List<T>());
         }
 
@@ -113,6 +121,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<IList<T>> All<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateAll(promises, new List<T>());
         }
 
@@ -122,6 +131,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<IList<T>> AllNonAlloc<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer) where TEnumerator : IEnumerator<Promise<T>>
         {
+            ValidateThreadAccess(1);
             ValidateArgument(valueContainer, "valueContainer", 1);
             return InternalProtected.CreateAll(promises, valueContainer);
         }
@@ -132,6 +142,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             var passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>(InternalProtected.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -146,6 +157,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -162,6 +174,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -180,6 +193,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(params Promise[] promises)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateRace(new ArrayEnumerator<Promise>(promises));
         }
 
@@ -189,6 +203,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(IEnumerable<Promise> promises)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateRace(promises.GetEnumerator());
         }
 
@@ -198,6 +213,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateRace(promises);
         }
 
@@ -207,6 +223,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             var passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>(InternalProtected.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -221,6 +238,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -237,6 +255,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -255,6 +274,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race<T>(params Promise<T>[] promises)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateRace<T, ArrayEnumerator<Promise<T>>>(new ArrayEnumerator<Promise<T>>(promises));
         }
 
@@ -264,6 +284,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateRace<T, IEnumerator<Promise<T>>>(promises.GetEnumerator());
         }
 
@@ -273,6 +294,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateRace<T, TEnumerator>(promises);
         }
 
@@ -282,6 +304,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Sequence(params Func<Promise>[] promiseFuncs)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateSequence(new ArrayEnumerator<Func<Promise>>(promiseFuncs));
         }
 
@@ -294,6 +317,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Sequence(CancelationToken cancelationToken, params Func<Promise>[] promiseFuncs)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateSequence(new ArrayEnumerator<Func<Promise>>(promiseFuncs), cancelationToken);
         }
 
@@ -303,6 +327,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Sequence(IEnumerable<Func<Promise>> promiseFuncs)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateSequence(promiseFuncs.GetEnumerator());
         }
 
@@ -315,6 +340,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Sequence(CancelationToken cancelationToken, IEnumerable<Func<Promise>> promiseFuncs)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateSequence(promiseFuncs.GetEnumerator(), cancelationToken);
         }
 
@@ -324,6 +350,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Sequence<TEnumerator>(TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateSequence(promiseFuncs);
         }
 
@@ -336,6 +363,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Sequence<TEnumerator>(CancelationToken cancelationToken, TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateSequence(promiseFuncs, cancelationToken);
         }
 
@@ -345,6 +373,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             var passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>(InternalProtected.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -359,6 +388,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -375,6 +405,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -393,6 +424,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(params Promise[] promises)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateFirst(new ArrayEnumerator<Promise>(promises));
         }
 
@@ -402,6 +434,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(IEnumerable<Promise> promises)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateFirst(promises.GetEnumerator());
         }
 
@@ -411,6 +444,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateFirst(promises);
         }
 
@@ -420,6 +454,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             var passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>(InternalProtected.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -434,6 +469,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -450,6 +486,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -468,6 +505,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First<T>(params Promise<T>[] promises)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateFirst<T, ArrayEnumerator<Promise<T>>>(new ArrayEnumerator<Promise<T>>(promises));
         }
 
@@ -477,6 +515,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First<T>(IEnumerable<Promise<T>> promises)
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateFirst<T, IEnumerator<Promise<T>>>(promises.GetEnumerator());
         }
 
@@ -486,6 +525,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
+            ValidateThreadAccess(1);
             return InternalProtected.CreateFirst<T, TEnumerator>(promises);
         }
 
@@ -495,6 +535,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T1> Merge<T1>(Promise<T1> promise1, Promise promise2)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             var passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>(InternalProtected.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -516,6 +557,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<T1, T2>> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             var passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>(InternalProtected.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -541,6 +583,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<T1, T2>> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2, Promise promise3)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -569,6 +612,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<T1, T2, T3>> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -600,6 +644,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<T1, T2, T3>> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -633,6 +678,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<T1, T2, T3, T4>> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -669,6 +715,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<T1, T2, T3, T4>> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -707,6 +754,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<T1, T2, T3, T4, T5>> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -748,6 +796,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<T1, T2, T3, T4, T5>> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -791,6 +840,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6>> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -837,6 +887,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6>> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise promise7)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -885,6 +936,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -936,6 +988,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7, Promise promise8)
         {
+            ValidateThreadAccess(1);
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
@@ -989,6 +1042,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise New(Action<Deferred> resolver)
         {
+            ValidateThreadAccess(1);
+
             Deferred deferred = Deferred.New();
             try
             {
@@ -1014,6 +1069,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver)
         {
+            ValidateThreadAccess(1);
+
             Promise<T>.Deferred deferred = Promise<T>.Deferred.New();
             try
             {
@@ -1039,6 +1096,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver)
         {
+            ValidateThreadAccess(1);
+
             Deferred deferred = Deferred.New();
             try
             {
@@ -1064,6 +1123,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver)
         {
+            ValidateThreadAccess(1);
+
             Promise<T>.Deferred deferred = Promise<T>.Deferred.New();
             try
             {
@@ -1088,6 +1149,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise Resolved()
         {
+            ValidateThreadAccess(1);
+
 #if PROMISE_DEBUG
             // Make new promise in DEBUG mode for separate causality traces.
             var promise = InternalProtected.DeferredPromiseVoid.GetOrCreate();
@@ -1104,6 +1167,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Resolved<T>(T value)
         {
+            ValidateThreadAccess(1);
+
             var promise = InternalProtected.DeferredPromise<T>.GetOrCreate();
             promise.ResolveDirect(ref value);
             return promise;
@@ -1114,6 +1179,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Rejected<TReject>(TReject reason)
         {
+            ValidateThreadAccess(1);
+
             var promise = InternalProtected.DeferredPromiseVoid.GetOrCreate();
             promise.RejectDirect(ref reason, int.MinValue);
             return promise;
@@ -1124,6 +1191,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Rejected<T, TReject>(TReject reason)
         {
+            ValidateThreadAccess(1);
+
             var promise = InternalProtected.DeferredPromise<T>.GetOrCreate();
             promise.RejectDirect(ref reason, int.MinValue);
             return promise;
@@ -1134,6 +1203,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Canceled()
         {
+            ValidateThreadAccess(1);
+
 #if PROMISE_DEBUG
             // Make new promise in DEBUG mode for separate causality traces.
             var promise = InternalProtected.DeferredPromiseVoid.GetOrCreate();
@@ -1150,6 +1221,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Canceled<TCancel>(TCancel reason)
         {
+            ValidateThreadAccess(1);
+
             var promise = InternalProtected.DeferredPromiseVoid.GetOrCreate();
             promise.CancelDirect(ref reason);
             return promise;
@@ -1160,6 +1233,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Canceled<T>()
         {
+            ValidateThreadAccess(1);
+
             var promise = InternalProtected.DeferredPromise<T>.GetOrCreate();
             promise.CancelDirect();
             return promise;
@@ -1170,6 +1245,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Canceled<T, TCancel>(TCancel reason)
         {
+            ValidateThreadAccess(1);
+
             var promise = InternalProtected.DeferredPromise<T>.GetOrCreate();
             promise.CancelDirect(ref reason);
             return promise;
@@ -1203,6 +1280,8 @@ namespace Proto.Promises
         {
             get
             {
+                ValidateThreadAccess(1);
+
                 if (Internal.invokingRejected)
                 {
                     return RethrowException.instance;
@@ -1218,6 +1297,8 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public static CancelException CancelException()
         {
+            ValidateThreadAccess(1);
+
             return Internal.CancelExceptionVoidInternal.GetOrCreate();
         }
 
@@ -1228,6 +1309,8 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public static CancelException CancelException<T>(T value)
         {
+            ValidateThreadAccess(1);
+
             return Internal.CancelExceptionInternal<T>.GetOrCreate(value);
         }
 
@@ -1238,6 +1321,8 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public static RejectException RejectException<T>(T value)
         {
+            ValidateThreadAccess(1);
+
             return Internal.RejectExceptionInternal<T>.GetOrCreate(value);
         }
     }

@@ -1,4 +1,10 @@
-﻿using System;
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
+using System;
 
 namespace Proto.Promises
 {
@@ -8,7 +14,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
 #endif
-    public struct CancelationSource : ICancelableAny, IDisposable, IEquatable<CancelationSource>
+    public partial struct CancelationSource : ICancelableAny, IDisposable, IEquatable<CancelationSource>
     {
         private readonly Internal.CancelationRef _ref;
         private readonly ushort _id;
@@ -19,6 +25,7 @@ namespace Proto.Promises
         /// </summary>
         public static CancelationSource New()
         {
+            ValidateThreadAccess(1);
             return new CancelationSource(Internal.CancelationRef.GetOrCreate());
         }
 
@@ -36,6 +43,7 @@ namespace Proto.Promises
         /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
         public static CancelationSource New(CancelationToken token)
         {
+            ValidateThreadAccess(1);
             CancelationSource newCancelationSource = New();
             token.MaybeLinkSourceInternal(newCancelationSource._ref);
             return newCancelationSource;
@@ -50,6 +58,7 @@ namespace Proto.Promises
         /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
         public static CancelationSource New(CancelationToken token1, CancelationToken token2)
         {
+            ValidateThreadAccess(1);
             CancelationSource newCancelationSource = New(token1);
             if (!newCancelationSource._ref.IsCanceled)
             {
@@ -66,6 +75,7 @@ namespace Proto.Promises
         /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
         public static CancelationSource New(params CancelationToken[] tokens)
         {
+            ValidateThreadAccess(1);
             CancelationSource newCancelationSource = New();
             Internal.CancelationRef newCancelation = newCancelationSource._ref;
             for (int i = 0, max = tokens.Length; i < max & !newCancelation.IsCanceled; ++i)
@@ -98,6 +108,7 @@ namespace Proto.Promises
         {
             get
             {
+                ValidateThreadAccess(1);
                 return _ref != null && _ref.SourceId == _id;
             }
         }
@@ -164,16 +175,24 @@ namespace Proto.Promises
 
         public override bool Equals(object obj)
         {
+#if CSHARP_7_OR_LATER
+            if (obj is CancelationSource cancelationSource)
+            {
+                return Equals(cancelationSource);
+            }
+#else
             if (obj is CancelationSource)
             {
                 return Equals((CancelationSource) obj);
             }
+#endif
             return false;
         }
 
         public override int GetHashCode()
         {
-            if (_ref == null)
+            var temp = _ref;
+            if (temp == null)
             {
                 return 0;
             }
@@ -181,7 +200,7 @@ namespace Proto.Promises
             {
                 int hash = 17;
                 hash = hash * 31 + _id.GetHashCode();
-                hash = hash * 31 + _ref.GetHashCode();
+                hash = hash * 31 + temp.GetHashCode();
                 return hash;
             }
         }
@@ -195,5 +214,14 @@ namespace Proto.Promises
         {
             return !(c1 == c2);
         }
+
+        // Calls to this get compiled away in RELEASE mode
+        static partial void ValidateThreadAccess(int skipFrames);
+#if PROMISE_DEBUG
+        static partial void ValidateThreadAccess(int skipFrames)
+        {
+            Internal.ValidateThreadAccess(skipFrames + 1);
+        }
+#endif
     }
 }

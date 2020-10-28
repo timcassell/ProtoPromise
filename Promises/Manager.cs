@@ -22,6 +22,8 @@ namespace Proto.Promises
             /// </summary>
             public static void HandleCompletes()
             {
+                ValidateThreadAccess(1, false);
+
                 bool willThrow = _willThrow;
                 _willThrow = true;
 
@@ -43,6 +45,8 @@ namespace Proto.Promises
             /// </summary>
             public static void HandleCompletesAndProgress()
             {
+                ValidateThreadAccess(1, false);
+
                 bool willThrow = _willThrow;
                 _willThrow = true;
 
@@ -64,6 +68,8 @@ namespace Proto.Promises
             /// </summary>
             public static void HandleProgress()
             {
+                ValidateThreadAccess(1, false);
+
                 bool willThrow = _willThrow;
                 _willThrow = true;
 
@@ -81,6 +87,8 @@ namespace Proto.Promises
             /// </summary>
             public static void ClearObjectPool()
             {
+                ValidateThreadAccess(1);
+
                 ClearPooledProgress();
                 Internal.ClearPool();
             }

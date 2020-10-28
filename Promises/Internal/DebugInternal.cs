@@ -25,6 +25,7 @@ namespace Proto.Promises
     partial class Promise
     {
         // Calls to these get compiled away in RELEASE mode
+        static partial void ValidateThreadAccess(int skipFrames, bool warn = true);
         static partial void ValidateOperation(Promise promise, int skipFrames);
         static partial void ValidateProgress(float progress, int skipFrames);
         static partial void ValidateArgument(object arg, string argName, int skipFrames);
@@ -37,8 +38,10 @@ namespace Proto.Promises
         static partial void SetCurrentInvoker(Internal.ITraceable current);
         static partial void ClearCurrentInvoker();
 #if PROMISE_DEBUG
-        // TODO: Check thread at all public access.
-        //private static readonly System.Threading.Thread initialThread = System.Threading.Thread.CurrentThread;
+        static partial void ValidateThreadAccess(int skipFrames, bool warn)
+        {
+            Internal.ValidateThreadAccess(skipFrames + 1, warn);
+        }
 
         private static readonly object disposedObject = DisposedChecker.instance;
 
@@ -123,6 +126,7 @@ namespace Proto.Promises
 
         static protected void ValidateNotDisposed(object valueContainer, int skipFrames)
         {
+            Internal.ValidateThreadAccess(skipFrames + 1);
             if (IsDisposed(valueContainer))
             {
                 throw new PromiseDisposedException("Always nullify your references when you are finished with them!" +
@@ -187,11 +191,16 @@ namespace Proto.Promises
     partial class Promise<T>
     {
         // Calls to these get compiled away in RELEASE mode
+        static partial void ValidateThreadAccess(int skipFrames, bool warn = true);
         static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames);
         static partial void ValidateOperation(Promise<T> promise, int skipFrames);
         static partial void ValidateArgument(object arg, string argName, int skipFrames);
         static partial void ValidateProgress(float progress, int skipFrames);
 #if PROMISE_DEBUG
+        static partial void ValidateThreadAccess(int skipFrames, bool warn)
+        {
+            Internal.ValidateThreadAccess(skipFrames + 1, warn);
+        }
         static partial void ValidateProgress(float progress, int skipFrames)
         {
             ValidateProgressValue(progress, skipFrames + 1);

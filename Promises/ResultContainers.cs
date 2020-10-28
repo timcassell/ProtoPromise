@@ -4,6 +4,8 @@
 #undef PROMISE_DEBUG
 # endif
 
+#pragma warning disable IDE0041 // Use 'is null' check
+
 using System;
 
 namespace Proto.Promises
@@ -74,6 +76,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
         partial void Validate()
         {
+            Internal.ValidateThreadAccess(2);
             if (_id != Internal.InvokeId | ReferenceEquals(_valueContainer, null))
             {
                 throw new InvalidOperationException("An instance of Promise.ReasonContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
@@ -179,6 +182,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             partial void ValidateCall()
             {
+                Internal.ValidateThreadAccess(2);
                 if (_id != Internal.InvokeId | ReferenceEquals(_valueContainer, null))
                 {
                     throw new InvalidOperationException("An instance of Promise.CancelContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
@@ -187,6 +191,7 @@ namespace Proto.Promises
 
             partial void ValidateRejected()
             {
+                Internal.ValidateThreadAccess(2);
                 if (_valueContainer.GetState() != State.Rejected)
                 {
                     throw new InvalidOperationException("Promise must be rejected in order to access RejectContainer.", Internal.GetFormattedStacktrace(2));
@@ -195,6 +200,7 @@ namespace Proto.Promises
 
             partial void ValidateCanceled()
             {
+                Internal.ValidateThreadAccess(2);
                 if (_valueContainer.GetState() != State.Canceled)
                 {
                     throw new InvalidOperationException("Promise must be canceled in order to access CancelContainer.", Internal.GetFormattedStacktrace(2));
@@ -315,6 +321,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             partial void ValidateCall()
             {
+                Internal.ValidateThreadAccess(2);
                 if (_id != Internal.InvokeId | ReferenceEquals(_valueContainer, null))
                 {
                     throw new InvalidOperationException("An instance of Promise.CancelContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
@@ -323,6 +330,7 @@ namespace Proto.Promises
 
             partial void ValidateResolved()
             {
+                Internal.ValidateThreadAccess(2);
                 if (_valueContainer.GetState() != State.Resolved)
                 {
                     throw new InvalidOperationException("Promise must be resolved in order to access Result.", Internal.GetFormattedStacktrace(2));
@@ -331,6 +339,7 @@ namespace Proto.Promises
 
             partial void ValidateRejected()
             {
+                Internal.ValidateThreadAccess(2);
                 if (_valueContainer.GetState() != State.Rejected)
                 {
                     throw new InvalidOperationException("Promise must be rejected in order to access RejectContainer.", Internal.GetFormattedStacktrace(2));
@@ -339,6 +348,7 @@ namespace Proto.Promises
 
             partial void ValidateCanceled()
             {
+                Internal.ValidateThreadAccess(2);
                 if (_valueContainer.GetState() != State.Canceled)
                 {
                     throw new InvalidOperationException("Promise must be canceled in order to access CancelContainer.", Internal.GetFormattedStacktrace(2));

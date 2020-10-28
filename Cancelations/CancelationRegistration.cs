@@ -1,4 +1,10 @@
-﻿using System;
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
+using System;
 
 namespace Proto.Promises
 {
@@ -8,7 +14,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
 #endif
-    public struct CancelationRegistration : IEquatable<CancelationRegistration>
+    public partial struct CancelationRegistration : IEquatable<CancelationRegistration>
     {
         private readonly Internal.CancelationRef _ref;
         private readonly uint _order;
@@ -31,6 +37,7 @@ namespace Proto.Promises
         {
             get
             {
+                ValidateThreadAccess(1);
                 return _ref != null && _ref.IsRegistered(_id, _order);
             }
         }
@@ -40,11 +47,10 @@ namespace Proto.Promises
         /// </summary>
         public void Unregister()
         {
-            if (!IsRegistered)
+            if (!TryUnregister())
             {
                 throw new InvalidOperationException("CancelationRegistration is not registered.", Internal.GetFormattedStacktrace(1));
             }
-            _ref.Unregister(_order);
         }
 
         /// <summary>
@@ -53,6 +59,7 @@ namespace Proto.Promises
         /// <returns>true if the callback was previously registered and not yet invoked, false otherwise</returns>
         public bool TryUnregister()
         {
+            ValidateThreadAccess(1);
             if (_ref == null)
             {
                 return false;
@@ -67,16 +74,24 @@ namespace Proto.Promises
 
         public override bool Equals(object obj)
         {
+#if CSHARP_7_OR_LATER
+            if (obj is CancelationRegistration cancelationSource)
+            {
+                return Equals(cancelationSource);
+            }
+#else
             if (obj is CancelationRegistration)
             {
                 return Equals((CancelationRegistration) obj);
             }
+#endif
             return false;
         }
 
         public override int GetHashCode()
         {
-            if (_ref == null)
+            var temp = _ref;
+            if (temp == null)
             {
                 return 0;
             }
@@ -84,7 +99,7 @@ namespace Proto.Promises
             {
                 int hash = 17;
                 hash = hash * 31 + _order.GetHashCode();
-                hash = hash * 31 + _ref.GetHashCode();
+                hash = hash * 31 + temp.GetHashCode();
                 return hash;
             }
         }
@@ -98,5 +113,14 @@ namespace Proto.Promises
         {
             return !(c1 == c2);
         }
+
+        // Calls to these get compiled away in RELEASE mode
+        static partial void ValidateThreadAccess(int skipFrames);
+#if PROMISE_DEBUG
+        static partial void ValidateThreadAccess(int skipFrames)
+        {
+            Internal.ValidateThreadAccess(skipFrames + 1);
+        }
+#endif
     }
 }

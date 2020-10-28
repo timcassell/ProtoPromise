@@ -60,6 +60,8 @@ namespace Proto.Promises
             {
                 get
                 {
+                    ValidateThreadAccess(1);
+
                     return _promise != null && _id == _promise.Id;
                 }
             }
@@ -230,6 +232,8 @@ namespace Proto.Promises
             {
                 get
                 {
+                    ValidateThreadAccess(1);
+
                     return _promise != null && _id == _promise.Id;
                 }
             }
@@ -259,6 +263,8 @@ namespace Proto.Promises
             /// </summary>
             public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
             {
+                ValidateThreadAccess(1);
+
                 return new Deferred(cancelationToken);
             }
 
@@ -439,6 +445,8 @@ namespace Proto.Promises
             {
                 get
                 {
+                    ValidateThreadAccess(1);
+
                     return _promise != null && _id == _promise.Id;
                 }
             }
@@ -468,6 +476,8 @@ namespace Proto.Promises
             /// </summary>
             public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
             {
+                ValidateThreadAccess(1);
+
                 return new Deferred(cancelationToken);
             }
 

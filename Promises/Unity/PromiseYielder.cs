@@ -425,7 +425,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="yieldInstruction">Yield instruction.</param>
         /// <typeparam name="TYieldInstruction">The type of yieldInstruction.</typeparam>
-        public static Promise<TYieldInstruction> WaitFor<TYieldInstruction>(TYieldInstruction yieldInstruction) where TYieldInstruction : class // Class constraint to prevent boxing.
+        public static Promise<TYieldInstruction> WaitFor<TYieldInstruction>(TYieldInstruction yieldInstruction)
         {
             Routine<TYieldInstruction> routine = Routine<TYieldInstruction>.GetOrCreate();
             routine.Current = yieldInstruction;
