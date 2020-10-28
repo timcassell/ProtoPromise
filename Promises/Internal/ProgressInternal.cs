@@ -380,8 +380,8 @@ namespace Proto.Promises
 #endif
             public struct UnsignedFixed32
             {
-                private const uint DecimalMax = 1u << Config.ProgressDecimalBits;
-                private const uint DecimalMask = DecimalMax - 1u;
+                private const double DecimalMax = 1u << Config.ProgressDecimalBits;
+                private const uint DecimalMask = (1u << Config.ProgressDecimalBits) - 1u;
                 private const uint WholeMask = ~DecimalMask;
 
                 private uint _value;
@@ -391,14 +391,14 @@ namespace Proto.Promises
                     _value = wholePart << Config.ProgressDecimalBits;
                 }
 
-                public UnsignedFixed32(float decimalPart)
+                public UnsignedFixed32(double decimalPart)
                 {
                     // Don't bother rounding, we don't want to accidentally round to 1.0.
                     _value = (uint) (decimalPart * DecimalMax);
                 }
 
                 public uint WholePart { get { return _value >> Config.ProgressDecimalBits; } }
-                private double DecimalPart { get { return (double) DecimalPartAsUInt32 / (double) DecimalMax; } }
+                private double DecimalPart { get { return (double) DecimalPartAsUInt32 / DecimalMax; } }
                 private uint DecimalPartAsUInt32 { get { return _value & DecimalMask; } }
 
                 public uint ToUInt32()
@@ -431,11 +431,6 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Increment(uint increment)
-                {
-                    _value += increment;
-                }
-
                 public static bool operator >(UnsignedFixed32 a, UnsignedFixed32 b)
                 {
                     return a._value > b._value;
@@ -444,6 +439,35 @@ namespace Proto.Promises
                 public static bool operator <(UnsignedFixed32 a, UnsignedFixed32 b)
                 {
                     return a._value < b._value;
+                }
+            }
+
+            /// <summary>
+            /// Max Whole Number: 2^(64-<see cref="Config.ProgressDecimalBits"/>)
+            /// Precision: 1/(2^<see cref="Config.ProgressDecimalBits"/>)
+            /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            public struct UnsignedFixed64 // Simplified compared to UnsignedFixed32 to remove unused functions.
+            {
+                private const double DecimalMax = 1ul << Config.ProgressDecimalBits;
+                private const ulong DecimalMask = (1ul << Config.ProgressDecimalBits) - 1ul;
+
+                private ulong _value;
+
+                public ulong WholePart { get { return _value >> Config.ProgressDecimalBits; } }
+                private double DecimalPart { get { return (double) DecimalPartAsUInt32 / DecimalMax; } }
+                private ulong DecimalPartAsUInt32 { get { return _value & DecimalMask; } }
+
+                public double ToDouble()
+                {
+                    return (double) WholePart + DecimalPart;
+                }
+
+                public void Increment(uint increment)
+                {
+                    _value += increment;
                 }
             }
 

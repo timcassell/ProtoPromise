@@ -67,7 +67,7 @@ See <a href="https://github.com/timcassell/ProtoPromise/blob/master/ReleaseNotes
 - [Unity Yield Instructions and Coroutines Interoperability](#unity-yield-instructions-and-coroutines-interoperability)
 
 ## Promises/A+ Spec
-This promise library conforms to the <a href="https://promisesaplus.com/">Promises/A+ Spec</a> as far as is possible with C#, and further extends it to support Cancelations and Progress.
+This promise library conforms to the <a href="https://promisesaplus.com/">Promises/A+ Spec</a> as far as is possible with C# (using static typing instead of dynamic), and further extends it to support Cancelations and Progress.
 
 ## Creating a Promise for an Async Operation
 
@@ -232,12 +232,12 @@ If the delegate returns nothing/void, it will become a non-value promise. If it 
 
 ## Error Handling
 
-An error raised in a callback aborts the function and all subsequent callbacks in the chain:
+An error raised in a callback aborts the function and all subsequent onResolved callbacks in the chain, until an onRejected callback is encountered:
 ```cs
 promise
-    .Then(v => Something())                     // <--- An error here aborts all subsequent callbacks...
-    .Then(v => SomethingElse())
-    .Then(v => AnotherThing())
+    .Then(v => { throw new Exception(); return v; })      // <--- An error here aborts all subsequent callbacks...
+    .Then(v => DoSomething())
+    .Then(() => DoSomethingElse())
     .Catch((Exception e) => HandleError(e));    // <--- Until the error handler is invoked here.
 ```
 
@@ -273,7 +273,9 @@ rejectedPromise
 
 ### Unhandled Rejections
 
-When `Catch` is omitted, or none of the filters apply, a System.AggregateException (which contains Promise.UnhandledExceptions that wrap the rejections) is thrown the next time Promise.Manager.HandleCompletes(AndProgress) is called, which happens automatically every frame if you're in Unity. [You can optionally reroute unhandled rejections.](#configuration)
+When `Catch` is omitted, or none of the filters apply, a `System.AggregateException` (which contains `UnhandledException`s that wrap the rejections) is thrown the next time Promise.Manager.HandleCompletes(AndProgress) is called, which happens automatically every frame if you're in Unity. [You can optionally reroute unhandled rejections](#configuration) to prevent the AggregateException (This is routed to `UnityEngine.Debug.LogException` by default in Unity.)
+
+`UnhandledException`s contain the full causality trace so you can more easily debug what caused an error to occur in your async functions. Only available in `DEBUG` mode, for performance reasons (See [Compiler Options](#compiler-options)).
 
 ## Promises that are already settled
 
@@ -627,11 +629,31 @@ Starting with C# 7.0, we are now able to make task-like types which can be retur
 
 Promises are awaitable. This means you can use the `await` keyword to wait for the promise to complete in any `async` function, even if that function does not return a promise. If the promise is a value promise (`Promise<T>`), you can get the value from it like `T value = await promise`. If the promise is rejected, an `UnhandledException` is thrown. If the promise is canceled, a `CanceledException` is thrown.
 
+For example, the error retry method can be re-written using async/await like this:
+```cs
+public async Promise<string> Download(string url, int maxRetries = 0)
+{
+    try
+    {
+        return await Download(url);
+    }
+    catch
+    {
+        if (maxRetries <= 0)
+        {
+            throw; // Rethrow the rejection without processing it so that the caller can catch it.
+        }
+        Console.Log($"There was an error downloading {url}, retrying..."); 
+        return await Download(url, maxRetries - 1);
+    };
+}
+```
+
 #### Async/Await pitfalls
 
 There are some pitfalls to using the async and await features.
 
-If you've used Tasks, you are probably used to them throwing the exception that actually occurred instead of an exception wrapper. Promises throw a wrapper exception because the promise can be rejected with _any_ value, not just an exception. It also contains the full causality trace. At least you can still catch `OperationCanceledException` to catch cancelations the same way as Tasks (and, unlike with the normal `Promise.Then` API where catching cancelations is optional, you probably _should_ catch cancelation exceptions in an async function).
+If you've used Tasks, you are probably used to them throwing the exception that actually occurred instead of an exception wrapper. Promises throw a wrapper exception (`UnhandledException`) because the promise can be rejected with _any_ value, not just an exception. It also contains the full causality trace. At least you can still catch `OperationCanceledException` to catch cancelations the same way as Tasks (and, unlike with the normal `Promise.Then` API where catching cancelations is optional, you probably _should_ catch cancelation exceptions in an async function).
 
 The other thing, and this is more of an issue than exception handling, is that you can't report progress to the promise returned from the async function. This is probably why the designers of Tasks chose to use `Progress<T>` passed into functions instead of implementing it directly into Tasks. Therefore, if you use async Promise functions, I recommend you disable promise progress (See [Compiler Options](#compiler-options)).
 

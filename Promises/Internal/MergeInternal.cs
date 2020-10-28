@@ -135,8 +135,9 @@ namespace Proto.Promises
             partial class MergePromise<T> : IInvokable
             {
                 // These are used to avoid rounding errors when normalizing the progress.
-                private uint _expected;
-                private UnsignedFixed32 _currentAmount;
+                // Use 64 bits to allow combining many promises with very deep chains.
+                private double _progressScaler;
+                private UnsignedFixed64 _unscaledProgress;
                 private bool _invokingProgress;
 
                 protected override void Reset()
@@ -146,10 +147,10 @@ namespace Proto.Promises
 #endif
                     {
                         base.Reset();
-                        _currentAmount = default(UnsignedFixed32);
+                        _unscaledProgress = default(UnsignedFixed64);
                         _invokingProgress = false;
 
-                        uint expectedProgressCounter = 0;
+                        ulong expectedProgressCounter = 0L;
                         uint maxWaitDepth = 0;
                         foreach (var passThrough in _passThroughs)
                         {
@@ -161,10 +162,10 @@ namespace Proto.Promises
                                 maxWaitDepth = Math.Max(maxWaitDepth, waitDepth);
                             }
                         }
-                        _expected = expectedProgressCounter + _waitCount;
 
                         // Use the longest chain as this depth.
                         _waitDepthAndProgress = new UnsignedFixed32(maxWaitDepth);
+                        _progressScaler = (double) NextWholeProgress / (double) (expectedProgressCounter + _waitCount);
                     }
                 }
 
@@ -196,10 +197,7 @@ namespace Proto.Promises
 
                 protected override UnsignedFixed32 CurrentProgress()
                 {
-                    // Calculate the normalized progress for all the awaited promises.
-                    // Use double for better precision. Scale to the calculated depth.
-                    double progress = _currentAmount.ToDouble() * NextWholeProgress / (double) _expected;
-                    return new UnsignedFixed32((float) progress);
+                    return new UnsignedFixed32(_unscaledProgress.ToDouble() * _progressScaler);
                 }
 
                 void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
@@ -209,7 +207,7 @@ namespace Proto.Promises
 
                 private void IncrementProgress(uint amount)
                 {
-                    _currentAmount.Increment(amount);
+                    _unscaledProgress.Increment(amount);
                     if (!_invokingProgress & _state == State.Pending)
                     {
                         RetainInternal();

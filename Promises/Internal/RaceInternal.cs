@@ -262,8 +262,7 @@ namespace Proto.Promises
                 void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
                     // Use double for better precision.
-                    float progress = (float) (senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
-                    var newAmount = new UnsignedFixed32(progress);
+                    var newAmount = new UnsignedFixed32(senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
                     if (newAmount > _currentAmount)
                     {
                         _currentAmount = newAmount;
@@ -349,8 +348,7 @@ namespace Proto.Promises
                 void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
                     // Use double for better precision.
-                    float progress = (float) (senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
-                    var newAmount = new UnsignedFixed32(progress);
+                    var newAmount = new UnsignedFixed32(senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
                     if (newAmount > _currentAmount)
                     {
                         _currentAmount = newAmount;

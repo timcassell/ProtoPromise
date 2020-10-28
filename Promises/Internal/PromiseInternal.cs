@@ -341,7 +341,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal abstract partial class PromiseIntermediate : Promise
+            internal abstract class PromiseIntermediate : Promise
             {
 #if !CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
                 protected override sealed void Execute(object valueContainer)
@@ -356,7 +356,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal abstract partial class PromiseIntermediate<T> : Promise<T>
+            internal abstract class PromiseIntermediate<T> : Promise<T>
             {
 #if !CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
                 protected override sealed void Execute(object valueContainer)
