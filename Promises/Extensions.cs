@@ -44,7 +44,6 @@ namespace Proto.Promises
         {
             // No thread safety in the Promise library yet, so try to force continuation on main thread.
             // User must call this method from the main thread in order for this to work.
-            ValidateThreadAccess(1);
             await task.ConfigureAwait(true);
         }
 
@@ -55,7 +54,6 @@ namespace Proto.Promises
         {
             // No thread safety in the Promise library yet, so try to force continuation on main thread.
             // User must call this method from the main thread in order for this to work.
-            ValidateThreadAccess(1);
             return await task.ConfigureAwait(true);
         }
 #endif

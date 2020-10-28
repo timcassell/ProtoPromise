@@ -356,6 +356,7 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         public static PromiseMethodBuilder Create()
         {
+            Internal.ValidateThreadAccess(1);
             return new PromiseMethodBuilder()
             {
                 _promise = AsyncPromise.GetOrCreate()
@@ -494,6 +495,7 @@ namespace Proto.Promises.Async.CompilerServices
         [DebuggerHidden]
         public static PromiseMethodBuilder<T> Create()
         {
+            Internal.ValidateThreadAccess(1);
             return new PromiseMethodBuilder<T>()
             {
                 _promise = AsyncPromise.GetOrCreate()
