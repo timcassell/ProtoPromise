@@ -1,0 +1,15 @@
+﻿To create the UnityPackage for releases:
+
+1. Delete existing `ProtoPromise_Unity/Assets/ThirdParty/ProtoPromise/Scripts` directory.
+2. Copy the `Runtime/ProtoPromise` folder into `ProtoPromise_Unity/Assets/ThirdParty/ProtoPromise` and rename it to `Scripts`.
+3. Copy `ReleaseNotes.md` and `LICENSE` into the `ProtoPromise` directory.
+4. Edit `README.md` to remove the `## Getting Started` and `## Latest Updates` sections, then convert it to `README.pdf` (can use https://www.markdowntopdf.com/) and place it in the `ProtoPromise` directory (discard the changes to `README.md` before git commit).
+5. In the Unity editor, right-click the `ProtoPromise` folder and click `Export Package...`, include everything, then click `Export...` and name the exported file `ProtoPromise.unitypackage`.
+6. Upload `ProtoPromise.unitypackage` with the release on GitHub.
+7. Upload and publish new Unity Asset Store version.
+8. Repeat these steps for each new release.
+
+Unity version may need to be updated to use the earliest version that the Asset Store Tools supports.
+
+
+By default, ProtoPromise types are marked with the DebuggerNonUserCode attribute, making it impossible to step into the library code with Visual Studio's debugger. To disable this (or rather, to enable debugging), define the compiler symbol `PROTO_PROMISE_DEVELOPER_MODE`.

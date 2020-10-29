@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netcoreapp3.1;netstandard2.1;netstandard2.0</TargetFrameworks>
+    <RootNamespace>ProtoPromise</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DefineConstants>CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="ProtoPromise\Promises\Unity\**" />
+    <EmbeddedResource Remove="ProtoPromise\Promises\Unity\**" />
+    <None Remove="ProtoPromise\Promises\Unity\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove=".gitignore" />
+    <None Remove="DeveloperNotes.txt" />
+    <None Remove="ProtoPromise\ProtoPromise.asmdef" />
+    <None Remove="ProtoPromise\ProtoPromise.asmdef.meta" />
+  </ItemGroup>
+
+</Project>

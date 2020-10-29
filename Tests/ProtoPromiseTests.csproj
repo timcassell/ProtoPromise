@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DefineConstants>CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="ProtoPromiseTests\ProtoPromiseTests.asmdef" />
+    <None Remove="ProtoPromiseTests\ProtoPromiseTests.asmdef.meta" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NUnit" Version="3.12.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.16.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Runtime\ProtoPromise.csproj" />
+  </ItemGroup>
+
+</Project>
