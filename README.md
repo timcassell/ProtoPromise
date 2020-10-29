@@ -9,6 +9,8 @@ ProtoPromise took inspiration from [ES6 Promises](https://developer.mozilla.org/
 
 This library conforms to the [Promises/A+ Spec](https://promisesaplus.com/) as far as is possible with C# (using static typing instead of dynamic), and further extends it to support Cancelations and Progress. It also is fully interoperable with C#'s `Task`s and Unity's Coroutines.
 
+Also check out the [C# Asynchronous Benchmarks](https://github.com/timcassell/CSharpAsynchronousBenchmarks) project!
+
 ## Latest Updates
 
 ### v 1.0.0

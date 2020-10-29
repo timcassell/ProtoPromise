@@ -20,6 +20,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="ProtoPromise\Utilities\AggregateException.cs" />
+    <Compile Remove="ProtoPromise\Utilities\ValueTuple.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove=".gitignore" />
     <None Remove="DeveloperNotes.txt" />
     <None Remove="ProtoPromise\ProtoPromise.asmdef" />
