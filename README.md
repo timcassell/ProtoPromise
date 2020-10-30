@@ -82,13 +82,14 @@ Also check out the [C# Asynchronous Benchmarks](https://github.com/timcassell/CS
 2. Extract the source code from the zip.
 3. Now you have 2 options:
     A. Use dll
-        1. Open the ProtoPromise.sln in Visual Studio 2019.
-        2. Set the compiler symbol `PROTO_PROMISE_PROGRESS_DISABLE` if you want to disable progress.
+        1. Open the ProtoPromise.sln in Visual Studio 2019 or later.
+        2. Select the configuration you want (Release/Debug With(out) Progress).
         3. Build the solution.
         4. Select the dll you want to use under `Runtime/bin` and use that in your own project.
     B. Use source code
-        1. Place the entire `Runtime` folder in your project directory and add the `ProtoPromise.csproj` project reference to your solution.
-        2. Set the compiler symbol `PROTO_PROMISE_PROGRESS_DISABLE` if you want to disable progress.
+        1. (optional) Place the entire `Runtime` folder in your project directory.
+        2. Add the `ProtoPromise.csproj` project reference to your solution (Visual Studio).
+        3. Set the compiler symbol `PROTO_PROMISE_PROGRESS_DISABLE` if you want to disable progress.
 4. When you have the ProtoPromise assembly referenced in your project, once per frame (or application update loop), call `Proto.Promises.Promise.Manager.HandleCompletesAndProgress()`, ideally as the last thing before the frame is rendered (or the update loop starts over). This should only be done on the UI/main thread.
 5. Continue to [Creating a Promise for an Async Operation](#creating-a-promise-for-an-async-operation).
 
