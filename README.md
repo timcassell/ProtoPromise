@@ -3,27 +3,29 @@
     <img src="https://promisesaplus.com/assets/logo-small.png" alt="Promises/A+ logo"
          title="Promises/A+ 1.1 compliant" align="right" />
 </a>
-Promise library for C# for management of asynchronous operations.
+Most efficient C# library for management of asynchronous operations.
 
-This library is fully interoperable with C#'s `Task`s and Unity's Coroutines.
+ProtoPromise took inspiration from [ES6 Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) (javascript), [RSG Promises](https://github.com/Real-Serious-Games/C-Sharp-Promise) (C#), [uPromise](https://assetstore.unity.com/packages/tools/upromise-15604) (C#/Unity), and [TPL](https://docs.microsoft.com/en-us/dotnet/standard/parallel-programming/task-parallel-library-tpl) and improved upon their short-comings.
 
-Made with Unity 3D in mind, but will work for any C# application with a slight modification.
+This library conforms to the [Promises/A+ Spec](https://promisesaplus.com/) as far as is possible with C# (using static typing instead of dynamic), and further extends it to support Cancelations and Progress. It also is fully interoperable with C#'s `Task`s and Unity's Coroutines.
 
-This library took inspiration from <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">ES6 Promises</a> (javascript), <a href="https://github.com/Real-Serious-Games/C-Sharp-Promise">RSG Promises</a> (C#), and <a href="https://assetstore.unity.com/packages/tools/upromise-15604">uPromise</a> (C#/Unity) and improved upon their short-comings.
+Also check out the [C# Asynchronous Benchmarks](https://github.com/timcassell/CSharpAsynchronousBenchmarks) project!
 
 ## Latest Updates
 
-### v 0.11.0
+### v 1.0.0
 
-- Added object pooling for allocation-free `async Promise` functions.
-- Fixed causality traces in async Promise functions.
-- Fixed aggregate exception not capturing the unhandled exceptions.
-
-See <a href="https://github.com/timcassell/ProtoPromise/blob/master/ReleaseNotes.md">Release Notes</a> for detailed changes.
+- Fixed PromiseMethodBuilders in non-IL2CPP builds when the TStateMachine is a struct.
+- Fixed various progress bugs.
+- Fixed CancelationToken.Equals(object).
+- Added thread checks to make sure the library is only used with one thread (in DEBUG mode only).
+- Removed class restriction on PromiseYielder.WaitFor (since there are some structs that can be yielded in Coroutines, like `AsyncOperationHandle`s).
 
 ## Contents
 
-- [Promises/A+ Spec](#promisesa-spec)
+- [Getting Started](#getting-started)
+    - [Unity](#unity)
+    - [DotNet and Mono](#dotnet-and-mono)
 - [Creating a Promise for an Async Operation](#creating-a-promise-for-an-async-operation)
     - [Creating a Promise, Alternate Method](#creating-a-promise-alternate-method)
 - [Waiting for an Async Operation to Complete](#waiting-for-an-async-operation-to-complete)
@@ -66,8 +68,30 @@ See <a href="https://github.com/timcassell/ProtoPromise/blob/master/ReleaseNotes
 - [Task Interoperability](#task-interoperability)
 - [Unity Yield Instructions and Coroutines Interoperability](#unity-yield-instructions-and-coroutines-interoperability)
 
-## Promises/A+ Spec
-This promise library conforms to the <a href="https://promisesaplus.com/">Promises/A+ Spec</a> as far as is possible with C# (using static typing instead of dynamic), and further extends it to support Cancelations and Progress.
+## Getting Started
+
+### Unity
+
+1. Go to the latest [release](https://github.com/timcassell/ProtoPromise/releases) and download the unitypackage.
+2. Import the unitypackage into your Unity project.
+3. Continue to [Creating a Promise for an Async Operation](#creating-a-promise-for-an-async-operation).
+
+### DotNet and Mono
+
+1. Go to the latest [release](https://github.com/timcassell/ProtoPromise/releases) and download the source code.
+2. Extract the source code from the zip.
+3. Now you have 2 options:
+    A. Use dll
+        1. Open the ProtoPromise.sln in Visual Studio 2019 or later.
+        2. Select the configuration you want (Release/Debug With(out) Progress).
+        3. Build the solution.
+        4. Select the dll you want to use under `Runtime/bin` and use that in your own project.
+    B. Use source code
+        1. (optional) Place the entire `Runtime` folder in your project directory.
+        2. Add the `ProtoPromise.csproj` project reference to your solution (Visual Studio).
+        3. Set the compiler symbol `PROTO_PROMISE_PROGRESS_DISABLE` if you want to disable progress.
+4. When you have the ProtoPromise assembly referenced in your project, once per frame (or application update loop), call `Proto.Promises.Promise.Manager.HandleCompletesAndProgress()`, ideally as the last thing before the frame is rendered (or the update loop starts over). This should only be done on the UI/main thread.
+5. Continue to [Creating a Promise for an Async Operation](#creating-a-promise-for-an-async-operation).
 
 ## Creating a Promise for an Async Operation
 

@@ -32,7 +32,11 @@ bld/
 .vs/
 # Uncomment if you have tasks that create the project's static files in wwwroot
 #wwwroot/
-
+ 
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+ 
 # NUNIT
 *.VisualState.xml
 TestResult.xml
@@ -68,7 +72,10 @@ artifacts/
 *.pidb
 *.svclog
 *.scc
-
+ 
+# Chutzpah Test files
+_Chutzpah*
+ 
 # Visual C++ cache files
 ipch/
 *.aps
@@ -85,7 +92,63 @@ ipch/
 *.vsp
 *.vspx
 *.sap
-
+ 
+# TFS 2012 Local Workspace
+$tf/
+ 
+# Guidance Automation Toolkit
+*.gpState
+ 
+# ReSharper is a .NET coding add-in
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+ 
+# JustCode is a .NET coding add-in
+.JustCode
+ 
+# TeamCity is a build add-in
+_TeamCity*
+ 
+# DotCover is a Code Coverage Tool
+*.dotCover
+ 
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+ 
+# MightyMoose
+*.mm.*
+AutoTest.Net/
+ 
+# Web workbench (sass)
+.sass-cache/
+ 
+# Installshield output folder
+[Ee]xpress/
+ 
+# DocProject is a documentation generator add-in
+DocProject/buildhelp/
+DocProject/Help/*.HxT
+DocProject/Help/*.HxC
+DocProject/Help/*.hhc
+DocProject/Help/*.hhk
+DocProject/Help/*.hhp
+DocProject/Help/Html2
+DocProject/Help/html
+ 
+# Click-Once directory
+publish/
+ 
+# Publish Web Output
+*.[Pp]ublish.xml
+*.azurePubxml
+# TODO: Comment the next line if you want to checkin your web deploy settings
+# but database connection strings (with potential passwords) will be unencrypted
+*.pubxml
+*.publishproj
+ 
 # Microsoft Azure Web App publish settings. Comment the next line if you want to
 # checkin your Azure Web App publish settings, but sensitive information contained
 # in these scripts will be unencrypted
@@ -133,7 +196,14 @@ ClientBin/
 *.publishsettings
 node_modules/
 orleans.codegen.cs
-
+ 
+# Since there are multiple workflows, uncomment next line to ignore bower_components
+# (https://github.com/github/gitignore/pull/1529#issuecomment-104372622)
+#bower_components/
+ 
+# RIA/Silverlight projects
+Generated_Code/
+ 
 # Backup & report files from converting an old project file
 # to a newer Visual Studio version. Backup files are not needed,
 # because we have git ;-)
@@ -145,7 +215,12 @@ UpgradeLog*.htm
 # SQL Server files
 *.mdf
 *.ldf
-
+ 
+# Business Intelligence projects
+*.rdl.data
+*.bim.layout
+*.bim_*.settings
+ 
 # Microsoft Fakes
 FakesAssemblies/
  
@@ -160,7 +235,15 @@ FakesAssemblies/
  
 # Visual Studio 6 workspace options file
 *.opt
-
+ 
+# Visual Studio LightSwitch build output
+**/*.HTMLClient/GeneratedArtifacts
+**/*.DesktopClient/GeneratedArtifacts
+**/*.DesktopClient/ModelManifest.xml
+**/*.Server/GeneratedArtifacts
+**/*.Server/ModelManifest.xml
+_Pvt_Extensions
+ 
 # Paket dependency manager
 .paket/paket.exe
 paket-files/
@@ -186,5 +269,7 @@ paket-files/
 # Unity3D Generated File On Crash Reports
 sysinfo.txt
 *.blend1
+*.csproj
+*.sln
 [Ll]ibrary/
 [Ll]ibraries/
