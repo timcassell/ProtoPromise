@@ -3,23 +3,31 @@
   <PropertyGroup>
     <TargetFrameworks>netcoreapp3.1;netstandard2.1;netstandard2.0</TargetFrameworks>
     <RootNamespace>ProtoPromise</RootNamespace>
+    <DefineConstants>TRACE;CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER</DefineConstants>
     <Configurations>Debug With Progress;Release Without Progress;Release With Progress;Debug Without Progress</Configurations>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release With Progress|AnyCPU'">
-    <DefineConstants>CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER</DefineConstants>
+    <DefineConstants>$(DefineConstants);RELEASE</DefineConstants>
+	  <DebugSymbols>false</DebugSymbols>
+	  <DebugType>portable</DebugType>
+	  <Optimize>true</Optimize>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Without Progress|AnyCPU'">
-    <DefineConstants>CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
+    <DefineConstants>$(DefineConstants);RELEASE;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
+	  <DebugSymbols>false</DebugSymbols>
+	  <DebugType>portable</DebugType>
+	  <Optimize>true</Optimize>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug With Progress|AnyCPU'">
-    <DefineConstants>DEBUG;CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER</DefineConstants>
+    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Without Progress|AnyCPU'">
-    <DefineConstants>DEBUG;CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
+    <DefineConstants>$(DefineConstants);DEBUG;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
