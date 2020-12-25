@@ -4,9 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0051 // Remove unused private members
-#pragma warning disable IDE0060 // Remove unused parameter
-
 #if CSHARP_7_OR_LATER
 using System.Threading.Tasks;
 #endif
@@ -14,7 +11,7 @@ using System.Threading.Tasks;
 namespace Proto.Promises
 {
     [System.Diagnostics.DebuggerNonUserCode]
-    public static partial class Extensions
+    public static class Extensions
     {
 #if CSHARP_7_OR_LATER
         /// <summary>
@@ -22,8 +19,6 @@ namespace Proto.Promises
         /// </summary>
         public static async Task ToTask(this Promise promise)
         {
-            ValidateThreadAccess(1);
-
             await promise;
         }
 
@@ -32,8 +27,6 @@ namespace Proto.Promises
         /// </summary>
         public static async Task<T> ToTask<T>(this Promise<T> promise)
         {
-            ValidateThreadAccess(1);
-
             return await promise;
         }
 
@@ -42,9 +35,7 @@ namespace Proto.Promises
         /// </summary>
         public static async Promise ToPromise(this Task task)
         {
-            // No thread safety in the Promise library yet, so try to force continuation on main thread.
-            // User must call this method from the main thread in order for this to work.
-            await task.ConfigureAwait(true);
+            await task;
         }
 
         /// <summary>
@@ -52,18 +43,7 @@ namespace Proto.Promises
         /// </summary>
         public static async Promise<T> ToPromise<T>(this Task<T> task)
         {
-            // No thread safety in the Promise library yet, so try to force continuation on main thread.
-            // User must call this method from the main thread in order for this to work.
-            return await task.ConfigureAwait(true);
-        }
-#endif
-
-        // Calls to this get compiled away in RELEASE mode
-        static partial void ValidateThreadAccess(int skipFrames);
-#if PROMISE_DEBUG
-        static partial void ValidateThreadAccess(int skipFrames)
-        {
-            Internal.ValidateThreadAccess(skipFrames + 1);
+            return await task;
         }
 #endif
     }

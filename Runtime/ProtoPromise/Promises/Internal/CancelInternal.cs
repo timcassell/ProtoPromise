@@ -9,67 +9,45 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-#pragma warning disable IDE0018 // Inline variable declarations
-#pragma warning disable IDE0034 // Simplify 'default' expression
-
 namespace Proto.Promises
 {
-    partial class Promise : Internal.ICancelDelegate
+    partial class Internal
     {
-        private void CancelDirect()
+        partial class PromiseRef : ICancelDelegate
         {
-            _state = State.Canceled;
-            var cancelContainer = Internal.CancelContainerVoid.GetOrCreate();
-            _valueOrPrevious = cancelContainer;
-            AddBranchesToHandleQueueBack(cancelContainer);
-            CancelProgressListeners();
-            Internal.AddToHandleQueueFront(this);
-        }
+            internal virtual void CancelCallbacks() { }
 
-        protected void CancelDirect<TCancel>(ref TCancel reason)
-        {
-            _state = State.Canceled;
-            var cancelContainer = Internal.CreateCancelContainer(ref reason);
-            cancelContainer.Retain();
-            _valueOrPrevious = cancelContainer;
-            AddBranchesToHandleQueueBack(cancelContainer);
-            CancelProgressListeners();
-            Internal.AddToHandleQueueFront(this);
-        }
-
-        protected virtual void CancelCallbacks() { }
-
-        void Internal.ICancelDelegate.Invoke(Internal.ICancelValueContainer valueContainer)
-        {
-            CancelCallbacks();
-            CancelProgressListeners();
-
-            object currentValue = _valueOrPrevious;
-            _valueOrPrevious = valueContainer;
-            valueContainer.Retain();
-
-            // This might be called synchronously when it's registered to an already canceled token. In that case, _valueOrPrevious will be null.
-            if (currentValue == null)
+            void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
-                return;
+                CancelCallbacks();
+                CancelProgressListeners();
+
+                object currentValue = _valueOrPrevious;
+                _valueOrPrevious = valueContainer;
+                valueContainer.Retain();
+
+                // This might be called synchronously when it's registered to an already canceled token. In that case, _valueOrPrevious will be null.
+                if (currentValue == null)
+                {
+                    return;
+                }
+
+                // Otherwise, the promise is either waiting for its previous, or it's in the handle queue.
+                if (currentValue is Promise)
+                {
+                    // Remove this from previous' next branches.
+                    ((ITreeHandleableCollection) currentValue).Remove(this);
+                    AddToHandleQueueBack(this);
+                }
+                else
+                {
+                    // Rejection maybe wasn't caught.
+                    ((IValueContainer) currentValue).ReleaseAndMaybeAddToUnhandledStack();
+                    // Don't add to handle queue since it's already in it.
+                }
             }
 
-            // Otherwise, the promise is either waiting for its previous, or it's in the handle queue.
-            if (currentValue is Promise)
-            {
-                // Remove this from previous' next branches.
-                ((Internal.ITreeHandleableCollection) currentValue).Remove(this);
-                Internal.AddToHandleQueueBack(this);
-            }
-            else
-            {
-                // Rejection maybe wasn't caught.
-                ((Internal.IValueContainer) currentValue).ReleaseAndMaybeAddToUnhandledStack();
-                // Don't add to handle queue since it's already in it.
-            }
+            void ICancelDelegate.Dispose() { }
         }
-
-        void Internal.ICancelDelegate.Dispose() { }
     }
 }

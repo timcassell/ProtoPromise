@@ -14,7 +14,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
 #endif
-    public partial struct CancelationRegistration : IEquatable<CancelationRegistration>
+    public struct CancelationRegistration : IEquatable<CancelationRegistration>
     {
         private readonly Internal.CancelationRef _ref;
         private readonly uint _order;
@@ -37,7 +37,6 @@ namespace Proto.Promises
         {
             get
             {
-                ValidateThreadAccess(1);
                 return _ref != null && _ref.IsRegistered(_id, _order);
             }
         }
@@ -59,7 +58,6 @@ namespace Proto.Promises
         /// <returns>true if the callback was previously registered and not yet invoked, false otherwise</returns>
         public bool TryUnregister()
         {
-            ValidateThreadAccess(1);
             if (_ref == null)
             {
                 return false;
@@ -113,14 +111,5 @@ namespace Proto.Promises
         {
             return !(c1 == c2);
         }
-
-        // Calls to these get compiled away in RELEASE mode
-        static partial void ValidateThreadAccess(int skipFrames);
-#if PROMISE_DEBUG
-        static partial void ValidateThreadAccess(int skipFrames)
-        {
-            Internal.ValidateThreadAccess(skipFrames + 1);
-        }
-#endif
     }
 }

@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-
 using System;
 using System.Diagnostics;
 

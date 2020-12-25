@@ -10,97 +10,110 @@
 #endif
 
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
-#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
+using System.Runtime.CompilerServices;
 using Proto.Utils;
 
 namespace Proto.Promises
 {
-    partial class Promise
+    partial class Internal
     {
-        partial class InternalProtected
+        partial class PromiseRef
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class MergePromise<T> : PromiseIntermediate<T>, IMultiTreeHandleable
+            internal sealed partial class MergePromise : PromiseRef, IMultiTreeHandleable
             {
-                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
-
-                static MergePromise()
+                private struct Creator : ICreator<MergePromise>
                 {
-                    Internal.OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public MergePromise Create()
                     {
-                        _pool.Push(this);
+                        return new MergePromise();
                     }
                 }
 
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
-                Action<Internal.IValueContainer, Internal.ResolveContainer<T>, int> _onPromiseResolved;
+                private Action<IValueContainer, object, int> _onPromiseResolved;
                 private uint _waitCount;
                 private bool _pending;
 
                 private MergePromise() { }
 
-                public static MergePromise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref T value, Action<Internal.IValueContainer, Internal.ResolveContainer<T>, int> onPromiseResolved, int count)
+                protected override void Dispose()
                 {
-                    var promise = _pool.IsNotEmpty ? (MergePromise<T>) _pool.Pop() : new MergePromise<T>();
+                    base.Dispose();
+                    _onPromiseResolved = null;
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
 
-                    promise._passThroughs = promisePassThroughs;
+                private static MergePromise Create()
+                {
+                    return ObjectPool<ITreeHandleable>.GetOrCreate<MergePromise, Creator>(new Creator());
+                }
+
+                public static MergePromise GetOrCreate<T>(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref T value, Action<IValueContainer, object, int> onPromiseResolved, int count)
+                {
+                    var promise = Create();
                     promise._onPromiseResolved = onPromiseResolved;
-
-                    promise._waitCount = (uint) count;
-                    promise.Reset();
-                    promise._pending = true;
-                    // Retain this until all promises resolve/reject/cancel.
-                    promise.RetainInternal();
-
-                    var container = Internal.ResolveContainer<T>.GetOrCreate(ref value);
+                    var container = ResolveContainer<T>.GetOrCreate(ref value);
                     container.Retain();
                     promise._valueOrPrevious = container;
-
-                    foreach (var passThrough in promisePassThroughs)
-                    {
-                        passThrough.SetTargetAndAddToOwner(promise);
-                    }
+                    promise.Setup(promisePassThroughs, count);
                     return promise;
                 }
 
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
-                private
-#endif
-                protected override void Execute(Internal.IValueContainer valueContainer)
+                public static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
+                {
+                    var promise = Create();
+                    promise._onPromiseResolved = (_, __, ___) => { };
+                    promise._valueOrPrevious = ResolveContainerVoid.GetOrCreate();
+                    promise.Setup(promisePassThroughs, count);
+                    return promise;
+                }
+
+                private void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
+                {
+                    _passThroughs = promisePassThroughs;
+                    _waitCount = (uint) count;
+                    Reset();
+                    _pending = true;
+                    // Retain this until all promises resolve/reject/cancel.
+                    RetainInternal();
+
+                    foreach (var passThrough in promisePassThroughs)
+                    {
+                        passThrough.SetTargetAndAddToOwner(this);
+                    }
+                }
+
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     HandleSelf(valueContainer);
                 }
 
-                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, PromisePassThrough passThrough, int index)
+                bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index)
                 {
-                    Promise owner = passThrough.Owner;
+                    PromiseRef owner = passThrough.Owner;
                     bool done = --_waitCount == 0;
                     bool handle = false;
                     if (_pending)
                     {
                         owner._wasWaitedOn = true;
-                        if (owner._state != State.Resolved)
+                        if (owner._state != Promise.State.Resolved)
                         {
                             _pending = false;
-                            ((Internal.ResolveContainer<T>) _valueOrPrevious).Release();
+                            ((IValueContainer) _valueOrPrevious).Release();
                             valueContainer.Retain();
                             _valueOrPrevious = valueContainer;
                             handle = true;
                         }
                         else
                         {
-                            _onPromiseResolved.Invoke(valueContainer, (Internal.ResolveContainer<T>) _valueOrPrevious, index);
+                            _onPromiseResolved.Invoke(valueContainer, _valueOrPrevious, index);
                             if (done)
                             {
                                 _pending = false;
@@ -132,7 +145,7 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class MergePromise<T> : IInvokable
+            partial class MergePromise : IInvokable
             {
                 // These are used to avoid rounding errors when normalizing the progress.
                 // Use 64 bits to allow combining many promises with very deep chains.
@@ -154,7 +167,7 @@ namespace Proto.Promises
                         uint maxWaitDepth = 0;
                         foreach (var passThrough in _passThroughs)
                         {
-                            Promise owner = passThrough.Owner;
+                            PromiseRef owner = passThrough.Owner;
                             if (owner != null)
                             {
                                 uint waitDepth = owner._waitDepthAndProgress.WholePart;
@@ -174,19 +187,19 @@ namespace Proto.Promises
                     IncrementProgress(passThrough.GetProgressDifferenceToCompletion());
                 }
 
-                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
+                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous)
                 {
                     // This is guaranteed to be pending.
                     previous = this;
                     return true;
                 }
 
-                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     progressListener.Retain();
                     _progressListeners.Push(progressListener);
-                    if (firstSubscribe & _state == State.Pending)
+                    if (firstSubscribe & _state == Promise.State.Pending)
                     {
                         BorrowPassthroughs(ref passThroughs);
                     }
@@ -208,7 +221,7 @@ namespace Proto.Promises
                 private void IncrementProgress(uint amount)
                 {
                     _unscaledProgress.Increment(amount);
-                    if (!_invokingProgress & _state == State.Pending)
+                    if (!_invokingProgress & _state == Promise.State.Pending)
                     {
                         RetainInternal();
                         _invokingProgress = true;
@@ -218,7 +231,7 @@ namespace Proto.Promises
 
                 void IInvokable.Invoke()
                 {
-                    if (_state != State.Pending)
+                    if (_state != Promise.State.Pending)
                     {
                         ReleaseInternal();
                         return;

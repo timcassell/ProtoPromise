@@ -9,211 +9,117 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0041 // Use 'is null' check
-
-using System;
 using Proto.Utils;
-
-#if PROMISE_DEBUG
-using System.Diagnostics;
-#endif
 
 namespace Proto.Promises
 {
-    partial class Promise
+    partial class Internal
     {
+#if !PROMISE_PROGRESS
+        internal static void ThrowProgressException(int skipFrames)
+        {
+            throw new InvalidOperationException("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", GetFormattedStacktrace(skipFrames + 1));
+        }
+#endif
+
         // Calls to these get compiled away in RELEASE mode
-        static partial void ValidateThreadAccess(int skipFrames, bool warn = true);
-        static partial void ValidateOperation(Promise promise, int skipFrames);
-        static partial void ValidateProgress(float progress, int skipFrames);
-        static partial void ValidateArgument(object arg, string argName, int skipFrames);
-        partial void ValidateReturn(Promise other);
-        static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames);
-        static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames);
+        partial class PromiseRef
+        {
+            static partial void ValidateOperation(Promise promise, int skipFrames);
+            static partial void ValidateArgument(object arg, string argName, int skipFrames);
+            partial void ValidateReturn(Promise other);
+        }
 
-        static partial void SetCreatedStacktrace(Internal.ITraceable traceable, int skipFrames);
-        partial void SetNotDisposed();
-        static partial void SetCurrentInvoker(Internal.ITraceable current);
-        static partial void ClearCurrentInvoker();
 #if PROMISE_DEBUG
-        static partial void ValidateThreadAccess(int skipFrames, bool warn)
-        {
-            Internal.ValidateThreadAccess(skipFrames + 1, warn);
-        }
-
-        private static readonly object disposedObject = DisposedChecker.instance;
-
-        private static int idCounter;
-        protected readonly int _id;
-
-        private ushort _userRetainCounter;
-        Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
-
-        static partial void SetCurrentInvoker(Internal.ITraceable current)
-        {
-            Internal.SetCurrentInvoker(current);
-        }
-
-        static partial void ClearCurrentInvoker()
-        {
-            Internal.ClearCurrentInvoker();
-        }
-
-        partial void SetNotDisposed()
-        {
-            _valueOrPrevious = null;
-        }
-
-        static partial void SetCreatedStacktrace(Internal.ITraceable traceable, int skipFrames)
-        {
-            Internal.SetCreatedStacktrace(traceable, skipFrames + 1);
-        }
-
-        partial void ValidateReturn(Promise other)
-        {
-            if (other == null)
-            {
-                // Returning a null from the callback is not allowed.
-                throw new InvalidReturnException("A null promise was returned.");
-            }
-
-            // Validate returned promise as not disposed.
-            if (IsDisposed(other._valueOrPrevious))
-            {
-                throw new InvalidReturnException("A disposed promise was returned.", Internal.GetFormattedStacktrace(other));
-            }
-
-            // A promise cannot wait on itself.
-
-            // This allows us to check All/Race/First Promises iteratively.
-            ValueLinkedStack<InternalProtected.PromisePassThrough> passThroughs = new ValueLinkedStack<InternalProtected.PromisePassThrough>();
-            var prev = other;
-        Repeat:
-            for (; prev != null; prev = prev._valueOrPrevious as Promise)
-            {
-                if (prev == this)
-                {
-                    throw new InvalidReturnException("Circular Promise chain detected.", Internal.GetFormattedStacktrace(other));
-                }
-                prev.BorrowPassthroughs(ref passThroughs);
-            }
-
-            if (passThroughs.IsNotEmpty)
-            {
-                // passThroughs are removed from their targets before adding to passThroughs. Add them back here.
-                var passThrough = passThroughs.Pop();
-                prev = passThrough.Owner;
-                passThrough.Target.ReAdd(passThrough);
-                goto Repeat;
-            }
-        }
-
-        protected static void ValidateProgressValue(float value, int skipFrames)
+        internal static void ValidateProgressValue(float value, int skipFrames)
         {
             const string argName = "progress";
-            if (value < 0f || value > 1f || float.IsNaN(value))
+            bool isBetween01 = value >= 0f && value <= 1f;
+            if (!isBetween01)
             {
-                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1.", Internal.GetFormattedStacktrace(skipFrames + 1));
+                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1.", GetFormattedStacktrace(skipFrames + 1));
             }
         }
 
-        private static bool IsDisposed(object valueContainer)
+        internal static void ValidateOperation(Promise promise, int skipFrames)
         {
-            return ReferenceEquals(valueContainer, DisposedChecker.instance);
-        }
-
-        static protected void ValidateNotDisposed(object valueContainer, int skipFrames)
-        {
-            Internal.ValidateThreadAccess(skipFrames + 1);
-            if (IsDisposed(valueContainer))
+            if (!promise.IsValid)
             {
-                throw new PromiseDisposedException("Always nullify your references when you are finished with them!" +
-                    " Call Retain() if you want to perform operations after the object has finished. Remember to call Release() when you are finished with it!"
-                    , Internal.GetFormattedStacktrace(skipFrames + 1));
+                throw new InvalidOperationException("Promise is invalid." +
+                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
+                    " Remember to call `Forget()` when you are finished with it!",
+                    GetFormattedStacktrace(skipFrames + 1));
             }
         }
 
-        static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames)
+        partial class PromiseRef
         {
-            ValidateNotDisposed(valueContainer, skipFrames + 1);
-        }
+            CausalityTrace ITraceable.Trace { get; set; }
 
-        static partial void ValidateOperation(Promise promise, int skipFrames)
-        {
-            ValidateNotDisposed(promise._valueOrPrevious, skipFrames + 1);
-        }
-
-        static partial void ValidateProgress(float progress, int skipFrames)
-        {
-            ValidateProgressValue(progress, skipFrames + 1);
-        }
-
-        static partial void ValidateArgument(object arg, string argName, int skipFrames)
-        {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
-        }
-
-        static partial void ValidateElementNotNull(Promise promise, string argName, string message, int skipFrames)
-        {
-            if (promise == null)
+            static partial void ValidateOperation(Promise promise, int skipFrames)
             {
-                throw new ElementNullException(argName, message, Internal.GetFormattedStacktrace(skipFrames + 1));
+                Internal.ValidateOperation(promise, skipFrames + 1);
             }
-        }
 
-        public override string ToString()
-        {
-            return string.Format("Type: Promise, Id: {0}, State: {1}", _id, _state);
-        }
+            static partial void ValidateArgument(object arg, string argName, int skipFrames)
+            {
+                Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            }
 
-        // This allows us to re-use a reference field without having to add another bool field.
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-        private sealed class DisposedChecker
-        {
-            public static readonly DisposedChecker instance = new DisposedChecker();
+            partial void ValidateReturn(Promise other)
+            {
+                if (!other.IsValid)
+                {
+                    // Returning an invalid from the callback is not allowed.
+                    throw new InvalidReturnException("An invalid promise was returned.");
+                }
 
-            private DisposedChecker() { }
-        }
-#else
-        private const object disposedObject = null;
+                // A promise cannot wait on itself.
 
-        public override string ToString()
-        {
-            return string.Format("Type: Promise, State: {0}", _state);
+                // This allows us to check All/Race/First Promises iteratively.
+                ValueLinkedStack<PromisePassThrough> passThroughs = new ValueLinkedStack<PromisePassThrough>();
+                var prev = other._ref;
+            Repeat:
+                for (; prev != null; prev = prev._valueOrPrevious as PromiseRef)
+                {
+                    if (prev == this)
+                    {
+                        throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(other._ref));
+                    }
+                    prev.BorrowPassthroughs(ref passThroughs);
+                }
+
+                if (passThroughs.IsNotEmpty)
+                {
+                    // passThroughs are removed from their targets before adding to passThroughs. Add them back here.
+                    var passThrough = passThroughs.Pop();
+                    prev = passThrough.Owner;
+                    passThrough.Target.ReAdd(passThrough);
+                    goto Repeat;
+                }
+            }
         }
 #endif
     }
 
-    partial class Promise<T>
+    partial struct Promise
     {
         // Calls to these get compiled away in RELEASE mode
-        static partial void ValidateThreadAccess(int skipFrames, bool warn = true);
-        static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames);
-        static partial void ValidateOperation(Promise<T> promise, int skipFrames);
-        static partial void ValidateArgument(object arg, string argName, int skipFrames);
+        partial void ValidateOperation(int skipFrames);
         static partial void ValidateProgress(float progress, int skipFrames);
+        static partial void ValidateArgument(object arg, string argName, int skipFrames);
+        static partial void ValidateArgument(Promise arg, string argName, int skipFrames);
+        static partial void ValidateElement(Promise promise, string argName, int skipFrames);
+
 #if PROMISE_DEBUG
-        static partial void ValidateThreadAccess(int skipFrames, bool warn)
+        partial void ValidateOperation(int skipFrames)
         {
-            Internal.ValidateThreadAccess(skipFrames + 1, warn);
+            Internal.ValidateOperation(this, skipFrames + 1);
         }
+
         static partial void ValidateProgress(float progress, int skipFrames)
         {
-            ValidateProgressValue(progress, skipFrames + 1);
-        }
-
-        static partial void ValidateYieldInstructionOperation(object valueContainer, int skipFrames)
-        {
-            ValidateNotDisposed(valueContainer, skipFrames + 1);
-        }
-
-        static partial void ValidateOperation(Promise<T> promise, int skipFrames)
-        {
-            ValidateNotDisposed(promise._valueOrPrevious, skipFrames + 1);
+            Internal.ValidateProgressValue(progress, skipFrames + 1);
         }
 
         static partial void ValidateArgument(object arg, string argName, int skipFrames)
@@ -221,14 +127,78 @@ namespace Proto.Promises
             Internal.ValidateArgument(arg, argName, skipFrames + 1);
         }
 
-        public override string ToString()
+        static partial void ValidateArgument(Promise arg, string argName, int skipFrames)
         {
-            return string.Format("Type: Promise<{0}>, Id: {1}, State: {2}", typeof(T), _id, _state);
+            if (!arg.IsValid)
+            {
+                throw new InvalidArgumentException(argName,
+                    "Promise is invalid." +
+                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
+                    " Remember to call `Forget()` when you are finished with it!",
+                    Internal.GetFormattedStacktrace(skipFrames + 1));
+            }
         }
-#else
-        public override string ToString()
+
+        static partial void ValidateElement(Promise promise, string argName, int skipFrames)
         {
-            return string.Format("Type: Promise<{0}>, State: {1}", typeof(T), _state);
+            if (!promise.IsValid)
+            {
+                throw new InvalidElementException(argName,
+                    string.Format("A promise is invalid in {0}." +
+                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
+                    " Remember to call `Forget()` when you are finished with it!", argName),
+                    Internal.GetFormattedStacktrace(skipFrames + 1));
+            }
+        }
+#endif
+    }
+
+    partial struct Promise<T>
+    {
+        // Calls to these get compiled away in RELEASE mode
+        partial void ValidateOperation(int skipFrames);
+        static partial void ValidateProgress(float progress, int skipFrames);
+        static partial void ValidateArgument(object arg, string argName, int skipFrames);
+        static partial void ValidateArgument(Promise<T> arg, string argName, int skipFrames);
+        static partial void ValidateElement(Promise<T> promise, string argName, int skipFrames);
+#if PROMISE_DEBUG
+        partial void ValidateOperation(int skipFrames)
+        {
+            Internal.ValidateOperation(this, skipFrames + 1);
+        }
+
+        static partial void ValidateProgress(float progress, int skipFrames)
+        {
+            Internal.ValidateProgressValue(progress, skipFrames + 1);
+        }
+
+        static partial void ValidateArgument(object arg, string argName, int skipFrames)
+        {
+            Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        }
+
+        static partial void ValidateArgument(Promise<T> arg, string argName, int skipFrames)
+        {
+            if (!arg.IsValid)
+            {
+                throw new InvalidArgumentException(argName,
+                    "Promise is invalid." +
+                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
+                    " Remember to call `Forget()` when you are finished with it!",
+                    Internal.GetFormattedStacktrace(skipFrames + 1));
+            }
+        }
+
+        static partial void ValidateElement(Promise<T> promise, string argName, int skipFrames)
+        {
+            if (!promise.IsValid)
+            {
+                throw new InvalidElementException(argName,
+                    string.Format("A promise is invalid in {0}." +
+                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
+                    " Remember to call `Forget()` when you are finished with it!", argName),
+                    Internal.GetFormattedStacktrace(skipFrames + 1));
+            }
         }
 #endif
     }

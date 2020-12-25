@@ -24,6 +24,19 @@ namespace Proto.Promises
         private readonly string _stackTrace;
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode]
+#endif
+    public class InvalidArgumentException : ArgumentException
+    {
+        public InvalidArgumentException(string paramName, string message, string stackTrace = null) : base(message, paramName)
+        {
+            _stackTrace = stackTrace;
+        }
+
+        private readonly string _stackTrace;
+        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+    }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
@@ -75,23 +88,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
 #endif
-    public class ElementNullException : System.ArgumentNullException
+    public class InvalidElementException : InvalidArgumentException
     {
-        public ElementNullException(string paramName, string message, string stackTrace = null) : base(paramName, message)
-        {
-            _stackTrace = stackTrace;
-        }
-
-        private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
-    }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
-#endif
-    public class PromiseDisposedException : ObjectDisposedException
-    {
-        public PromiseDisposedException(string message, string stackTrace = null) : base(message, default(Exception))
+        public InvalidElementException(string paramName, string message, string stackTrace = null) : base(paramName, message)
         {
             _stackTrace = stackTrace;
         }

@@ -11,10 +11,10 @@ namespace Proto.Promises
 #endif
         internal struct CancelDelegatePromise : IDelegateCancel
         {
-            private readonly Action<ReasonContainer> _callback;
+            private readonly Promise.CanceledAction _callback;
             private IValueContainer _valueContainer;
 
-            public CancelDelegatePromise(Action<ReasonContainer> callback)
+            public CancelDelegatePromise(Promise.CanceledAction callback)
             {
                 _callback = callback;
                 _valueContainer = null;
@@ -48,10 +48,10 @@ namespace Proto.Promises
         internal struct CancelDelegatePromise<TCapture> : IDelegateCancel
         {
             private readonly TCapture _captureValue;
-            private readonly Action<TCapture, ReasonContainer> _callback;
+            private readonly Promise.CanceledAction<TCapture> _callback;
             private IValueContainer _valueContainer;
 
-            public CancelDelegatePromise(ref TCapture captureValue, Action<TCapture, ReasonContainer> callback)
+            public CancelDelegatePromise(ref TCapture captureValue, Promise.CanceledAction<TCapture> callback)
             {
                 _captureValue = captureValue;
                 _callback = callback;
@@ -87,11 +87,11 @@ namespace Proto.Promises
         {
             public CancelationRegistration cancelationRegistration;
 
-            private readonly Action<ReasonContainer> _callback;
+            private readonly Promise.CanceledAction _callback;
             private readonly ITreeHandleableCollection _previous;
             private IValueContainer _valueContainer;
 
-            public CancelDelegatePromiseCancel(Action<ReasonContainer> callback, Promise previous)
+            public CancelDelegatePromiseCancel(Promise.CanceledAction callback, PromiseRef previous)
             {
                 _callback = callback;
                 _previous = previous;
@@ -156,11 +156,11 @@ namespace Proto.Promises
             public CancelationRegistration cancelationRegistration;
 
             private readonly TCapture _captureValue;
-            private readonly Action<TCapture, ReasonContainer> _callback;
+            private readonly Promise.CanceledAction<TCapture> _callback;
             private readonly ITreeHandleableCollection _previous;
             private IValueContainer _valueContainer;
 
-            public CancelDelegatePromiseCancel(ref TCapture captureValue, Action<TCapture, ReasonContainer> callback, Promise previous)
+            public CancelDelegatePromiseCancel(ref TCapture captureValue, Promise.CanceledAction<TCapture> callback, PromiseRef previous)
             {
                 _captureValue = captureValue;
                 _callback = callback;
@@ -223,9 +223,9 @@ namespace Proto.Promises
 #endif
         internal struct CancelDelegateToken : IDelegateCancel
         {
-            private readonly Action<ReasonContainer> _callback;
+            private readonly Promise.CanceledAction _callback;
 
-            public CancelDelegateToken(Action<ReasonContainer> callback)
+            public CancelDelegateToken(Promise.CanceledAction callback)
             {
                 _callback = callback;
             }
@@ -253,9 +253,9 @@ namespace Proto.Promises
         internal struct CancelDelegateToken<TCapture> : IDelegateCancel
         {
             private readonly TCapture _captureValue;
-            private readonly Action<TCapture, ReasonContainer> _callback;
+            private readonly Promise.CanceledAction<TCapture> _callback;
 
-            public CancelDelegateToken(ref TCapture captureValue, Action<TCapture, ReasonContainer> callback)
+            public CancelDelegateToken(ref TCapture captureValue, Promise.CanceledAction<TCapture> callback)
             {
                 _captureValue = captureValue;
                 _callback = callback;

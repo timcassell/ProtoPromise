@@ -12,8 +12,6 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable RECS0096 // Type parameter is never used
-#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
@@ -21,7 +19,7 @@ using System;
 
 namespace Proto.Promises
 {
-    partial class Promise
+    partial struct Promise
     {
         public enum TraceLevel : byte
         {
@@ -41,19 +39,11 @@ namespace Proto.Promises
             All
         }
 
+        [Obsolete("Promise Config now uses a simple boolean for object pooling.")]
         public enum PoolType : byte
         {
-            /// <summary>
-            /// Don't pool any objects.
-            /// </summary>
             None,
-            /// <summary>
-            /// Only pool internal objects.
-            /// </summary>
             Internal,
-            /// <summary>
-            /// Pool all objects, internal and public.
-            /// </summary>
             All
         }
 
@@ -78,15 +68,14 @@ namespace Proto.Promises
             public const int ProgressDecimalBits = 13;
 #endif
 
-#if PROMISE_DEBUG
-            public static PoolType ObjectPooling { get { return PoolType.Internal; } set { } }
-#else
-            private static PoolType _objectPooling = PoolType.Internal;
-            public static PoolType ObjectPooling { get { return _objectPooling; } set { _objectPooling = value; } }
-#endif
+            [Obsolete("Use ObjectPoolingEnabled instead.")]
+            public static PoolType ObjectPooling { get { return _objectPoolingEnabled ? PoolType.All : PoolType.None; } set { _objectPoolingEnabled = value != PoolType.None; } }
+
+            volatile private static bool _objectPoolingEnabled = true; // Enabled by default.
+            public static bool ObjectPoolingEnabled { get { return _objectPoolingEnabled; } set { _objectPoolingEnabled = value; } }
 
 #if PROMISE_DEBUG
-            private static TraceLevel _debugCausalityTracer = TraceLevel.Rejections;
+            volatile private static TraceLevel _debugCausalityTracer = TraceLevel.Rejections;
             /// <summary>
             /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
             /// </summary>

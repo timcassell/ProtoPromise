@@ -1,48 +1,55 @@
-﻿namespace Proto.Promises
+﻿using System.Runtime.CompilerServices;
+
+namespace Proto.Promises
 {
-    partial class Promise
+    partial class Internal
     {
-        partial class InternalProtected
+        partial class PromiseRef
         {
-            internal partial interface IMultiTreeHandleable : Internal.ITreeHandleable
+            internal partial interface IMultiTreeHandleable : ITreeHandleable
             {
-                bool Handle(Internal.IValueContainer valueContainer, PromisePassThrough passThrough, int index);
+                bool Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index);
                 void ReAdd(PromisePassThrough passThrough);
+            }
+
+            internal interface ICancelableDelegate
+            {
+                void SetCancelationRegistration(CancelationRegistration cancelationRegistration);
             }
 
             internal interface IDelegateResolve
             {
-                void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner);
+                void InvokeResolver(IValueContainer valueContainer, PromiseRef owner);
                 void MaybeUnregisterCancelation();
             }
 
             internal interface IDelegateResolvePromise
             {
-                void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner);
+                void InvokeResolver(IValueContainer valueContainer, PromiseRef owner);
                 void MaybeUnregisterCancelation();
                 bool IsNull { get; }
             }
 
             internal interface IDelegateReject
             {
-                void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner);
             }
 
             internal interface IDelegateRejectPromise
             {
-                void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner);
                 bool IsNull { get; }
             }
 
             internal interface IDelegateContinue
             {
-                void Invoke(Internal.IValueContainer valueContainer, Promise owner);
+                void Invoke(IValueContainer valueContainer, PromiseRef owner);
                 void CancelCallback();
             }
 
             internal interface IDelegateContinuePromise
             {
-                void Invoke(Internal.IValueContainer valueContainer, Promise owner);
+                void Invoke(IValueContainer valueContainer, PromiseRef owner);
                 void CancelCallback();
                 bool IsNull { get; }
             }

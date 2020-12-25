@@ -4,26 +4,209 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable RECS0001 // Class is declared partial but has only one part
 
 using System;
+using System.Runtime.CompilerServices;
 using Proto.Utils;
 
 namespace Proto.Promises
 {
-    partial class Promise
+    partial class Internal
     {
-        partial class InternalProtected
+        partial class PromiseRef
         {
+            // These static functions help with the implementation so we don't need to type the generics every time.
+            private static class DelegateWrapper
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateResolvePassthroughCancel CreatePassthroughCancelable()
+                {
+                    return new DelegateResolvePassthroughCancel(true);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateResolvePassthrough CreatePassthrough()
+                {
+                    return new DelegateResolvePassthrough();
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateVoidVoidCancel CreateCancelable(Action callback)
+                {
+                    return new DelegateVoidVoidCancel(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateVoidVoid Create(Action callback)
+                {
+                    return new DelegateVoidVoid(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateVoidResultCancel<TResult> CreateCancelable<TResult>(Func<TResult> callback)
+                {
+                    return new DelegateVoidResultCancel<TResult>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateVoidResult<TResult> Create<TResult>(Func<TResult> callback)
+                {
+                    return new DelegateVoidResult<TResult>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateVoidPromiseCancel CreateCancelable(Func<Promise> callback)
+                {
+                    return new DelegateVoidPromiseCancel(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateVoidPromise Create(Func<Promise> callback)
+                {
+                    return new DelegateVoidPromise(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateVoidPromiseTCancel<TResult> CreateCancelable<TResult>(Func<Promise<TResult>> callback)
+                {
+                    return new DelegateVoidPromiseTCancel<TResult>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateVoidPromiseT<TResult> Create<TResult>(Func<Promise<TResult>> callback)
+                {
+                    return new DelegateVoidPromiseT<TResult>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateArgVoidCancel<T> CreateCancelable<T>(Action<T> callback)
+                {
+                    return new DelegateArgVoidCancel<T>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateArgVoid<T> Create<T>(Action<T> callback)
+                {
+                    return new DelegateArgVoid<T>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateArgPromiseCancel<T> CreateCancelable<T>(Func<T, Promise> callback)
+                {
+                    return new DelegateArgPromiseCancel<T>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateArgPromise<T> Create<T>(Func<T, Promise> callback)
+                {
+                    return new DelegateArgPromise<T>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateArgResultCancel<TArg, TResult> CreateCancelable<TArg, TResult>(Func<TArg, TResult> callback)
+                {
+                    return new DelegateArgResultCancel<TArg, TResult>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateArgResult<TArg, TResult> Create<TArg, TResult>(Func<TArg, TResult> callback)
+                {
+                    return new DelegateArgResult<TArg, TResult>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateArgPromiseTCancel<TArg, TResult> CreateCancelable<TArg, TResult>(Func<TArg, Promise<TResult>> callback)
+                {
+                    return new DelegateArgPromiseTCancel<TArg, TResult>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateArgPromiseT<TArg, TResult> Create<TArg, TResult>(Func<TArg, Promise<TResult>> callback)
+                {
+                    return new DelegateArgPromiseT<TArg, TResult>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureVoidVoidCancel<TCapture> CreateCancelable<TCapture>(ref TCapture capturedValue, Action<TCapture> callback)
+                {
+                    return new DelegateCaptureVoidVoidCancel<TCapture>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureVoidVoid<TCapture> Create<TCapture>(ref TCapture capturedValue, Action<TCapture> callback)
+                {
+                    return new DelegateCaptureVoidVoid<TCapture>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureVoidResultCancel<TCapture, TResult> CreateCancelable<TCapture, TResult>(ref TCapture capturedValue, Func<TCapture, TResult> callback)
+                {
+                    return new DelegateCaptureVoidResultCancel<TCapture, TResult>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(ref TCapture capturedValue, Func<TCapture, TResult> callback)
+                {
+                    return new DelegateCaptureVoidResult<TCapture, TResult>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureVoidPromiseCancel<TCapture> CreateCancelable<TCapture>(ref TCapture capturedValue, Func<TCapture, Promise> callback)
+                {
+                    return new DelegateCaptureVoidPromiseCancel<TCapture>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureVoidPromise<TCapture> Create<TCapture>(ref TCapture capturedValue, Func<TCapture, Promise> callback)
+                {
+                    return new DelegateCaptureVoidPromise<TCapture>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureVoidPromiseTCancel<TCapture, TResult> CreateCancelable<TCapture, TResult>(ref TCapture capturedValue, Func<TCapture, Promise<TResult>> callback)
+                {
+                    return new DelegateCaptureVoidPromiseTCancel<TCapture, TResult>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureVoidPromiseT<TCapture, TResult> Create<TCapture, TResult>(ref TCapture capturedValue, Func<TCapture, Promise<TResult>> callback)
+                {
+                    return new DelegateCaptureVoidPromiseT<TCapture, TResult>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureArgVoidCancel<TCapture, TArg> CreateCancelable<TCapture, TArg>(ref TCapture capturedValue, Action<TCapture, TArg> callback)
+                {
+                    return new DelegateCaptureArgVoidCancel<TCapture, TArg>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(ref TCapture capturedValue, Action<TCapture, TArg> callback)
+                {
+                    return new DelegateCaptureArgVoid<TCapture, TArg>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureArgResultCancel<TCapture, TArg, TResult> CreateCancelable<TCapture, TArg, TResult>(ref TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
+                {
+                    return new DelegateCaptureArgResultCancel<TCapture, TArg, TResult>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(ref TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
+                {
+                    return new DelegateCaptureArgResult<TCapture, TArg, TResult>(ref capturedValue, callback);
+                }
+            }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateResolvePassthrough : IDelegateResolve, IDelegateResolvePromise
+            private struct DelegateResolvePassthrough : IDelegateResolve, IDelegateResolvePromise
             {
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     owner.ResolveInternal(valueContainer);
                 }
@@ -36,27 +219,29 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed class FinallyDelegate : Internal.ITreeHandleable, Internal.ITraceable
+            private sealed class FinallyDelegate : ITreeHandleable, ITraceable
             {
-#if PROMISE_DEBUG
-                Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
-#endif
-                Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
+                private struct Creator : ICreator<FinallyDelegate>
+                {
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public FinallyDelegate Create()
+                    {
+                        return new FinallyDelegate();
+                    }
+                }
 
-                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+#if PROMISE_DEBUG
+                CausalityTrace ITraceable.Trace { get; set; }
+#endif
+                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
                 private Action _onFinally;
 
                 private FinallyDelegate() { }
 
-                static FinallyDelegate()
-                {
-                    Internal.OnClearPool += () => _pool.Clear();
-                }
-
                 public static FinallyDelegate GetOrCreate(Action onFinally)
                 {
-                    var del = _pool.IsNotEmpty ? (FinallyDelegate) _pool.Pop() : new FinallyDelegate();
+                    var del = ObjectPool<ITreeHandleable>.GetOrCreate<FinallyDelegate, Creator>(new Creator());
                     del._onFinally = onFinally;
                     SetCreatedStacktrace(del, 2);
                     return del;
@@ -73,7 +258,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        Internal.AddRejectionToUnhandledStack(e, this);
+                        AddRejectionToUnhandledStack(e, this);
                     }
                     ClearCurrentInvoker();
                 }
@@ -81,25 +266,22 @@ namespace Proto.Promises
                 void Dispose()
                 {
                     _onFinally = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void Internal.ITreeHandleable.Handle()
+                void ITreeHandleable.Handle()
                 {
                     InvokeAndCatchAndDispose();
                 }
 
-                void Internal.ITreeHandleable.MakeReady(Promise owner, Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
                     handleQueue.Push(this);
                 }
 
-                void Internal.ITreeHandleable.MakeReadyFromSettled(Promise owner, Internal.IValueContainer valueContainer)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
                 {
-                    Internal.AddToHandleQueueBack(this);
+                    AddToHandleQueueBack(this);
                 }
             }
 
@@ -107,7 +289,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateVoidVoid : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateVoidVoid : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Action _callback;
 
@@ -118,16 +300,16 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke();
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke();
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void MaybeUnregisterCancelation() { }
@@ -136,7 +318,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateArgVoid<TArg> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateArgVoid<TArg> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Action<TArg> _callback;
 
@@ -147,21 +329,21 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                private void Invoke(TArg arg, Promise owner)
+                private void Invoke(TArg arg, PromiseRef owner)
                 {
                     _callback.Invoke(arg);
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    Invoke(((Internal.ResolveContainer<TArg>) valueContainer).value, owner);
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TArg arg;
-                    if (Internal.TryConvert(valueContainer, out arg))
+                    if (TryConvert(valueContainer, out arg))
                     {
                         Invoke(arg, owner);
                     }
@@ -177,7 +359,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateVoidResult<TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateVoidResult<TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Func<TResult> _callback;
 
@@ -188,16 +370,16 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke();
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke();
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void MaybeUnregisterCancelation() { }
@@ -206,7 +388,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateArgResult<TArg, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateArgResult<TArg, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Func<TArg, TResult> _callback;
 
@@ -217,22 +399,22 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                private void Invoke(TArg arg, Promise owner)
+                private void Invoke(TArg arg, PromiseRef owner)
                 {
                     var temp = _callback;
                     TResult result = temp.Invoke(arg);
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    Invoke(((Internal.ResolveContainer<TArg>) valueContainer).value, owner);
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TArg arg;
-                    if (Internal.TryConvert(valueContainer, out arg))
+                    if (TryConvert(valueContainer, out arg))
                     {
                         Invoke(arg, owner);
                     }
@@ -249,7 +431,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateVoidPromise : IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateVoidPromise : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Func<Promise> _callback;
 
@@ -260,12 +442,12 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
@@ -276,7 +458,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateArgPromise<TArg> : IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateArgPromise<TArg> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Func<TArg, Promise> _callback;
 
@@ -287,20 +469,20 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                private void Invoke(TArg arg, Promise owner)
+                private void Invoke(TArg arg, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(arg));
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    Invoke(((Internal.ResolveContainer<TArg>) valueContainer).value, owner);
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TArg arg;
-                    if (Internal.TryConvert(valueContainer, out arg))
+                    if (TryConvert(valueContainer, out arg))
                     {
                         Invoke(arg, owner);
                     }
@@ -316,7 +498,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateVoidPromiseT<TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateVoidPromiseT<TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Func<Promise<TPromise>> _callback;
 
@@ -327,14 +509,14 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke());
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke());
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
 
                 public void MaybeUnregisterCancelation() { }
@@ -343,7 +525,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateArgPromiseT<TArg, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateArgPromiseT<TArg, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Func<TArg, Promise<TPromise>> _callback;
 
@@ -354,20 +536,20 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                private void Invoke(TArg arg, Promise owner)
+                private void Invoke(TArg arg, PromiseRef owner)
                 {
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(arg));
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(arg));
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    Invoke(((Internal.ResolveContainer<TArg>) valueContainer).value, owner);
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TArg arg;
-                    if (Internal.TryConvert(valueContainer, out arg))
+                    if (TryConvert(valueContainer, out arg))
                     {
                         Invoke(arg, owner);
                     }
@@ -384,19 +566,19 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueVoidVoid : IDelegateContinue
+            private struct DelegateContinueVoidVoid : IDelegateContinue
             {
-                private readonly Action<ResultContainer> _callback;
+                private readonly Promise.ContinueAction _callback;
 
-                public DelegateContinueVoidVoid(Action<ResultContainer> callback)
+                public DelegateContinueVoidVoid(Promise.ContinueAction callback)
                 {
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    _callback.Invoke(new ResultContainer(valueContainer));
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    _callback.Invoke(new Promise.ResultContainer(valueContainer));
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -405,19 +587,19 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueVoidResult<TResult> : IDelegateContinue
+            private struct DelegateContinueVoidResult<TResult> : IDelegateContinue
             {
-                private readonly Func<ResultContainer, TResult> _callback;
+                private readonly Promise.ContinueFunc<TResult> _callback;
 
-                public DelegateContinueVoidResult(Func<ResultContainer, TResult> callback)
+                public DelegateContinueVoidResult(Promise.ContinueFunc<TResult> callback)
                 {
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    TResult result = _callback.Invoke(new ResultContainer(valueContainer));
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    TResult result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -426,19 +608,19 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueArgVoid<TArg> : IDelegateContinue
+            private struct DelegateContinueArgVoid<TArg> : IDelegateContinue
             {
-                private readonly Action<Promise<TArg>.ResultContainer> _callback;
+                private readonly Promise<TArg>.ContinueAction _callback;
 
-                public DelegateContinueArgVoid(Action<Promise<TArg>.ResultContainer> callback)
+                public DelegateContinueArgVoid(Promise<TArg>.ContinueAction callback)
                 {
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -447,19 +629,19 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueArgResult<TArg, TResult> : IDelegateContinue
+            private struct DelegateContinueArgResult<TArg, TResult> : IDelegateContinue
             {
-                private readonly Func<Promise<TArg>.ResultContainer, TResult> _callback;
+                private readonly Promise<TArg>.ContinueFunc<TResult> _callback;
 
-                public DelegateContinueArgResult(Func<Promise<TArg>.ResultContainer, TResult> callback)
+                public DelegateContinueArgResult(Promise<TArg>.ContinueFunc<TResult> callback)
                 {
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -469,20 +651,20 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueVoidPromise : IDelegateContinuePromise
+            private struct DelegateContinueVoidPromise : IDelegateContinuePromise
             {
-                private readonly Func<ResultContainer, Promise> _callback;
+                private readonly Promise.ContinueFunc<Promise> _callback;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueVoidPromise(Func<ResultContainer, Promise> callback)
+                public DelegateContinueVoidPromise(Promise.ContinueFunc<Promise> callback)
                 {
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    Promise result = _callback.Invoke(new ResultContainer(valueContainer));
+                    Promise result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result);
                 }
 
@@ -492,21 +674,21 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueVoidPromiseT<TPromise> : IDelegateContinuePromise
+            private struct DelegateContinueVoidPromiseT<TPromise> : IDelegateContinuePromise
             {
-                private readonly Func<ResultContainer, Promise<TPromise>> _callback;
+                private readonly Promise.ContinueFunc<Promise<TPromise>> _callback;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueVoidPromiseT(Func<ResultContainer, Promise<TPromise>> callback)
+                public DelegateContinueVoidPromiseT(Promise.ContinueFunc<Promise<TPromise>> callback)
                 {
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    Promise<TPromise> result = _callback.Invoke(new ResultContainer(valueContainer));
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(result);
+                    Promise<TPromise> result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
+                    ((PromiseWaitPromise) owner).WaitFor(result);
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -515,18 +697,18 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueArgPromise<TArg> : IDelegateContinuePromise
+            private struct DelegateContinueArgPromise<TArg> : IDelegateContinuePromise
             {
-                private readonly Func<Promise<TArg>.ResultContainer, Promise> _callback;
+                private readonly Promise<TArg>.ContinueFunc<Promise> _callback;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueArgPromise(Func<Promise<TArg>.ResultContainer, Promise> callback)
+                public DelegateContinueArgPromise(Promise<TArg>.ContinueFunc<Promise> callback)
                 {
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Promise result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -538,21 +720,21 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueArgPromiseT<TArg, TPromise> : IDelegateContinuePromise
+            private struct DelegateContinueArgPromiseT<TArg, TPromise> : IDelegateContinuePromise
             {
-                private readonly Func<Promise<TArg>.ResultContainer, Promise<TPromise>> _callback;
+                private readonly Promise<TArg>.ContinueFunc<Promise<TPromise>> _callback;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueArgPromiseT(Func<Promise<TArg>.ResultContainer, Promise<TPromise>> callback)
+                public DelegateContinueArgPromiseT(Promise<TArg>.ContinueFunc<Promise<TPromise>> callback)
                 {
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Promise<TPromise> result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(result);
+                    ((PromiseWaitPromise) owner).WaitFor(result);
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -563,28 +745,30 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            public sealed class FinallyDelegateCapture<TCapture> : Internal.ITreeHandleable, Internal.ITraceable
+            public sealed class FinallyDelegateCapture<TCapture> : ITreeHandleable, ITraceable
             {
-#if PROMISE_DEBUG
-                Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
-#endif
-                Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
+                private struct Creator : ICreator<FinallyDelegateCapture<TCapture>>
+                {
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public FinallyDelegateCapture<TCapture> Create()
+                    {
+                        return new FinallyDelegateCapture<TCapture>();
+                    }
+                }
 
-                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+#if PROMISE_DEBUG
+                CausalityTrace ITraceable.Trace { get; set; }
+#endif
+                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
                 private TCapture _capturedValue;
                 private Action<TCapture> _onFinally;
 
                 private FinallyDelegateCapture() { }
 
-                static FinallyDelegateCapture()
-                {
-                    Internal.OnClearPool += () => _pool.Clear();
-                }
-
                 public static FinallyDelegateCapture<TCapture> GetOrCreate(ref TCapture capturedValue, Action<TCapture> onFinally)
                 {
-                    var del = _pool.IsNotEmpty ? (FinallyDelegateCapture<TCapture>) _pool.Pop() : new FinallyDelegateCapture<TCapture>();
+                    var del = ObjectPool<ITreeHandleable>.GetOrCreate<FinallyDelegateCapture<TCapture>, Creator>(new Creator());
                     del._capturedValue = capturedValue;
                     del._onFinally = onFinally;
                     SetCreatedStacktrace(del, 2);
@@ -603,7 +787,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        Internal.AddRejectionToUnhandledStack(e, this);
+                        AddRejectionToUnhandledStack(e, this);
                     }
                     ClearCurrentInvoker();
                 }
@@ -612,25 +796,22 @@ namespace Proto.Promises
                 {
                     _capturedValue = default(TCapture);
                     _onFinally = null;
-                    if (Config.ObjectPooling != PoolType.None)
-                    {
-                        _pool.Push(this);
-                    }
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void Internal.ITreeHandleable.Handle()
+                void ITreeHandleable.Handle()
                 {
                     InvokeAndCatchAndDispose();
                 }
 
-                void Internal.ITreeHandleable.MakeReady(Promise owner, Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
                     handleQueue.Push(this);
                 }
 
-                void Internal.ITreeHandleable.MakeReadyFromSettled(Promise owner, Internal.IValueContainer valueContainer)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
                 {
-                    Internal.AddToHandleQueueBack(this);
+                    AddToHandleQueueBack(this);
                 }
             }
 
@@ -638,7 +819,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureVoidVoid<TCapture> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateCaptureVoidVoid<TCapture> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
                 private readonly Action<TCapture> _callback;
@@ -651,16 +832,16 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue);
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue);
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void MaybeUnregisterCancelation() { }
@@ -669,7 +850,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureArgVoid<TCapture, TArg> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateCaptureArgVoid<TCapture, TArg> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
                 private readonly Action<TCapture, TArg> _callback;
@@ -682,21 +863,21 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                private void Invoke(TArg arg, Promise owner)
+                private void Invoke(TArg arg, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue, arg);
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    Invoke(((Internal.ResolveContainer<TArg>) valueContainer).value, owner);
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TArg arg;
-                    if (Internal.TryConvert(valueContainer, out arg))
+                    if (TryConvert(valueContainer, out arg))
                     {
                         Invoke(arg, owner);
                     }
@@ -712,7 +893,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureVoidResult<TCapture, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateCaptureVoidResult<TCapture, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, TResult> _callback;
@@ -725,16 +906,16 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue);
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue);
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void MaybeUnregisterCancelation() { }
@@ -743,7 +924,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureArgResult<TCapture, TArg, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateCaptureArgResult<TCapture, TArg, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, TArg, TResult> _callback;
@@ -756,21 +937,21 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                private void Invoke(TArg arg, Promise owner)
+                private void Invoke(TArg arg, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, arg);
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    Invoke(((Internal.ResolveContainer<TArg>) valueContainer).value, owner);
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TArg arg;
-                    if (Internal.TryConvert(valueContainer, out arg))
+                    if (TryConvert(valueContainer, out arg))
                     {
                         Invoke(arg, owner);
                     }
@@ -787,7 +968,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureVoidPromise<TCapture> : IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateCaptureVoidPromise<TCapture> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, Promise> _callback;
@@ -800,12 +981,12 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
@@ -816,7 +997,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureArgPromise<TCapture, TArg> : IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateCaptureArgPromise<TCapture, TArg> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, TArg, Promise> _callback;
@@ -829,20 +1010,20 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                private void Invoke(TArg arg, Promise owner)
+                private void Invoke(TArg arg, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    Invoke(((Internal.ResolveContainer<TArg>) valueContainer).value, owner);
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TArg arg;
-                    if (Internal.TryConvert(valueContainer, out arg))
+                    if (TryConvert(valueContainer, out arg))
                     {
                         Invoke(arg, owner);
                     }
@@ -858,7 +1039,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureVoidPromiseT<TCapture, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateCaptureVoidPromiseT<TCapture, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
                 public readonly Func<TCapture, Promise<TPromise>> _callback;
@@ -871,14 +1052,14 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(_capturedValue));
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(_capturedValue));
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
                 public void MaybeUnregisterCancelation() { }
@@ -887,7 +1068,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
+            private struct DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, TArg, Promise<TPromise>> _callback;
@@ -900,20 +1081,20 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                private void Invoke(TArg arg, Promise owner)
+                private void Invoke(TArg arg, PromiseRef owner)
                 {
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
                 }
 
-                void IDelegateResolvePromise.InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    Invoke(((Internal.ResolveContainer<TArg>) valueContainer).value, owner);
+                    Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
 
-                public void InvokeRejecter(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TArg arg;
-                    if (Internal.TryConvert(valueContainer, out arg))
+                    if (TryConvert(valueContainer, out arg))
                     {
                         Invoke(arg, owner);
                     }
@@ -930,21 +1111,21 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureVoidVoid<TCapture> : IDelegateContinue
+            private struct DelegateContinueCaptureVoidVoid<TCapture> : IDelegateContinue
             {
                 private readonly TCapture _capturedValue;
-                private readonly Action<TCapture, ResultContainer> _callback;
+                private readonly Promise.ContinueAction<TCapture> _callback;
 
-                public DelegateContinueCaptureVoidVoid(ref TCapture capturedValue, Action<TCapture, ResultContainer> callback)
+                public DelegateContinueCaptureVoidVoid(ref TCapture capturedValue, Promise.ContinueAction<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -953,21 +1134,21 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureVoidResult<TCapture, TResult> : IDelegateContinue
+            private struct DelegateContinueCaptureVoidResult<TCapture, TResult> : IDelegateContinue
             {
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, ResultContainer, TResult> _callback;
+                private readonly Promise.ContinueFunc<TCapture, TResult> _callback;
 
-                public DelegateContinueCaptureVoidResult(ref TCapture capturedValue, Func<TCapture, ResultContainer, TResult> callback)
+                public DelegateContinueCaptureVoidResult(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, TResult> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    TResult result = _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    TResult result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -976,21 +1157,21 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureArgVoid<TCapture, TArg> : IDelegateContinue
+            private struct DelegateContinueCaptureArgVoid<TCapture, TArg> : IDelegateContinue
             {
                 private readonly TCapture _capturedValue;
-                private readonly Action<TCapture, Promise<TArg>.ResultContainer> _callback;
+                private readonly Promise<TArg>.ContinueAction<TCapture> _callback;
 
-                public DelegateContinueCaptureArgVoid(ref TCapture capturedValue, Action<TCapture, Promise<TArg>.ResultContainer> callback)
+                public DelegateContinueCaptureArgVoid(ref TCapture capturedValue, Promise<TArg>.ContinueAction<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -999,21 +1180,21 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureArgResult<TCapture, TArg, TResult> : IDelegateContinue
+            private struct DelegateContinueCaptureArgResult<TCapture, TArg, TResult> : IDelegateContinue
             {
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, Promise<TArg>.ResultContainer, TResult> _callback;
+                private readonly Promise<TArg>.ContinueFunc<TCapture, TResult> _callback;
 
-                public DelegateContinueCaptureArgResult(ref TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, TResult> callback)
+                public DelegateContinueCaptureArgResult(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, TResult> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -1023,22 +1204,22 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureVoidPromise<TCapture> : IDelegateContinuePromise
+            private struct DelegateContinueCaptureVoidPromise<TCapture> : IDelegateContinuePromise
             {
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, ResultContainer, Promise> _callback;
+                private readonly Promise.ContinueFunc<TCapture, Promise> _callback;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueCaptureVoidPromise(ref TCapture capturedValue, Func<TCapture, ResultContainer, Promise> callback)
+                public DelegateContinueCaptureVoidPromise(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    Promise result = _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
+                    Promise result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result);
                 }
 
@@ -1048,23 +1229,23 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureVoidPromiseT<TCapture, TPromise> : IDelegateContinuePromise
+            private struct DelegateContinueCaptureVoidPromiseT<TCapture, TPromise> : IDelegateContinuePromise
             {
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, ResultContainer, Promise<TPromise>> _callback;
+                private readonly Promise.ContinueFunc<TCapture, Promise<TPromise>> _callback;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueCaptureVoidPromiseT(ref TCapture capturedValue, Func<TCapture, ResultContainer, Promise<TPromise>> callback)
+                public DelegateContinueCaptureVoidPromiseT(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise<TPromise>> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    Promise<TPromise> result = _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(result);
+                    Promise<TPromise> result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
+                    ((PromiseWaitPromise) owner).WaitFor(result);
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -1073,20 +1254,20 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureArgPromise<TCapture, TArg> : IDelegateContinuePromise
+            private struct DelegateContinueCaptureArgPromise<TCapture, TArg> : IDelegateContinuePromise
             {
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, Promise<TArg>.ResultContainer, Promise> _callback;
+                private readonly Promise<TArg>.ContinueFunc<TCapture, Promise> _callback;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueCaptureArgPromise(ref TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, Promise> callback)
+                public DelegateContinueCaptureArgPromise(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Promise result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -1098,23 +1279,23 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureArgPromiseT<TCapture, TArg, TPromise> : IDelegateContinuePromise
+            private struct DelegateContinueCaptureArgPromiseT<TCapture, TArg, TPromise> : IDelegateContinuePromise
             {
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, Promise<TArg>.ResultContainer, Promise<TPromise>> _callback;
+                private readonly Promise<TArg>.ContinueFunc<TCapture, Promise<TPromise>> _callback;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueCaptureArgPromiseT(ref TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, Promise<TPromise>> callback)
+                public DelegateContinueCaptureArgPromiseT(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TPromise>> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Promise<TPromise> result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(result);
+                    ((PromiseWaitPromise) owner).WaitFor(result);
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -1124,28 +1305,32 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateResolvePassthroughCancel : IDelegateResolve, IDelegateResolvePromise
+            private struct DelegateResolvePassthroughCancel : IDelegateResolve, IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly bool _isActive;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return !_isActive; } }
 
                 public DelegateResolvePassthroughCancel(bool isActive)
                 {
                     _isActive = isActive;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     owner.ResolveInternal(valueContainer);
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
@@ -1153,116 +1338,132 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateVoidVoidCancel : IDelegateResolve, IDelegateResolvePromise
+            private struct DelegateVoidVoidCancel : IDelegateResolve, IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly Action _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
                 public DelegateVoidVoidCancel(Action callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke();
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateArgVoidCancel<TArg> : IDelegateResolve, IDelegateResolvePromise
+            private struct DelegateArgVoidCancel<TArg> : IDelegateResolve, IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly Action<TArg> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
                 public DelegateArgVoidCancel(Action<TArg> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    _callback.Invoke(((Internal.ResolveContainer<TArg>) valueContainer).value);
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    _callback.Invoke(((ResolveContainer<TArg>) valueContainer).value);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateVoidResultCancel<TResult> : IDelegateResolve, IDelegateResolvePromise
+            private struct DelegateVoidResultCancel<TResult> : IDelegateResolve, IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly Func<TResult> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
                 public DelegateVoidResultCancel(Func<TResult> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke();
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateArgResultCancel<TArg, TResult> : IDelegateResolve, IDelegateResolvePromise
+            private struct DelegateArgResultCancel<TArg, TResult> : IDelegateResolve, IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly Func<TArg, TResult> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
                 public DelegateArgResultCancel(Func<TArg, TResult> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    TResult result = _callback.Invoke(((Internal.ResolveContainer<TArg>) valueContainer).value);
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    TResult result = _callback.Invoke(((ResolveContainer<TArg>) valueContainer).value);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
@@ -1270,114 +1471,130 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateVoidPromiseCancel : IDelegateResolvePromise
+            private struct DelegateVoidPromiseCancel : IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly Func<Promise> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
                 public DelegateVoidPromiseCancel(Func<Promise> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateArgPromiseCancel<TArg> : IDelegateResolvePromise
+            private struct DelegateArgPromiseCancel<TArg> : IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly Func<TArg, Promise> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
                 public DelegateArgPromiseCancel(Func<TArg, Promise> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    TArg arg = ((Internal.ResolveContainer<TArg>) valueContainer).value;
+                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(arg));
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateVoidPromiseTCancel<TPromise> : IDelegateResolvePromise
+            private struct DelegateVoidPromiseTCancel<TPromise> : IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly Func<Promise<TPromise>> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
                 public DelegateVoidPromiseTCancel(Func<Promise<TPromise>> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke());
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateArgPromiseTCancel<TArg, TPromise> : IDelegateResolvePromise
+            private struct DelegateArgPromiseTCancel<TArg, TPromise> : IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly Func<TArg, Promise<TPromise>> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
                 public DelegateArgPromiseTCancel(Func<TArg, Promise<TPromise>> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    TArg arg = ((Internal.ResolveContainer<TArg>) valueContainer).value;
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(arg));
+                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(arg));
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
@@ -1385,23 +1602,22 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueVoidVoidCancel : IDelegateContinue
+            private struct DelegateContinueVoidVoidCancel : IDelegateContinue, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
-                private readonly Action<ResultContainer> _callback;
+                private readonly Promise.ContinueAction _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueVoidVoidCancel(Action<ResultContainer> callback)
+                public DelegateContinueVoidVoidCancel(Promise.ContinueAction callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -1409,9 +1625,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
-                        _callback.Invoke(new ResultContainer(valueContainer));
-                        owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                        _cancelationRegistration.TryUnregister();
+                        _callback.Invoke(new Promise.ResultContainer(valueContainer));
+                        owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                     }
                 }
 
@@ -1419,28 +1635,32 @@ namespace Proto.Promises
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueVoidResultCancel<TResult> : IDelegateContinue
+            private struct DelegateContinueVoidResultCancel<TResult> : IDelegateContinue, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
-                private readonly Func<ResultContainer, TResult> _callback;
+                private readonly Promise.ContinueFunc<TResult> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueVoidResultCancel(Func<ResultContainer, TResult> callback)
+                public DelegateContinueVoidResultCancel(Promise.ContinueFunc<TResult> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -1448,9 +1668,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
-                        TResult result = _callback.Invoke(new ResultContainer(valueContainer));
-                        owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                        _cancelationRegistration.TryUnregister();
+                        TResult result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
+                        owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                     }
                 }
 
@@ -1458,28 +1678,32 @@ namespace Proto.Promises
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueArgVoidCancel<TArg> : IDelegateContinue
+            private struct DelegateContinueArgVoidCancel<TArg> : IDelegateContinue, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
-                private readonly Action<Promise<TArg>.ResultContainer> _callback;
+                private readonly Promise<TArg>.ContinueAction _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueArgVoidCancel(Action<Promise<TArg>.ResultContainer> callback)
+                public DelegateContinueArgVoidCancel(Promise<TArg>.ContinueAction callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -1487,43 +1711,47 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
+                        _cancelationRegistration.TryUnregister();
                         _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                        owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                        owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                     }
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
                 }
 
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueArgResultCancel<TArg, TResult> : IDelegateContinue
+            private struct DelegateContinueArgResultCancel<TArg, TResult> : IDelegateContinue, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
-                private readonly Func<Promise<TArg>.ResultContainer, TResult> _callback;
+                private readonly Promise<TArg>.ContinueFunc<TResult> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueArgResultCancel(Func<Promise<TArg>.ResultContainer, TResult> callback)
+                public DelegateContinueArgResultCancel(Promise<TArg>.ContinueFunc<TResult> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -1531,9 +1759,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
+                        _cancelationRegistration.TryUnregister();
                         TResult result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                        owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                        owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                     }
                 }
 
@@ -1541,29 +1769,33 @@ namespace Proto.Promises
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueVoidPromiseCancel : IDelegateContinuePromise
+            private struct DelegateContinueVoidPromiseCancel : IDelegateContinuePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
-                private readonly Func<ResultContainer, Promise> _callback;
+                private readonly Promise.ContinueFunc<Promise> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueVoidPromiseCancel(Func<ResultContainer, Promise> callback)
+                public DelegateContinueVoidPromiseCancel(Promise.ContinueFunc<Promise> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -1571,8 +1803,8 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
-                        Promise result = _callback.Invoke(new ResultContainer(valueContainer));
+                        _cancelationRegistration.TryUnregister();
+                        Promise result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
                         ((PromiseWaitPromise) owner).WaitFor(result);
                     }
                 }
@@ -1581,28 +1813,32 @@ namespace Proto.Promises
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueVoidPromiseTCancel<TPromise> : IDelegateContinuePromise
+            private struct DelegateContinueVoidPromiseTCancel<TPromise> : IDelegateContinuePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
-                private readonly Func<ResultContainer, Promise<TPromise>> _callback;
+                private readonly Promise.ContinueFunc<Promise<TPromise>> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueVoidPromiseTCancel(Func<ResultContainer, Promise<TPromise>> callback)
+                public DelegateContinueVoidPromiseTCancel(Promise.ContinueFunc<Promise<TPromise>> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -1610,9 +1846,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
-                        Promise<TPromise> result = _callback.Invoke(new ResultContainer(valueContainer));
-                        ((PromiseWaitPromise<TPromise>) owner).WaitFor(result);
+                        _cancelationRegistration.TryUnregister();
+                        Promise<TPromise> result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
+                        ((PromiseWaitPromise) owner).WaitFor(result);
                     }
                 }
 
@@ -1620,28 +1856,32 @@ namespace Proto.Promises
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueArgPromiseCancel<TArg> : IDelegateContinuePromise
+            private struct DelegateContinueArgPromiseCancel<TArg> : IDelegateContinuePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
-                private readonly Func<Promise<TArg>.ResultContainer, Promise> _callback;
+                private readonly Promise<TArg>.ContinueFunc<Promise> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueArgPromiseCancel(Func<Promise<TArg>.ResultContainer, Promise> callback)
+                public DelegateContinueArgPromiseCancel(Promise<TArg>.ContinueFunc<Promise> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -1649,7 +1889,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
+                        _cancelationRegistration.TryUnregister();
                         Promise result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                         ((PromiseWaitPromise) owner).WaitFor(result);
                     }
@@ -1657,35 +1897,39 @@ namespace Proto.Promises
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
                 }
 
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueArgPromiseTCancel<TArg, TPromise> : IDelegateContinuePromise
+            private struct DelegateContinueArgPromiseTCancel<TArg, TPromise> : IDelegateContinuePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
-                private readonly Func<Promise<TArg>.ResultContainer, Promise<TPromise>> _callback;
+                private readonly Promise<TArg>.ContinueFunc<Promise<TPromise>> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueArgPromiseTCancel(Func<Promise<TArg>.ResultContainer, Promise<TPromise>> callback)
+                public DelegateContinueArgPromiseTCancel(Promise<TArg>.ContinueFunc<Promise<TPromise>> callback)
                 {
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -1693,15 +1937,20 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
+                        _cancelationRegistration.TryUnregister();
                         Promise<TPromise> result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                        ((PromiseWaitPromise<TPromise>) owner).WaitFor(result);
+                        ((PromiseWaitPromise) owner).WaitFor(result);
                     }
                 }
 
                 public void CancelCallback()
                 {
                     _canceled = true;
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
             #endregion
@@ -1710,12 +1959,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureVoidVoidCancel<TCapture> : IDelegateResolve, IDelegateResolvePromise
+            private struct DelegateCaptureVoidVoidCancel<TCapture> : IDelegateResolve, IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
                 private readonly Action<TCapture> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
@@ -1723,30 +1971,34 @@ namespace Proto.Promises
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue);
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureArgVoidCancel<TCapture, TArg> : IDelegateResolve, IDelegateResolvePromise
+            private struct DelegateCaptureArgVoidCancel<TCapture, TArg> : IDelegateResolve, IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
                 private readonly Action<TCapture, TArg> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
@@ -1754,30 +2006,34 @@ namespace Proto.Promises
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    _callback.Invoke(_capturedValue, ((Internal.ResolveContainer<TArg>) valueContainer).value);
-                    owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                    _callback.Invoke(_capturedValue, ((ResolveContainer<TArg>) valueContainer).value);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureVoidResultCancel<TCapture, TResult> : IDelegateResolve, IDelegateResolvePromise
+            private struct DelegateCaptureVoidResultCancel<TCapture, TResult> : IDelegateResolve, IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, TResult> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
@@ -1785,30 +2041,34 @@ namespace Proto.Promises
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue);
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureArgResultCancel<TCapture, TArg, TResult> : IDelegateResolve, IDelegateResolvePromise
+            private struct DelegateCaptureArgResultCancel<TCapture, TArg, TResult> : IDelegateResolve, IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, TArg, TResult> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
@@ -1816,18 +2076,23 @@ namespace Proto.Promises
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    TResult result = _callback.Invoke(_capturedValue, ((Internal.ResolveContainer<TArg>) valueContainer).value);
-                    owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                    TResult result = _callback.Invoke(_capturedValue, ((ResolveContainer<TArg>) valueContainer).value);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
@@ -1835,12 +2100,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureVoidPromiseCancel<TCapture> : IDelegateResolvePromise
+            private struct DelegateCaptureVoidPromiseCancel<TCapture> : IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, Promise> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
@@ -1848,29 +2112,33 @@ namespace Proto.Promises
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureArgPromiseCancel<TCapture, TArg> : IDelegateResolvePromise
+            private struct DelegateCaptureArgPromiseCancel<TCapture, TArg> : IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, TArg, Promise> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
@@ -1878,30 +2146,34 @@ namespace Proto.Promises
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    TArg arg = ((Internal.ResolveContainer<TArg>) valueContainer).value;
+                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureVoidPromiseTCancel<TCapture, TPromise> : IDelegateResolvePromise
+            private struct DelegateCaptureVoidPromiseTCancel<TCapture, TPromise> : IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, Promise<TPromise>> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
@@ -1909,29 +2181,33 @@ namespace Proto.Promises
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(_capturedValue));
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureArgPromiseTCancel<TCapture, TArg, TPromise> : IDelegateResolvePromise
+            private struct DelegateCaptureArgPromiseTCancel<TCapture, TArg, TPromise> : IDelegateResolvePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, TArg, Promise<TPromise>> _callback;
+                private CancelationRegistration _cancelationRegistration;
 
                 public bool IsNull { get { return _callback == null; } }
 
@@ -1939,18 +2215,23 @@ namespace Proto.Promises
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                public void InvokeResolver(Internal.IValueContainer valueContainer, Promise owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    TArg arg = ((Internal.ResolveContainer<TArg>) valueContainer).value;
-                    ((PromiseWaitPromise<TPromise>) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
+                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
+                    ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
                 }
 
                 public void MaybeUnregisterCancelation()
                 {
-                    cancelationRegistration.TryUnregister();
+                    _cancelationRegistration.TryUnregister();
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
 
@@ -1958,25 +2239,24 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureVoidVoidCancel<TCapture> : IDelegateContinue
+            private struct DelegateContinueCaptureVoidVoidCancel<TCapture> : IDelegateContinue, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
-                private readonly Action<TCapture, ResultContainer> _callback;
+                private readonly Promise.ContinueAction<TCapture> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueCaptureVoidVoidCancel(ref TCapture capturedValue, Action<TCapture, ResultContainer> callback)
+                public DelegateContinueCaptureVoidVoidCancel(ref TCapture capturedValue, Promise.ContinueAction<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -1984,9 +2264,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
-                        _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
-                        owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                        _cancelationRegistration.TryUnregister();
+                        _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
+                        owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                     }
                 }
 
@@ -1994,30 +2274,34 @@ namespace Proto.Promises
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureVoidResultCancel<TCapture, TResult> : IDelegateContinue
+            private struct DelegateContinueCaptureVoidResultCancel<TCapture, TResult> : IDelegateContinue, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, ResultContainer, TResult> _callback;
+                private readonly Promise.ContinueFunc<TCapture, TResult> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueCaptureVoidResultCancel(ref TCapture capturedValue, Func<TCapture, ResultContainer, TResult> callback)
+                public DelegateContinueCaptureVoidResultCancel(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, TResult> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -2025,9 +2309,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
-                        TResult result = _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
-                        owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                        _cancelationRegistration.TryUnregister();
+                        TResult result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
+                        owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                     }
                 }
 
@@ -2035,30 +2319,34 @@ namespace Proto.Promises
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureArgVoidCancel<TCapture, TArg> : IDelegateContinue
+            private struct DelegateContinueCaptureArgVoidCancel<TCapture, TArg> : IDelegateContinue, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
-                private readonly Action<TCapture, Promise<TArg>.ResultContainer> _callback;
+                private readonly Promise<TArg>.ContinueAction<TCapture> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueCaptureArgVoidCancel(ref TCapture capturedValue, Action<TCapture, Promise<TArg>.ResultContainer> callback)
+                public DelegateContinueCaptureArgVoidCancel(ref TCapture capturedValue, Promise<TArg>.ContinueAction<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -2066,9 +2354,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
+                        _cancelationRegistration.TryUnregister();
                         _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                        owner.ResolveInternal(Internal.ResolveContainerVoid.GetOrCreate());
+                        owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                     }
                 }
 
@@ -2076,30 +2364,34 @@ namespace Proto.Promises
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureArgResultCancel<TCapture, TArg, TResult> : IDelegateContinue
+            private struct DelegateContinueCaptureArgResultCancel<TCapture, TArg, TResult> : IDelegateContinue, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, Promise<TArg>.ResultContainer, TResult> _callback;
+                private readonly Promise<TArg>.ContinueFunc<TCapture, TResult> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueCaptureArgResultCancel(ref TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, TResult> callback)
+                public DelegateContinueCaptureArgResultCancel(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, TResult> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -2107,9 +2399,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
+                        _cancelationRegistration.TryUnregister();
                         TResult result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                        owner.ResolveInternal(Internal.ResolveContainer<TResult>.GetOrCreate(ref result));
+                        owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                     }
                 }
 
@@ -2117,31 +2409,35 @@ namespace Proto.Promises
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureVoidPromiseCancel<TCapture> : IDelegateContinuePromise
+            private struct DelegateContinueCaptureVoidPromiseCancel<TCapture> : IDelegateContinuePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, ResultContainer, Promise> _callback;
+                private readonly Promise.ContinueFunc<TCapture, Promise> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueCaptureVoidPromiseCancel(ref TCapture capturedValue, Func<TCapture, ResultContainer, Promise> callback)
+                public DelegateContinueCaptureVoidPromiseCancel(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -2149,8 +2445,8 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
-                        Promise result = _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
+                        _cancelationRegistration.TryUnregister();
+                        Promise result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                         ((PromiseWaitPromise) owner).WaitFor(result);
                     }
                 }
@@ -2159,30 +2455,34 @@ namespace Proto.Promises
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureVoidPromiseTCancel<TCapture, TPromise> : IDelegateContinuePromise
+            private struct DelegateContinueCaptureVoidPromiseTCancel<TCapture, TPromise> : IDelegateContinuePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, ResultContainer, Promise<TPromise>> _callback;
+                private readonly Promise.ContinueFunc<TCapture, Promise<TPromise>> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueCaptureVoidPromiseTCancel(ref TCapture capturedValue, Func<TCapture, ResultContainer, Promise<TPromise>> callback)
+                public DelegateContinueCaptureVoidPromiseTCancel(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise<TPromise>> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -2190,9 +2490,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
-                        Promise<TPromise> result = _callback.Invoke(_capturedValue, new ResultContainer(valueContainer));
-                        ((PromiseWaitPromise<TPromise>) owner).WaitFor(result);
+                        _cancelationRegistration.TryUnregister();
+                        Promise<TPromise> result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
+                        ((PromiseWaitPromise) owner).WaitFor(result);
                     }
                 }
 
@@ -2200,30 +2500,34 @@ namespace Proto.Promises
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureArgPromiseCancel<TCapture, TArg> : IDelegateContinuePromise
+            private struct DelegateContinueCaptureArgPromiseCancel<TCapture, TArg> : IDelegateContinuePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, Promise<TArg>.ResultContainer, Promise> _callback;
+                private readonly Promise<TArg>.ContinueFunc<TCapture, Promise> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueCaptureArgPromiseCancel(ref TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, Promise> callback)
+                public DelegateContinueCaptureArgPromiseCancel(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -2231,7 +2535,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
+                        _cancelationRegistration.TryUnregister();
                         Promise result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                         ((PromiseWaitPromise) owner).WaitFor(result);
                     }
@@ -2241,30 +2545,34 @@ namespace Proto.Promises
                 {
                     _canceled = true;
                 }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateContinueCaptureArgPromiseTCancel<TCapture, TArg, TPromise> : IDelegateContinuePromise
+            private struct DelegateContinueCaptureArgPromiseTCancel<TCapture, TArg, TPromise> : IDelegateContinuePromise, ICancelableDelegate
             {
-                public CancelationRegistration cancelationRegistration;
-
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, Promise<TArg>.ResultContainer, Promise<TPromise>> _callback;
+                private readonly Promise<TArg>.ContinueFunc<TCapture, Promise<TPromise>> _callback;
+                private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
                 public bool IsNull { get { return _callback == null; } }
 
-                public DelegateContinueCaptureArgPromiseTCancel(ref TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, Promise<TPromise>> callback)
+                public DelegateContinueCaptureArgPromiseTCancel(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TPromise>> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
-                    cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default(CancelationRegistration);
                     _canceled = false;
                 }
 
-                public void Invoke(Internal.IValueContainer valueContainer, Promise owner)
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
                     {
@@ -2272,15 +2580,20 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        cancelationRegistration.TryUnregister();
+                        _cancelationRegistration.TryUnregister();
                         Promise<TPromise> result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                        ((PromiseWaitPromise<TPromise>) owner).WaitFor(result);
+                        ((PromiseWaitPromise) owner).WaitFor(result);
                     }
                 }
 
                 public void CancelCallback()
                 {
                     _canceled = true;
+                }
+
+                public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
+                {
+                    _cancelationRegistration = cancelationRegistration;
                 }
             }
             #endregion

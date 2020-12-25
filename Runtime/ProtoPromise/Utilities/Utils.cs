@@ -1,9 +1,9 @@
-﻿#pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0034 // Simplify 'default' expression
+﻿#pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Utils
 {
@@ -323,13 +323,13 @@ namespace Proto.Utils
 #endif
     public sealed class ReusableValueContainer<T> : IValueContainer<T>, IDisposable, ILinked<ReusableValueContainer<T>>
     {
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-        private static ValueLinkedStack<ReusableValueContainer<T>> _pool;
-#pragma warning restore RECS0108 // Warns about static fields in generic types
-
-        public static void ClearPool()
+        private struct Creator : Promises.Internal.ICreator<ReusableValueContainer<T>>
         {
-            _pool.Clear();
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public ReusableValueContainer<T> Create()
+            {
+                return new ReusableValueContainer<T>();
+            }
         }
 
         ReusableValueContainer<T> ILinked<ReusableValueContainer<T>>.Next { get; set; }
@@ -343,7 +343,7 @@ namespace Proto.Utils
         /// </summary>
         public static ReusableValueContainer<T> New(T value)
         {
-            ReusableValueContainer<T> node = _pool.IsNotEmpty ? _pool.Pop() : new ReusableValueContainer<T>();
+            var node = Promises.Internal.ObjectPool<ReusableValueContainer<T>>.GetOrCreate<ReusableValueContainer<T>, Creator>(new Creator());
             node.Value = value;
             return node;
         }
@@ -361,7 +361,7 @@ namespace Proto.Utils
         public void Dispose()
         {
             Value = default(T);
-            _pool.Push(this);
+            Promises.Internal.ObjectPool<ReusableValueContainer<T>>.MaybeRepool(this);
         }
     }
 
@@ -403,11 +403,6 @@ namespace Proto.Utils
             void IEnumerator.Reset() { }
 
             void IDisposable.Dispose() { }
-        }
-
-        public static void ClearPooledNodes()
-        {
-            ReusableValueContainer<T>.ClearPool();
         }
 
         private ValueLinkedStack<ReusableValueContainer<T>> _stack;
@@ -514,11 +509,6 @@ namespace Proto.Utils
             void IEnumerator.Reset() { }
 
             void IDisposable.Dispose() { }
-        }
-
-        public static void ClearPooledNodes()
-        {
-            ReusableValueContainer<T>.ClearPool();
         }
 
         private ValueLinkedQueue<ReusableValueContainer<T>> _queue;

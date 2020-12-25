@@ -9,6 +9,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Proto.Utils;
 
 namespace Proto.Promises
@@ -55,30 +56,32 @@ namespace Proto.Promises
 #endif
         public sealed class CancelDelegate<TCanceler> : ICancelDelegate, IDisposableTreeHandleable, ITraceable where TCanceler : IDelegateCancel
         {
+            private struct Creator : ICreator<CancelDelegate<TCanceler>>
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public CancelDelegate<TCanceler> Create()
+                {
+                    return new CancelDelegate<TCanceler>();
+                }
+            }
+
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
 #endif
             ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
-            private static ValueLinkedStack<ITreeHandleable> _pool;
-
             public TCanceler canceler;
 
             private CancelDelegate() { }
 
-            static CancelDelegate()
-            {
-                OnClearPool += () => _pool.Clear();
-            }
-
             public static CancelDelegate<TCanceler> GetOrCreate()
             {
-                var del = _pool.IsNotEmpty ? (CancelDelegate<TCanceler>) _pool.Pop() : new CancelDelegate<TCanceler>();
-                _SetCreatedStacktrace(del, 2);
+                var del = ObjectPool<ITreeHandleable>.GetOrCreate<CancelDelegate<TCanceler>, Creator>(new Creator());
+                SetCreatedStacktrace(del, 2);
                 return del;
             }
 
-            void ITreeHandleable.MakeReady(Promise owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
             {
                 if (valueContainer.GetState() == Promise.State.Canceled)
                 {
@@ -91,7 +94,7 @@ namespace Proto.Promises
                 }
             }
 
-            void ITreeHandleable.MakeReadyFromSettled(Promise owner, IValueContainer valueContainer)
+            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
             {
                 if (valueContainer.GetState() == Promise.State.Canceled)
                 {
@@ -106,7 +109,7 @@ namespace Proto.Promises
 
             void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
-                _SetCurrentInvoker(this);
+                SetCurrentInvoker(this);
                 try
                 {
                     // Canceler will dispose this if it can.
@@ -114,13 +117,13 @@ namespace Proto.Promises
                 }
                 finally
                 {
-                    _ClearCurrentInvoker();
+                    ClearCurrentInvoker();
                 }
             }
 
             void ITreeHandleable.Handle()
             {
-                _SetCurrentInvoker(this);
+                SetCurrentInvoker(this);
                 TCanceler callback = canceler;
                 Dispose();
                 try
@@ -133,17 +136,14 @@ namespace Proto.Promises
                 }
                 finally
                 {
-                    _ClearCurrentInvoker();
+                    ClearCurrentInvoker();
                 }
             }
 
             public void Dispose()
             {
                 canceler = default(TCanceler);
-                if (Promise.Config.ObjectPooling != Promise.PoolType.None)
-                {
-                    _pool.Push(this);
-                }
+                ObjectPool<ITreeHandleable>.MaybeRepool(this);
             }
 
             void ICancelDelegate.Dispose()
@@ -157,6 +157,15 @@ namespace Proto.Promises
 #endif
         internal sealed class CancelationRef : ICancelDelegate, ILinked<CancelationRef>, ITraceable
         {
+            private struct Creator : ICreator<CancelationRef>
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public CancelationRef Create()
+                {
+                    return new CancelationRef();
+                }
+            }
+
             private struct RegisteredDelegate : IComparable<RegisteredDelegate>
             {
                 public readonly ICancelDelegate callback;
@@ -201,8 +210,6 @@ namespace Proto.Promises
 
             CancelationRef ILinked<CancelationRef>.Next { get; set; }
 
-            private static ValueLinkedStack<CancelationRef> _pool;
-
             private readonly List<RegisteredDelegate> _registeredCallbacks = new List<RegisteredDelegate>();
             private ValueLinkedStackZeroGC<CancelationRegistration> _links;
             public ICancelValueContainer ValueContainer { get; private set; }
@@ -217,16 +224,11 @@ namespace Proto.Promises
 
             public bool IsCanceled { get { return ValueContainer != null; } }
 
-            static CancelationRef()
-            {
-                OnClearPool += ValueLinkedStackZeroGC<CancelationRegistration>.ClearPooledNodes;
-            }
-
             public static CancelationRef GetOrCreate()
             {
-                var cancelRef = _pool.IsNotEmpty ? _pool.Pop() : new CancelationRef();
+                var cancelRef = ObjectPool<CancelationRef>.GetOrCreate<CancelationRef, Creator>(new Creator());
                 cancelRef._isDisposed = false;
-                _SetCreatedStacktrace(cancelRef, 2);
+                SetCreatedStacktrace(cancelRef, 2);
                 return cancelRef;
             }
 
@@ -234,7 +236,7 @@ namespace Proto.Promises
             {
                 if (IsCanceled)
                 {
-                    // Don't need to worry about invoking callbacks here since this is only called from CancelationSource.CreateLinkedSource.
+                    // Don't need to worry about invoking callbacks here since this is only called from CancelationSource.New.
                     listener.ValueContainer = ValueContainer;
                     ValueContainer.Retain();
                 }
@@ -411,10 +413,7 @@ namespace Proto.Promises
                     ValueContainer.Release();
                     ValueContainer = null;
                 }
-                if (Promise.Config.ObjectPooling != Promise.PoolType.None)
-                {
-                    _pool.Push(this);
-                }
+                ObjectPool<CancelationRef>.MaybeRepool(this);
             }
 
             private void Unlink()

@@ -14,138 +14,26 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Proto.Utils;
 
 namespace Proto.Promises
 {
-    partial class Promise
+    partial class Internal
     {
-        partial class InternalProtected
+        partial class PromiseRef
         {
-            public static Promise CreateFirst<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
-            {
-                ValidateArgument(promises, "promises", 2);
-                if (!promises.MoveNext())
-                {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(2));
-                }
-                int count;
-                var passThroughs = WrapInPassThroughs(promises, out count);
-                return FirstPromiseVoid.GetOrCreate(passThroughs, count);
-            }
-
-            public static Promise<T> CreateFirst<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
-            {
-                ValidateArgument(promises, "promises", 2);
-                if (!promises.MoveNext())
-                {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(2));
-                }
-                int count;
-                var passThroughs = WrapInPassThroughs<T, TEnumerator>(promises, out count);
-                return FirstPromise<T>.GetOrCreate(passThroughs, count);
-            }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class FirstPromiseVoid : PromiseIntermediate, IMultiTreeHandleable
+            internal sealed partial class FirstPromise : PromiseRef, IMultiTreeHandleable
             {
-                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
-
-                static FirstPromiseVoid()
+                private struct Creator : ICreator<FirstPromise>
                 {
-                    Internal.OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public FirstPromise Create()
                     {
-                        _pool.Push(this);
-                    }
-                }
-
-                private ValueLinkedStack<PromisePassThrough> _passThroughs;
-                private uint _waitCount;
-
-                private FirstPromiseVoid() { }
-
-                public static Promise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
-                {
-                    var promise = _pool.IsNotEmpty ? (FirstPromiseVoid) _pool.Pop() : new FirstPromiseVoid();
-
-                    promise._passThroughs = promisePassThroughs;
-
-                    promise._waitCount = (uint) count;
-                    promise.Reset();
-                    // Retain this until all promises resolve/reject/cancel.
-                    promise.RetainInternal();
-
-                    foreach (var passThrough in promisePassThroughs)
-                    {
-                        passThrough.SetTargetAndAddToOwner(promise);
-                    }
-
-                    return promise;
-                }
-
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
-                private
-#endif
-                protected override void Execute(Internal.IValueContainer valueContainer)
-                {
-                    HandleSelf(valueContainer);
-                }
-
-                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, PromisePassThrough passThrough, int index)
-                {
-                    Promise owner = passThrough.Owner;
-                    owner._wasWaitedOn = true;
-                    bool done = --_waitCount == 0;
-                    bool handle = _valueOrPrevious == null & (owner._state == State.Resolved | done);
-                    if (handle)
-                    {
-                        valueContainer.Retain();
-                        _valueOrPrevious = valueContainer;
-                    }
-                    if (done)
-                    {
-                        while (_passThroughs.IsNotEmpty)
-                        {
-                            _passThroughs.Pop().Release();
-                        }
-                        ReleaseInternal();
-                    }
-                    return handle;
-                }
-
-                void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
-                {
-                    _passThroughs.Push(passThrough);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal sealed partial class FirstPromise<T> : PromiseIntermediate<T>, IMultiTreeHandleable
-            {
-                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
-
-                static FirstPromise()
-                {
-                    Internal.OnClearPool += () => _pool.Clear();
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
+                        return new FirstPromise();
                     }
                 }
 
@@ -154,9 +42,15 @@ namespace Proto.Promises
 
                 private FirstPromise() { }
 
-                public static Promise<T> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
+                protected override void Dispose()
                 {
-                    var promise = _pool.IsNotEmpty ? (FirstPromise<T>) _pool.Pop() : new FirstPromise<T>();
+                    base.Dispose();
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                public static FirstPromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<FirstPromise, Creator>(new Creator());
 
                     promise._passThroughs = promisePassThroughs;
 
@@ -173,20 +67,17 @@ namespace Proto.Promises
                     return promise;
                 }
 
-#if CSHARP_7_3_OR_NEWER // Really C# 7.2 but this is the closest symbol Unity offers.
-                private
-#endif
-                protected override void Execute(Internal.IValueContainer valueContainer)
+                protected override void Execute(IValueContainer valueContainer)
                 {
                     HandleSelf(valueContainer);
                 }
 
-                bool IMultiTreeHandleable.Handle(Internal.IValueContainer valueContainer, PromisePassThrough passThrough, int index)
+                bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index)
                 {
-                    Promise owner = passThrough.Owner;
+                    PromiseRef owner = passThrough.Owner;
                     owner._wasWaitedOn = true;
                     bool done = --_waitCount == 0;
-                    bool handle = _valueOrPrevious == null & (owner._state == State.Resolved | done);
+                    bool handle = _valueOrPrevious == null & (owner._state == Promise.State.Resolved | done);
                     if (handle)
                     {
                         valueContainer.Retain();
@@ -210,7 +101,7 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class FirstPromiseVoid : IInvokable
+            partial class FirstPromise : IInvokable
             {
                 private UnsignedFixed32 _currentAmount;
                 private bool _invokingProgress;
@@ -231,19 +122,19 @@ namespace Proto.Promises
                     _waitDepthAndProgress = new UnsignedFixed32(minWaitDepth);
                 }
 
-                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
+                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous)
                 {
                     // This is guaranteed to be pending.
                     previous = this;
                     return true;
                 }
 
-                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     progressListener.Retain();
                     _progressListeners.Push(progressListener);
-                    if (firstSubscribe & _state == State.Pending)
+                    if (firstSubscribe & _state == Promise.State.Pending)
                     {
                         BorrowPassthroughs(ref passThroughs);
                     }
@@ -275,89 +166,7 @@ namespace Proto.Promises
 
                 void IInvokable.Invoke()
                 {
-                    if (_state != State.Pending)
-                    {
-                        ReleaseInternal();
-                        return;
-                    }
-
-                    _invokingProgress = false;
-
-                    foreach (var progressListener in _progressListeners)
-                    {
-                        progressListener.SetProgress(this, _currentAmount);
-                    }
-
-                    ReleaseInternal();
-                }
-            }
-
-            partial class FirstPromise<T> : IInvokable
-            {
-                private UnsignedFixed32 _currentAmount;
-                private bool _invokingProgress;
-
-                protected override void Reset()
-                {
-                    base.Reset();
-                    _currentAmount = default(UnsignedFixed32);
-                    _invokingProgress = false;
-
-                    uint minWaitDepth = uint.MaxValue;
-                    foreach (var passThrough in _passThroughs)
-                    {
-                        minWaitDepth = Math.Min(minWaitDepth, passThrough.Owner._waitDepthAndProgress.WholePart);
-                    }
-
-                    // Expect the shortest chain to finish first.
-                    _waitDepthAndProgress = new UnsignedFixed32(minWaitDepth);
-                }
-
-                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out Promise previous)
-                {
-                    // This is guaranteed to be pending.
-                    previous = this;
-                    return true;
-                }
-
-                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out Promise previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
-                {
-                    bool firstSubscribe = _progressListeners.IsEmpty;
-                    progressListener.Retain();
-                    _progressListeners.Push(progressListener);
-                    if (firstSubscribe & _state == State.Pending)
-                    {
-                        BorrowPassthroughs(ref passThroughs);
-                    }
-
-                    previous = null;
-                    return false;
-                }
-
-                protected override UnsignedFixed32 CurrentProgress()
-                {
-                    return _currentAmount;
-                }
-
-                void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
-                {
-                    // Use double for better precision.
-                    var newAmount = new UnsignedFixed32(senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
-                    if (newAmount > _currentAmount)
-                    {
-                        _currentAmount = newAmount;
-                        if (!_invokingProgress)
-                        {
-                            RetainInternal();
-                            _invokingProgress = true;
-                            AddToFrontOfProgressQueue(this);
-                        }
-                    }
-                }
-
-                void IInvokable.Invoke()
-                {
-                    if (_state != State.Pending)
+                    if (_state != Promise.State.Pending)
                     {
                         ReleaseInternal();
                         return;

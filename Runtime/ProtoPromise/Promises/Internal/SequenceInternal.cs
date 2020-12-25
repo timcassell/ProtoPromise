@@ -1,13 +1,14 @@
 ﻿#pragma warning disable IDE0017 // Simplify object initialization
+#pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
 using System.Collections.Generic;
 
 namespace Proto.Promises
 {
-    partial class Promise
+    partial class Internal
     {
-        partial class InternalProtected
+        partial class PromiseRef
         {
             public static Promise CreateSequence<TEnumerator>(TEnumerator promiseFuncs, CancelationToken cancelationToken = default(CancelationToken)) where TEnumerator : IEnumerator<Func<Promise>>
             {
@@ -15,38 +16,34 @@ namespace Proto.Promises
 
                 if (!promiseFuncs.MoveNext())
                 {
-                    return Resolved();
+                    return CreateResolved();
                 }
 
                 // Invoke funcs async and normalize the progress.
-                Promise rootPromise;
+                PromiseRef rootPromise;
                 if (cancelationToken.CanBeCanceled)
                 {
-                    var newPromise = PromiseResolvePromise<DelegateVoidPromiseCancel>.GetOrCreate();
-                    newPromise.resolver = new DelegateVoidPromiseCancel(promiseFuncs.Current);
-                    newPromise.resolver.cancelationRegistration = cancelationToken.RegisterInternal(newPromise);
-                    // Set resolved value only if cancelation token wasn't already canceled (_valueOrPrevious will be a cancel value from being invoked synchronously).
-                    if (newPromise._valueOrPrevious == null)
+                    rootPromise = RefCreator.CreateResolveWait(DelegateWrapper.CreateCancelable(promiseFuncs.Current), cancelationToken);
+                    if (rootPromise._valueOrPrevious != null)
                     {
-                        newPromise._valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
+                        // Cancelation token was already canceled, return the canceled promise.
+                        return new Promise(rootPromise, rootPromise.Id);
                     }
-                    rootPromise = newPromise;
                 }
                 else
                 {
-                    var newPromise = PromiseResolvePromise<DelegateVoidPromise>.GetOrCreate();
-                    newPromise.resolver = new DelegateVoidPromise(promiseFuncs.Current);
-                    newPromise._valueOrPrevious = Internal.ResolveContainerVoid.GetOrCreate();
-                    rootPromise = newPromise;
+                    rootPromise = RefCreator.CreateResolveWait(DelegateWrapper.Create(promiseFuncs.Current));
                 }
+                rootPromise._valueOrPrevious = ResolveContainerVoid.GetOrCreate();
                 rootPromise.ResetDepth();
 
-                Promise promise = rootPromise;
+                Promise promise = new Promise(rootPromise, rootPromise.Id);
                 while (promiseFuncs.MoveNext())
                 {
                     promise = promise.Then(promiseFuncs.Current, cancelationToken);
                 }
-                Internal.AddToHandleQueueBack(rootPromise); return promise;
+                AddToHandleQueueBack(rootPromise);
+                return promise;
             }
         }
     }

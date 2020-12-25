@@ -13,6 +13,7 @@
 #pragma warning disable IDE0031 // Use null propagation
 
 using System;
+using System.Runtime.CompilerServices;
 using Proto.Utils;
 
 namespace Proto.Promises
@@ -24,14 +25,16 @@ namespace Proto.Promises
 #endif
         public sealed class RejectionContainer<T> : ILinked<RejectionContainer<T>>, IRejectValueContainer, IValueContainer<T>, IRejectionToContainer, ICantHandleException
         {
-            RejectionContainer<T> ILinked<RejectionContainer<T>>.Next { get; set; }
-
-            private static ValueLinkedStack<RejectionContainer<T>> _pool;
-
-            static RejectionContainer()
+            private struct Creator : ICreator<RejectionContainer<T>>
             {
-                OnClearPool += () => _pool.Clear();
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public RejectionContainer<T> Create()
+                {
+                    return new RejectionContainer<T>();
+                }
             }
+
+            RejectionContainer<T> ILinked<RejectionContainer<T>>.Next { get; set; }
 
             public T Value { get; private set; }
 
@@ -67,9 +70,9 @@ namespace Proto.Promises
 
             public static RejectionContainer<T> GetOrCreate(ref T value)
             {
-                RejectionContainer<T> ex = _pool.IsNotEmpty ? _pool.Pop() : new RejectionContainer<T>();
-                ex.Value = value;
-                return ex;
+                var container = ObjectPool<RejectionContainer<T>>.GetOrCreate<RejectionContainer<T>, Creator>(new Creator());
+                container.Value = value;
+                return container;
             }
 
             public Promise.State GetState()
@@ -115,56 +118,40 @@ namespace Proto.Promises
                 _stackTraces = null;
 #endif
                 Value = default(T);
-                if (Promise.Config.ObjectPooling != Promise.PoolType.None)
-                {
-                    _pool.Push(this);
-                }
+                ObjectPool<RejectionContainer<T>>.MaybeRepool(this);
             }
 
             public UnhandledException ToException()
             {
-                string message = null;
-                Exception innerException;
-                bool valueIsNull = ReferenceEquals(Value, null);
-                Type type = valueIsNull ? typeof(T) : Value.GetType();
-
 #if PROMISE_DEBUG
                 string innerStacktrace = _rejectedStackTrace == null ? null : FormatStackTrace(new System.Diagnostics.StackTrace[1] { _rejectedStackTrace });
 #else
-                    string innerStacktrace = null;
+                string innerStacktrace = null;
 #endif
-                if (typeof(Exception).IsAssignableFrom(type))
+                string message = null;
+                Type type = Value.GetType();
+                Exception innerException = Value as Exception;
+                if (innerException != null)
                 {
-                    Exception e = Value as Exception;
 #if PROMISE_DEBUG
-                    if (_rejectedStackTrace == null)
+                    if (_rejectedStackTrace != null)
                     {
-                        innerException = e;
+                        innerException = new RejectionException(message, innerStacktrace, innerException);
                     }
-                    else
-                    {
-                        innerException = new RejectionException(message, innerStacktrace, e);
-                    }
-#else
-                        innerException = e;
 #endif
                     message = "An exception was not handled.";
                 }
                 else
                 {
-                    message = "A rejected value was not handled, type: " + type + ", value: " + (valueIsNull ? "NULL" : Value.ToString());
+                    message = "A rejected value was not handled, type: " + type + ", value: " + Value.ToString();
                     innerException = new RejectionException(message, innerStacktrace, null);
                 }
 #if PROMISE_DEBUG
                 string outerStacktrace = _stackTraces.ToString();
-                message += Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
-                    ? " -- This exception's Stacktrace contains the causality trace of all async callbacks that ran."
-                    : " -- Set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
 #else
                 string outerStacktrace = null;
-                message += " -- Enable DEBUG mode and set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
 #endif
-                return new UnhandledExceptionInternal(Value, type, message, outerStacktrace, innerException);
+                return new UnhandledExceptionInternal(Value, type, message + CausalityTraceMessage, outerStacktrace, innerException);
             }
 
             Exception IThrowable.GetException()
@@ -188,14 +175,16 @@ namespace Proto.Promises
 #endif
         public sealed class CancelContainer<T> : ILinked<CancelContainer<T>>, ICancelValueContainer, IValueContainer<T>, ICancelationToContainer
         {
-            CancelContainer<T> ILinked<CancelContainer<T>>.Next { get; set; }
-
-            private static ValueLinkedStack<CancelContainer<T>> _pool;
-
-            static CancelContainer()
+            private struct Creator : ICreator<CancelContainer<T>>
             {
-                OnClearPool += () => _pool.Clear();
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public CancelContainer<T> Create()
+                {
+                    return new CancelContainer<T>();
+                }
             }
+
+            CancelContainer<T> ILinked<CancelContainer<T>>.Next { get; set; }
 
             public T Value { get; private set; }
             private int _retainCounter;
@@ -218,9 +207,9 @@ namespace Proto.Promises
 
             public static CancelContainer<T> GetOrCreate(ref T value)
             {
-                CancelContainer<T> ex = _pool.IsNotEmpty ? _pool.Pop() : new CancelContainer<T>();
-                ex.Value = value;
-                return ex;
+                var container = ObjectPool<CancelContainer<T>>.GetOrCreate<CancelContainer<T>, Creator>(new Creator());
+                container.Value = value;
+                return container;
             }
 
             public Promise.State GetState()
@@ -254,10 +243,7 @@ namespace Proto.Promises
             private void Dispose()
             {
                 Value = default(T);
-                if (Promise.Config.ObjectPooling != Promise.PoolType.None)
-                {
-                    _pool.Push(this);
-                }
+                ObjectPool<CancelContainer<T>>.MaybeRepool(this);
             }
 
             Exception IThrowable.GetException()
@@ -318,14 +304,16 @@ namespace Proto.Promises
 #endif
         public sealed class ResolveContainer<T> : ILinked<ResolveContainer<T>>, IValueContainer, IValueContainer<T>
         {
-            ResolveContainer<T> ILinked<ResolveContainer<T>>.Next { get; set; }
-
-            private static ValueLinkedStack<ResolveContainer<T>> _pool;
-
-            static ResolveContainer()
+            private struct Creator : ICreator<ResolveContainer<T>>
             {
-                OnClearPool += () => _pool.Clear();
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public ResolveContainer<T> Create()
+                {
+                    return new ResolveContainer<T>();
+                }
             }
+
+            ResolveContainer<T> ILinked<ResolveContainer<T>>.Next { get; set; }
 
             public T value;
             private int _retainCounter;
@@ -349,9 +337,9 @@ namespace Proto.Promises
 
             public static ResolveContainer<T> GetOrCreate(ref T value)
             {
-                ResolveContainer<T> ex = _pool.IsNotEmpty ? _pool.Pop() : new ResolveContainer<T>();
-                ex.value = value;
-                return ex;
+                var container = ObjectPool<ResolveContainer<T>>.GetOrCreate<ResolveContainer<T>, Creator>(new Creator());
+                container.value = value;
+                return container;
             }
 
             public Promise.State GetState()
@@ -385,10 +373,7 @@ namespace Proto.Promises
             private void Dispose()
             {
                 value = default(T);
-                if (Promise.Config.ObjectPooling != Promise.PoolType.None)
-                {
-                    _pool.Push(this);
-                }
+                ObjectPool<ResolveContainer<T>>.MaybeRepool(this);
             }
         }
 

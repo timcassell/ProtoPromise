@@ -14,7 +14,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
 #endif
-    public partial struct CancelationSource : ICancelableAny, IDisposable, IEquatable<CancelationSource>
+    public struct CancelationSource : ICancelableAny, IDisposable, IEquatable<CancelationSource>
     {
         private readonly Internal.CancelationRef _ref;
         private readonly ushort _id;
@@ -25,7 +25,6 @@ namespace Proto.Promises
         /// </summary>
         public static CancelationSource New()
         {
-            ValidateThreadAccess(1);
             return new CancelationSource(Internal.CancelationRef.GetOrCreate());
         }
 
@@ -43,7 +42,6 @@ namespace Proto.Promises
         /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
         public static CancelationSource New(CancelationToken token)
         {
-            ValidateThreadAccess(1);
             CancelationSource newCancelationSource = New();
             token.MaybeLinkSourceInternal(newCancelationSource._ref);
             return newCancelationSource;
@@ -58,7 +56,6 @@ namespace Proto.Promises
         /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
         public static CancelationSource New(CancelationToken token1, CancelationToken token2)
         {
-            ValidateThreadAccess(1);
             CancelationSource newCancelationSource = New(token1);
             if (!newCancelationSource._ref.IsCanceled)
             {
@@ -75,7 +72,6 @@ namespace Proto.Promises
         /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
         public static CancelationSource New(params CancelationToken[] tokens)
         {
-            ValidateThreadAccess(1);
             CancelationSource newCancelationSource = New();
             Internal.CancelationRef newCancelation = newCancelationSource._ref;
             for (int i = 0, max = tokens.Length; i < max & !newCancelation.IsCanceled; ++i)
@@ -108,7 +104,6 @@ namespace Proto.Promises
         {
             get
             {
-                ValidateThreadAccess(1);
                 return _ref != null && _ref.SourceId == _id;
             }
         }
@@ -214,14 +209,5 @@ namespace Proto.Promises
         {
             return !(c1 == c2);
         }
-
-        // Calls to this get compiled away in RELEASE mode
-        static partial void ValidateThreadAccess(int skipFrames);
-#if PROMISE_DEBUG
-        static partial void ValidateThreadAccess(int skipFrames)
-        {
-            Internal.ValidateThreadAccess(skipFrames + 1);
-        }
-#endif
     }
 }

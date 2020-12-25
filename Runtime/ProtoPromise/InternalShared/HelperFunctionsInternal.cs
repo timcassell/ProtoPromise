@@ -41,57 +41,63 @@ namespace Proto.Promises
             }
         }
 
-        static partial void _SetCreatedStacktrace(ITraceable traceable, int skipFrames);
-        static partial void _SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable);
-        static partial void _SetCurrentInvoker(ITraceable current);
-        static partial void _ClearCurrentInvoker();
-#if PROMISE_DEBUG
-        private static readonly System.Threading.Thread _initialThread = System.Threading.Thread.CurrentThread;
-
-        public static void ValidateThreadAccess(int skipFrames, bool warn = true)
+        public static string CausalityTraceMessage
         {
-            if (!ReferenceEquals(_initialThread, System.Threading.Thread.CurrentThread))
+            get
             {
-                string message = "ProtoPromise library accessed from more than one thread. This is currently unsafe. All access should be from the UI/main thread.";
-                var temp = Promise.Config.WarningHandler;
-                if (!warn | temp == null)
-                {
-                    message += "\nPromise.Config.WarningHandler is null, set a warning handler to make this a warning instead of an exception.";
-                    throw new InvalidOperationException(message, GetFormattedStacktrace(skipFrames + 1));
-                }
-                temp.Invoke(message);
+#if PROMISE_DEBUG
+                return Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
+                    ? " -- This exception's Stacktrace contains the causality trace of all async callbacks that ran."
+                    : " -- Set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
+#else
+                return " -- Enable DEBUG mode and set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
+#endif
             }
         }
 
-        static partial void _SetCreatedStacktrace(ITraceable traceable, int skipFrames)
+        static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames);
+        static partial void SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable);
+        static partial void SetCurrentInvoker(ITraceable current);
+        static partial void ClearCurrentInvoker();
+#if PROMISE_DEBUG
+        static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames)
         {
-            SetCreatedStacktrace(traceable, skipFrames + 1);
-        }
-        static partial void _SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable)
-        {
-            SetCreatedAndRejectedStacktrace(unhandledException, rejectSkipFrames + 1, traceable);
-        }
-        static partial void _SetCurrentInvoker(ITraceable current)
-        {
-            SetCurrentInvoker(current);
-        }
-        static partial void _ClearCurrentInvoker()
-        {
-            ClearCurrentInvoker();
+            StackTrace stackTrace = Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
+                ? GetStackTrace(skipFrames + 1)
+                : null;
+            traceable.Trace = new CausalityTrace(stackTrace, CurrentTrace);
         }
 
-        public static ulong InvokeId { get; private set; }
-        public static CausalityTrace CurrentTrace { get; private set; }
-
-        public static void SetCurrentInvoker(ITraceable current)
+        static partial void SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable)
         {
-            CurrentTrace = current.Trace;
+            StackTrace stackTrace = rejectSkipFrames > 0 & Promise.Config.DebugCausalityTracer != Promise.TraceLevel.None
+                ? GetStackTrace(rejectSkipFrames + 1)
+                : null;
+            unhandledException.SetCreatedAndRejectedStacktrace(stackTrace, traceable.Trace);
         }
 
-        public static void ClearCurrentInvoker()
+#if !CSHARP_7_3_OR_NEWER
+        // This is only needed in older language versions that don't support ref structs.
+        [ThreadStatic]
+        private static ulong _invokeId;
+        public static ulong InvokeId { get { return _invokeId; } }
+#endif
+
+        [ThreadStatic]
+        private static CausalityTrace _currentTrace;
+        internal static CausalityTrace CurrentTrace { get { return _currentTrace; } set { _currentTrace = value; } }
+
+        static partial void SetCurrentInvoker(ITraceable current)
         {
-            CurrentTrace = null;
-            ++InvokeId;
+            _currentTrace = current.Trace;
+        }
+
+        static partial void ClearCurrentInvoker()
+        {
+            _currentTrace = null;
+#if !CSHARP_7_3_OR_NEWER
+            ++_invokeId;
+#endif
         }
 
         private static StackTrace GetStackTrace(int skipFrames)
@@ -109,25 +115,9 @@ namespace Proto.Promises
             return FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
         }
 
-        public static void SetCreatedStacktrace(ITraceable traceable, int skipFrames)
+        public static void ValidateArgument(object arg, string argName, int skipFrames)
         {
-            StackTrace stackTrace = Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
-                ? GetStackTrace(skipFrames + 1)
-                : null;
-            traceable.Trace = new CausalityTrace(stackTrace, CurrentTrace);
-        }
-
-        public static void SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable)
-        {
-            StackTrace stackTrace = rejectSkipFrames > 0 & Promise.Config.DebugCausalityTracer != Promise.TraceLevel.None
-                ? GetStackTrace(rejectSkipFrames + 1)
-                : null;
-            unhandledException.SetCreatedAndRejectedStacktrace(stackTrace, traceable.Trace);
-        }
-
-        public static void ValidateArgument(object del, string argName, int skipFrames)
-        {
-            if (del == null)
+            if (arg == null)
             {
                 throw new ArgumentNullException(argName, null, GetFormattedStacktrace(skipFrames + 1));
             }
@@ -186,7 +176,7 @@ namespace Proto.Promises
 #endif
         }
 #else
-        public static string GetFormattedStacktrace(int skipFrames)
+            public static string GetFormattedStacktrace(int skipFrames)
         {
             return null;
         }
@@ -255,7 +245,7 @@ namespace Proto.Promises
                 // Only need to create one object pool for reference types.
                 valueContainer = RejectionContainer<object>.GetOrCreate(ref o);
             }
-            _SetCreatedAndRejectedStacktrace(valueContainer, rejectSkipFrames + 1, traceable);
+            SetCreatedAndRejectedStacktrace(valueContainer, rejectSkipFrames + 1, traceable);
             return valueContainer;
         }
 
@@ -294,7 +284,7 @@ namespace Proto.Promises
         }
 
         // Handle promises in a depth-first manner.
-        internal static ValueLinkedQueue<ITreeHandleable> _handleQueue;
+        private static ValueLinkedQueue<ITreeHandleable> _handleQueue;
         private static bool _runningHandles;
 
         public static void AddToHandleQueueFront(ITreeHandleable handleable)
@@ -325,10 +315,10 @@ namespace Proto.Promises
         }
 
         // Generate stack trace if traceable is null.
-        public static void AddRejectionToUnhandledStack<TReject>(TReject unhandledValue, ITraceable traceable)
+        public static void AddRejectionToUnhandledStack(object unhandledValue, ITraceable traceable)
         {
 #if CSHARP_7_OR_LATER
-            if (((object) unhandledValue) is ICantHandleException ex)
+            if (unhandledValue is ICantHandleException ex)
 #else
             ICantHandleException ex = unhandledValue as ICantHandleException;
             if (ex != null)
@@ -336,6 +326,12 @@ namespace Proto.Promises
             {
                 ex.AddToUnhandledStack(traceable);
                 return;
+            }
+
+            if (ReferenceEquals(unhandledValue, null))
+            {
+                // unhandledValue is null, behave the same way .Net behaves if you throw null.
+                unhandledValue = new NullReferenceException();
             }
 
 #if PROMISE_DEBUG
@@ -348,35 +344,11 @@ namespace Proto.Promises
 #else
             string stackTrace = null;
 #endif
-            string message;
-            Exception innerException;
+            Type type = unhandledValue.GetType();
+            Exception innerException = unhandledValue as Exception;
+            string message = innerException != null ? "An exception was not handled." : "A rejected value was not handled, type: " + type + ", value: " + unhandledValue.ToString();
 
-            if (unhandledValue is Exception)
-            {
-                message = "An exception was not handled.";
-                innerException = unhandledValue as Exception;
-            }
-            else if (ReferenceEquals(unhandledValue, null))
-            {
-                // unhandledValue is null, behave the same way .Net behaves if you throw null.
-                message = "An rejected null value was not handled.";
-#if !PROMISE_DEBUG
-                message += " -- Enable DEBUG mode and set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
-#endif
-                NullReferenceException nullRefEx = new NullReferenceException();
-                AddUnhandledException(new UnhandledExceptionInternal(nullRefEx, typeof(NullReferenceException), message, stackTrace, nullRefEx));
-                return;
-            }
-            else
-            {
-                Type type = typeof(TReject);
-                message = "A rejected value was not handled, type: " + type + ", value: " + unhandledValue.ToString();
-                innerException = null;
-            }
-#if !PROMISE_DEBUG
-            message += " -- Enable DEBUG mode and set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
-#endif
-            AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, unhandledValue.GetType(), message, stackTrace, innerException));
+            AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, type, message + CausalityTraceMessage, stackTrace, innerException));
         }
 
         public static void HandleEvents()

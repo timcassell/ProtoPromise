@@ -1,8 +1,19 @@
-﻿using System;
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+# endif
+
+using System;
 
 namespace Proto.Promises
 {
-    partial class Promise
+    partial struct Promise
     {
         /// <summary>
         /// Promise manager. This can be used to cleared pooled objects (if enabled) or manually handle promises (not recommended for RELEASE builds).
@@ -22,8 +33,6 @@ namespace Proto.Promises
             /// </summary>
             public static void HandleCompletes()
             {
-                ValidateThreadAccess(1, false);
-
                 bool willThrow = _willThrow;
                 _willThrow = true;
 
@@ -45,13 +54,13 @@ namespace Proto.Promises
             /// </summary>
             public static void HandleCompletesAndProgress()
             {
-                ValidateThreadAccess(1, false);
-
                 bool willThrow = _willThrow;
                 _willThrow = true;
 
                 Internal.HandleEvents();
-                InvokeProgressListeners();
+#if PROMISE_PROGRESS
+                Internal.PromiseRef.InvokeProgressListeners();
+#endif
 
                 if (!willThrow)
                 {
@@ -68,12 +77,12 @@ namespace Proto.Promises
             /// </summary>
             public static void HandleProgress()
             {
-                ValidateThreadAccess(1, false);
-
                 bool willThrow = _willThrow;
                 _willThrow = true;
 
-                InvokeProgressListeners();
+#if PROMISE_PROGRESS
+                Internal.PromiseRef.InvokeProgressListeners();
+#endif
 
                 if (!willThrow)
                 {
@@ -87,9 +96,6 @@ namespace Proto.Promises
             /// </summary>
             public static void ClearObjectPool()
             {
-                ValidateThreadAccess(1);
-
-                ClearPooledProgress();
                 Internal.ClearPool();
             }
 

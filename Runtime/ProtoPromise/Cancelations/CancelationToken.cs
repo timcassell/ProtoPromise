@@ -69,7 +69,6 @@ namespace Proto.Promises
         {
             get
             {
-                ValidateThreadAccess(1);
                 return _ref != null && _ref.TokenId == _id;
             }
         }
@@ -147,7 +146,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
         /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
-        public CancelationRegistration Register(Action<ReasonContainer> callback)
+        public CancelationRegistration Register(Promise.CanceledAction callback)
         {
             if (!CanBeCanceled)
             {
@@ -170,7 +169,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
         /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
-        public CancelationRegistration Register<TCapture>(TCapture captureValue, Action<TCapture, ReasonContainer> callback)
+        public CancelationRegistration Register<TCapture>(TCapture captureValue, Promise.CanceledAction<TCapture> callback)
         {
             if (!CanBeCanceled)
             {
@@ -260,18 +259,12 @@ namespace Proto.Promises
             return !(c1 == c2);
         }
 
-        // Calls to these get compiled away in RELEASE mode
+        // Calls to this get compiled away in RELEASE mode
         static partial void ValidateArgument(object arg, string argName, int skipFrames);
-        static partial void ValidateThreadAccess(int skipFrames);
 #if PROMISE_DEBUG
         static partial void ValidateArgument(object arg, string argName, int skipFrames)
         {
             Internal.ValidateArgument(arg, argName, skipFrames + 1);
-        }
-
-        static partial void ValidateThreadAccess(int skipFrames)
-        {
-            Internal.ValidateThreadAccess(skipFrames + 1);
         }
 #endif
     }
