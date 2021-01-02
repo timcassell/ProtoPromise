@@ -28,8 +28,8 @@ namespace Proto.Promises
                 T value = promise2._result;
                 return Internal.CreateResolved(ref value);
             }
-            passThroughs.Push(Internal.CreatePassthrough(promise1, 0));
-            passThroughs.Push(Internal.CreatePassthrough(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 2);
             return new Promise<T>(promise, promise.Id);
@@ -61,9 +61,9 @@ namespace Proto.Promises
                 T value = promise3._result;
                 return Internal.CreateResolved(ref value);
             }
-            passThroughs.Push(Internal.CreatePassthrough(promise1, 0));
-            passThroughs.Push(Internal.CreatePassthrough(promise2, 1));
-            passThroughs.Push(Internal.CreatePassthrough(promise3, 2));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 3);
             return new Promise<T>(promise, promise.Id);
@@ -101,10 +101,10 @@ namespace Proto.Promises
                 T value = promise4._result;
                 return Internal.CreateResolved(ref value);
             }
-            passThroughs.Push(Internal.CreatePassthrough(promise1, 0));
-            passThroughs.Push(Internal.CreatePassthrough(promise2, 1));
-            passThroughs.Push(Internal.CreatePassthrough(promise3, 2));
-            passThroughs.Push(Internal.CreatePassthrough(promise4, 3));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 4);
             return new Promise<T>(promise, promise.Id);
@@ -160,7 +160,7 @@ namespace Proto.Promises
                 {
                     var p = promises.Current;
                     ValidateElement(p, "promises", 1);
-                    Internal.PromiseRef.MaybeRelease(p._ref);
+                    Internal.PromiseRef.MaybeMarkAwaitedAndDispose(p, false);
                 }
                 // Repool any created passthroughs.
                 foreach (var passthrough in passThroughs)
@@ -193,8 +193,8 @@ namespace Proto.Promises
                 T value = promise2._result;
                 return Internal.CreateResolved(ref value);
             }
-            passThroughs.Push(Internal.CreatePassthrough(promise1, 0));
-            passThroughs.Push(Internal.CreatePassthrough(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 2);
             return new Promise<T>(promise, promise.Id);
@@ -226,9 +226,9 @@ namespace Proto.Promises
                 T value = promise3._result;
                 return Internal.CreateResolved(ref value);
             }
-            passThroughs.Push(Internal.CreatePassthrough(promise1, 0));
-            passThroughs.Push(Internal.CreatePassthrough(promise2, 1));
-            passThroughs.Push(Internal.CreatePassthrough(promise3, 2));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 3);
             return new Promise<T>(promise, promise.Id);
@@ -266,10 +266,10 @@ namespace Proto.Promises
                 T value = promise4._result;
                 return Internal.CreateResolved(ref value);
             }
-            passThroughs.Push(Internal.CreatePassthrough(promise1, 0));
-            passThroughs.Push(Internal.CreatePassthrough(promise2, 1));
-            passThroughs.Push(Internal.CreatePassthrough(promise3, 2));
-            passThroughs.Push(Internal.CreatePassthrough(promise4, 3));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 4);
             return new Promise<T>(promise, promise.Id);
@@ -325,7 +325,7 @@ namespace Proto.Promises
                 {
                     var p = promises.Current;
                     ValidateElement(p, "promises", 1);
-                    Internal.PromiseRef.MaybeMarkAndRelease(p._ref); // Mark promise as waited on to suppress rejection.
+                    Internal.PromiseRef.MaybeMarkAwaitedAndDispose(p, true);
                 }
                 // Repool any created passthroughs.
                 foreach (var passthrough in passThroughs)

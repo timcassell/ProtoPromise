@@ -15,7 +15,7 @@ namespace Proto.Promises
     {
         partial class PromiseRef : ICancelDelegate
         {
-            internal virtual void CancelCallbacks() { }
+            protected virtual void CancelCallbacks() { }
 
             void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
@@ -23,6 +23,7 @@ namespace Proto.Promises
                 CancelProgressListeners();
 
                 object currentValue = _valueOrPrevious;
+                // TODO: don't set _valueOrPrevious, send it into ExecuteCancelation method.
                 _valueOrPrevious = valueContainer;
                 valueContainer.Retain();
 
@@ -37,6 +38,7 @@ namespace Proto.Promises
                 {
                     // Remove this from previous' next branches.
                     ((ITreeHandleableCollection) currentValue).Remove(this);
+                    // TODO: don't add to handle queue, call a separate ExecuteCancelation method.
                     AddToHandleQueueBack(this);
                 }
                 else

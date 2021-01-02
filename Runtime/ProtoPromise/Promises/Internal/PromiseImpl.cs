@@ -19,6 +19,9 @@ namespace Proto.Promises
     {
         partial class PromiseRef
         {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal static partial class PromiseImpl
             {
                 internal static void Progress(Promise _this, Action<float> onProgress, CancelationToken cancelationToken)
@@ -87,6 +90,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onResolved, "onResolved", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -106,6 +113,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onResolved, "onResolved", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -125,6 +136,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onResolved, "onResolved", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -144,6 +159,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onResolved, "onResolved", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -165,6 +184,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -189,6 +212,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -213,6 +240,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -237,6 +268,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -264,6 +299,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -289,6 +328,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -314,6 +357,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -339,6 +386,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -364,6 +415,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -389,6 +444,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -414,6 +473,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -439,6 +502,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -464,6 +531,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -489,6 +560,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -514,6 +589,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -539,6 +618,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -564,10 +647,17 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        promise = RefCreator.CreateResolveRejectWait(DelegateWrapper.CreateCancelable(onResolved), DelegateWrapper.Create(onRejected), cancelationToken);
+                        promise = RefCreator.CreateResolveRejectWait(
+                            DelegateWrapper.CreateCancelable(onResolved),
+                            DelegateWrapper.Create(onRejected),
+                            cancelationToken);
                         MaybeHookupNewPromise(_this, promise);
                     }
                     else
@@ -586,6 +676,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -611,6 +705,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -636,6 +734,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -662,6 +764,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onContinue, "onContinue", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -681,6 +787,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onContinue, "onContinue", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -700,6 +810,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onContinue, "onContinue", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -719,6 +833,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onContinue, "onContinue", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -802,6 +920,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onResolved, "onResolved", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -821,6 +943,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onResolved, "onResolved", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -840,6 +966,7 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onResolved, "onResolved", 2);
 
+                    if (_this._ref != null) { _this._ref.MarkAwaited(_this._id); }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -859,6 +986,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onResolved, "onResolved", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -880,6 +1011,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -904,6 +1039,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -928,6 +1067,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -952,6 +1095,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -979,6 +1126,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1004,6 +1155,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1029,6 +1184,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1054,6 +1213,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1079,6 +1242,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1104,6 +1271,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1129,6 +1300,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1154,6 +1329,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1179,6 +1358,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1204,6 +1387,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1229,6 +1416,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1254,6 +1445,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1279,6 +1474,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1304,6 +1503,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1329,6 +1532,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1354,6 +1561,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1379,6 +1590,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1404,6 +1619,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1416,7 +1635,7 @@ namespace Proto.Promises
                     else
                     {
                         promise = RefCreator.CreateResolveRejectWait(
-                            DelegateWrapper.CreateCancelable(ref resolveCaptureValue, onResolved),
+                            DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                             DelegateWrapper.Create(ref rejectCaptureValue, onRejected));
                         HookupNewPromise(_this, promise);
                     }
@@ -1429,6 +1648,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1454,6 +1677,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1479,6 +1706,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1504,6 +1735,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1529,6 +1764,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1554,6 +1793,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1579,6 +1822,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1604,6 +1851,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1629,6 +1880,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1654,6 +1909,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1679,6 +1938,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1704,6 +1967,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1729,6 +1996,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1754,6 +2025,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1779,6 +2054,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1804,6 +2083,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1828,7 +2111,11 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
-                    
+
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1854,6 +2141,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1879,6 +2170,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1904,6 +2199,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1929,6 +2228,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1954,6 +2257,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -1979,6 +2286,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -2004,6 +2315,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -2029,6 +2344,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -2054,6 +2373,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -2079,6 +2402,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -2104,6 +2431,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -2129,6 +2460,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -2154,6 +2489,10 @@ namespace Proto.Promises
                     ValidateArgument(onResolved, "onResolved", 2);
                     ValidateArgument(onRejected, "onRejected", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -2180,6 +2519,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onContinue, "onContinue", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -2199,6 +2542,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onContinue, "onContinue", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -2218,6 +2565,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onContinue, "onContinue", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {
@@ -2237,6 +2588,10 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onContinue, "onContinue", 2);
 
+                    if (_this._ref != null)
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                    }
                     PromiseRef promise;
                     if (cancelationToken.CanBeCanceled)
                     {

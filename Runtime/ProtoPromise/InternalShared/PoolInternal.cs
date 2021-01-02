@@ -17,7 +17,8 @@ namespace Proto.Promises
                 // No array allocations or linked list node allocations are necessary (the objects have links built-in through the ILinked<> interface).
                 // Even the pool itself doesn't require a class instance (that would be necessary with a typed dictionary).
                 public static ValueLinkedStack<TLinked> pool; // Must not be readonly.
-                public static readonly object lockObject = new object(); // Simple lock for now.
+                // TODO
+                //public static readonly object lockObject = new object(); // Simple lock for now.
 
                 // The downside to static pools instead of a Type dictionary is adding each type's clear function to the OnClearPool delegate consumes memory and is potentially more expensive than clearing a dictionary.
                 // This cost could be removed if Promise.Config.ObjectPoolingEnabled is made constant and set to false, and we add a check before accessing the pool.
@@ -34,14 +35,15 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static T GetOrCreate<T, TCreator>(TCreator creator) where T : TLinked where TCreator : ICreator<T>
             {
-                Monitor.Enter(Type<T>.lockObject);
+                // TODO
+                //Monitor.Enter(Type<T>.lockObject);
                 if (Type<T>.pool.IsEmpty)
                 {
-                    Monitor.Exit(Type<T>.lockObject);
+                    //Monitor.Exit(Type<T>.lockObject);
                     return creator.Create();
                 }
                 var obj = Type<T>.pool.Pop();
-                Monitor.Exit(Type<T>.lockObject);
+                //Monitor.Exit(Type<T>.lockObject);
                 return (T) obj;
             }
 
@@ -50,7 +52,11 @@ namespace Proto.Promises
             {
                 if (Promise.Config.ObjectPoolingEnabled)
                 {
-                    Type<T>.pool.Push(obj);
+                    // TODO
+                    //lock (Type<T>.lockObject)
+                    {
+                        Type<T>.pool.Push(obj);
+                    }
                 }
             }
         }

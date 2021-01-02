@@ -83,9 +83,8 @@ namespace Proto.Promises
 
             void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
             {
-                if (valueContainer.GetState() == Promise.State.Canceled)
+                if (valueContainer.GetState() == Promise.State.Canceled && canceler.TrySetValue(valueContainer))
                 {
-                    canceler.SetValue(valueContainer);
                     handleQueue.Push(this);
                 }
                 else
@@ -96,9 +95,8 @@ namespace Proto.Promises
 
             void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
             {
-                if (valueContainer.GetState() == Promise.State.Canceled)
+                if (valueContainer.GetState() == Promise.State.Canceled && canceler.TrySetValue(valueContainer))
                 {
-                    canceler.SetValue(valueContainer);
                     AddToHandleQueueBack(this);
                 }
                 else

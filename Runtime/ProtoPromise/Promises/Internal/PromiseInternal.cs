@@ -19,31 +19,43 @@ using Proto.Utils;
 
 namespace Proto.Promises
 {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [System.Diagnostics.DebuggerNonUserCode]
+#endif
     partial struct Promise
     {
         /// <summary>
         /// Internal use.
         /// </summary>
         internal readonly Internal.PromiseRef _ref;
-        private readonly ushort _id;
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        internal readonly int _id; // Only using int because Interlocked does not support ushort.
 
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal Promise(Internal.PromiseRef promiseRef, ushort id)
+        internal Promise(Internal.PromiseRef promiseRef, int id)
         {
             _ref = promiseRef;
             _id = id;
         }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [System.Diagnostics.DebuggerNonUserCode]
+#endif
     partial struct Promise<T>
     {
         /// <summary>
         /// Internal use.
         /// </summary>
         internal readonly Internal.PromiseRef _ref;
-        private readonly ushort _id;
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        internal readonly int _id; // Only using int because Interlocked does not support ushort.
         /// <summary>
         /// Internal use.
         /// </summary>
@@ -52,7 +64,7 @@ namespace Proto.Promises
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal Promise(Internal.PromiseRef promiseRef, ushort id)
+        internal Promise(Internal.PromiseRef promiseRef, int id)
         {
             _ref = promiseRef;
             _id = id;
@@ -62,7 +74,7 @@ namespace Proto.Promises
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal Promise(Internal.PromiseRef promiseRef, ushort id, ref T value)
+        internal Promise(Internal.PromiseRef promiseRef, int id, ref T value)
         {
             _ref = promiseRef;
             _id = id;
@@ -72,27 +84,41 @@ namespace Proto.Promises
 
     partial class Internal
     {
-        // Just a random number that's not zero. Using this in Promise<T> instead of a bool prevents extra memory padding for 2-byte T types in 32-bit environment.
-        internal const ushort ValidPromiseIdFromApi = 41265;
+        // Just a random number that's not zero. Using this in Promise(<T>) instead of a bool prevents extra memory padding.
+        internal const int ValidPromiseIdFromApi = 41265;
 
         internal abstract partial class PromiseRef : ITreeHandleable, ITraceable, ITreeHandleableCollection
         {
             private ValueLinkedStack<ITreeHandleable> _nextBranches;
-            protected object _valueOrPrevious;
-            private ushort _retainCounter;
-            private ushort _id = 1;
-            protected Promise.State _state;
-            protected bool _wasWaitedOn;
+            private object _valueOrPrevious;
+            private int _id = 1; // Only using int because Interlocked does not support ushort.
+            private Promise.State _state;
+            private bool _suppressRejection;
+            private bool _wasAwaited;
+            private byte _idIncrementer = 1; // Used to increment _id only if not preserved. 0 = preserved, 1 = not preserved.
 
             ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
-            public ushort Id { get { return _id; } }
-            public Promise.State State { get { return _state; } }
+            internal int Id { get { return _id; } }
+            internal Promise.State State { get { return _state; } }
+            private bool IsPreserved { get { return _idIncrementer == 0; } }
 
             ~PromiseRef()
             {
-                if (_retainCounter > 0 & _state != Promise.State.Pending)
+                if (IsPreserved)
                 {
-                    if (_wasWaitedOn)
+                    // Promise was preserved without being forgotten.
+                    string message = "A preserved Promise's resources were garbage collected without it being forgotten. You must call Forget() on each preserved promise when you are finished with it.";
+                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                }
+                else if (!_wasAwaited)
+                {
+                    // Promise was not awaited or forgotten.
+                    string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise.";
+                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                }
+                if (_state != Promise.State.Pending)
+                {
+                    if (_suppressRejection)
                     {
                         ((IValueContainer) _valueOrPrevious).Release();
                     }
@@ -101,79 +127,123 @@ namespace Proto.Promises
                         // Rejection maybe wasn't caught.
                         ((IValueContainer) _valueOrPrevious).ReleaseAndAddToUnhandledStack();
                     }
-                    // Promise wasn't released.
-                    string message = "A Promise object was garbage collected that was not released. You must release all IRetainable objects that you have retained.";
-                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
                 }
             }
 
-            internal static void OnCompletedForAwaiter(Promise promise, Action onCompleted)
-            {
-                // If this is called only from the `await` keyword, the check is unnecessary.
-                // The check is added for safety in case users call `promise.GetAwaiter()` and use the awaiter directly.
-                if (promise._ref != null)
-                {
-                    promise._ref.OnCompletedForAwaiter(onCompleted);
-                }
-                else
-                {
-                    promise.Finally(onCompleted);
-                }
-            }
-
-            protected virtual void OnCompletedForAwaiter(Action onCompleted)
+            internal virtual void OnCompletedForAwaiter(Action onCompleted)
             {
                 AddWaiter(FinallyDelegate.GetOrCreate(onCompleted));
             }
 
-            internal void GetResultForAwaiter()
+            internal void GetResultForAwaiter(int promiseId)
             {
+#if PROMISE_DEBUG
+                if (_state == Promise.State.Pending)
+                {
+                    throw new InvalidOperationException("PromiseAwaiter<T>.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+                }
+#endif
+                IncrementId(promiseId, _idIncrementer);
                 if (_state == Promise.State.Resolved)
                 {
-                    ReleaseInternal();
+                    MaybeDispose();
                     return;
                 }
                 // Throw unhandled exception or canceled exception.
                 Exception exception = ((IThrowable) _valueOrPrevious).GetException();
                 // We're throwing here, no need to throw again.
-                _wasWaitedOn = true;
-                ReleaseInternal();
+                _suppressRejection = true;
+                MaybeDispose();
                 throw exception;
             }
 
-            internal T GetResultForAwaiter<T>()
+            internal T GetResultForAwaiter<T>(int promiseId)
             {
+#if PROMISE_DEBUG
+                if (_state == Promise.State.Pending)
+                {
+                    throw new InvalidOperationException("PromiseAwaiter<T>.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+                }
+#endif
+                IncrementId(promiseId, _idIncrementer);
                 if (_state == Promise.State.Resolved)
                 {
                     T result = ((ResolveContainer<T>) _valueOrPrevious).value;
-                    ReleaseInternal();
+                    MaybeDispose();
                     return result;
                 }
                 // Throw unhandled exception or canceled exception.
                 Exception exception = ((IThrowable) _valueOrPrevious).GetException();
                 // We're throwing here, no need to throw again.
-                _wasWaitedOn = true;
-                ReleaseInternal();
+                _suppressRejection = true;
+                MaybeDispose();
                 throw exception;
             }
 
-            internal static void MaybeMarkAwaited(Promise promise)
+            internal PromiseRef GetPreserved(int promiseId)
             {
-                var _ref = promise._ref;
-                if (_ref == null) return;
+                var duplicate = GetDuplicate(promiseId);
+                duplicate._idIncrementer = 0; // Mark preserved.
+                return duplicate;
+            }
 
-                // TODO
-                _ref.RetainInternal();
+            internal void Forget(int promiseId)
+            {
+                IncrementId(promiseId, 1); // Always increment, whether preserved or not.
+                _wasAwaited = true;
+                _idIncrementer = 1; // Mark not preserved.
+                MaybeDispose();
+            }
 
-                //lock (_ref)
-                //{
-                //    ++_ref._id;
-                //}
+            internal PromiseRef GetDuplicate(int promiseId)
+            {
+                // If new id is same as old, this is preserved and we must create a new object.
+                // Otherwise, the simple increment is enough and we can reuse this object.
+                var newId = IncrementId(promiseId, _idIncrementer);
+                if (newId != promiseId)
+                {
+                    return this;
+                }
+                _wasAwaited = true;
+                _suppressRejection = true;
+                var newPromise = PromiseDuplicate.GetOrCreate();
+                HookupNewPromise(newPromise);
+                return newPromise;
+            }
+
+            internal void MarkAwaited(int promiseId)
+            {
+                IncrementId(promiseId, _idIncrementer);
+                _wasAwaited = true;
+            }
+
+            private int IncrementId(int promiseId, int increment)
+            {
+                int newId;
+                unchecked // We want the id to wrap around.
+                {
+                    newId = promiseId + increment;
+                }
+                if (Interlocked.CompareExchange(ref _id, newId, promiseId) != promiseId)
+                {
+                    // Public APIs do a simple validation check in DEBUG mode, this is an extra thread-safe validation in case the same object is concurrently used and/or forgotten at the same time.
+                    // This is left in RELEASE mode because concurrency issues can be very difficult to track down, and might not show up in DEBUG mode.
+                    throw new InvalidOperationException("Attempted to mark an invalid Promise as awaited. This may be because you are attempting to use a promise simultaneously on multiple threads that you have not preserved.",
+                        GetFormattedStacktrace(3));
+                }
+                return newId;
+            }
+
+            internal void MarkAwaitedAndMaybeDispose(int promiseId, bool suppressRejection)
+            {
+                MarkAwaited(promiseId);
+                _suppressRejection |= suppressRejection;
+                MaybeDispose();
             }
 
             void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
             {
-                owner._wasWaitedOn = true;
+                owner._suppressRejection = true;
                 valueContainer.Retain();
                 _valueOrPrevious = valueContainer;
                 handleQueue.Push(this);
@@ -181,7 +251,7 @@ namespace Proto.Promises
 
             void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
             {
-                owner._wasWaitedOn = true;
+                owner._suppressRejection = true;
                 valueContainer.Retain();
                 _valueOrPrevious = valueContainer;
                 AddToHandleQueueBack(this);
@@ -195,69 +265,25 @@ namespace Proto.Promises
             protected virtual void Reset()
             {
                 _state = Promise.State.Pending;
-                _retainCounter = 1;
+                _suppressRejection = false;
+                _wasAwaited = false;
                 SetCreatedStacktrace(this, 3);
             }
 
-            private void AddWaiter(ITreeHandleable waiter)
+            private void MaybeDispose()
             {
-                if (_state == Promise.State.Pending)
-                {
-                    _nextBranches.Push(waiter);
-                }
-                else
-                {
-                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
-                }
-            }
-
-            private void RetainInternal()
-            {
-#if PROMISE_DEBUG
-                // If this fails, change _retainCounter to uint or ulong.
-                // Have to directly check ushort since C# compiler doesn't check integer types smaller than Int32...
-                if (_retainCounter == ushort.MaxValue)
-                {
-                    throw new OverflowException();
-                }
-                checked
-#endif
-                {
-                    ++_retainCounter;
-                }
-            }
-
-            protected void ReleaseInternal()
-            {
-                if (ReleaseWithoutDisposeCheck() == 0)
+                // TODO: thread synchronization
+                if (_wasAwaited & !IsPreserved & _state != Promise.State.Pending)
                 {
                     Dispose();
                 }
             }
 
-            private ushort ReleaseWithoutDisposeCheck()
-            {
-#if PROMISE_DEBUG
-                // This should never fail, but check in debug mode just in case.
-                // Have to directly check ushort since C# compiler doesn't check integer types smaller than Int32...
-                if (_retainCounter == 0)
-                {
-                    throw new OverflowException();
-                }
-                checked
-#endif
-                {
-                    return --_retainCounter;
-                }
-            }
-
             protected virtual void Dispose()
             {
-                // TODO: Remove id increment here, move it to MaybeMarkAwaited.
-                ++_id;
                 if (_valueOrPrevious != null)
                 {
-                    if (_wasWaitedOn)
+                    if (_suppressRejection)
                     {
                         ((IValueContainer) _valueOrPrevious).Release();
                     }
@@ -266,30 +292,8 @@ namespace Proto.Promises
                         // Rejection maybe wasn't caught.
                         ((IValueContainer) _valueOrPrevious).ReleaseAndAddToUnhandledStack();
                     }
+                    _valueOrPrevious = null;
                 }
-                _valueOrPrevious = null;
-            }
-
-            private void ResolveInternal(IValueContainer container)
-            {
-                _state = Promise.State.Resolved;
-                container.Retain();
-                _valueOrPrevious = container;
-                HandleBranches();
-                ResolveProgressListeners();
-
-                ReleaseInternal();
-            }
-
-            private void RejectOrCancelInternal(IValueContainer container)
-            {
-                _state = container.GetState();
-                container.Retain();
-                _valueOrPrevious = container;
-                HandleBranches();
-                CancelProgressListeners();
-
-                ReleaseInternal();
             }
 
             private static void MaybeHookupNewPromise(Promise _this, PromiseRef newPromise)
@@ -297,8 +301,13 @@ namespace Proto.Promises
                 // This is called from a Then/Catch/ContinueWith with a valid cancelationToken, which could have been fed an already canceled token.
                 if (newPromise._valueOrPrevious != null)
                 {
-                    // TODO: remove SetDepth if progress only starts counting on pending promises.
-                    //SetDepth(newPromise);
+                    if (_this._ref != null)
+                    {
+                        // TODO: remove SetDepth if progress only starts counting on pending promises.
+                        newPromise.SetDepth(_this._ref);
+                        _this._ref.MaybeDispose();
+                    }
+                    // TODO: don't add to handle queue, call a separate ExecuteCancelation method. (Rectify with CancelInternal.cs)
                     AddToHandleQueueBack(newPromise);
                 }
                 else
@@ -316,14 +325,34 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    newPromise._valueOrPrevious = _this._ref;
-                    newPromise.SetDepth(_this._ref);
-                    _this._ref.AddWaiter(newPromise);
+                    _this._ref.HookupNewPromise(newPromise);
                 }
+            }
+
+            private void HookupNewPromise(PromiseRef newPromise)
+            {
+                newPromise._valueOrPrevious = this;
+                // TODO: Only SetDepth if progress only starts counting on pending promises.
+                newPromise.SetDepth(this);
+                AddWaiter(newPromise);
+            }
+
+            private void AddWaiter(ITreeHandleable waiter)
+            {
+                if (_state == Promise.State.Pending)
+                {
+                    _nextBranches.Push(waiter);
+                }
+                else
+                {
+                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
+                }
+                MaybeDispose();
             }
 
             void ITreeHandleable.Handle()
             {
+                // TODO: maybe cancelationToken.TryUnregister here?
                 IValueContainer container = (IValueContainer) _valueOrPrevious;
                 _valueOrPrevious = null;
                 SetCurrentInvoker(this);
@@ -351,7 +380,8 @@ namespace Proto.Promises
                         _valueOrPrevious = container;
                         HandleBranches();
                         CancelProgressListeners();
-                        ReleaseInternal();
+
+                        MaybeDispose();
                     }
                 }
                 catch (OperationCanceledException e)
@@ -371,8 +401,33 @@ namespace Proto.Promises
                 }
             }
 
+            private void ResolveInternal(IValueContainer container)
+            {
+                // TODO: thread synchronization
+                _state = Promise.State.Resolved;
+                container.Retain();
+                _valueOrPrevious = container;
+                HandleBranches();
+                ResolveProgressListeners();
+
+                MaybeDispose();
+            }
+
+            private void RejectOrCancelInternal(IValueContainer container)
+            {
+                // TODO: thread synchronization
+                _state = container.GetState();
+                container.Retain();
+                _valueOrPrevious = container;
+                HandleBranches();
+                CancelProgressListeners();
+
+                MaybeDispose();
+            }
+
             private void HandleSelf(IValueContainer valueContainer)
             {
+                // TODO: thread synchronization
                 _state = valueContainer.GetState();
                 valueContainer.Retain();
                 _valueOrPrevious = valueContainer;
@@ -387,7 +442,7 @@ namespace Proto.Promises
                     CancelProgressListeners();
                 }
 
-                ReleaseInternal();
+                MaybeDispose();
             }
 
             protected virtual void Execute(IValueContainer valueContainer) { }
@@ -409,14 +464,40 @@ namespace Proto.Promises
                 //AddToHandleQueueFront(ref handleQueue);
             }
 
-            private void AddBranchesToHandleQueueBack(IValueContainer valueContainer)
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal sealed class PromiseDuplicate : PromiseRef
             {
-                ValueLinkedQueue<ITreeHandleable> handleQueue = new ValueLinkedQueue<ITreeHandleable>();
-                while (_nextBranches.IsNotEmpty)
+                private struct Creator : ICreator<PromiseDuplicate>
                 {
-                    _nextBranches.Pop().MakeReady(this, valueContainer, ref handleQueue);
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    public PromiseDuplicate Create()
+                    {
+                        return new PromiseDuplicate();
+                    }
                 }
-                AddToHandleQueueBack(ref handleQueue);
+
+                private PromiseDuplicate() { }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static PromiseDuplicate GetOrCreate()
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseDuplicate, Creator>(new Creator());
+                    promise.Reset();
+                    return promise;
+                }
+
+                protected override void Execute(IValueContainer valueContainer)
+                {
+                    HandleSelf(valueContainer);
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -427,31 +508,35 @@ namespace Proto.Promises
                 public void WaitFor(Promise other)
                 {
                     ValidateReturn(other);
-                    if (other._ref == null)
+                    var _ref = other._ref;
+                    if (_ref == null)
                     {
                         ResolveInternal(ResolveContainerVoid.GetOrCreate());
                     }
                     else
                     {
-                        _valueOrPrevious = other._ref;
-                        SubscribeProgressToOther(other._ref);
-                        other._ref.AddWaiter(this);
+                        _ref.MarkAwaited(other._id);
+                        _valueOrPrevious = _ref;
+                        SubscribeProgressToOther(_ref);
+                        _ref.AddWaiter(this);
                     }
                 }
 
                 public void WaitFor<T>(Promise<T> other)
                 {
                     ValidateReturn(other);
-                    if (other._ref == null)
+                    var _ref = other._ref;
+                    if (_ref == null)
                     {
                         T value = other._result;
                         ResolveInternal(ResolveContainer<T>.GetOrCreate(ref value));
                     }
                     else
                     {
-                        _valueOrPrevious = other._ref;
-                        SubscribeProgressToOther(other._ref);
-                        other._ref.AddWaiter(this);
+                        _ref.MarkAwaited(other._id);
+                        _valueOrPrevious = _ref;
+                        SubscribeProgressToOther(_ref);
+                        _ref.AddWaiter(this);
                     }
                 }
 
@@ -461,63 +546,71 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal abstract partial class AsyncPromiseBase : PromiseRef, ITreeHandleable
+            internal abstract partial class AsyncPromiseBase : PromiseRef
             {
 #if CSHARP_7_OR_LATER
-                // Optimize for awaits. Adds memory per-object for the delegate, but saves us from having to create a Finally wrapper.
+                // Optimize for awaits. Adds memory per-object for the delegate, but saves us from having to create a Finally wrapper per-await.
                 private Action _onComplete;
-                protected override sealed void OnCompletedForAwaiter(Action onCompleted)
+                internal override sealed void OnCompletedForAwaiter(Action onCompleted)
                 {
-                    _onComplete = onCompleted;
+                    if (_state == Promise.State.Pending)
+                    {
+                        _onComplete = onCompleted;
+                    }
+                    else
+                    {
+                        AddToHandleQueueBack(FinallyDelegate.GetOrCreate(onCompleted));
+                    }
                 }
 #endif
 
-                void ITreeHandleable.Handle()
+                private void OnComplete()
                 {
-                    ReleaseInternal();
-                }
-
-                protected void RejectDirect<TReject>(ref TReject reason, int rejectSkipFrames)
-                {
-                    _state = Promise.State.Rejected;
-                    var rejection = CreateRejectContainer(ref reason, rejectSkipFrames + 1, this);
-                    rejection.Retain();
-                    _valueOrPrevious = rejection;
-                    AddBranchesToHandleQueueBack(rejection);
-                    CancelProgressListeners();
-                    AddToHandleQueueFront(this);
+#if CSHARP_7_OR_LATER
+                    var temp = _onComplete;
+                    if (temp != null)
+                    {
+                        _onComplete = null;
+                        temp.Invoke();
+                    }
+#endif
+                    MaybeDispose();
                 }
 
                 protected void ResolveDirect()
                 {
-                    _state = Promise.State.Resolved;
-                    var resolveValue = ResolveContainerVoid.GetOrCreate();
-                    _valueOrPrevious = resolveValue;
-                    AddBranchesToHandleQueueBack(resolveValue);
-                    ResolveProgressListeners();
-                    AddToHandleQueueFront(this);
+                    OnComplete();
+                    var resolveContainer = ResolveContainerVoid.GetOrCreate();
+                    ResolveInternal(resolveContainer);
                 }
 
                 protected void ResolveDirect<T>(ref T value)
                 {
+                    OnComplete();
                     _state = Promise.State.Resolved;
-                    var resolveValue = ResolveContainer<T>.GetOrCreate(ref value);
-                    resolveValue.Retain();
-                    _valueOrPrevious = resolveValue;
-                    AddBranchesToHandleQueueBack(resolveValue);
-                    ResolveProgressListeners();
-                    AddToHandleQueueFront(this);
+                    var resolveContainer = ResolveContainer<T>.GetOrCreate(ref value);
+                    ResolveInternal(resolveContainer);
+                }
+
+                protected void RejectDirect<TReject>(ref TReject reason, int rejectSkipFrames)
+                {
+                    OnComplete();
+                    var rejectContainer = CreateRejectContainer(ref reason, rejectSkipFrames + 1, this);
+                    RejectOrCancelInternal(rejectContainer);
+                }
+
+                protected void CancelDirect()
+                {
+                    OnComplete();
+                    var cancelContainer = CancelContainerVoid.GetOrCreate();
+                    RejectOrCancelInternal(cancelContainer);
                 }
 
                 protected void CancelDirect<TCancel>(ref TCancel reason)
                 {
-                    _state = Promise.State.Canceled;
+                    OnComplete();
                     var cancelContainer = CreateCancelContainer(ref reason);
-                    cancelContainer.Retain();
-                    _valueOrPrevious = cancelContainer;
-                    AddBranchesToHandleQueueBack(cancelContainer);
-                    CancelProgressListeners();
-                    AddToHandleQueueFront(this);
+                    RejectOrCancelInternal(cancelContainer);
                 }
             }
 
@@ -527,8 +620,8 @@ namespace Proto.Promises
             internal abstract partial class DeferredPromiseBase : AsyncPromiseBase
             {
                 // Only using int because Interlocked does not support ushort.
-                protected int _deferredId = 1;
-                public ushort DeferredId { get { return (ushort) _deferredId; } }
+                private int _deferredId = 1;
+                public int DeferredId { get { return _deferredId; } }
 
                 protected DeferredPromiseBase() { }
 
@@ -543,15 +636,15 @@ namespace Proto.Promises
 
                 protected virtual void MaybeUnregisterCancelation() { }
 
-                protected bool TryIncrementDeferredId(ushort comparand)
+                protected bool TryIncrementDeferredId(int comparand)
                 {
                     unchecked // We want the id to wrap around.
                     {
-                        return Interlocked.CompareExchange(ref _deferredId, (ushort) (comparand + 1), comparand) == comparand;
+                        return Interlocked.CompareExchange(ref _deferredId, comparand + 1, comparand) == comparand;
                     }
                 }
 
-                internal bool TryReject<TReject>(ref TReject reason, ushort deferredId, int rejectSkipFrames)
+                internal bool TryReject<TReject>(ref TReject reason, int deferredId, int rejectSkipFrames)
                 {
                     if (TryIncrementDeferredId(deferredId))
                     {
@@ -562,19 +655,16 @@ namespace Proto.Promises
                     return false;
                 }
 
-                internal void CancelDirect()
+                new internal void CancelDirect()
                 {
+                    // TODO: proper thread synchronization
                     Interlocked.Increment(ref _deferredId);
-                    _state = Promise.State.Canceled;
-                    var cancelContainer = CancelContainerVoid.GetOrCreate();
-                    _valueOrPrevious = cancelContainer;
-                    AddBranchesToHandleQueueBack(cancelContainer);
-                    CancelProgressListeners();
-                    AddToHandleQueueFront(this);
+                    base.CancelDirect();
                 }
 
                 new internal void CancelDirect<TCancel>(ref TCancel reason)
                 {
+                    // TODO: proper thread synchronization
                     Interlocked.Increment(ref _deferredId);
                     base.CancelDirect(ref reason);
                 }
@@ -604,7 +694,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                public bool TryResolve(ushort deferredId)
+                public bool TryResolve(int deferredId)
                 {
                     if (TryIncrementDeferredId(deferredId))
                     {
@@ -627,7 +717,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed class DeferredPromiseCancel : DeferredPromiseVoid, ITreeHandleable, ICancelDelegate
+            internal sealed class DeferredPromiseCancel : DeferredPromiseVoid, ICancelDelegate
             {
                 private struct Creator : ICreator<DeferredPromiseCancel>
                 {
@@ -645,6 +735,7 @@ namespace Proto.Promises
                 protected override void Dispose()
                 {
                     base.Dispose();
+                    _cancelationRegistration = default(CancelationRegistration);
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
@@ -655,12 +746,6 @@ namespace Proto.Promises
                     promise.ResetDepth();
                     promise._cancelationRegistration = cancelationToken.RegisterInternal(promise);
                     return promise;
-                }
-
-                void ITreeHandleable.Handle()
-                {
-                    _cancelationRegistration = default(CancelationRegistration);
-                    ReleaseInternal();
                 }
 
                 void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
@@ -677,7 +762,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal class DeferredPromise<T> : DeferredPromiseBase, ITreeHandleable
+            internal class DeferredPromise<T> : DeferredPromiseBase
             {
                 private struct Creator : ICreator<DeferredPromise<T>>
                 {
@@ -696,7 +781,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                public bool TryResolve(ref T value, ushort deferredId)
+                public bool TryResolve(ref T value, int deferredId)
                 {
                     if (TryIncrementDeferredId(deferredId))
                     {
@@ -719,7 +804,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed class DeferredPromiseCancel<T> : DeferredPromise<T>, ITreeHandleable, ICancelDelegate
+            internal sealed class DeferredPromiseCancel<T> : DeferredPromise<T>, ICancelDelegate
             {
                 private struct Creator : ICreator<DeferredPromiseCancel<T>>
                 {
@@ -737,6 +822,7 @@ namespace Proto.Promises
                 protected override void Dispose()
                 {
                     base.Dispose();
+                    _cancelationRegistration = default(CancelationRegistration);
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
@@ -747,12 +833,6 @@ namespace Proto.Promises
                     promise.ResetDepth();
                     promise._cancelationRegistration = cancelationToken.RegisterInternal(promise);
                     return promise;
-                }
-
-                void ITreeHandleable.Handle()
-                {
-                    _cancelationRegistration = default(CancelationRegistration);
-                    ReleaseInternal();
                 }
 
                 void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
@@ -773,7 +853,7 @@ namespace Proto.Promises
                 // (no extra object allocation or extra memory overhead, and the compiler will generate the Promise classes for us).
                 // The only downside is that more classes are created than if we just used straight interfaces (not a problem with JIT, but makes the code size larger with AOT).
 
-                #region Resolve Promises
+#region Resolve Promises
                 // Resolve types for more common .Then(onResolved) calls to be more efficient.
 
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -846,6 +926,7 @@ namespace Proto.Promises
                     {
                         var resolveCallback = resolver;
                         resolver = default(TResolver);
+                        // TODO: thread synchronization. CancelationToken could be canceled while in this method from another thread. Use TryUnregister and return if false.
                         resolveCallback.MaybeUnregisterCancelation();
                         if (valueContainer.GetState() == Promise.State.Resolved)
                         {
@@ -901,6 +982,7 @@ namespace Proto.Promises
 
                         var resolveCallback = resolver;
                         resolver = default(TResolver);
+                        // TODO: thread synchronization. CancelationToken could be canceled while in this method from another thread.
                         resolveCallback.MaybeUnregisterCancelation();
                         if (valueContainer.GetState() == Promise.State.Resolved)
                         {
@@ -912,9 +994,9 @@ namespace Proto.Promises
                         }
                     }
                 }
-                #endregion
+#endregion
 
-                #region Resolve or Reject Promises
+#region Resolve or Reject Promises
 
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 public static PromiseRef CreateResolveReject<TResolver, TRejecter>(TResolver resolver, TRejecter rejecter)
@@ -1001,14 +1083,14 @@ namespace Proto.Promises
                         resolver = default(TResolver);
                         var rejectCallback = rejecter;
                         rejecter = default(TRejecter);
+                        // TODO: thread synchronization. CancelationToken could be canceled while in this method from another thread.
                         resolveCallback.MaybeUnregisterCancelation();
                         Promise.State state = valueContainer.GetState();
                         if (state == Promise.State.Resolved)
                         {
                             resolveCallback.InvokeResolver(valueContainer, this);
-                            return;
                         }
-                        if (state == Promise.State.Rejected)
+                        else if (state == Promise.State.Rejected)
                         {
                             invokingRejected = true;
                             rejectCallback.InvokeRejecter(valueContainer, this);
@@ -1066,17 +1148,14 @@ namespace Proto.Promises
                         resolver = default(TResolver);
                         var rejectCallback = rejecter;
                         rejecter = default(TRejecter);
+                        // TODO: thread synchronization. CancelationToken could be canceled while in this method from another thread.
                         resolveCallback.MaybeUnregisterCancelation();
                         Promise.State state = valueContainer.GetState();
                         if (state == Promise.State.Resolved)
                         {
                             resolveCallback.InvokeResolver(valueContainer, this);
-                            return;
                         }
-#if PROMISE_PROGRESS
-                        _suspended = true;
-#endif
-                        if (state == Promise.State.Rejected)
+                        else if (state == Promise.State.Rejected)
                         {
                             invokingRejected = true;
                             rejectCallback.InvokeRejecter(valueContainer, this);
@@ -1087,9 +1166,9 @@ namespace Proto.Promises
                         }
                     }
                 }
-                #endregion
+#endregion
 
-                #region Continue Promises
+#region Continue Promises
 
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 public static PromiseRef CreateContinue<TContinuer>(TContinuer resolver) where TContinuer : IDelegateContinue
@@ -1157,16 +1236,16 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    internal override void CancelCallbacks()
-                    {
-                        continuer.CancelCallback();
-                    }
-
                     protected override void Execute(IValueContainer valueContainer)
                     {
                         var callback = continuer;
                         continuer = default(TContinuer);
                         callback.Invoke(valueContainer, this);
+                    }
+
+                    protected override void CancelCallbacks()
+                    {
+                        continuer.CancelCallback();
                     }
                 }
 
@@ -1202,11 +1281,6 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    internal override void CancelCallbacks()
-                    {
-                        continuer.CancelCallback();
-                    }
-
                     protected override void Execute(IValueContainer valueContainer)
                     {
                         if (continuer.IsNull)
@@ -1220,8 +1294,14 @@ namespace Proto.Promises
                         continuer = default(TContinuer);
                         callback.Invoke(valueContainer, this);
                     }
+
+                    protected override void CancelCallbacks()
+                    {
+                        continuer.CancelCallback();
+                        base.CancelCallbacks();
+                    }
                 }
-                #endregion
+#endregion
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -1249,10 +1329,12 @@ namespace Proto.Promises
 
                 private PromisePassThrough() { }
 
-                public static PromisePassThrough GetOrCreate(PromiseRef owner, int index)
+                public static PromisePassThrough GetOrCreate(Promise owner, int index)
                 {
+                    // owner._ref is checked for nullity before passing into this.
+                    owner._ref.MarkAwaited(owner._id);
                     var passThrough = ObjectPool<PromisePassThrough>.GetOrCreate<PromisePassThrough, Creator>(new Creator());
-                    passThrough.Owner = owner;
+                    passThrough.Owner = owner._ref;
                     passThrough._index = index;
                     passThrough._retainCounter = 1u;
                     passThrough.ResetProgress();
@@ -1308,37 +1390,20 @@ namespace Proto.Promises
                 void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
             }
 
-            internal static void MaybeRelease(PromiseRef promiseRef)
+            internal static void MaybeMarkAwaitedAndDispose(Promise promise, bool suppressRejection)
             {
-                if (promiseRef != null)
+                if (promise._ref != null)
                 {
-                    // TODO
+                    promise._ref.MarkAwaitedAndMaybeDispose(promise._id, suppressRejection);
                 }
             }
-
-            internal static void MaybeMarkAndRelease(PromiseRef promiseRef)
-            {
-                if (promiseRef != null)
-                {
-                    promiseRef._wasWaitedOn = true;
-                    // TODO
-                }
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static PromiseRef.PromisePassThrough CreatePassthrough(Promise promise, int index)
-        {
-            // promise._ref is checked for nullity before passing into this.
-            PromiseRef.MaybeMarkAwaited(promise);
-            return PromiseRef.PromisePassThrough.GetOrCreate(promise._ref, index);
         }
 
         internal static int PrepareForMulti(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index)
         {
             if (promise._ref != null)
             {
-                passThroughs.Push(CreatePassthrough(promise, index));
+                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index));
                 return 1;
             }
             return 0;
@@ -1348,7 +1413,7 @@ namespace Proto.Promises
         {
             if (promise._ref != null)
             {
-                passThroughs.Push(CreatePassthrough(promise, index));
+                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index));
                 return 1;
             }
             value = promise._result;

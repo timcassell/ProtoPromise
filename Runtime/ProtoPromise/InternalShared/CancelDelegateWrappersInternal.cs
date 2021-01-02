@@ -1,6 +1,7 @@
 ﻿#pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -20,10 +21,11 @@ namespace Proto.Promises
                 _valueContainer = null;
             }
 
-            public void SetValue(IValueContainer valueContainer)
+            public bool TrySetValue(IValueContainer valueContainer)
             {
                 valueContainer.Retain();
                 _valueContainer = valueContainer;
+                return true;
             }
 
             public void InvokeFromPromise(ITraceable owner)
@@ -58,10 +60,11 @@ namespace Proto.Promises
                 _valueContainer = null;
             }
 
-            public void SetValue(IValueContainer valueContainer)
+            public bool TrySetValue(IValueContainer valueContainer)
             {
                 valueContainer.Retain();
                 _valueContainer = valueContainer;
+                return true;
             }
 
             public void InvokeFromPromise(ITraceable owner)
@@ -90,6 +93,8 @@ namespace Proto.Promises
             private readonly Promise.CanceledAction _callback;
             private readonly ITreeHandleableCollection _previous;
             private IValueContainer _valueContainer;
+            // TODO
+            //volatile private bool _isSettingValue;
 
             public CancelDelegatePromiseCancel(Promise.CanceledAction callback, PromiseRef previous)
             {
@@ -97,11 +102,17 @@ namespace Proto.Promises
                 _previous = previous;
                 _valueContainer = null;
                 cancelationRegistration = default(CancelationRegistration);
+                //_isSettingValue = false;
             }
 
             public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
-                // When token is canceled, don't invoke the callback.
+                //SpinWait spinner = new SpinWait();
+                //while (_isSettingValue)
+                //{
+                //    spinner.SpinOnce();
+                //}
+                //Thread.MemoryBarrier();
                 if (_valueContainer != null)
                 {
                     // Owner is in the event queue, just release the container.
@@ -115,22 +126,29 @@ namespace Proto.Promises
                 }
             }
 
-            public void SetValue(IValueContainer valueContainer)
+            public bool TrySetValue(IValueContainer valueContainer)
             {
-                valueContainer.Retain();
-                _valueContainer = valueContainer;
+                //_isSettingValue = true;
+                bool isStillRegistered = cancelationRegistration.IsRegistered;
+                if (isStillRegistered)
+                {
+                    valueContainer.Retain();
+                    _valueContainer = valueContainer;
+                    //Thread.MemoryBarrier();
+                }
+                //_isSettingValue = false;
+                return isStillRegistered;
             }
 
             public void InvokeFromPromise(ITraceable owner)
             {
-                if (_valueContainer == null)
+                if (!cancelationRegistration.TryUnregister())
                 {
-                    // Make sure invocation is still valid in case this is canceled while waiting in the event queue.
+                    // If we couldn't unregister the cancelation, it means the cancelation already ran. Don't invoke the callback.
                     return;
                 }
                 try
                 {
-                    cancelationRegistration.TryUnregister();
                     _callback.Invoke(new ReasonContainer(_valueContainer));
                 }
                 finally
@@ -159,6 +177,8 @@ namespace Proto.Promises
             private readonly Promise.CanceledAction<TCapture> _callback;
             private readonly ITreeHandleableCollection _previous;
             private IValueContainer _valueContainer;
+            // TODO
+            //volatile private bool _isSettingValue;
 
             public CancelDelegatePromiseCancel(ref TCapture captureValue, Promise.CanceledAction<TCapture> callback, PromiseRef previous)
             {
@@ -167,11 +187,17 @@ namespace Proto.Promises
                 cancelationRegistration = default(CancelationRegistration);
                 _previous = previous;
                 _valueContainer = null;
+                //_isSettingValue = false;
             }
 
             public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
-                // When token is canceled, don't invoke the callback.
+                //SpinWait spinner = new SpinWait();
+                //while (_isSettingValue)
+                //{
+                //    spinner.SpinOnce();
+                //}
+                //Thread.MemoryBarrier();
                 if (_valueContainer != null)
                 {
                     // Owner is in the event queue, just release the container.
@@ -185,10 +211,18 @@ namespace Proto.Promises
                 }
             }
 
-            public void SetValue(IValueContainer valueContainer)
+            public bool TrySetValue(IValueContainer valueContainer)
             {
-                valueContainer.Retain();
-                _valueContainer = valueContainer;
+                //_isSettingValue = true;
+                bool isStillRegistered = cancelationRegistration.IsRegistered;
+                if (isStillRegistered)
+                {
+                    valueContainer.Retain();
+                    _valueContainer = valueContainer;
+                    //Thread.MemoryBarrier();
+                }
+                //_isSettingValue = false;
+                return isStillRegistered;
             }
 
             public void InvokeFromPromise(ITraceable owner)
@@ -243,7 +277,7 @@ namespace Proto.Promises
                 owner.Dispose();
             }
 
-            public void SetValue(IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
+            public bool TrySetValue(IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
             public void InvokeFromPromise(ITraceable owner) { throw new System.InvalidOperationException(); }
         }
 
@@ -275,7 +309,7 @@ namespace Proto.Promises
                 owner.Dispose();
             }
 
-            public void SetValue(IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
+            public bool TrySetValue(IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
             public void InvokeFromPromise(ITraceable owner) { throw new System.InvalidOperationException(); }
         }
     }

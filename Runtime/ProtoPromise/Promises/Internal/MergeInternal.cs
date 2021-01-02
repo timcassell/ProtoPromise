@@ -81,8 +81,6 @@ namespace Proto.Promises
                     _waitCount = (uint) count;
                     Reset();
                     _pending = true;
-                    // Retain this until all promises resolve/reject/cancel.
-                    RetainInternal();
 
                     foreach (var passThrough in promisePassThroughs)
                     {
@@ -102,7 +100,7 @@ namespace Proto.Promises
                     bool handle = false;
                     if (_pending)
                     {
-                        owner._wasWaitedOn = true;
+                        owner._suppressRejection = true;
                         if (owner._state != Promise.State.Resolved)
                         {
                             _pending = false;
@@ -131,7 +129,6 @@ namespace Proto.Promises
                         {
                             _passThroughs.Pop().Release();
                         }
-                        ReleaseInternal();
                     }
                     return handle;
                 }
@@ -145,13 +142,12 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class MergePromise : IInvokable
+            partial class MergePromise
             {
                 // These are used to avoid rounding errors when normalizing the progress.
                 // Use 64 bits to allow combining many promises with very deep chains.
                 private double _progressScaler;
                 private UnsignedFixed64 _unscaledProgress;
-                private bool _invokingProgress;
 
                 protected override void Reset()
                 {
@@ -161,7 +157,6 @@ namespace Proto.Promises
                     {
                         base.Reset();
                         _unscaledProgress = default(UnsignedFixed64);
-                        _invokingProgress = false;
 
                         ulong expectedProgressCounter = 0L;
                         uint maxWaitDepth = 0;
@@ -197,7 +192,6 @@ namespace Proto.Promises
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
                     bool firstSubscribe = _progressListeners.IsEmpty;
-                    progressListener.Retain();
                     _progressListeners.Push(progressListener);
                     if (firstSubscribe & _state == Promise.State.Pending)
                     {
@@ -220,32 +214,16 @@ namespace Proto.Promises
 
                 private void IncrementProgress(uint amount)
                 {
+                    if (_state != Promise.State.Pending) return;
+
+                    // TODO: thread synchronization.
                     _unscaledProgress.Increment(amount);
-                    if (!_invokingProgress & _state == Promise.State.Pending)
-                    {
-                        RetainInternal();
-                        _invokingProgress = true;
-                        AddToFrontOfProgressQueue(this);
-                    }
-                }
-
-                void IInvokable.Invoke()
-                {
-                    if (_state != Promise.State.Pending)
-                    {
-                        ReleaseInternal();
-                        return;
-                    }
-
-                    _invokingProgress = false;
                     UnsignedFixed32 newProgress = CurrentProgress();
 
                     foreach (var progressListener in _progressListeners)
                     {
                         progressListener.SetProgress(this, newProgress);
                     }
-
-                    ReleaseInternal();
                 }
             }
 #endif

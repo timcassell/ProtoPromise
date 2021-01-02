@@ -81,27 +81,15 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                public static DelegateArgVoidCancel<T> CreateCancelable<T>(Action<T> callback)
+                public static DelegateArgVoidCancel<TArg> CreateCancelable<TArg>(Action<TArg> callback)
                 {
-                    return new DelegateArgVoidCancel<T>(callback);
+                    return new DelegateArgVoidCancel<TArg>(callback);
                 }
 
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                public static DelegateArgVoid<T> Create<T>(Action<T> callback)
+                public static DelegateArgVoid<TArg> Create<TArg>(Action<TArg> callback)
                 {
-                    return new DelegateArgVoid<T>(callback);
-                }
-
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                public static DelegateArgPromiseCancel<T> CreateCancelable<T>(Func<T, Promise> callback)
-                {
-                    return new DelegateArgPromiseCancel<T>(callback);
-                }
-
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                public static DelegateArgPromise<T> Create<T>(Func<T, Promise> callback)
-                {
-                    return new DelegateArgPromise<T>(callback);
+                    return new DelegateArgVoid<TArg>(callback);
                 }
 
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -114,6 +102,18 @@ namespace Proto.Promises
                 public static DelegateArgResult<TArg, TResult> Create<TArg, TResult>(Func<TArg, TResult> callback)
                 {
                     return new DelegateArgResult<TArg, TResult>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateArgPromiseCancel<TArg> CreateCancelable<TArg>(Func<TArg, Promise> callback)
+                {
+                    return new DelegateArgPromiseCancel<TArg>(callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateArgPromise<TArg> Create<TArg>(Func<TArg, Promise> callback)
+                {
+                    return new DelegateArgPromise<TArg>(callback);
                 }
 
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -198,6 +198,30 @@ namespace Proto.Promises
                 public static DelegateCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(ref TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
                 {
                     return new DelegateCaptureArgResult<TCapture, TArg, TResult>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureArgPromiseCancel<TCapture, TArg> CreateCancelable<TCapture, TArg>(ref TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
+                {
+                    return new DelegateCaptureArgPromiseCancel<TCapture, TArg>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureArgPromise<TCapture, TArg> Create<TCapture, TArg>(ref TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
+                {
+                    return new DelegateCaptureArgPromise<TCapture, TArg>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureArgPromiseTCancel<TCapture, TArg, TResult> CreateCancelable<TCapture, TArg, TResult>(ref TCapture capturedValue, Func<TCapture, TArg, Promise<TResult>> callback)
+                {
+                    return new DelegateCaptureArgPromiseTCancel<TCapture, TArg, TResult>(ref capturedValue, callback);
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static DelegateCaptureArgPromiseT<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(ref TCapture capturedValue, Func<TCapture, TArg, Promise<TResult>> callback)
+                {
+                    return new DelegateCaptureArgPromiseT<TCapture, TArg, TResult>(ref capturedValue, callback);
                 }
             }
 

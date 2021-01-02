@@ -21,14 +21,11 @@ namespace Proto.Promises
     /// which registers callbacks to be invoked with its resolve value when the <see cref="Promise{T}"/> is resolved,
     /// or the reason why the <see cref="Promise{T}"/> cannot be resolved.
     /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [System.Diagnostics.DebuggerNonUserCode]
-#endif
     public
 #if CSHARP_7_3_OR_NEWER
         readonly
 #endif
-        partial struct Promise<T>
+        partial struct Promise<T> : IEquatable<Promise<T>>
     {
         public bool IsValid
         {
@@ -64,7 +61,53 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a progress listener. Returns this.
+        /// Mark <see cref="this"/> as awaited and get a new <see cref="Promise{T}"/> of <typeparamref name="T"/> that inherits the state of <see cref="this"/> and can be awaited multiple times until <see cref="Forget"/> is called on it.
+        /// <para/><see cref="Forget"/> must be called when you are finished with it.
+        /// <para/>NOTE: You should not return a preserved <see cref="Promise{T}"/> from a public API. Use <see cref="Duplicate"/> to get a <see cref="Promise{T}"/> that is publicly safe.
+        /// </summary>
+        public Promise<T> Preserve()
+        {
+            ValidateOperation(1);
+            if (_ref != null)
+            {
+                var newPromise = _ref.GetPreserved(_id);
+                return new Promise<T>(newPromise, newPromise.Id);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Mark <see cref="this"/> as awaited and prevent any further awaits or callbacks on <see cref="this"/>.
+        /// <para/>NOTE: It is imperative to terminate your promise chains with Forget so that any uncaught rejections will be reported and objects repooled (if pooling is enabled).
+        /// </summary>
+        public void Forget()
+        {
+            ValidateOperation(1);
+            if (_ref != null)
+            {
+                _ref.Forget(_id);
+            }
+        }
+
+
+        /// <summary>
+        /// Mark <see cref="this"/> as awaited and get a new <see cref="Promise{T}"/> of <typeparamref name="T"/> that inherits the state of <see cref="this"/> and can be awaited once.
+        /// <para/>Preserved promiseses are unsafe to return from public APIs. Use <see cref="Duplicate"/> to get a <see cref="Promise{T}"/> that is publicly safe.
+        /// <para/><see cref="Duplicate"/> is safe to call even if you are unsure if <see cref="this"/> is preserved.
+        /// </summary>
+        public Promise<T> Duplicate()
+        {
+            ValidateOperation(1);
+            if (_ref != null)
+            {
+                var newPromise = _ref.GetDuplicate(_id);
+                return new Promise<T>(newPromise, newPromise.Id);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Add a progress listener. Returns <see cref="this"/>.
         /// <para/><paramref name="onProgress"/> will be invoked with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
@@ -79,7 +122,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a cancel callback. Returns this.
+        /// Add a cancel callback. Returns <see cref="this"/>.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with the cancelation reason.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
@@ -91,7 +134,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a finally callback. Returns this.
+        /// Add a finally callback. Returns <see cref="this"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onFinally"/> will be invoked.
         /// </summary>
         public Promise<T> Finally(Action onFinally)
@@ -116,7 +159,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
@@ -144,7 +187,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
@@ -160,7 +203,7 @@ namespace Proto.Promises
 
         #region Reject Callbacks
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
@@ -174,7 +217,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
@@ -189,7 +232,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
@@ -203,7 +246,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
@@ -250,7 +293,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -265,7 +308,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -312,7 +355,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -327,7 +370,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -374,7 +417,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -389,7 +432,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -436,7 +479,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -451,7 +494,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -481,7 +524,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// 
@@ -506,7 +549,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// 
@@ -521,7 +564,7 @@ namespace Proto.Promises
         // Capture values below.
 
         /// <summary>
-        /// Capture a value and add a progress listener. Returns this.
+        /// Capture a value and add a progress listener. Returns <see cref="this"/>.
         /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
@@ -536,7 +579,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a cancel callback. Returns this.
+        /// Capture a value and add a cancel callback. Returns <see cref="this"/>.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and the cancelation reason.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
@@ -548,7 +591,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a finally callback. Returns this.
+        /// Capture a value and add a finally callback. Returns <see cref="this"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onFinally"/> will be invoked with <paramref name="finallyCaptureValue"/>.
         /// </summary>
         public Promise<T> Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
@@ -573,7 +616,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
@@ -601,7 +644,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
@@ -617,7 +660,7 @@ namespace Proto.Promises
 
         #region Reject Callbacks
         /// <summary>
-        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
@@ -631,7 +674,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
@@ -646,7 +689,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
@@ -660,7 +703,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
@@ -770,7 +813,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -786,7 +829,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -801,7 +844,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -816,7 +859,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -832,7 +875,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -848,7 +891,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -957,7 +1000,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -972,7 +1015,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -987,7 +1030,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1002,7 +1045,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1018,7 +1061,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1034,7 +1077,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1143,7 +1186,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1159,7 +1202,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1174,7 +1217,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1189,7 +1232,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1205,7 +1248,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1221,7 +1264,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1330,7 +1373,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -1345,7 +1388,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -1360,7 +1403,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -1375,7 +1418,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -1391,7 +1434,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -1407,7 +1450,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -1437,7 +1480,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         ///
@@ -1461,7 +1504,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         ///
@@ -1512,7 +1555,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
@@ -1540,7 +1583,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
@@ -1647,7 +1690,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -1662,7 +1705,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -1709,7 +1752,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1724,7 +1767,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1771,7 +1814,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1786,7 +1829,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -1833,7 +1876,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -1848,7 +1891,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -1882,7 +1925,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
@@ -1910,7 +1953,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
@@ -2079,7 +2122,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -2094,7 +2137,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -2109,7 +2152,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -2124,7 +2167,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -2140,7 +2183,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -2156,7 +2199,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -2265,7 +2308,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -2280,7 +2323,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -2295,7 +2338,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -2310,7 +2353,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -2326,7 +2369,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -2342,7 +2385,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -2451,7 +2494,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -2466,7 +2509,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -2481,7 +2524,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -2496,7 +2539,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -2512,7 +2555,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -2528,7 +2571,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
@@ -2637,7 +2680,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -2652,7 +2695,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -2667,7 +2710,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -2682,7 +2725,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -2698,7 +2741,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -2714,7 +2757,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/>.
+        /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason that is convertible to <typeparamref name="TReject"/>, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/> and that reason, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
@@ -2729,5 +2772,49 @@ namespace Proto.Promises
             return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
         #endregion
+
+        public bool Equals(Promise<T> other)
+        {
+            return this == other;
+        }
+
+        public override bool Equals(object obj)
+        {
+#if CSHARP_7_OR_LATER
+            return obj is Promise<T> promise && Equals(promise);
+#else
+            return obj is Promise<T> && Equals((Promise<T>) obj);
+#endif
+        }
+
+        // Promises really shouldn't be used for lookups, but GetHashCode is overridden to complement ==.
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + _id.GetHashCode();
+                if (_ref != null)
+                {
+                    hash = hash * 31 + _ref.GetHashCode();
+                }
+                else if (_result != null)
+                {
+                    hash = hash * 31 + _result.GetHashCode();
+                }
+                hash = hash * 31 + typeof(T).TypeHandle.GetHashCode(); // Hashcode variance for different T types.
+                return hash;
+            }
+        }
+
+        public static bool operator ==(Promise<T> lhs, Promise<T> rhs)
+        {
+            return lhs._ref == rhs._ref & lhs._id == rhs._id & System.Collections.Generic.EqualityComparer<T>.Default.Equals(lhs._result, rhs._result);
+        }
+
+        public static bool operator !=(Promise<T> lhs, Promise<T> rhs)
+        {
+            return !(lhs == rhs);
+        }
     }
 }

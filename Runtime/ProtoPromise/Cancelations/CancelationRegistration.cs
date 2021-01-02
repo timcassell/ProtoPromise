@@ -73,23 +73,15 @@ namespace Proto.Promises
         public override bool Equals(object obj)
         {
 #if CSHARP_7_OR_LATER
-            if (obj is CancelationRegistration cancelationSource)
-            {
-                return Equals(cancelationSource);
-            }
+            return obj is CancelationRegistration registration && Equals(registration);
 #else
-            if (obj is CancelationRegistration)
-            {
-                return Equals((CancelationRegistration) obj);
-            }
+            return obj is CancelationRegistration && Equals((CancelationRegistration) obj);
 #endif
-            return false;
         }
 
         public override int GetHashCode()
         {
-            var temp = _ref;
-            if (temp == null)
+            if (_ref == null)
             {
                 return 0;
             }
@@ -97,7 +89,7 @@ namespace Proto.Promises
             {
                 int hash = 17;
                 hash = hash * 31 + _order.GetHashCode();
-                hash = hash * 31 + temp.GetHashCode();
+                hash = hash * 31 + _ref.GetHashCode();
                 return hash;
             }
         }

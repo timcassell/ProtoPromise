@@ -20,6 +20,12 @@ namespace Proto.Promises
 {
     namespace Async.CompilerServices
     {
+        /// <summary>
+        /// Used to support the await keyword.
+        /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
         public
 #if CSHARP_7_3_OR_NEWER
             readonly
@@ -28,10 +34,17 @@ namespace Proto.Promises
         {
             private readonly Promise _promise;
 
-            public PromiseAwaiter(Promise promise)
+            /// <summary>
+            /// Internal use.
+            /// </summary>
+            internal PromiseAwaiter(Promise promise)
             {
+                if (promise._ref != null)
+                {
+                    promise._ref.MarkAwaited(promise._id);
+                    _promise = new Promise(promise._ref, promise._ref.Id);
+                }
                 _promise = promise;
-                Internal.PromiseRef.MaybeMarkAwaited(promise);
             }
 
             public bool IsCompleted
@@ -50,7 +63,7 @@ namespace Proto.Promises
 
                 if (_promise._ref != null)
                 {
-                    _promise._ref.GetResultForAwaiter();
+                    _promise._ref.GetResultForAwaiter(_promise._id);
                 }
             }
 
@@ -58,14 +71,21 @@ namespace Proto.Promises
             {
                 ValidateOperation(1);
 
-                _promise.Finally(continuation);
+                // If this is called only from the `await` keyword, the check is unnecessary.
+                // The check is added for safety in case users call `promise.GetAwaiter()` and use the awaiter directly.
+                if (_promise._ref != null)
+                {
+                    _promise._ref.OnCompletedForAwaiter(continuation);
+                }
+                else
+                {
+                    _promise.Finally(continuation);
+                }
             }
 
             public void UnsafeOnCompleted(Action continuation)
             {
-                ValidateOperation(1);
-
-                _promise.Finally(continuation);
+                OnCompleted(continuation);
             }
 
             partial void ValidateOperation(int skipFrames);
@@ -77,6 +97,12 @@ namespace Proto.Promises
 #endif
         }
 
+        /// <summary>
+        /// Used to support the await keyword.
+        /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
         public
 #if CSHARP_7_3_OR_NEWER
             readonly
@@ -85,10 +111,17 @@ namespace Proto.Promises
         {
             private readonly Promise<T> _promise;
 
-            public PromiseAwaiter(Promise<T> promise)
+            /// <summary>
+            /// Internal use.
+            /// </summary>
+            internal PromiseAwaiter(Promise<T> promise)
             {
+                if (promise._ref != null)
+                {
+                    promise._ref.MarkAwaited(promise._id);
+                    _promise = new Promise<T>(promise._ref, promise._ref.Id);
+                }
                 _promise = promise;
-                Internal.PromiseRef.MaybeMarkAwaited(promise);
             }
 
             public bool IsCompleted
@@ -107,7 +140,7 @@ namespace Proto.Promises
 
                 if (_promise._ref != null)
                 {
-                    return _promise._ref.GetResultForAwaiter<T>();
+                    return _promise._ref.GetResultForAwaiter<T>(_promise._id);
                 }
                 return _promise._result;
             }
@@ -116,14 +149,21 @@ namespace Proto.Promises
             {
                 ValidateOperation(1);
 
-                _promise.Finally(continuation);
+                // If this is called only from the `await` keyword, the check is unnecessary.
+                // The check is added for safety in case users call `promise.GetAwaiter()` and use the awaiter directly.
+                if (_promise._ref != null)
+                {
+                    _promise._ref.OnCompletedForAwaiter(continuation);
+                }
+                else
+                {
+                    _promise.Finally(continuation);
+                }
             }
 
             public void UnsafeOnCompleted(Action continuation)
             {
-                ValidateOperation(1);
-
-                _promise.Finally(continuation);
+                OnCompleted(continuation);
             }
 
             partial void ValidateOperation(int skipFrames);
@@ -543,7 +583,7 @@ namespace Proto.Promises.Async.CompilerServices
     public struct PromiseMethodBuilder
     {
         private AsyncPromiseRef _ref;
-        private ushort _id;
+        private int _id;
 
         public Promise Task { get { return new Promise(_ref, _id); } }
 
@@ -620,14 +660,16 @@ namespace Proto.Promises.Async.CompilerServices
     public struct PromiseMethodBuilder<T>
     {
         private AsyncPromiseRef _ref;
-        private ushort _id;
+        private int _id;
+        private T _result;
 
-        public Promise<T> Task { get { return new Promise<T>(_ref, _id); } }
+        public Promise<T> Task { get { return new Promise<T>(_ref, _id, ref _result); } }
 
         private PromiseMethodBuilder(ushort id)
         {
             _ref = null;
             _id = id;
+            _result = default;
         }
 
         public static PromiseMethodBuilder<T> Create()

@@ -23,11 +23,12 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            struct DeferredBase : IRetainable
+            struct DeferredBase : IEquatable<DeferredBase>
         {
             private readonly Internal.PromiseRef.DeferredPromiseBase _ref;
-            private readonly ushort _promiseId;
-            private readonly ushort _deferredId;
+            // Only using int because Interlocked does not support ushort.
+            private readonly int _promiseId;
+            private readonly int _deferredId;
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -63,7 +64,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use for implicit cast operator.
             /// </summary>
-            internal DeferredBase(Internal.PromiseRef.DeferredPromiseBase promise, ushort promiseId, ushort deferredId)
+            internal DeferredBase(Internal.PromiseRef.DeferredPromiseBase promise, int promiseId, int deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;
@@ -117,12 +118,12 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// Try to reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// <para/> Returns true if successful, false otherwise.
             /// </summary>
             public bool TryReject<TReject>(TReject reason)
             {
-                if (_ref == null) return false;
-                return _ref.TryReject(ref reason, _deferredId, _deferredId);
+                return _ref != null && _ref.TryReject(ref reason, _deferredId, _deferredId);
             }
 
             /// <summary>
@@ -160,9 +161,53 @@ namespace Proto.Promises
 #else
                 ValidateProgress(progress, 1);
 
-                if (_ref == null) return false;
-                return _ref.TryReportProgress(progress, _deferredId);
+                return _ref != null && _ref.TryReportProgress(progress, _deferredId);
 #endif
+            }
+
+            public bool Equals(DeferredBase other)
+            {
+                return this == other;
+            }
+
+            public override bool Equals(object obj)
+            {
+#if CSHARP_7_OR_LATER
+                return obj is DeferredBase deferredBase && Equals(deferredBase);
+#else
+                if (other is DeferredBase)
+                {
+                    return Equals((DeferredBase) other);
+                }
+                return false;
+#endif
+            }
+
+            public override int GetHashCode()
+            {
+                var temp = _ref;
+                if (temp == null)
+                {
+                    return 0;
+                }
+                unchecked
+                {
+                    int hash = 17;
+                    hash = hash * 31 + _deferredId.GetHashCode();
+                    hash = hash * 31 + _promiseId.GetHashCode();
+                    hash = hash * 31 + temp.GetHashCode();
+                    return hash;
+                }
+            }
+
+            public static bool operator ==(DeferredBase lhs, DeferredBase rhs)
+            {
+                return lhs._ref == rhs._ref & lhs._deferredId == rhs._deferredId & lhs._promiseId == rhs._promiseId;
+            }
+
+            public static bool operator !=(DeferredBase lhs, DeferredBase rhs)
+            {
+                return !(lhs == rhs);
             }
 
             [Obsolete("DeferredBase.State is no longer valid. Use IsPending.", true)]
@@ -197,11 +242,12 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            struct Deferred
+            struct Deferred : IEquatable<Deferred>
         {
             private readonly Internal.PromiseRef.DeferredPromiseVoid _ref;
-            private readonly ushort _promiseId;
-            private readonly ushort _deferredId;
+            // Only using int because Interlocked does not support ushort.
+            private readonly int _promiseId;
+            private readonly int _deferredId;
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -237,7 +283,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use.
             /// </summary>
-            internal Deferred(Internal.PromiseRef.DeferredPromiseVoid promise, ushort promiseId, ushort deferredId)
+            internal Deferred(Internal.PromiseRef.DeferredPromiseVoid promise, int promiseId, int deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;
@@ -269,12 +315,12 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// Try to reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// <para/> Returns true if successful, false otherwise.
             /// </summary>
             public bool TryReject<TReject>(TReject reason)
             {
-                if (_ref == null) return false;
-                return _ref.TryReject(ref reason, _deferredId, _deferredId);
+                return _ref != null && _ref.TryReject(ref reason, _deferredId, _deferredId);
             }
 
             /// <summary>
@@ -312,8 +358,7 @@ namespace Proto.Promises
 #else
                 ValidateProgress(progress, 1);
 
-                if (_ref == null) return false;
-                return _ref.TryReportProgress(progress, _deferredId);
+                return _ref != null && _ref.TryReportProgress(progress, _deferredId);
 #endif
             }
 
@@ -335,8 +380,7 @@ namespace Proto.Promises
             /// </summary>
             public bool TryResolve()
             {
-                if (_ref == null) return false;
-                return _ref.TryResolve(_deferredId);
+                return _ref != null && _ref.TryResolve(_deferredId);
             }
 
             /// <summary>
@@ -345,6 +389,51 @@ namespace Proto.Promises
             public static implicit operator DeferredBase(Deferred rhs)
             {
                 return new DeferredBase(rhs._ref, rhs._promiseId, rhs._deferredId);
+            }
+
+            public bool Equals(Deferred other)
+            {
+                return this == other;
+            }
+
+            public override bool Equals(object obj)
+            {
+#if CSHARP_7_OR_LATER
+                return obj is Deferred deferred && Equals(deferred);
+#else
+                if (other is DeferredBase)
+                {
+                    return Equals((DeferredBase) other);
+                }
+                return false;
+#endif
+            }
+
+            public override int GetHashCode()
+            {
+                var temp = _ref;
+                if (temp == null)
+                {
+                    return 0;
+                }
+                unchecked
+                {
+                    int hash = 17;
+                    hash = hash * 31 + _deferredId.GetHashCode();
+                    hash = hash * 31 + _promiseId.GetHashCode();
+                    hash = hash * 31 + temp.GetHashCode();
+                    return hash;
+                }
+            }
+
+            public static bool operator ==(Deferred lhs, Deferred rhs)
+            {
+                return lhs._ref == rhs._ref & lhs._deferredId == rhs._deferredId & lhs._promiseId == rhs._promiseId;
+            }
+
+            public static bool operator !=(Deferred lhs, Deferred rhs)
+            {
+                return !(lhs == rhs);
             }
 
             [Obsolete("Deferred.State is no longer valid. Use IsPending.", true)]
@@ -382,11 +471,12 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            struct Deferred
+            struct Deferred : IEquatable<Deferred>
         {
             private readonly Internal.PromiseRef.DeferredPromise<T> _ref;
-            private readonly ushort _promiseId;
-            private readonly ushort _deferredId;
+            // Only using int because Interlocked does not support ushort.
+            private readonly int _promiseId;
+            private readonly int _deferredId;
 
             /// <summary>
             /// The attached <see cref="Promise{T}"/> that this controls.
@@ -422,7 +512,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use.
             /// </summary>
-            internal Deferred(Internal.PromiseRef.DeferredPromise<T> promise, ushort promiseId, ushort deferredId)
+            internal Deferred(Internal.PromiseRef.DeferredPromise<T> promise, int promiseId, int deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;
@@ -454,12 +544,12 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// Try to reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// <para/> Returns true if successful, false otherwise.
             /// </summary>
             public bool TryReject<TReject>(TReject reason)
             {
-                if (_ref == null) return false;
-                return _ref.TryReject(ref reason, _deferredId, _deferredId);
+                return _ref != null && _ref.TryReject(ref reason, _deferredId, _deferredId);
             }
 
             /// <summary>
@@ -497,8 +587,7 @@ namespace Proto.Promises
 #else
                 ValidateProgress(progress, 1);
 
-                if (_ref == null) return false;
-                return _ref.TryReportProgress(progress, _deferredId);
+                return _ref != null && _ref.TryReportProgress(progress, _deferredId);
 #endif
             }
 
@@ -520,8 +609,7 @@ namespace Proto.Promises
             /// </summary>
             public bool TryResolve(T value)
             {
-                if (_ref == null) return false;
-                return _ref.TryResolve(ref value, _deferredId);
+                return _ref != null && _ref.TryResolve(ref value, _deferredId);
             }
 
             /// <summary>
@@ -530,6 +618,51 @@ namespace Proto.Promises
             public static implicit operator Promise.DeferredBase(Deferred rhs)
             {
                 return new Promise.DeferredBase(rhs._ref, rhs._promiseId, rhs._deferredId);
+            }
+
+            public bool Equals(Deferred other)
+            {
+                return this == other;
+            }
+
+            public override bool Equals(object obj)
+            {
+#if CSHARP_7_OR_LATER
+                return obj is Deferred deferred && Equals(deferred);
+#else
+                if (other is DeferredBase)
+                {
+                    return Equals((DeferredBase) other);
+                }
+                return false;
+#endif
+            }
+
+            public override int GetHashCode()
+            {
+                var temp = _ref;
+                if (temp == null)
+                {
+                    return 0;
+                }
+                unchecked
+                {
+                    int hash = 17;
+                    hash = hash * 31 + _deferredId.GetHashCode();
+                    hash = hash * 31 + _promiseId.GetHashCode();
+                    hash = hash * 31 + temp.GetHashCode();
+                    return hash;
+                }
+            }
+
+            public static bool operator ==(Deferred lhs, Deferred rhs)
+            {
+                return lhs._ref == rhs._ref & lhs._deferredId == rhs._deferredId & lhs._promiseId == rhs._promiseId;
+            }
+
+            public static bool operator !=(Deferred lhs, Deferred rhs)
+            {
+                return !(lhs == rhs);
             }
 
             [Obsolete("Deferred.State is no longer valid. Use IsPending.", true)]

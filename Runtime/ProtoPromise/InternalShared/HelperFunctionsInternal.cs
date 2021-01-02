@@ -170,9 +170,10 @@ namespace Proto.Promises
                         && !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false);
                 })
                 // Create a new StackTrace to get proper formatting.
-                .Select(frame => new StackTrace(frame).ToString());
+                .Select(frame => new StackTrace(frame).ToString())
+                .ToArray();
 
-            return string.Join(Environment.NewLine, trace.ToArray());
+            return string.Join(Environment.NewLine, trace);
 #endif
         }
 #else
@@ -300,11 +301,6 @@ namespace Proto.Promises
         public static void AddToHandleQueueFront(ref ValueLinkedQueue<ITreeHandleable> handleables)
         {
             _handleQueue.PushAndClear(ref handleables);
-        }
-
-        public static void AddToHandleQueueBack(ref ValueLinkedQueue<ITreeHandleable> handleables)
-        {
-            _handleQueue.EnqueueAndClear(ref handleables);
         }
 
         private static ValueLinkedStackZeroGC<UnhandledException> _unhandledExceptions;

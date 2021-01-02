@@ -82,7 +82,7 @@ namespace Proto.Promises
         internal interface IDelegateCancel
         {
             void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner);
-            void SetValue(IValueContainer valueContainer);
+            bool TrySetValue(IValueContainer valueContainer);
             void InvokeFromPromise(ITraceable owner);
             void MaybeDispose(IDisposable owner);
         }

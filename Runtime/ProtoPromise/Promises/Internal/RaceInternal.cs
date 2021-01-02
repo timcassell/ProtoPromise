@@ -56,8 +56,6 @@ namespace Proto.Promises
 
                     promise._waitCount = (uint) count;
                     promise.Reset();
-                    // Retain this until all promises resolve/reject/cancel.
-                    promise.RetainInternal();
 
                     foreach (var passThrough in promisePassThroughs)
                     {
@@ -78,7 +76,7 @@ namespace Proto.Promises
                     bool handle = _valueOrPrevious == null;
                     if (handle)
                     {
-                        owner._wasWaitedOn = true;
+                        owner._suppressRejection = true;
                         valueContainer.Retain();
                         _valueOrPrevious = valueContainer;
                     }
@@ -88,7 +86,6 @@ namespace Proto.Promises
                         {
                             _passThroughs.Pop().Release();
                         }
-                        ReleaseInternal();
                     }
                     return handle;
                 }
@@ -100,16 +97,14 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class RacePromise : IInvokable
+            partial class RacePromise
             {
                 private UnsignedFixed32 _currentAmount;
-                private bool _invokingProgress;
 
                 protected override void Reset()
                 {
                     base.Reset();
                     _currentAmount = default(UnsignedFixed32);
-                    _invokingProgress = false;
 
                     uint minWaitDepth = uint.MaxValue;
                     foreach (var passThrough in _passThroughs)
@@ -135,7 +130,6 @@ namespace Proto.Promises
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
                     bool firstSubscribe = _progressListeners.IsEmpty;
-                    progressListener.Retain();
                     _progressListeners.Push(progressListener);
                     if (firstSubscribe & _state == Promise.State.Pending)
                     {
@@ -153,36 +147,20 @@ namespace Proto.Promises
 
                 void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
+                    if (_state != Promise.State.Pending) return;
+
+                    // TODO: thread synchronization.
                     // Use double for better precision.
                     var newAmount = new UnsignedFixed32(senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
                     if (newAmount > _currentAmount)
                     {
                         _currentAmount = newAmount;
-                        if (!_invokingProgress)
+
+                        foreach (var progressListener in _progressListeners)
                         {
-                            RetainInternal();
-                            _invokingProgress = true;
-                            AddToFrontOfProgressQueue(this);
+                            progressListener.SetProgress(this, newAmount);
                         }
                     }
-                }
-
-                void IInvokable.Invoke()
-                {
-                    if (_state != Promise.State.Pending)
-                    {
-                        ReleaseInternal();
-                        return;
-                    }
-
-                    _invokingProgress = false;
-
-                    foreach (var progressListener in _progressListeners)
-                    {
-                        progressListener.SetProgress(this, _currentAmount);
-                    }
-
-                    ReleaseInternal();
                 }
             }
 #endif

@@ -102,13 +102,13 @@ namespace Proto.Promises
                         previous = promise._valueOrPrevious;
                     }
 #else
-                PromiseRef promise = _valueOrPrevious as Promise;
-                while (promise != null)
-                {
-                    promise._progressListeners.Remove(listener);
-                    listener.CancelOrSetProgress(promise, progress);
-                    promise = promise._valueOrPrevious as Promise;
-                }
+                    PromiseRef promise = _valueOrPrevious as PromiseRef;
+                    while (promise != null)
+                    {
+                        promise._progressListeners.Remove(listener);
+                        listener.CancelOrSetProgress(promise, progress);
+                        promise = promise._valueOrPrevious as PromiseRef;
+                    }
 #endif
                 }
             }
@@ -130,7 +130,6 @@ namespace Proto.Promises
 
             protected virtual bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous)
             {
-                progressListener.Retain();
                 _progressListeners.Push(progressListener);
                 return (previous = _valueOrPrevious as PromiseRef) != null;
             }
@@ -229,7 +228,6 @@ namespace Proto.Promises
                     }
                     default: // Rejected or Canceled:
                     {
-                        progressListener.Retain();
                         progressListener.CancelOrSetProgress(promise, promise._waitDepthAndProgress);
                         break;
                     }
@@ -311,11 +309,13 @@ namespace Proto.Promises
 
                 public double ToDouble()
                 {
+                    // TODO: thread synchronization.
                     return (double) WholePart + DecimalPart;
                 }
 
                 public void AssignNewDecimalPart(float decimalPart)
                 {
+                    // TODO: thread synchronization.
                     // Don't bother rounding, we don't want to accidentally round to 1.0.
                     uint newDecimalPart = (uint) (decimalPart * DecimalMax);
                     _value = (_value & WholeMask) | newDecimalPart;
@@ -365,11 +365,13 @@ namespace Proto.Promises
 
                 public double ToDouble()
                 {
+                    // TODO: thread synchronization.
                     return (double) WholePart + DecimalPart;
                 }
 
                 public void Increment(uint increment)
                 {
+                    // TODO: thread synchronization.
                     _value += increment;
                 }
             }
@@ -385,7 +387,6 @@ namespace Proto.Promises
                 void SetProgress(PromiseRef sender, UnsignedFixed32 progress);
                 void ResolveOrSetProgress(PromiseRef sender, UnsignedFixed32 progress);
                 void CancelOrSetProgress(PromiseRef sender, UnsignedFixed32 progress);
-                void Retain();
             }
 
             partial interface IMultiTreeHandleable
@@ -403,9 +404,9 @@ namespace Proto.Promises
 #endif
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
+                // TODO: thread synchronization.
                 private PromiseRef _owner;
                 private UnsignedFixed32 _current;
-                uint _retainCounter;
                 private bool _handling;
                 private bool _done;
                 private bool _suspended;
@@ -492,7 +493,6 @@ namespace Proto.Promises
                     else
                     {
                         SetProgress(progress);
-                        Release();
                     }
                 }
 
@@ -509,18 +509,13 @@ namespace Proto.Promises
                     if (sender == _owner)
                     {
                         _canceled = true;
-                        Release();
+                        MarkOrDispose();
                     }
                     else
                     {
                         _suspended = true;
                         _current = progress;
                     }
-                }
-
-                void IProgressListener.Retain()
-                {
-                    ++_retainCounter;
                 }
 
                 private void MarkOrDispose()
@@ -537,19 +532,10 @@ namespace Proto.Promises
                     }
                 }
 
-                private void Release()
-                {
-                    if (--_retainCounter == 0)
-                    {
-                        MarkOrDispose();
-                    }
-                }
-
                 void ITreeHandleable.Handle()
                 {
                     _cancelationRegistration.TryUnregister();
                     InvokeAndCatch(1f);
-                    _retainCounter = 0;
                     _canceled = true;
                     MarkOrDispose();
                 }
@@ -653,19 +639,21 @@ namespace Proto.Promises
                 }
             }
 
-            partial class PromiseWaitPromise : IProgressListener, IInvokable
+            partial class PromiseWaitPromise : IProgressListener
             {
                 // This is used to avoid rounding errors when normalizing the progress.
                 private UnsignedFixed32 _currentAmount;
-                private bool _invokingProgress;
                 private bool _secondPrevious;
-                protected bool _suspended;
+
+                protected override void CancelCallbacks()
+                {
+                    // TODO: Remove this from the previous's progress listeners.
+                }
 
                 protected override void Reset()
                 {
                     base.Reset();
                     _secondPrevious = false;
-                    _suspended = false;
                 }
 
                 partial void SubscribeProgressToOther(PromiseRef other)
@@ -681,7 +669,6 @@ namespace Proto.Promises
                 {
                     // This is guaranteed to be pending.
                     bool firstSubscribe = _progressListeners.IsEmpty;
-                    progressListener.Retain();
                     _progressListeners.Push(progressListener);
                     previous = _valueOrPrevious as PromiseRef;
                     if (_secondPrevious)
@@ -711,49 +698,29 @@ namespace Proto.Promises
                     _waitDepthAndProgress = previousDepth.GetIncrementedWholeTruncated();
                 }
 
-                void IInvokable.Invoke()
+                void IProgressListener.SetInitialProgress(UnsignedFixed32 progress)
                 {
-                    _invokingProgress = false;
+                    SetProgress(progress);
+                }
 
-                    if (_state != Promise.State.Pending | _suspended)
-                    {
-                        ReleaseInternal();
-                        return;
-                    }
-
+                private UnsignedFixed32 NormalizeProgress(UnsignedFixed32 progress)
+                {
+                    _currentAmount = progress;
                     // Calculate the normalized progress for the depth of the returned promise.
                     // Use double for better precision.
                     double expected = ((PromiseRef) _valueOrPrevious)._waitDepthAndProgress.WholePart + 1u;
-                    float progress = (float) (_currentAmount.ToDouble() / expected);
+                    float normalizedProgress = (float) (_currentAmount.ToDouble() / expected);
 
-                    _waitDepthAndProgress.AssignNewDecimalPart(progress);
-
-                    foreach (var progressListener in _progressListeners)
-                    {
-                        progressListener.SetProgress(this, _waitDepthAndProgress);
-                    }
-                    ReleaseInternal();
-                }
-
-                void IProgressListener.SetInitialProgress(UnsignedFixed32 progress)
-                {
-                    _currentAmount = progress;
-                    // Don't allow repool until this is removed from the progress queue.
-                    RetainInternal();
-                    _invokingProgress = true;
-                    AddToFrontOfProgressQueue(this);
+                    _waitDepthAndProgress.AssignNewDecimalPart(normalizedProgress);
+                    return _waitDepthAndProgress;
                 }
 
                 private void SetProgress(UnsignedFixed32 progress)
                 {
-                    _suspended = false;
-                    _currentAmount = progress;
-                    if (!_invokingProgress)
+                    var newProgress = NormalizeProgress(progress);
+                    foreach (var progressListener in _progressListeners)
                     {
-                        // Don't allow repool until this is removed from the progress queue.
-                        RetainInternal();
-                        _invokingProgress = true;
-                        AddToFrontOfProgressQueue(this);
+                        progressListener.SetProgress(this, newProgress);
                     }
                 }
 
@@ -765,25 +732,21 @@ namespace Proto.Promises
                 void IProgressListener.ResolveOrSetProgress(PromiseRef sender, UnsignedFixed32 progress)
                 {
                     SetProgress(progress);
-                    ReleaseWithoutDisposeCheck();
                 }
 
                 void IProgressListener.CancelOrSetProgress(PromiseRef sender, UnsignedFixed32 progress)
                 {
-                    _suspended = true;
-                    _currentAmount = progress;
-                    ReleaseWithoutDisposeCheck();
-                }
-
-                void IProgressListener.Retain()
-                {
-                    RetainInternal();
+                    var newProgress = NormalizeProgress(progress);
+                    foreach (var progressListener in _progressListeners)
+                    {
+                        progressListener.CancelOrSetProgress(sender, newProgress);
+                    }
                 }
             }
 
             partial class DeferredPromiseBase
             {
-                public bool TryReportProgress(float progress, ushort deferredId)
+                public bool TryReportProgress(float progress, int deferredId)
                 {
                     if (deferredId != _deferredId) return false;
 
