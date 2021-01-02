@@ -1,5 +1,9 @@
 # Release Notes
 
+## v 1.0.2 - January 2, 2021
+
+- Fixed uncaught rejections not being reported from reused promise objects.
+
 ## v 1.0.0 - October 29, 2020
 
 Directory Structure:

@@ -3,7 +3,7 @@
     <img src="https://promisesaplus.com/assets/logo-small.png" alt="Promises/A+ logo"
          title="Promises/A+ 1.1 compliant" align="right" />
 </a>
-Most efficient C# library for management of asynchronous operations.
+Robust and efficient C# library for management of asynchronous operations.
 
 ProtoPromise took inspiration from [ES6 Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) (javascript), [RSG Promises](https://github.com/Real-Serious-Games/C-Sharp-Promise) (C#), [uPromise](https://assetstore.unity.com/packages/tools/upromise-15604) (C#/Unity), and [TPL](https://docs.microsoft.com/en-us/dotnet/standard/parallel-programming/task-parallel-library-tpl) and improved upon their short-comings.
 
@@ -13,13 +13,11 @@ Also check out the [C# Asynchronous Benchmarks](https://github.com/timcassell/CS
 
 ## Latest Updates
 
-### v 1.0.0
+### v 1.0.2 - January 2, 2021
 
-- Fixed PromiseMethodBuilders in non-IL2CPP builds when the TStateMachine is a struct.
-- Fixed various progress bugs.
-- Fixed CancelationToken.Equals(object).
-- Added thread checks to make sure the library is only used with one thread (in DEBUG mode only).
-- Removed class restriction on PromiseYielder.WaitFor (since there are some structs that can be yielded in Coroutines, like `AsyncOperationHandle`s).
+- Fixed uncaught rejections not being reported from reused promise objects.
+
+See [Release Notes](https://github.com/timcassell/ProtoPromise/blob/master/ReleaseNotes.md) for the full changelog.
 
 ## Contents
 
