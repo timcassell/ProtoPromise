@@ -76,6 +76,7 @@ namespace Proto.Promises
         {
             _state = State.Pending;
             _retainCounter = 1;
+            _wasWaitedOn = false;
             SetNotDisposed();
             SetCreatedStacktrace(this, 3);
         }
