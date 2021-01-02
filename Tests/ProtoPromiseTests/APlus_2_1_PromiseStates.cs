@@ -1,6 +1,5 @@
 ﻿#pragma warning disable IDE1006 // Naming Styles
 
-using System;
 using NUnit.Framework;
 
 namespace Proto.Promises.Tests
@@ -36,24 +35,65 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void _2_1_1_1_MayTransitionToEitherTheFulfilledOrRejectedState()
+            public void _2_1_1_1_MayTransitionToEitherTheFulfilledOrRejectedState_void()
             {
+                string Resolved = "Resolved", Rejected = "Rejected";
+                string state = null;
+
                 var deferred = Promise.NewDeferred();
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                deferred.Promise
+                    .Then(() => state = Resolved, () => state = Rejected)
+                    .Forget();
+                Assert.AreEqual(null, state);
 
                 deferred.Resolve();
+                Promise.Manager.HandleCompletesAndProgress();
 
-                Assert.AreEqual(Promise.State.Resolved, deferred.State);
+                Assert.AreEqual(Resolved, state);
 
+                state = null;
                 deferred = Promise.NewDeferred();
-
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                deferred.Promise
+                    .Then(() => state = Resolved, () => state = Rejected)
+                    .Forget();
+                Assert.AreEqual(null, state);
 
                 deferred.Reject("Fail Value");
+                Promise.Manager.HandleCompletesAndProgress();
 
-                Assert.AreEqual(Promise.State.Rejected, deferred.State);
+                Assert.AreEqual(Rejected, state);
 
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                TestHelper.Cleanup();
+            }
+
+            [Test]
+            public void _2_1_1_1_MayTransitionToEitherTheFulfilledOrRejectedState_T()
+            {
+                string Resolved = "Resolved", Rejected = "Rejected";
+                string state = null;
+
+                var deferred = Promise.NewDeferred<int>();
+                deferred.Promise
+                    .Then(v => state = Resolved, () => state = Rejected)
+                    .Forget();
+                Assert.AreEqual(null, state);
+
+                deferred.Resolve(1);
+                Promise.Manager.HandleCompletesAndProgress();
+
+                Assert.AreEqual(Resolved, state);
+
+                state = null;
+                deferred = Promise.NewDeferred<int>();
+                deferred.Promise
+                    .Then(v => state = Resolved, () => state = Rejected)
+                    .Forget();
+                Assert.AreEqual(null, state);
+
+                deferred.Reject("Fail Value");
+                Promise.Manager.HandleCompletesAndProgress();
+
+                Assert.AreEqual(Rejected, state);
 
                 TestHelper.Cleanup();
             }
@@ -75,29 +115,70 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void _2_1_2_1_MustNotTransitionToAnyOtherState()
+            public void _2_1_2_1_MustNotTransitionToAnyOtherState_void()
             {
-                var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                string RejectValue = "Rejected";
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+                var deferred = Promise.NewDeferred();
+                var promise = deferred.Promise.Preserve();
+
+                bool voidResolved = false, voidRejected = false;
+                promise
+                    .Then(() => voidResolved = true, () => voidRejected = true)
+                    .Forget();
 
                 deferred.Resolve();
+                Promise.Manager.HandleCompletes();
+                Assert.IsTrue(voidResolved);
+                Assert.IsFalse(voidRejected);
 
-                TestHelper.ExpectWarning("Deferred.Reject - Deferred is not in the pending state.");
+                Assert.AreEqual(false, deferred.TryResolve());
+                Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
+                Assert.AreEqual(false, deferred.TryReject(RejectValue));
+                Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
 
-                deferred.Reject("Fail Value");
-                deferredInt.Resolve(0);
+                promise
+                    .Then(() => voidResolved = true, () => voidRejected = true)
+                    .Forget();
+                Promise.Manager.HandleCompletes();
+                Assert.IsTrue(voidResolved);
+                Assert.IsFalse(voidRejected);
 
-                TestHelper.ExpectWarning("Deferred.Reject - Deferred is not in the pending state.");
+                promise.Forget();
 
-                deferredInt.Reject("Fail Value");
+                TestHelper.Cleanup();
+            }
 
-                Assert.AreEqual(Promise.State.Resolved, deferred.State);
-                Assert.AreEqual(Promise.State.Resolved, deferredInt.State);
+            [Test]
+            public void _2_1_2_1_MustNotTransitionToAnyOtherState_T()
+            {
+                string RejectValue = "Rejected";
 
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                var deferred = Promise.NewDeferred<int>();
+                var promise = deferred.Promise.Preserve();
+                bool intResolved = false, intRejected = false;
+                promise
+                    .Then(_ => intResolved = true, () => intRejected = true)
+                    .Forget();
+
+                deferred.Resolve(1);
+                Promise.Manager.HandleCompletes();
+                Assert.IsTrue(intResolved);
+                Assert.IsFalse(intRejected);
+
+                Assert.AreEqual(false, deferred.TryResolve(1));
+                Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
+                Assert.AreEqual(false, deferred.TryReject(RejectValue));
+                Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
+
+                promise
+                    .Then(_ => intResolved = true, () => intRejected = true)
+                    .Forget();
+                Promise.Manager.HandleCompletes();
+                Assert.IsTrue(intResolved);
+                Assert.IsFalse(intRejected);
+
+                promise.Forget();
 
                 TestHelper.Cleanup();
             }
@@ -106,14 +187,12 @@ namespace Proto.Promises.Tests
             public void _2_1_2_2_MustHaveAValueWhichMustNotChange()
             {
                 var deferred = Promise.NewDeferred<int>();
+                var promise = deferred.Promise.Preserve();
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-                deferred.Retain();
                 int result = -1;
-                int expected = 0;
+                int expected = 1;
 
-                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
+                TestHelper.AddCallbacks<int, bool, object, string>(promise,
                     onResolve: num => { Assert.AreEqual(expected, num); result = num; },
                     onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
                     onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved.")
@@ -123,18 +202,18 @@ namespace Proto.Promises.Tests
 
                 Assert.AreEqual(expected, result);
 
-                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
+                TestHelper.AddCallbacks<int, bool, object, string>(promise,
                     onResolve: num => { Assert.AreEqual(expected, num); result = num; },
                     onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
                     onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved.")
                 );
-                TestHelper.ExpectWarning("Deferred.Resolve - Deferred is not in the pending state.");
-                deferred.Resolve(1);
-                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(false, deferred.TryResolve(100));
+                Assert.Throws<InvalidOperationException>(() => deferred.Resolve(100));
 
+                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expected, result);
 
-                deferred.Release();
+                promise.Forget();
 
                 TestHelper.Cleanup();
             }
@@ -156,114 +235,145 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void _2_1_3_1_MustNotTransitionToAnyOtherState()
+            public void _2_1_3_1_MustNotTransitionToAnyOtherState_void()
             {
+                string RejectValue = "Rejected";
+
                 var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                var promise = deferred.Promise.Preserve();
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+                bool voidResolved = false, voidRejected = false;
+                promise
+                    .Then(() => voidResolved = true, () => voidRejected = true)
+                    .Forget();
 
-                deferred.Reject("Fail Value");
+                deferred.Reject(RejectValue);
+                Promise.Manager.HandleCompletes();
+                Assert.IsFalse(voidResolved);
+                Assert.IsTrue(voidRejected);
 
-                TestHelper.ExpectWarning("Deferred.Resolve - Deferred is not in the pending state.");
+                Assert.AreEqual(false, deferred.TryResolve());
+                Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
+                Assert.AreEqual(false, deferred.TryReject(RejectValue));
+                Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
 
-                deferred.Resolve();
-                deferredInt.Reject("Fail Value");
+                promise
+                    .Then(() => voidResolved = true, () => voidRejected = true)
+                    .Forget();
+                Promise.Manager.HandleCompletes();
+                Assert.IsFalse(voidResolved);
+                Assert.IsTrue(voidRejected);
 
-                TestHelper.ExpectWarning("Deferred.Resolve - Deferred is not in the pending state.");
-
-                deferredInt.Resolve(0);
-
-                Assert.AreEqual(Promise.State.Rejected, deferred.State);
-                Assert.AreEqual(Promise.State.Rejected, deferredInt.State);
-
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                promise.Forget();
 
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void _2_1_3_2_MustHaveAReasonWhichMustNotChange_0()
+            public void _2_1_3_1_MustNotTransitionToAnyOtherState_T()
+            {
+                string RejectValue = "Rejected";
+
+                var deferred = Promise.NewDeferred<int>();
+                var promise = deferred.Promise.Preserve();
+                bool intResolved = false, intRejected = false;
+                promise
+                    .Then(_ => intResolved = true, () => intRejected = true)
+                    .Forget();
+
+                deferred.Reject(RejectValue);
+                Promise.Manager.HandleCompletes();
+                Assert.IsFalse(intResolved);
+                Assert.IsTrue(intRejected);
+
+                Assert.AreEqual(false, deferred.TryResolve(1));
+                Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
+                Assert.AreEqual(false, deferred.TryReject(RejectValue));
+                Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
+
+                promise
+                    .Then(_ => intResolved = true, () => intRejected = true)
+                    .Forget();
+                Promise.Manager.HandleCompletes();
+                Assert.IsFalse(intResolved);
+                Assert.IsTrue(intRejected);
+
+                promise.Forget();
+
+                TestHelper.Cleanup();
+            }
+
+            [Test]
+            public void _2_1_3_2_MustHaveAReasonWhichMustNotChange_void()
             {
                 var deferred = Promise.NewDeferred();
+                var promise = deferred.Promise.Preserve();
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-                deferred.Retain();
                 string rejection = null;
                 string expected = "Fail Value";
-                TestHelper.AddCallbacks<int, string, string>(deferred.Promise,
+                TestHelper.AddCallbacks<int, string, string>(promise,
                     onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
                     onReject: failValue =>
                     {
-                        rejection = failValue;
-
                         Assert.AreEqual(expected, failValue);
+                        rejection = failValue;
                     });
                 deferred.Reject(expected);
-                Promise.Manager.HandleCompletes();
 
+                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expected, rejection);
 
-                TestHelper.AddCallbacks<int, string, string>(deferred.Promise,
+                Assert.AreEqual(false, deferred.TryReject("Different Fail Value"));
+                Assert.Throws<InvalidOperationException>(() => deferred.Reject("Different Fail Value"));
+                TestHelper.AddCallbacks<int, string, string>(promise,
                     onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
                     onReject: failValue =>
                     {
-                        rejection = failValue;
-
                         Assert.AreEqual(expected, failValue);
+                        rejection = failValue;
                     });
 
-                TestHelper.ExpectWarning("Deferred.Reject - Deferred is not in the pending state.");
-
-                deferred.Reject("Different Fail Value");
-                deferred.Release();
-                // The second rejection will be added to the unhandled rejection queue instead of set as the promise's reason.
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
-
+                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expected, rejection);
 
+                promise.Forget();
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void _2_1_3_2_MustHaveAReasonWhichMustNotChange_1()
+            public void _2_1_3_2_MustHaveAReasonWhichMustNotChange_T()
             {
                 var deferred = Promise.NewDeferred<int>();
+                var promise = deferred.Promise.Preserve();
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-                deferred.Retain();
                 string rejection = null;
                 string expected = "Fail Value";
-                TestHelper.AddCallbacks<int, bool, string, string>(deferred.Promise,
+                TestHelper.AddCallbacks<int, bool, string, string>(promise,
                     onResolve: v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     onReject: failValue =>
                     {
-                        rejection = failValue;
-
                         Assert.AreEqual(expected, failValue);
+                        rejection = failValue;
                     });
                 deferred.Reject(expected);
-                Promise.Manager.HandleCompletes();
 
-                TestHelper.AddCallbacks<int, bool, string, string>(deferred.Promise,
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(expected, rejection);
+
+                Assert.AreEqual(false, deferred.TryReject("Different Fail Value"));
+                Assert.Throws<InvalidOperationException>(() => deferred.Reject("Different Fail Value"));
+                TestHelper.AddCallbacks<int, bool, string, string>(promise,
                     onResolve: v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     onReject: failValue =>
                     {
-                        rejection = failValue;
-
                         Assert.AreEqual(expected, failValue);
+                        rejection = failValue;
                     });
-                TestHelper.ExpectWarning("Deferred.Reject - Deferred is not in the pending state.");
-                deferred.Reject("Different Fail Value");
-                deferred.Release();
-                // The second rejection will be added to the unhandled rejection queue instead of set as the promise's reason.
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
 
+                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expected, rejection);
 
+                promise.Forget();
                 TestHelper.Cleanup();
             }
         }
