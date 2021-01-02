@@ -75,15 +75,24 @@ namespace Proto.Promises
                 }
 
                 // A promise cannot wait on itself.
-
+                if (other._ref == this)
+                {
+                    throw new InvalidReturnException("A Promise cannot wait on itself.", GetFormattedStacktrace(other._ref));
+                }
+                if (other._ref == null)
+                {
+                    return;
+                }
+                // TODO: thread synchronization.
                 // This allows us to check All/Race/First Promises iteratively.
                 ValueLinkedStack<PromisePassThrough> passThroughs = new ValueLinkedStack<PromisePassThrough>();
-                var prev = other._ref;
+                PromiseRef prev = other._ref._valueOrPrevious as PromiseRef;
             Repeat:
                 for (; prev != null; prev = prev._valueOrPrevious as PromiseRef)
                 {
                     if (prev == this)
                     {
+                        other._ref.MarkAwaitedAndMaybeDispose(other._id, true);
                         throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(other._ref));
                     }
                     prev.BorrowPassthroughs(ref passThroughs);
