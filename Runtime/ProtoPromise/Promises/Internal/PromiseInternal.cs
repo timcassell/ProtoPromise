@@ -116,7 +116,7 @@ namespace Proto.Promises
                     string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise.";
                     AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
                 }
-                if (_state != Promise.State.Pending)
+                if (_state != Promise.State.Pending & _valueOrPrevious != null)
                 {
                     if (_suppressRejection)
                     {
@@ -202,6 +202,8 @@ namespace Proto.Promises
                 var newId = IncrementId(promiseId, _idIncrementer);
                 if (newId != promiseId)
                 {
+                    // Reset stack trace.
+                    SetCreatedStacktrace(this, 2);
                     return this;
                 }
                 _wasAwaited = true;
@@ -352,7 +354,7 @@ namespace Proto.Promises
 
             void ITreeHandleable.Handle()
             {
-                // TODO: maybe cancelationToken.TryUnregister here?
+                // TODO: thread synchronization, maybe cancelationToken.TryUnregister here?
                 IValueContainer container = (IValueContainer) _valueOrPrevious;
                 _valueOrPrevious = null;
                 SetCurrentInvoker(this);
@@ -372,7 +374,7 @@ namespace Proto.Promises
                         string stacktrace = new System.Diagnostics.StackTrace(e, true).ToString();
 #endif
                         Exception exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-                        RejectOrCancelInternal(CreateCancelContainer(ref exception));
+                        RejectOrCancelAndMaybeDispose(CreateCancelContainer(ref exception));
                     }
                     else
                     {
@@ -387,18 +389,25 @@ namespace Proto.Promises
                 catch (OperationCanceledException e)
                 {
                     container.Release();
-                    RejectOrCancelInternal(CreateCancelContainer(ref e));
+                    RejectOrCancelAndMaybeDispose(CreateCancelContainer(ref e));
                 }
                 catch (Exception e)
                 {
                     container.Release();
-                    RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this));
+                    RejectOrCancelAndMaybeDispose(CreateRejectContainer(ref e, int.MinValue, this));
                 }
                 finally
                 {
                     invokingRejected = false;
                     ClearCurrentInvoker();
                 }
+            }
+
+            private void ResolveAndMaybeDispose(IValueContainer container)
+            {
+                // TODO: thread synchronization
+                ResolveInternal(container);
+                MaybeDispose();
             }
 
             private void ResolveInternal(IValueContainer container)
@@ -409,7 +418,12 @@ namespace Proto.Promises
                 _valueOrPrevious = container;
                 HandleBranches();
                 ResolveProgressListeners();
+            }
 
+            private void RejectOrCancelAndMaybeDispose(IValueContainer container)
+            {
+                // TODO: thread synchronization
+                RejectOrCancelInternal(container);
                 MaybeDispose();
             }
 
@@ -421,8 +435,6 @@ namespace Proto.Promises
                 _valueOrPrevious = container;
                 HandleBranches();
                 CancelProgressListeners();
-
-                MaybeDispose();
             }
 
             private void HandleSelf(IValueContainer valueContainer)
@@ -511,7 +523,7 @@ namespace Proto.Promises
                     var _ref = other._ref;
                     if (_ref == null)
                     {
-                        ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                        ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                     }
                     else
                     {
@@ -529,7 +541,7 @@ namespace Proto.Promises
                     if (_ref == null)
                     {
                         T value = other._result;
-                        ResolveInternal(ResolveContainer<T>.GetOrCreate(ref value));
+                        ResolveAndMaybeDispose(ResolveContainer<T>.GetOrCreate(ref value));
                     }
                     else
                     {
@@ -579,38 +591,32 @@ namespace Proto.Promises
 
                 protected void ResolveDirect()
                 {
+                    ResolveInternal(ResolveContainerVoid.GetOrCreate());
                     OnComplete();
-                    var resolveContainer = ResolveContainerVoid.GetOrCreate();
-                    ResolveInternal(resolveContainer);
                 }
 
                 protected void ResolveDirect<T>(ref T value)
                 {
+                    ResolveInternal(ResolveContainer<T>.GetOrCreate(ref value));
                     OnComplete();
-                    _state = Promise.State.Resolved;
-                    var resolveContainer = ResolveContainer<T>.GetOrCreate(ref value);
-                    ResolveInternal(resolveContainer);
                 }
 
                 protected void RejectDirect<TReject>(ref TReject reason, int rejectSkipFrames)
                 {
+                    RejectOrCancelInternal(CreateRejectContainer(ref reason, rejectSkipFrames + 1, this));
                     OnComplete();
-                    var rejectContainer = CreateRejectContainer(ref reason, rejectSkipFrames + 1, this);
-                    RejectOrCancelInternal(rejectContainer);
                 }
 
                 protected void CancelDirect()
                 {
+                    RejectOrCancelInternal(CancelContainerVoid.GetOrCreate());
                     OnComplete();
-                    var cancelContainer = CancelContainerVoid.GetOrCreate();
-                    RejectOrCancelInternal(cancelContainer);
                 }
 
                 protected void CancelDirect<TCancel>(ref TCancel reason)
                 {
+                    RejectOrCancelInternal(CreateCancelContainer(ref reason));
                     OnComplete();
-                    var cancelContainer = CreateCancelContainer(ref reason);
-                    RejectOrCancelInternal(cancelContainer);
                 }
             }
 
@@ -934,7 +940,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            RejectOrCancelInternal(valueContainer);
+                            RejectOrCancelAndMaybeDispose(valueContainer);
                         }
                     }
                 }
@@ -990,7 +996,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            RejectOrCancelInternal(valueContainer);
+                            RejectOrCancelAndMaybeDispose(valueContainer);
                         }
                     }
                 }
@@ -1097,7 +1103,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            RejectOrCancelInternal(valueContainer);
+                            RejectOrCancelAndMaybeDispose(valueContainer);
                         }
                     }
                 }
@@ -1162,7 +1168,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            RejectOrCancelInternal(valueContainer);
+                            RejectOrCancelAndMaybeDispose(valueContainer);
                         }
                     }
                 }

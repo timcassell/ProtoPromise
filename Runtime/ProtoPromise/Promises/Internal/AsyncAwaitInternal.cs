@@ -44,7 +44,10 @@ namespace Proto.Promises
                     promise._ref.MarkAwaited(promise._id);
                     _promise = new Promise(promise._ref, promise._ref.Id);
                 }
-                _promise = promise;
+                else
+                {
+                    _promise = promise;
+                }
             }
 
             public bool IsCompleted
@@ -121,7 +124,10 @@ namespace Proto.Promises
                     promise._ref.MarkAwaited(promise._id);
                     _promise = new Promise<T>(promise._ref, promise._ref.Id);
                 }
-                _promise = promise;
+                else
+                {
+                    _promise = promise;
+                }
             }
 
             public bool IsCompleted

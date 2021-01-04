@@ -232,7 +232,7 @@ namespace Proto.Promises
             {
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    owner.ResolveInternal(valueContainer);
+                    owner.ResolveAndMaybeDispose(valueContainer);
                 }
 
                 public void MaybeUnregisterCancelation() { }
@@ -327,13 +327,13 @@ namespace Proto.Promises
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void MaybeUnregisterCancelation() { }
@@ -356,7 +356,7 @@ namespace Proto.Promises
                 private void Invoke(TArg arg, PromiseRef owner)
                 {
                     _callback.Invoke(arg);
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
@@ -373,7 +373,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                 }
 
@@ -397,13 +397,13 @@ namespace Proto.Promises
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void MaybeUnregisterCancelation() { }
@@ -427,7 +427,7 @@ namespace Proto.Promises
                 {
                     var temp = _callback;
                     TResult result = temp.Invoke(arg);
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
@@ -444,7 +444,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                 }
 
@@ -512,7 +512,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                 }
 
@@ -579,7 +579,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                 }
 
@@ -602,7 +602,7 @@ namespace Proto.Promises
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(new Promise.ResultContainer(valueContainer));
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -623,7 +623,7 @@ namespace Proto.Promises
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -644,7 +644,7 @@ namespace Proto.Promises
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -665,7 +665,7 @@ namespace Proto.Promises
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -859,13 +859,13 @@ namespace Proto.Promises
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue);
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue);
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void MaybeUnregisterCancelation() { }
@@ -890,7 +890,7 @@ namespace Proto.Promises
                 private void Invoke(TArg arg, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue, arg);
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
@@ -907,7 +907,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                 }
 
@@ -933,13 +933,13 @@ namespace Proto.Promises
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue);
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue);
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void MaybeUnregisterCancelation() { }
@@ -964,7 +964,7 @@ namespace Proto.Promises
                 private void Invoke(TArg arg, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, arg);
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
@@ -981,7 +981,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                 }
 
@@ -1053,7 +1053,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                 }
 
@@ -1124,7 +1124,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                 }
 
@@ -1149,7 +1149,7 @@ namespace Proto.Promises
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -1172,7 +1172,7 @@ namespace Proto.Promises
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -1195,7 +1195,7 @@ namespace Proto.Promises
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -1218,7 +1218,7 @@ namespace Proto.Promises
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void CancelCallback() { throw new System.InvalidOperationException(); }
@@ -1344,7 +1344,7 @@ namespace Proto.Promises
 
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    owner.ResolveInternal(valueContainer);
+                    owner.ResolveAndMaybeDispose(valueContainer);
                 }
 
                 public void MaybeUnregisterCancelation()
@@ -1378,7 +1378,7 @@ namespace Proto.Promises
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void MaybeUnregisterCancelation()
@@ -1411,7 +1411,7 @@ namespace Proto.Promises
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(((ResolveContainer<TArg>) valueContainer).value);
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void MaybeUnregisterCancelation()
@@ -1444,7 +1444,7 @@ namespace Proto.Promises
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void MaybeUnregisterCancelation()
@@ -1477,7 +1477,7 @@ namespace Proto.Promises
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(((ResolveContainer<TArg>) valueContainer).value);
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void MaybeUnregisterCancelation()
@@ -1645,13 +1645,13 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
                         _cancelationRegistration.TryUnregister();
                         _callback.Invoke(new Promise.ResultContainer(valueContainer));
-                        owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                        owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                     }
                 }
 
@@ -1688,13 +1688,13 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
                         _cancelationRegistration.TryUnregister();
                         TResult result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
-                        owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                        owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                     }
                 }
 
@@ -1731,13 +1731,13 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
                         _cancelationRegistration.TryUnregister();
                         _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                        owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                        owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                     }
                 }
 
@@ -1779,13 +1779,13 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
                         _cancelationRegistration.TryUnregister();
                         TResult result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                        owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                        owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                     }
                 }
 
@@ -1823,7 +1823,7 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
@@ -1866,7 +1866,7 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
@@ -1909,7 +1909,7 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
@@ -1957,7 +1957,7 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
@@ -2001,7 +2001,7 @@ namespace Proto.Promises
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue);
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void MaybeUnregisterCancelation()
@@ -2036,7 +2036,7 @@ namespace Proto.Promises
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue, ((ResolveContainer<TArg>) valueContainer).value);
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                 }
 
                 public void MaybeUnregisterCancelation()
@@ -2071,7 +2071,7 @@ namespace Proto.Promises
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue);
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void MaybeUnregisterCancelation()
@@ -2106,7 +2106,7 @@ namespace Proto.Promises
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, ((ResolveContainer<TArg>) valueContainer).value);
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
                 public void MaybeUnregisterCancelation()
@@ -2284,13 +2284,13 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
                         _cancelationRegistration.TryUnregister();
                         _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
-                        owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                        owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                     }
                 }
 
@@ -2329,13 +2329,13 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
                         _cancelationRegistration.TryUnregister();
                         TResult result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
-                        owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                        owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                     }
                 }
 
@@ -2374,13 +2374,13 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
                         _cancelationRegistration.TryUnregister();
                         _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                        owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                        owner.ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
                     }
                 }
 
@@ -2419,13 +2419,13 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
                         _cancelationRegistration.TryUnregister();
                         TResult result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                        owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                        owner.ResolveAndMaybeDispose(ResolveContainer<TResult>.GetOrCreate(ref result));
                     }
                 }
 
@@ -2465,7 +2465,7 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
@@ -2510,7 +2510,7 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
@@ -2555,7 +2555,7 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {
@@ -2600,7 +2600,7 @@ namespace Proto.Promises
                 {
                     if (_canceled)
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelAndMaybeDispose(valueContainer);
                     }
                     else
                     {

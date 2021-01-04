@@ -26,119 +26,182 @@ namespace Proto.Promises.Tests
 
 #if PROMISE_DEBUG
         [Test]
-        public void IfOnFinallyIsNullThrow()
+        public void IfOnFinallyIsNullThrow_void()
         {
-            var deferred = Promise.NewDeferred();
-            var deferredInt = Promise.NewDeferred<int>();
-
-            Assert.Throws<ArgumentNullException>(() =>
+            void Test()
             {
-                deferred.Promise.Finally(default(Action));
-            });
-            Assert.Throws<ArgumentNullException>(() =>
+                var deferred = Promise.NewDeferred();
+                var promise = deferred.Promise.Preserve();
+
+                Assert.Throws<ArgumentNullException>(() =>
+                {
+                    promise.Finally(default(Action));
+                });
+
+                deferred.Resolve();
+
+                promise.Forget();
+            }
+
+            Test();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void IfOnFinallyIsNullThrow_T()
+        {
+            void Test()
             {
-                deferredInt.Promise.Finally(default(Action));
-            });
+                var deferred = Promise.NewDeferred<int>();
+                var promise = deferred.Promise.Preserve();
 
-            deferred.Resolve();
-            deferredInt.Resolve(0);
+                Assert.Throws<ArgumentNullException>(() =>
+                {
+                    promise.Finally(default(Action));
+                });
 
+                deferred.Resolve(1);
+
+                promise.Forget();
+            }
+
+            Test();
             TestHelper.Cleanup();
         }
 #endif
 
         [Test]
-        public void OnFinallyIsInvokedWhenPromiseIsResolved()
+        public void OnFinallyIsInvokedWhenPromiseIsResolved_void()
         {
-            var deferred = Promise.NewDeferred();
-            var deferredInt = Promise.NewDeferred<int>();
+            void Test()
+            {
+                var deferred = Promise.NewDeferred();
 
-            bool voidFinallyFired = false;
-            bool intFinallyFired = false;
+                bool invoked = false;
 
-            deferred.Promise.Finally(() => voidFinallyFired = true);
-            deferredInt.Promise.Finally(() => intFinallyFired = true);
+                deferred.Promise
+                    .Finally(() => invoked = true)
+                    .Forget();
 
-            deferred.Resolve();
-            deferredInt.Resolve(0);
+                deferred.Resolve();
 
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(true, voidFinallyFired);
-            Assert.AreEqual(true, intFinallyFired);
+                Promise.Manager.HandleCompletes();
+                Assert.IsTrue(invoked);
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void OnFinallyIsInvokedWhenPromiseIsRejected()
+        public void OnFinallyIsInvokedWhenPromiseIsResolved_T()
         {
-            var deferred = Promise.NewDeferred();
-            var deferredInt = Promise.NewDeferred<int>();
+            void Test()
+            {
+                var deferred = Promise.NewDeferred<int>();
 
-            bool voidFinallyFired = false;
-            bool intFinallyFired = false;
+                bool invoked = false;
 
-            deferred.Promise
-                .Finally(() => voidFinallyFired = true)
-                .Catch(() => { });
-            deferredInt.Promise
-                .Finally(() => intFinallyFired = true)
-                .Catch(() => { });
+                deferred.Promise
+                    .Finally(() => invoked = true)
+                    .Forget();
 
-            deferred.Reject("Reject");
-            deferredInt.Reject("Reject");
+                deferred.Resolve(1);
 
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(true, voidFinallyFired);
-            Assert.AreEqual(true, intFinallyFired);
+                Promise.Manager.HandleCompletes();
+                Assert.IsTrue(invoked);
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void OnFinallyIsInvokedWhenPromiseIsCanceled()
+        public void OnFinallyIsInvokedWhenPromiseIsRejected_void()
         {
-            CancelationSource cancelationSource1 = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource1.Token);
-            CancelationSource cancelationSource2 = CancelationSource.New();
-            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
+            void Test()
+            {
+                var deferred = Promise.NewDeferred();
 
-            bool voidFinallyFired = false;
-            bool intFinallyFired = false;
+                bool invoked = false;
 
-            deferred.Promise.Finally(() => voidFinallyFired = true);
-            deferredInt.Promise.Finally(() => intFinallyFired = true);
+                deferred.Promise
+                    .Finally(() => invoked = true)
+                    .Catch(() => { })
+                    .Forget();
 
-            cancelationSource1.Cancel();
-            cancelationSource2.Cancel();
+                deferred.Reject("Reject");
 
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(true, voidFinallyFired);
-            Assert.AreEqual(true, intFinallyFired);
+                Promise.Manager.HandleCompletes();
+                Assert.IsTrue(invoked);
+            }
 
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
-            voidFinallyFired = false;
-            intFinallyFired = false;
+            Test();
+            TestHelper.Cleanup();
+        }
 
-            cancelationSource1 = CancelationSource.New();
-            deferred = Promise.NewDeferred(cancelationSource1.Token);
-            cancelationSource2 = CancelationSource.New();
-            deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
+        [Test]
+        public void OnFinallyIsInvokedWhenPromiseIsRejected_T()
+        {
+            void Test()
+            {
+                var deferred = Promise.NewDeferred<int>();
 
-            deferred.Promise.Finally(() => voidFinallyFired = true);
-            deferredInt.Promise.Finally(() => intFinallyFired = true);
+                bool invoked = false;
 
-            cancelationSource1.Cancel("Cancel");
-            cancelationSource2.Cancel("Cancel");
+                deferred.Promise
+                    .Finally(() => invoked = true)
+                    .Catch(() => { })
+                    .Forget();
 
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(true, voidFinallyFired);
-            Assert.AreEqual(true, intFinallyFired);
+                deferred.Reject("Reject");
 
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
+                Promise.Manager.HandleCompletes();
+                Assert.IsTrue(invoked);
+            }
 
+            Test();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void OnFinallyIsInvokedWhenPromiseIsCanceled_void()
+        {
+            void Test()
+            {
+                bool repeat = true;
+            Repeat:
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
+
+                bool invoked = false;
+
+                deferred.Promise
+                    .Finally(() => invoked = true)
+                    .Forget();
+
+                if (repeat)
+                {
+                    cancelationSource.Cancel();
+                }
+                else
+                {
+                    cancelationSource.Cancel("Cancel");
+                }
+
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(true, invoked);
+
+                cancelationSource.Dispose();
+
+                if (repeat)
+                {
+                    repeat = false;
+                    goto Repeat;
+                }
+            }
+
+            Test();
             TestHelper.Cleanup();
         }
     }

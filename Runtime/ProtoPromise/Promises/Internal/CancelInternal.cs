@@ -34,7 +34,7 @@ namespace Proto.Promises
                 }
 
                 // Otherwise, the promise is either waiting for its previous, or it's in the handle queue.
-                if (currentValue is Promise)
+                if (currentValue is PromiseRef)
                 {
                     // Remove this from previous' next branches.
                     ((ITreeHandleableCollection) currentValue).Remove(this);

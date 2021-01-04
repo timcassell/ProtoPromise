@@ -40,35 +40,158 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void MayTransitionToEitherTheFulfilledOrRejectedOrCanceledState()
+            public void MayTransitionToEitherTheFulfilledOrRejectedOrCanceledState_void()
             {
-                var deferred = Promise.NewDeferred();
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                void Test()
+                {
+                    string Resolved = "Resolved", Rejected = "Rejected", Canceled = "Canceled";
+                    string state = null;
 
-                deferred.Resolve();
+                    var deferred = Promise.NewDeferred();
+                    Assert.IsTrue(deferred.IsPending);
 
-                Assert.AreEqual(Promise.State.Resolved, deferred.State);
+                    deferred.Promise
+                        .CatchCancelation(_ => state = Canceled)
+                        .Then(() => state = Resolved, () => state = Rejected)
+                        .Forget();
+                    Assert.AreEqual(null, state);
 
-                deferred = Promise.NewDeferred();
+                    deferred.Resolve();
+                    Assert.IsFalse(deferred.IsPending);
+                    Promise.Manager.HandleCompletesAndProgress();
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                    Assert.AreEqual(Resolved, state);
 
-                deferred.Reject("Fail Value");
+                    state = null;
+                    deferred = Promise.NewDeferred();
+                    Assert.IsTrue(deferred.IsPending);
 
-                Assert.AreEqual(Promise.State.Rejected, deferred.State);
+                    deferred.Promise
+                        .CatchCancelation(_ => state = Canceled)
+                        .Then(() => state = Resolved, () => state = Rejected)
+                        .Forget();
+                    Assert.AreEqual(null, state);
 
-                CancelationSource cancelationSource = CancelationSource.New();
-                deferred = Promise.NewDeferred(cancelationSource.Token);
+                    deferred.Reject("Fail Value");
+                    Assert.IsFalse(deferred.IsPending);
+                    Promise.Manager.HandleCompletesAndProgress();
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                    state = null;
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    deferred = Promise.NewDeferred(cancelationSource.Token);
+                    Assert.IsTrue(deferred.IsPending);
 
-                cancelationSource.Cancel();
+                    deferred.Promise
+                        .CatchCancelation(_ => state = Canceled)
+                        .Then(() => state = Resolved, () => state = Rejected)
+                        .Forget();
+                    Assert.AreEqual(null, state);
 
-                Assert.AreEqual(Promise.State.Canceled, deferred.State);
+                    cancelationSource.Cancel();
+                    Assert.IsFalse(deferred.IsPending);
+                    Promise.Manager.HandleCompletesAndProgress();
 
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                    Assert.AreEqual(Canceled, state);
+                    cancelationSource.Dispose();
 
-                cancelationSource.Dispose();
+                    state = null;
+                    cancelationSource = CancelationSource.New();
+                    deferred = Promise.NewDeferred(cancelationSource.Token);
+                    Assert.IsTrue(deferred.IsPending);
+
+                    deferred.Promise
+                        .CatchCancelation(_ => state = Canceled)
+                        .Then(() => state = Resolved, () => state = Rejected)
+                        .Forget();
+                    Assert.AreEqual(null, state);
+
+                    cancelationSource.Cancel("Cancel Value");
+                    Assert.IsFalse(deferred.IsPending);
+                    Promise.Manager.HandleCompletesAndProgress();
+
+                    Assert.AreEqual(Canceled, state);
+                    cancelationSource.Dispose();
+                }
+
+                Test();
+                TestHelper.Cleanup();
+            }
+
+            [Test]
+            public void MayTransitionToEitherTheFulfilledOrRejectedOrCanceledState_T()
+            {
+                void Test()
+                {
+                    string Resolved = "Resolved", Rejected = "Rejected", Canceled = "Canceled";
+                    string state = null;
+
+                    var deferred = Promise.NewDeferred<int>();
+                    Assert.IsTrue(deferred.IsPending);
+
+                    deferred.Promise
+                        .CatchCancelation(_ => state = Canceled)
+                        .Then(v => state = Resolved, () => state = Rejected)
+                        .Forget();
+                    Assert.AreEqual(null, state);
+
+                    deferred.Resolve(1);
+                    Assert.IsFalse(deferred.IsPending);
+                    Promise.Manager.HandleCompletesAndProgress();
+
+                    Assert.AreEqual(Resolved, state);
+
+                    state = null;
+                    deferred = Promise.NewDeferred<int>();
+                    Assert.IsTrue(deferred.IsPending);
+
+                    deferred.Promise
+                        .CatchCancelation(_ => state = Canceled)
+                        .Then(v => state = Resolved, () => state = Rejected)
+                        .Forget();
+                    Assert.AreEqual(null, state);
+
+                    deferred.Reject("Fail Value");
+                    Assert.IsFalse(deferred.IsPending);
+                    Promise.Manager.HandleCompletesAndProgress();
+
+                    state = null;
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                    Assert.IsTrue(deferred.IsPending);
+
+                    deferred.Promise
+                        .CatchCancelation(_ => state = Canceled)
+                        .Then(v => state = Resolved, () => state = Rejected)
+                        .Forget();
+                    Assert.AreEqual(null, state);
+
+                    cancelationSource.Cancel();
+                    Assert.IsFalse(deferred.IsPending);
+                    Promise.Manager.HandleCompletesAndProgress();
+
+                    Assert.AreEqual(Canceled, state);
+                    cancelationSource.Dispose();
+
+                    state = null;
+                    cancelationSource = CancelationSource.New();
+                    deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                    Assert.IsTrue(deferred.IsPending);
+
+                    deferred.Promise
+                        .CatchCancelation(_ => state = Canceled)
+                        .Then(v => state = Resolved, () => state = Rejected)
+                        .Forget();
+                    Assert.AreEqual(null, state);
+
+                    cancelationSource.Cancel("Cancel Value");
+                    Assert.IsFalse(deferred.IsPending);
+                    Promise.Manager.HandleCompletesAndProgress();
+
+                    Assert.AreEqual(Canceled, state);
+                    cancelationSource.Dispose();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
         }
@@ -89,44 +212,72 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void MustNotTransitionToAnyOtherState()
+            public void MustNotTransitionToAnyOtherState_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                var deferredInt = Promise.NewDeferred<int>(cancelationSource.Token);
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred(cancelationSource.Token);
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+                    bool resolved = false;
 
-                int resolved = 0;
+                    deferred.Promise
+                        .Then(() => { resolved = true; })
+                        .Catch(() => Assert.Fail("Promise was rejected when it was already resolved."))
+                        .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already resolved."))
+                        .Forget();
 
-                deferred.Promise
-                    .Then(() => { ++resolved; })
-                    .Catch(() => Assert.Fail("Promise was rejected when it was already resolved."))
-                    .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already resolved."));
-                deferredInt.Promise
-                    .Then(v => { ++resolved; })
-                    .Catch(() => Assert.Fail("Promise was rejected when it was already resolved."))
-                    .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already resolved."));
+                    deferred.Resolve();
 
-                deferred.Resolve();
-                deferredInt.Resolve(0);
+                    Assert.AreEqual(false, deferred.TryResolve());
+                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
+                    Assert.AreEqual(false, deferred.TryReject("Fail value"));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
 
-                TestHelper.ExpectWarning("Deferred.Reject - Deferred is not in the pending state.");
-                deferred.Reject("Fail Value");
-                TestHelper.ExpectWarning("Deferred.Reject - Deferred is not in the pending state.");
-                deferredInt.Reject("Fail Value");
+                    cancelationSource.Cancel();
 
-                cancelationSource.Cancel();
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(resolved);
 
-                Assert.AreEqual(Promise.State.Resolved, deferred.State);
-                Assert.AreEqual(Promise.State.Resolved, deferredInt.State);
+                    cancelationSource.Dispose();
+                }
 
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                Test();
+                TestHelper.Cleanup();
+            }
 
-                Assert.AreEqual(2, resolved);
+            [Test]
+            public void MustNotTransitionToAnyOtherState_T()
+            {
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
-                cancelationSource.Dispose();
+                    bool resolved = false;
+
+                    deferred.Promise
+                        .Then(v => { resolved = true; })
+                        .Catch(() => Assert.Fail("Promise was rejected when it was already resolved."))
+                        .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already resolved."))
+                        .Forget();
+
+                    deferred.Resolve(1);
+
+                    Assert.AreEqual(false, deferred.TryResolve(1));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
+                    Assert.AreEqual(false, deferred.TryReject("Fail value"));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
+
+                    cancelationSource.Cancel();
+
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(resolved);
+
+                    cancelationSource.Dispose();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
         }
@@ -147,44 +298,72 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void MustNotTransitionToAnyOtherState()
+            public void MustNotTransitionToAnyOtherState_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                var deferredInt = Promise.NewDeferred<int>(cancelationSource.Token);
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred(cancelationSource.Token);
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+                    bool rejected = false;
 
-                int rejected = 0;
+                    deferred.Promise
+                        .Then(() => Assert.Fail("Promise was resolved when it was already rejected."))
+                        .Catch(() => { rejected = true; })
+                        .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already rejected."))
+                        .Forget();
 
-                deferred.Promise
-                    .Then(() => Assert.Fail("Promise was resolved when it was already rejected."))
-                    .Catch(() => { ++rejected; })
-                    .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already rejected."));
-                deferredInt.Promise
-                    .Then(() => Assert.Fail("Promise was resolved when it was already rejected."))
-                    .Catch(() => { ++rejected; })
-                    .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already rejected."));
+                    deferred.Reject("Fail Value");
 
-                deferred.Reject("Fail Value");
-                deferredInt.Reject("Fail Value");
+                    Assert.AreEqual(false, deferred.TryResolve());
+                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
+                    Assert.AreEqual(false, deferred.TryReject("Fail value"));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
 
-                TestHelper.ExpectWarning("Deferred.Resolve - Deferred is not in the pending state.");
-                deferred.Resolve();
-                TestHelper.ExpectWarning("Deferred.Resolve - Deferred is not in the pending state.");
-                deferredInt.Resolve(0);
+                    cancelationSource.Cancel();
 
-                cancelationSource.Cancel();
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(rejected);
 
-                Assert.AreEqual(Promise.State.Rejected, deferred.State);
-                Assert.AreEqual(Promise.State.Rejected, deferredInt.State);
+                    cancelationSource.Dispose();
+                }
 
-                Promise.Manager.HandleCompletes();
+                Test();
+                TestHelper.Cleanup();
+            }
 
-                Assert.AreEqual(2, rejected);
+            [Test]
+            public void MustNotTransitionToAnyOtherState_T()
+            {
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
-                cancelationSource.Dispose();
+                    bool rejected = false;
+
+                    deferred.Promise
+                        .Then(() => Assert.Fail("Promise was resolved when it was already rejected."))
+                        .Catch(() => { rejected = true; })
+                        .CatchCancelation(e => Assert.Fail("Promise was canceled when it was already rejected."))
+                        .Forget();
+
+                    deferred.Reject("Fail Value");
+
+                    Assert.AreEqual(false, deferred.TryResolve(1));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
+                    Assert.AreEqual(false, deferred.TryReject("Fail value"));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
+
+                    cancelationSource.Cancel();
+
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(rejected);
+
+                    cancelationSource.Dispose();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
         }
@@ -205,166 +384,214 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void MustNotTransitionToAnyOtherState()
+            public void MustNotTransitionToAnyOtherState_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                var deferredInt = Promise.NewDeferred<int>(cancelationSource.Token);
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred(cancelationSource.Token);
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+                    bool canceled = false;
 
-                int canceled = 0;
+                    deferred.Promise
+                        .Then(() => Assert.Fail("Promise was resolved when it was already canceled."))
+                        .Catch(() => Assert.Fail("Promise was rejected when it was already canceled."))
+                        .CatchCancelation(e => { canceled = true; })
+                        .Forget();
 
-                deferred.Promise
-                    .Then(() => Assert.Fail("Promise was resolved when it was already canceled."))
-                    .Catch(() => Assert.Fail("Promise was rejected when it was already canceled."))
-                    .CatchCancelation(e => { ++canceled; });
-                deferredInt.Promise
-                    .Then(v => Assert.Fail("Promise was resolved when it was already canceled."))
-                    .Catch(() => Assert.Fail("Promise was rejected when it was already canceled."))
-                    .CatchCancelation(e => { ++canceled; });
+                    cancelationSource.Cancel();
 
-                cancelationSource.Cancel("Cancel Value");
+                    Assert.AreEqual(false, deferred.TryResolve());
+                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
+                    Assert.AreEqual(false, deferred.TryReject("Fail value"));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
+                    Assert.Throws<InvalidOperationException>(() => cancelationSource.Cancel());
 
-                TestHelper.ExpectWarning("Deferred.Resolve - Deferred is not in the pending state.");
-                deferred.Resolve();
-                TestHelper.ExpectWarning("Deferred.Resolve - Deferred is not in the pending state.");
-                deferredInt.Resolve(0);
+                    Promise.Manager.HandleCompletes();
 
-                TestHelper.ExpectWarning("Deferred.Reject - Deferred is not in the pending state.");
-                deferred.Reject("Fail Value");
-                TestHelper.ExpectWarning("Deferred.Reject - Deferred is not in the pending state.");
-                deferredInt.Reject("Fail Value");
+                    Assert.IsTrue(canceled);
 
-                Assert.AreEqual(Promise.State.Canceled, deferred.State);
-                Assert.AreEqual(Promise.State.Canceled, deferredInt.State);
+                    cancelationSource.Dispose();
+                }
 
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
-
-                Assert.AreEqual(2, canceled);
-
-                cancelationSource.Dispose();
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void MustHaveAReasonWhichMustNotChange_0()
+            public void MustNotTransitionToAnyOtherState_T()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                    bool canceled = false;
 
-                deferred.Retain();
-                object cancelation = null;
-                string expected = "Cancel Value";
+                    deferred.Promise
+                        .Then(v => Assert.Fail("Promise was resolved when it was already canceled."))
+                        .Catch(() => Assert.Fail("Promise was rejected when it was already canceled."))
+                        .CatchCancelation(e => { canceled = true; })
+                        .Forget();
 
-                Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-                Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
+                    cancelationSource.Cancel();
 
-                TestHelper.AddCallbacks<int, object, string>(deferred.Promise,
-                    onResolve: resolveAssert,
-                    onReject: failValue => rejectAssert(),
-                    onUnknownRejection: rejectAssert);
-                deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
-                cancelationSource.Cancel(expected);
-                Promise.Manager.HandleCompletes();
+                    Assert.AreEqual(false, deferred.TryResolve(1));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
+                    Assert.AreEqual(false, deferred.TryReject("Fail value"));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
+                    Assert.Throws<InvalidOperationException>(() => cancelationSource.Cancel());
 
-                Assert.AreEqual(expected, cancelation);
+                    Promise.Manager.HandleCompletes();
 
-                TestHelper.AddCallbacks<int, object, string>(deferred.Promise,
-                    onResolve: resolveAssert,
-                    onReject: failValue => rejectAssert(),
-                    onUnknownRejection: rejectAssert);
-                deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
+                    Assert.IsTrue(canceled);
 
-                Assert.Throws<InvalidOperationException>(() =>
-                    cancelationSource.Cancel("Different Cancel Value")
-                );
+                    cancelationSource.Dispose();
+                }
 
-                deferred.Release();
-                Promise.Manager.HandleCompletes();
-
-                Assert.AreEqual(expected, cancelation);
-
-                cancelationSource.Dispose();
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void MustHaveAReasonWhichMustNotChange_1()
+            public void MustHaveAReasonWhichMustNotChange_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred(cancelationSource.Token);
+                    var promise = deferred.Promise.Preserve();
 
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                    object cancelation = null;
+                    string expected = "Cancel Value";
 
-                deferred.Retain();
-                object cancelation = null;
-                string expected = "Cancel Value";
+                    Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                    Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
-                Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-                Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
+                    TestHelper.AddCallbacks<int, object, string>(promise,
+                        onResolve: resolveAssert,
+                        onReject: failValue => rejectAssert(),
+                        onUnknownRejection: rejectAssert);
+                    promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
+                    cancelationSource.Cancel(expected);
+                    Promise.Manager.HandleCompletes();
 
-                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
-                    onResolve: _ => resolveAssert(),
-                    onReject: _ => rejectAssert(),
-                    onUnknownRejection: rejectAssert);
-                deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
-                cancelationSource.Cancel(expected);
-                Promise.Manager.HandleCompletes();
+                    Assert.AreEqual(expected, cancelation);
 
-                Assert.AreEqual(expected, cancelation);
+                    TestHelper.AddCallbacks<int, object, string>(promise,
+                        onResolve: resolveAssert,
+                        onReject: failValue => rejectAssert(),
+                        onUnknownRejection: rejectAssert);
+                    promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
 
-                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
-                    onResolve: _ => resolveAssert(),
-                    onReject: _ => rejectAssert(),
-                    onUnknownRejection: rejectAssert);
-                deferred.Promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
+                    Assert.Throws<InvalidOperationException>(() =>
+                        cancelationSource.Cancel("Different Cancel Value")
+                    );
 
-                Assert.Throws<InvalidOperationException>(() =>
-                    cancelationSource.Cancel("Different Cancel Value")
-                );
+                    Promise.Manager.HandleCompletes();
 
-                deferred.Release();
-                Promise.Manager.HandleCompletes();
+                    Assert.AreEqual(expected, cancelation);
 
-                Assert.AreEqual(expected, cancelation);
+                    promise.Forget();
+                    cancelationSource.Dispose();
+                }
 
+                Test();
+                TestHelper.Cleanup();
+            }
+
+            [Test]
+            public void MustHaveAReasonWhichMustNotChange_T()
+            {
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                    var promise = deferred.Promise.Preserve();
+
+                    object cancelation = null;
+                    string expected = "Cancel Value";
+
+                    Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                    Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
+
+                    TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                        onResolve: _ => resolveAssert(),
+                        onReject: _ => rejectAssert(),
+                        onUnknownRejection: rejectAssert);
+                    promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
+                    cancelationSource.Cancel(expected);
+                    Promise.Manager.HandleCompletes();
+
+                    Assert.AreEqual(expected, cancelation);
+
+                    TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                        onResolve: _ => resolveAssert(),
+                        onReject: _ => rejectAssert(),
+                        onUnknownRejection: rejectAssert);
+                    promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
+
+                    Assert.Throws<InvalidOperationException>(() =>
+                        cancelationSource.Cancel("Different Cancel Value")
+                    );
+
+                    Promise.Manager.HandleCompletes();
+
+                    Assert.AreEqual(expected, cancelation);
+
+                    promise.Forget();
+                    cancelationSource.Dispose();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
         }
 
 #if PROMISE_DEBUG
         [Test]
-        public void IfOnCanceledIsNullThrow()
+        public void IfOnCanceledIsNullThrow_void()
         {
-            CancelationSource cancelationSource1 = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource1.Token);
-
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-
-            Assert.Throws<ArgumentNullException>(() =>
+            void Test()
             {
-                deferred.Promise.CatchCancelation(default(Action<ReasonContainer>));
-            });
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                var promise = deferred.Promise.Preserve();
 
-            cancelationSource1.Cancel();
+                Assert.Throws<ArgumentNullException>(() =>
+                {
+                    promise.CatchCancelation(default(Promise.CanceledAction));
+                });
 
-            CancelationSource cancelationSource2 = CancelationSource.New();
-            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
-            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
+                promise.Forget();
+            }
 
-            Assert.Throws<ArgumentNullException>(() =>
+            Test();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void IfOnCanceledIsNullThrow_T()
+        {
+            void Test()
             {
-                deferredInt.Promise.CatchCancelation(default(Action<ReasonContainer>));
-            });
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                var promise = deferred.Promise.Preserve();
 
-            cancelationSource2.Cancel(0);
+                Assert.Throws<ArgumentNullException>(() =>
+                {
+                    promise.CatchCancelation(default(Promise.CanceledAction));
+                });
 
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
+                promise.Forget();
+            }
+
+            Test();
             TestHelper.Cleanup();
         }
 #endif
@@ -387,73 +614,88 @@ namespace Proto.Promises.Tests
             [Test]
             public void ItMustBeCalledAfterPromiseIsCanceledWithPromisesReasonAsItsFirstArgument()
             {
-                string cancelReason = "Cancel value";
-                var canceled = false;
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                deferred.Promise.CatchCancelation(r =>
+                void Test()
                 {
-                    Assert.AreEqual(cancelReason, r.Value);
-                    canceled = true;
-                });
-                cancelationSource.Cancel(cancelReason);
-                Promise.Manager.HandleCompletes();
+                    string cancelReason = "Cancel value";
+                    var canceled = false;
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred(cancelationSource.Token);
+                    deferred.Promise
+                        .CatchCancelation(r =>
+                        {
+                            Assert.AreEqual(cancelReason, r.Value);
+                            canceled = true;
+                        })
+                        .Forget();
+                    cancelationSource.Cancel(cancelReason);
+                    Promise.Manager.HandleCompletes();
 
-                Assert.True(canceled);
+                    Assert.True(canceled);
 
-                cancelationSource.Dispose();
+                    cancelationSource.Dispose();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
             public void ItMustNotBeCalledBeforePromiseIsCanceled()
             {
-                string cancelReason = "Cancel value";
-                var canceled = false;
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                deferred.Promise.CatchCancelation(r =>
+                void Test()
                 {
-                    Assert.AreEqual(cancelReason, r.Value);
-                    canceled = true;
-                });
-                Promise.Manager.HandleCompletes();
+                    string cancelReason = "Cancel value";
+                    var canceled = false;
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred(cancelationSource.Token);
+                    deferred.Promise
+                        .CatchCancelation(r =>
+                        {
+                            Assert.AreEqual(cancelReason, r.Value);
+                            canceled = true;
+                        })
+                        .Forget();
+                    Promise.Manager.HandleCompletes();
 
-                Assert.False(canceled);
+                    Assert.False(canceled);
 
-                cancelationSource.Cancel(cancelReason);
-                Promise.Manager.HandleCompletes();
+                    cancelationSource.Cancel(cancelReason);
+                    Promise.Manager.HandleCompletes();
 
-                Assert.True(canceled);
+                    Assert.True(canceled);
 
-                cancelationSource.Dispose();
+                    cancelationSource.Dispose();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
             public void ItMustNotBeCalledMoreThanOnce()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
-                deferred.Retain();
-                var cancelCount = 0;
-                deferred.Promise.CatchCancelation(r => ++cancelCount);
-                cancelationSource.Cancel("Cancel value");
-                Promise.Manager.HandleCompletes();
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred(cancelationSource.Token);
+                    var cancelCount = 0;
+                    deferred.Promise
+                        .CatchCancelation(r => ++cancelCount)
+                        .Forget();
+                    cancelationSource.Cancel("Cancel value");
+                    Promise.Manager.HandleCompletes();
 
-                Assert.Throws<InvalidOperationException>(() =>
-                    cancelationSource.Cancel("Cancel value")
-                );
+                    Assert.Throws<InvalidOperationException>(() =>
+                        cancelationSource.Cancel("Cancel value")
+                    );
 
-                deferred.Release();
-                Promise.Manager.HandleCompletes();
+                    Promise.Manager.HandleCompletes();
+                    Assert.AreEqual(1, cancelCount);
 
-                Assert.AreEqual(1, cancelCount);
+                    cancelationSource.Dispose();
+                }
 
-                cancelationSource.Dispose();
+                Test();
                 TestHelper.Cleanup();
             }
         }
@@ -461,20 +703,25 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnCanceledMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode()
         {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
+            void Test()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
 
-            bool canceled = false;
-            deferred.Promise.CatchCancelation(e => canceled = true);
-            cancelationSource.Cancel("Cancel value");
-            Assert.False(canceled);
+                bool canceled = false;
+                deferred.Promise
+                    .CatchCancelation(e => canceled = true)
+                    .Forget();
+                cancelationSource.Cancel("Cancel value");
+                Assert.False(canceled);
 
+                Promise.Manager.HandleCompletes();
+                Assert.True(canceled);
 
-            Promise.Manager.HandleCompletes();
-            Assert.True(canceled);
+                cancelationSource.Dispose();
+            }
 
-            cancelationSource.Dispose();
+            Test();
             TestHelper.Cleanup();
         }
 
@@ -494,171 +741,232 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void IfWhenPromiseCancelationIsCanceledAllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation()
+            public void IfWhenPromiseCancelationIsCanceled_AllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                Assert.AreEqual(Promise.State.Pending, deferred.State);
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred(cancelationSource.Token);
+                    var promise = deferred.Promise.Preserve();
 
-                int counter = 0;
+                    int counter = 0;
 
-                deferred.Promise.CatchCancelation(e => Assert.AreEqual(0, counter++));
-                deferred.Promise.CatchCancelation(e => Assert.AreEqual(1, counter++));
-                deferred.Promise.CatchCancelation(e => Assert.AreEqual(2, counter++));
+                    promise.CatchCancelation(e => Assert.AreEqual(0, counter++));
+                    promise.CatchCancelation(e => Assert.AreEqual(1, counter++));
+                    promise.CatchCancelation(e => Assert.AreEqual(2, counter++));
 
-                cancelationSource.Cancel();
-                Promise.Manager.HandleCompletes();
+                    cancelationSource.Cancel();
+                    Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(3, counter);
+                    Assert.AreEqual(3, counter);
 
-                cancelationSource.Dispose();
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
         }
 
         [Test]
-        public void IfPromiseIsCanceledOnResolveAndOnRejectedMustNotBeInvoked()
+        public void IfPromiseIsCanceled_OnResolveAndOnRejectedMustNotBeInvoked_void()
         {
-            CancelationSource cancelationSource1 = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource1.Token);
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
-            CancelationSource cancelationSource2 = CancelationSource.New();
-            var deferredInt = Promise.NewDeferred<int>(cancelationSource2.Token);
-            Assert.AreEqual(Promise.State.Pending, deferredInt.State);
+            void Test()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                    var promise = deferred.Promise.Preserve();
 
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been canceled.");
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been canceled.");
+                Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been canceled.");
 
-            TestHelper.AddCallbacks<int, object, string>(deferred.Promise,
-                onResolve: resolveAssert,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert);
-            TestHelper.AddCallbacks<int, bool, object, string>(deferredInt.Promise,
-                onResolve: _ => resolveAssert(),
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert);
+                TestHelper.AddCallbacks<int, object, string>(promise,
+                    onResolve: () => Assert.Fail("Promise was resolved when it should have been canceled."),
+                    onReject: _ => rejectAssert(),
+                    onUnknownRejection: rejectAssert);
 
-            cancelationSource1.Cancel();
-            cancelationSource2.Cancel();
-            Promise.Manager.HandleCompletes();
+                cancelationSource.Cancel();
+                Promise.Manager.HandleCompletes();
 
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
+                cancelationSource.Dispose();
+                    promise.Forget();
+            }
+
+            Test();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void IfPromiseIsCanceled_OnResolveAndOnRejectedMustNotBeInvoked_T()
+        {
+            void Test()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                var promise = deferred.Promise.Preserve();
+
+                Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been canceled.");
+
+                TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                    onResolve: v => Assert.Fail("Promise was resolved when it should have been canceled."),
+                    onReject: _ => rejectAssert(),
+                    onUnknownRejection: rejectAssert);
+
+                cancelationSource.Cancel();
+                Promise.Manager.HandleCompletes();
+
+                cancelationSource.Dispose();
+                promise.Forget();
+            }
+
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
         public void CancelationsDoNotPropagateToRoot()
         {
-            var deferred = Promise.NewDeferred();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
+            void Test()
+            {
+                var deferred = Promise.NewDeferred();
 
-            CancelationSource cancelationSource = CancelationSource.New();
+                CancelationSource cancelationSource = CancelationSource.New();
 
-            bool resolved = false;
+                bool resolved = false;
 
-            deferred.Promise
-                .Then(() => resolved = true)
-                .Then(_ => Assert.Fail("Promise was resolved when it should have been canceled."), cancelationSource.Token)
-                .Finally(cancelationSource.Dispose);
+                deferred.Promise
+                    .Then(() => resolved = true)
+                    .Then(_ => Assert.Fail("Promise was resolved when it should have been canceled."), cancelationSource.Token)
+                    .Finally(cancelationSource.Dispose)
+                    .Forget();
 
-            cancelationSource.Cancel();
-            deferred.Resolve();
-            Promise.Manager.HandleCompletes();
+                cancelationSource.Cancel();
+                deferred.Resolve();
+                Promise.Manager.HandleCompletes();
 
-            Assert.AreEqual(true, resolved);
+                Assert.AreEqual(true, resolved);
 
+            }
+
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
         public void CancelationsPropagateToBranches()
         {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
+            void Test()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(cancelationSource.Token);
 
-            bool invoked = false;
+                bool invoked = false;
 
-            deferred.Promise
-                .Then(() => { })
-                .CatchCancelation(e => invoked = true);
+                deferred.Promise
+                    .Then(() => { })
+                    .CatchCancelation(e => invoked = true)
+                    .Forget();
 
-            cancelationSource.Cancel();
-            Promise.Manager.HandleCompletes();
+                cancelationSource.Cancel();
+                Promise.Manager.HandleCompletes();
 
-            Assert.AreEqual(true, invoked);
+                Assert.AreEqual(true, invoked);
 
-            cancelationSource.Dispose();
+                cancelationSource.Dispose();
+            }
+
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void IfPromiseIsCanceledAndAPreviousPromiseIsAlsoCanceledPromiseMustBeCanceledWithTheInitialCancelReason()
+        public void IfPromiseIsCanceledAndAPreviousPromiseIsAlsoCanceled_PromiseMustBeCanceledWithTheInitialCancelReason()
         {
-            var deferred = Promise.NewDeferred();
-            Assert.AreEqual(Promise.State.Pending, deferred.State);
+            void Test()
+            {
+                var deferred = Promise.NewDeferred();
 
-            bool invoked = false;
+                bool invoked = false;
 
-            object cancelValue = "Cancel";
-            CancelationSource cancelationSource = CancelationSource.New();
+                object cancelValue = "Cancel";
+                CancelationSource cancelationSource = CancelationSource.New();
 
-            deferred.Promise
-                .Then(() => { }, cancelationSource.Token)
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(cancelValue, reason.Value);
-                    invoked = true;
-                })
-                .Finally(cancelationSource.Dispose);
+                deferred.Promise
+                    .Then(() => { }, cancelationSource.Token)
+                    .CatchCancelation(reason =>
+                    {
+                        Assert.AreEqual(cancelValue, reason.Value);
+                        invoked = true;
+                    })
+                    .Finally(cancelationSource.Dispose)
+                    .Forget();
 
-            cancelationSource.Cancel(cancelValue);
-            deferred.Resolve();
-            Promise.Manager.HandleCompletes();
+                cancelationSource.Cancel(cancelValue);
+                deferred.Resolve();
+                Promise.Manager.HandleCompletes();
 
-            Assert.AreEqual(true, invoked);
+                Assert.AreEqual(true, invoked);
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
         public void APromiseMayBeCanceledWhenItIsPending()
         {
-            CancelationSource cancelationSource = CancelationSource.New();
-            string cancelValue = "Cancel";
+            void Test()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                string cancelValue = "Cancel";
+                var deferred = Promise.NewDeferred();
 
-            Promise.Resolved()
-                .Then(() => cancelationSource.Cancel(cancelValue))
-                .Then(() => { }, cancelationSource.Token)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
-                    () => Assert.Fail("Promise was rejected when it should have been canceled."))
-                .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value))
-                .Finally(cancelationSource.Dispose);
+                deferred.Promise
+                    .Then(() => cancelationSource.Cancel(cancelValue))
+                    .Then(() => { }, cancelationSource.Token)
+                    .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
+                        () => Assert.Fail("Promise was rejected when it should have been canceled."))
+                    .CatchCancelation(reason => Assert.AreEqual(cancelValue, reason.Value))
+                    .Finally(cancelationSource.Dispose)
+                    .Forget();
 
-            Promise.Manager.HandleCompletes();
+                deferred.Resolve();
+                Promise.Manager.HandleCompletes();
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
         public void CatchCancelationCaptureValue()
         {
-            CancelationSource cancelationSource = CancelationSource.New();
-            string cancelValue = "Cancel";
-            int captureValue = 100;
+            void Test()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                string cancelValue = "Cancel";
+                int captureValue = 100;
+                var deferred = Promise.NewDeferred();
+                var promise = deferred.Promise.Preserve();
 
-            Promise.Resolved()
-                .Then(() => { }, cancelationSource.Token)
-                .CatchCancelation(captureValue, (cv, _) => Assert.AreEqual(captureValue, cv));
-            Promise.Resolved()
-                .Then(() => 1f, cancelationSource.Token)
-                .CatchCancelation(captureValue, (cv, _) => Assert.AreEqual(captureValue, cv));
-            cancelationSource.Cancel(cancelValue);
+                promise
+                    .Then(() => { }, cancelationSource.Token)
+                    .CatchCancelation(captureValue, (cv, _) => Assert.AreEqual(captureValue, cv))
+                    .Forget();
+                promise
+                    .Then(() => 1f, cancelationSource.Token)
+                    .CatchCancelation(captureValue, (cv, _) => Assert.AreEqual(captureValue, cv))
+                    .Forget();
+                cancelationSource.Cancel(cancelValue);
 
-            Promise.Manager.HandleCompletes();
+                deferred.Resolve();
+                Promise.Manager.HandleCompletes();
 
-            cancelationSource.Dispose();
+                cancelationSource.Dispose();
+                promise.Forget();
+            }
+
+            Test();
             TestHelper.Cleanup();
         }
 
@@ -680,403 +988,676 @@ namespace Proto.Promises.Tests
             [Test]
             public void DeferredIsCanceledFromAlreadyCanceledToken()
             {
-                string cancelReason = "Cancel value";
-                var canceled = false;
-                CancelationSource cancelationSource = CancelationSource.New();
-                cancelationSource.Cancel(cancelReason);
-
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                Assert.AreEqual(Promise.State.Canceled, deferred.State);
-
-                deferred.Promise.CatchCancelation(r =>
+                void Test()
                 {
-                    Assert.AreEqual(cancelReason, r.Value);
-                    canceled = true;
-                });
-                Promise.Manager.HandleCompletes();
+                    string cancelReason = "Cancel value";
+                    var canceled = false;
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Cancel(cancelReason);
 
-                Assert.True(canceled);
+                    var deferred = Promise.NewDeferred(cancelationSource.Token);
 
-                cancelationSource.Dispose();
+                    deferred.Promise
+                        .CatchCancelation(r =>
+                        {
+                            Assert.AreEqual(cancelReason, r.Value);
+                            canceled = true;
+                        })
+                        .Forget();
+                    Promise.Manager.HandleCompletes();
+
+                    Assert.True(canceled);
+
+                    cancelationSource.Dispose();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void OnCanceledIsNotInvokedIfTokenIsCanceled()
+            public void OnCanceledIsNotInvokedIfTokenIsCanceled_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred(cancelationSource.Token);
+                    var promise = deferred.Promise.Preserve();
 
-                Promise.Canceled()
-                    .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
-                Promise.Canceled<int>()
-                    .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+                    promise
+                        .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                        .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
 
-                cancelationSource.Cancel();
-                Promise.Manager.HandleCompletes();
+                    cancelationSource.Cancel();
+                    Promise.Manager.HandleCompletes();
 
-                cancelationSource.Dispose();
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
+                TestHelper.Cleanup();
+            }
+
+            [Test]
+            public void OnCanceledIsNotInvokedIfTokenIsCanceled_T()
+            {
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                    var promise = deferred.Promise.Preserve();
+
+                    promise
+                        .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                        .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+
+                    cancelationSource.Cancel();
+                    Promise.Manager.HandleCompletes();
+
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
             public void OnCanceledIsNotInvokedIfTokenIsAlreadyCanceled()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                cancelationSource.Cancel();
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Cancel();
 
-                Promise.Canceled()
-                    .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
-                Promise.Canceled<int>()
-                    .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+                    Promise.Canceled()
+                        .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                        .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                        .Forget();
+                    Promise.Canceled<int>()
+                        .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                        .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                        .Forget();
 
-                Promise.Manager.HandleCompletes();
+                    Promise.Manager.HandleCompletes();
 
-                cancelationSource.Dispose();
+                    cancelationSource.Dispose();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void OnResolvedIsNotInvokedIfTokenIsCanceled()
+            public void OnResolvedIsNotInvokedIfTokenIsCanceled_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred();
+                    var promise = deferred.Promise.Preserve();
 
-                var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                    TestHelper.AddResolveCallbacksWithCancelation<float, string>(
+                        promise,
+                        onResolve: () => Assert.Fail("OnResolved was invoked."),
+                        onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
+                    TestHelper.AddCallbacksWithCancelation<float, object, string>(
+                        promise,
+                        onResolve: () => Assert.Fail("OnResolved was invoked."),
+                        onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
 
-                TestHelper.AddResolveCallbacksWithCancelation<float, string>(
-                    deferred.Promise,
-                    onResolve: () => Assert.Fail("OnResolved was invoked."),
-                    onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
-                TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    deferred.Promise,
-                    onResolve: () => Assert.Fail("OnResolved was invoked."),
-                    onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    cancelationSource.Cancel();
+                    deferred.Resolve();
+                    Promise.Manager.HandleCompletes();
 
-                TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
-                    deferredInt.Promise,
-                    onResolve: _ => Assert.Fail("OnResolved was invoked."),
-                    onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
-                TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    deferredInt.Promise,
-                    onResolve: _ => Assert.Fail("OnResolved was invoked."),
-                    onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
 
-                cancelationSource.Cancel();
-                deferred.Resolve();
-                deferredInt.Resolve(1);
-                Promise.Manager.HandleCompletes();
-
-                cancelationSource.Dispose();
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void OnResolvedIsNotInvokedIfTokenIsAlreadyCanceled()
+            public void OnResolvedIsNotInvokedIfTokenIsCanceled_T()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                cancelationSource.Cancel();
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    var deferred = Promise.NewDeferred<int>();
+                    var promise = deferred.Promise.Preserve();
 
-                var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                    TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
+                        promise,
+                        onResolve: _ => Assert.Fail("OnResolved was invoked."),
+                        onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
+                    TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
+                        promise,
+                        onResolve: _ => Assert.Fail("OnResolved was invoked."),
+                        onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
 
-                TestHelper.AddResolveCallbacksWithCancelation<float, string>(
-                    deferred.Promise,
-                    onResolve: () => Assert.Fail("OnResolved was invoked."),
-                    onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
-                TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    deferred.Promise,
-                    onResolve: () => Assert.Fail("OnResolved was invoked."),
-                    onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    cancelationSource.Cancel();
+                    deferred.Resolve(1);
+                    Promise.Manager.HandleCompletes();
 
-                TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
-                    deferredInt.Promise,
-                    onResolve: _ => Assert.Fail("OnResolved was invoked."),
-                    onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
-                TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    deferredInt.Promise,
-                    onResolve: _ => Assert.Fail("OnResolved was invoked."),
-                    onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
 
-                deferred.Resolve();
-                deferredInt.Resolve(1);
-                Promise.Manager.HandleCompletes();
-
-                cancelationSource.Dispose();
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void OnRejectedIsNotInvokedIfTokenIsCanceled()
+            public void OnResolvedIsNotInvokedIfTokenIsAlreadyCanceled_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Cancel();
 
-                var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                    var deferred = Promise.NewDeferred();
+                    var deferredInt = Promise.NewDeferred<int>();
+                    var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    deferred.Promise,
-                    onReject: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
-                    onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    TestHelper.AddResolveCallbacksWithCancelation<float, string>(
+                        promise,
+                        onResolve: () => Assert.Fail("OnResolved was invoked."),
+                        onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
+                    TestHelper.AddCallbacksWithCancelation<float, object, string>(
+                        promise,
+                        onResolve: () => Assert.Fail("OnResolved was invoked."),
+                        onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
 
-                TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    deferredInt.Promise,
-                    onReject: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
-                    onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    deferred.Resolve();
+                    Promise.Manager.HandleCompletes();
 
-                cancelationSource.Cancel();
-                deferred.Reject("Reject");
-                deferredInt.Reject("Reject");
-                // Rejection handlers were canceled, so rejections go unhandled.
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
 
-                cancelationSource.Dispose();
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled()
+            public void OnResolvedIsNotInvokedIfTokenIsAlreadyCanceled_T()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                cancelationSource.Cancel();
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Cancel();
 
-                var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                    var deferred = Promise.NewDeferred<int>();
+                    var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    deferred.Promise,
-                    onReject: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
-                    onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
+                        promise,
+                        onResolve: _ => Assert.Fail("OnResolved was invoked."),
+                        onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
+                    TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
+                        promise,
+                        onResolve: _ => Assert.Fail("OnResolved was invoked."),
+                        onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
 
-                TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    deferredInt.Promise,
-                    onReject: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
-                    onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    deferred.Resolve(1);
+                    Promise.Manager.HandleCompletes();
 
-                deferred.Reject("Reject");
-                deferredInt.Reject("Reject");
-                Assert.Throws<AggregateException>(Promise.Manager.HandleCompletes);
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
 
-                cancelationSource.Dispose();
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void OnContinueIsNotInvokedIfTokenIsCanceled()
+            public void OnRejectedIsNotInvokedIfTokenIsCanceled_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
 
-                var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                    var deferred = Promise.NewDeferred();
+                    var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddContinueCallbacksWithCancelation<float, string>(
-                    deferred.Promise,
-                    onContinue: _ => Assert.Fail("OnContinue was invoked."),
-                    onContinueCapture: (_, __) => Assert.Fail("OnContinue was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
-                TestHelper.AddContinueCallbacksWithCancelation<int, float, string>(
-                    deferredInt.Promise,
-                    onContinue: _ => Assert.Fail("OnContinue was invoked."),
-                    onContinueCapture: (_, __) => Assert.Fail("OnContinue was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    TestHelper.AddCallbacksWithCancelation<float, object, string>(
+                        promise,
+                        onReject: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
+                        onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
 
-                cancelationSource.Cancel();
-                deferred.Resolve();
-                deferredInt.Resolve(1);
-                Promise.Manager.HandleCompletes();
+                    cancelationSource.Cancel();
+                    deferred.Reject("Reject");
+                    Promise.Manager.HandleCompletes();
 
-                cancelationSource.Dispose();
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void OnContinueIsNotInvokedIfTokenIsAlreadyCanceled()
+            public void OnRejectedIsNotInvokedIfTokenIsCanceled_T()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                cancelationSource.Cancel();
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
 
-                var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                    var deferred = Promise.NewDeferred<int>();
+                    var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddContinueCallbacksWithCancelation<float, string>(
-                    deferred.Promise,
-                    onContinue: _ => Assert.Fail("OnContinue was invoked."),
-                    onContinueCapture: (_, __) => Assert.Fail("OnContinue was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
-                TestHelper.AddContinueCallbacksWithCancelation<int, float, string>(
-                    deferredInt.Promise,
-                    onContinue: _ => Assert.Fail("OnContinue was invoked."),
-                    onContinueCapture: (_, __) => Assert.Fail("OnContinue was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
+                        promise,
+                        onReject: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
+                        onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
 
-                deferred.Resolve();
-                deferredInt.Resolve(1);
-                Promise.Manager.HandleCompletes();
+                    cancelationSource.Cancel();
+                    deferred.Reject("Reject");
+                    Promise.Manager.HandleCompletes();
 
-                cancelationSource.Dispose();
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void PromiseIsCanceledFromToken()
+            public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
+                Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All;
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Cancel();
 
-                var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                    var deferred = Promise.NewDeferred();
+                    var promise = deferred.Promise.Preserve();
 
-                int cancelCallbacks = 0;
+                    TestHelper.AddCallbacksWithCancelation<float, object, string>(
+                        promise,
+                        onReject: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
+                        onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
+                    
+                    deferred.Reject("Reject");
+                    Promise.Manager.HandleCompletes();
 
-                TestHelper.AddResolveCallbacksWithCancelation<float, string>(
-                    deferred.Promise,
-                    cancelationToken: cancelationSource.Token,
-                    onCancel: _ => ++cancelCallbacks,
-                    onCancelCapture: (_, __) => ++cancelCallbacks
-                );
-                TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    deferred.Promise,
-                    cancelationToken: cancelationSource.Token,
-                    onCancel: _ => ++cancelCallbacks,
-                    onCancelCapture: (_, __) => ++cancelCallbacks
-                );
-                TestHelper.AddContinueCallbacksWithCancelation<float, string>(
-                    deferred.Promise,
-                    cancelationToken: cancelationSource.Token,
-                    onCancel: _ => ++cancelCallbacks,
-                    onCancelCapture: (_, __) => ++cancelCallbacks
-                );
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
 
-                TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
-                    deferredInt.Promise,
-                    cancelationToken: cancelationSource.Token,
-                    onCancel: _ => ++cancelCallbacks,
-                    onCancelCapture: (_, __) => ++cancelCallbacks
-                );
-                TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    deferredInt.Promise,
-                    cancelationToken: cancelationSource.Token,
-                    onCancel: _ => ++cancelCallbacks,
-                    onCancelCapture: (_, __) => ++cancelCallbacks
-                );
-                TestHelper.AddContinueCallbacksWithCancelation<int, float, string>(
-                    deferredInt.Promise,
-                    cancelationToken: cancelationSource.Token,
-                    onCancel: _ => ++cancelCallbacks,
-                    onCancelCapture: (_, __) => ++cancelCallbacks
-                );
-
-                cancelationSource.Cancel();
-                deferred.Resolve();
-                deferredInt.Resolve(1);
-                Promise.Manager.HandleCompletes();
-
-                Assert.AreEqual(
-                    TestHelper.cancelVoidCallbacks + TestHelper.cancelTCallbacks,
-                    cancelCallbacks
-                );
-
-                cancelationSource.Dispose();
+                Test();
                 TestHelper.Cleanup();
             }
 
             [Test]
-            public void PromiseIsCanceledFromAlreadyCanceledToken()
+            public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_T()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                cancelationSource.Cancel();
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Cancel();
 
-                var deferred = Promise.NewDeferred();
-                var deferredInt = Promise.NewDeferred<int>();
+                    var deferred = Promise.NewDeferred<int>();
+                    var promise = deferred.Promise.Preserve();
 
-                int cancelCallbacks = 0;
+                    TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
+                        promise,
+                        onReject: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
+                        onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
 
-                TestHelper.AddResolveCallbacksWithCancelation<float, string>(
-                    deferred.Promise,
-                    cancelationToken: cancelationSource.Token,
-                    onCancel: _ => ++cancelCallbacks,
-                    onCancelCapture: (_, __) => ++cancelCallbacks
-                );
-                TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    deferred.Promise,
-                    cancelationToken: cancelationSource.Token,
-                    onCancel: _ => ++cancelCallbacks,
-                    onCancelCapture: (_, __) => ++cancelCallbacks
-                );
-                TestHelper.AddContinueCallbacksWithCancelation<float, string>(
-                    deferred.Promise,
-                    cancelationToken: cancelationSource.Token,
-                    onCancel: _ => ++cancelCallbacks,
-                    onCancelCapture: (_, __) => ++cancelCallbacks
-                );
+                    deferred.Reject("Reject");
+                    Promise.Manager.HandleCompletes();
 
-                TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
-                    deferredInt.Promise,
-                    cancelationToken: cancelationSource.Token,
-                    onCancel: _ => ++cancelCallbacks,
-                    onCancelCapture: (_, __) => ++cancelCallbacks
-                );
-                TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    deferredInt.Promise,
-                    cancelationToken: cancelationSource.Token,
-                    onCancel: _ => ++cancelCallbacks,
-                    onCancelCapture: (_, __) => ++cancelCallbacks
-                );
-                TestHelper.AddContinueCallbacksWithCancelation<int, float, string>(
-                    deferredInt.Promise,
-                    cancelationToken: cancelationSource.Token,
-                    onCancel: _ => ++cancelCallbacks,
-                    onCancelCapture: (_, __) => ++cancelCallbacks
-                );
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
 
-                deferred.Resolve();
-                deferredInt.Resolve(1);
-                Promise.Manager.HandleCompletes();
+                Test();
+                TestHelper.Cleanup();
+            }
 
-                Assert.AreEqual(
-                    TestHelper.cancelVoidCallbacks + TestHelper.cancelTCallbacks,
-                    cancelCallbacks
-                );
+            [Test]
+            public void OnContinueIsNotInvokedIfTokenIsCanceled_void()
+            {
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
 
-                cancelationSource.Dispose();
+                    var deferred = Promise.NewDeferred();
+                    var promise = deferred.Promise.Preserve();
+
+                    TestHelper.AddContinueCallbacksWithCancelation<float, string>(
+                        promise,
+                        onContinue: _ => Assert.Fail("OnContinue was invoked."),
+                        onContinueCapture: (_, __) => Assert.Fail("OnContinue was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
+
+                    cancelationSource.Cancel();
+                    deferred.Resolve();
+                    Promise.Manager.HandleCompletes();
+
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
+                TestHelper.Cleanup();
+            }
+
+            [Test]
+            public void OnContinueIsNotInvokedIfTokenIsCanceled_T()
+            {
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+
+                    var deferred = Promise.NewDeferred<int>();
+                    var promise = deferred.Promise.Preserve();
+
+                    TestHelper.AddContinueCallbacksWithCancelation<int, float, string>(
+                        promise,
+                        onContinue: _ => Assert.Fail("OnContinue was invoked."),
+                        onContinueCapture: (_, __) => Assert.Fail("OnContinue was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
+
+                    cancelationSource.Cancel();
+                    deferred.Resolve(1);
+                    Promise.Manager.HandleCompletes();
+
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
+                TestHelper.Cleanup();
+            }
+
+            [Test]
+            public void OnContinueIsNotInvokedIfTokenIsAlreadyCanceled_void()
+            {
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Cancel();
+
+                    var deferred = Promise.NewDeferred();
+                    var promise = deferred.Promise.Preserve();
+
+                    TestHelper.AddContinueCallbacksWithCancelation<float, string>(
+                        promise,
+                        onContinue: _ => Assert.Fail("OnContinue was invoked."),
+                        onContinueCapture: (_, __) => Assert.Fail("OnContinue was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
+
+                    deferred.Resolve();
+                    Promise.Manager.HandleCompletes();
+
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
+                TestHelper.Cleanup();
+            }
+
+            [Test]
+            public void OnContinueIsNotInvokedIfTokenIsAlreadyCanceled_T()
+            {
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Cancel();
+
+                    var deferred = Promise.NewDeferred<int>();
+                    var promise = deferred.Promise.Preserve();
+
+                    TestHelper.AddContinueCallbacksWithCancelation<int, float, string>(
+                        promise,
+                        onContinue: _ => Assert.Fail("OnContinue was invoked."),
+                        onContinueCapture: (_, __) => Assert.Fail("OnContinue was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
+
+                    deferred.Resolve(1);
+                    Promise.Manager.HandleCompletes();
+
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
+                TestHelper.Cleanup();
+            }
+
+            [Test]
+            public void PromiseIsCanceledFromToken_void()
+            {
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+
+                    var deferred = Promise.NewDeferred();
+                    var promise = deferred.Promise.Preserve();
+
+                    int cancelCallbacks = 0;
+
+                    TestHelper.AddResolveCallbacksWithCancelation<float, string>(
+                        promise,
+                        cancelationToken: cancelationSource.Token,
+                        onCancel: _ => ++cancelCallbacks,
+                        onCancelCapture: (_, __) => ++cancelCallbacks
+                    );
+                    TestHelper.AddCallbacksWithCancelation<float, object, string>(
+                        promise,
+                        cancelationToken: cancelationSource.Token,
+                        onCancel: _ => ++cancelCallbacks,
+                        onCancelCapture: (_, __) => ++cancelCallbacks
+                    );
+                    TestHelper.AddContinueCallbacksWithCancelation<float, string>(
+                        promise,
+                        cancelationToken: cancelationSource.Token,
+                        onCancel: _ => ++cancelCallbacks,
+                        onCancelCapture: (_, __) => ++cancelCallbacks
+                    );
+
+                    cancelationSource.Cancel();
+                    deferred.Resolve();
+                    Promise.Manager.HandleCompletes();
+
+                    Assert.AreEqual(
+                        TestHelper.cancelVoidCallbacks,
+                        cancelCallbacks
+                    );
+
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
+                TestHelper.Cleanup();
+            }
+
+            [Test]
+            public void PromiseIsCanceledFromToken_T()
+            {
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+
+                    var deferred = Promise.NewDeferred<int>();
+                    var promise = deferred.Promise.Preserve();
+
+                    int cancelCallbacks = 0;
+
+                    TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
+                        promise,
+                        cancelationToken: cancelationSource.Token,
+                        onCancel: _ => ++cancelCallbacks,
+                        onCancelCapture: (_, __) => ++cancelCallbacks
+                    );
+                    TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
+                        promise,
+                        cancelationToken: cancelationSource.Token,
+                        onCancel: _ => ++cancelCallbacks,
+                        onCancelCapture: (_, __) => ++cancelCallbacks
+                    );
+                    TestHelper.AddContinueCallbacksWithCancelation<int, float, string>(
+                        promise,
+                        cancelationToken: cancelationSource.Token,
+                        onCancel: _ => ++cancelCallbacks,
+                        onCancelCapture: (_, __) => ++cancelCallbacks
+                    );
+
+                    cancelationSource.Cancel();
+                    deferred.Resolve(1);
+                    Promise.Manager.HandleCompletes();
+
+                    Assert.AreEqual(
+                        TestHelper.cancelTCallbacks,
+                        cancelCallbacks
+                    );
+
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
+                TestHelper.Cleanup();
+            }
+
+            [Test]
+            public void PromiseIsCanceledFromAlreadyCanceledToken_void()
+            {
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Cancel();
+
+                    var deferred = Promise.NewDeferred();
+                    var promise = deferred.Promise.Preserve();
+
+                    int cancelCallbacks = 0;
+
+                    TestHelper.AddResolveCallbacksWithCancelation<float, string>(
+                        promise,
+                        cancelationToken: cancelationSource.Token,
+                        onCancel: _ => ++cancelCallbacks,
+                        onCancelCapture: (_, __) => ++cancelCallbacks
+                    );
+                    TestHelper.AddCallbacksWithCancelation<float, object, string>(
+                        promise,
+                        cancelationToken: cancelationSource.Token,
+                        onCancel: _ => ++cancelCallbacks,
+                        onCancelCapture: (_, __) => ++cancelCallbacks
+                    );
+                    TestHelper.AddContinueCallbacksWithCancelation<float, string>(
+                        promise,
+                        cancelationToken: cancelationSource.Token,
+                        onCancel: _ => ++cancelCallbacks,
+                        onCancelCapture: (_, __) => ++cancelCallbacks
+                    );
+
+                    deferred.Resolve();
+                    Promise.Manager.HandleCompletes();
+
+                    Assert.AreEqual(
+                        TestHelper.cancelVoidCallbacks,
+                        cancelCallbacks
+                    );
+
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
+                TestHelper.Cleanup();
+            }
+
+            [Test]
+            public void PromiseIsCanceledFromAlreadyCanceledToken_T()
+            {
+                void Test()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Cancel();
+
+                    var deferred = Promise.NewDeferred<int>();
+                    var promise = deferred.Promise.Preserve();
+
+                    int cancelCallbacks = 0;
+
+                    TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
+                        promise,
+                        cancelationToken: cancelationSource.Token,
+                        onCancel: _ => ++cancelCallbacks,
+                        onCancelCapture: (_, __) => ++cancelCallbacks
+                    );
+                    TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
+                        promise,
+                        cancelationToken: cancelationSource.Token,
+                        onCancel: _ => ++cancelCallbacks,
+                        onCancelCapture: (_, __) => ++cancelCallbacks
+                    );
+                    TestHelper.AddContinueCallbacksWithCancelation<int, float, string>(
+                        promise,
+                        cancelationToken: cancelationSource.Token,
+                        onCancel: _ => ++cancelCallbacks,
+                        onCancelCapture: (_, __) => ++cancelCallbacks
+                    );
+
+                    deferred.Resolve(1);
+                    Promise.Manager.HandleCompletes();
+
+                    Assert.AreEqual(
+                        TestHelper.cancelTCallbacks,
+                        cancelCallbacks
+                    );
+
+                    cancelationSource.Dispose();
+                    promise.Forget();
+                }
+
+                Test();
                 TestHelper.Cleanup();
             }
         }

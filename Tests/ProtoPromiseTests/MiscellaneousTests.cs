@@ -19,673 +19,826 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void AccessingCancelExceptionOrRejectExceptionInOnResolvedDoesNotThrow()
+        public void AccessingCancelExceptionOrRejectExceptionInOnResolvedDoesNotThrow_void()
         {
-            var promise1 = Promise.Resolved();
-            var promise2 = Promise.Resolved(100);
+            void Test()
+            {
+                var promise = Promise.Resolved().Preserve();
 
-            TestHelper.AddCallbacks<int, object, string>(promise1,
-                onResolve: () =>
-                {
-                    Promise.CancelException();
-                    Promise.CancelException("Cancel!");
-                    Promise.RejectException("Reject!");
-                });
-            TestHelper.AddCallbacks<int, bool, object, string>(promise2,
-                onResolve: v =>
-                {
-                    Promise.CancelException();
-                    Promise.CancelException("Cancel!");
-                    Promise.RejectException("Reject!");
-                });
+                TestHelper.AddCallbacks<int, object, string>(promise,
+                    onResolve: () =>
+                    {
+                        Promise.CancelException();
+                        Promise.CancelException("Cancel!");
+                        Promise.RejectException("Reject!");
+                    });
 
-            Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletes();
 
+                promise.Forget();
+            }
+
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void AccessingCancelExceptionOrRejectExceptionInOnRejectedDoesNotThrow()
+        public void AccessingCancelExceptionOrRejectExceptionInOnResolvedDoesNotThrow_T()
         {
-            var promise1 = Promise.Rejected("Reject!");
-            var promise2 = Promise.Rejected<int, string>("Reject!");
+            void Test()
+            {
+                var promise = Promise.Resolved(100).Preserve();
 
-            TestHelper.AddCallbacks<int, string, string>(promise1,
-                onReject: (string rej) =>
-                {
-                    Promise.CancelException();
-                    Promise.CancelException("Cancel!");
-                    Promise.RejectException("Reject!");
-                },
-                onUnknownRejection: () =>
-                {
-                    Promise.CancelException();
-                    Promise.CancelException("Cancel!");
-                    Promise.RejectException("Reject!");
-                });
-            TestHelper.AddCallbacks<int, bool, string, string>(promise2,
-                onReject: (string rej) =>
-                {
-                    Promise.CancelException();
-                    Promise.CancelException("Cancel!");
-                    Promise.RejectException("Reject!");
-                },
-                onUnknownRejection: () =>
-                {
-                    Promise.CancelException();
-                    Promise.CancelException("Cancel!");
-                    Promise.RejectException("Reject!");
-                });
+                TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                    onResolve: v =>
+                    {
+                        Promise.CancelException();
+                        Promise.CancelException("Cancel!");
+                        Promise.RejectException("Reject!");
+                    });
 
-            Promise.Manager.HandleCompletes();
+                Promise.Manager.HandleCompletes();
 
+                promise.Forget();
+            }
+
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void ThrowingRejectExceptionInOnResolvedRejectsThePromiseWithTheGivenValue()
+        public void AccessingCancelExceptionOrRejectExceptionInOnRejectedDoesNotThrow_void()
         {
-            var promise1 = Promise.Resolved();
-            var promise2 = Promise.Resolved(100);
-
-            int voidRejections = 0;
-            int intRejections = 0;
-            string expected = "Reject!";
-
-            Action<Promise> callback = p =>
+            void Test()
             {
-                p.Catch((string e) =>
-                {
-                    Assert.AreEqual(expected, e);
-                    ++voidRejections;
-                });
-                throw Promise.RejectException(expected);
-            };
-            Action<Promise> callbackT = p =>
-            {
-                p.Catch((string e) =>
-                {
-                    Assert.AreEqual(expected, e);
-                    ++intRejections;
-                });
-                throw Promise.RejectException(expected);
-            };
+                var promise = Promise.Rejected("Reject!").Preserve();
 
-            TestHelper.AddResolveCallbacks<int, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
-            TestHelper.AddCallbacks<int, object, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
-            TestHelper.AddContinueCallbacks<int, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
+                TestHelper.AddCallbacks<int, string, string>(promise,
+                    onReject: (string rej) =>
+                    {
+                        Promise.CancelException();
+                        Promise.CancelException("Cancel!");
+                        Promise.RejectException("Reject!");
+                    },
+                    onUnknownRejection: () =>
+                    {
+                        Promise.CancelException();
+                        Promise.CancelException("Cancel!");
+                        Promise.RejectException("Reject!");
+                    });
 
-            TestHelper.AddResolveCallbacks<int, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return 0; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(0); }
-            );
-            TestHelper.AddCallbacks<int, bool, object, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return false; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(false); }
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return 0; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(0); }
-            );
+                Promise.Manager.HandleCompletes();
 
-            Promise.Manager.HandleCompletes();
+                promise.Forget();
+            }
 
-            Assert.AreEqual(
-                (TestHelper.resolveVoidVoidCallbacks + TestHelper.resolveVoidConvertCallbacks +
-                TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                TestHelper.continueVoidVoidCallbacks + TestHelper.continueVoidConvertCallbacks +
-                TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2,
-                voidRejections
-            );
-            Assert.AreEqual(
-                (TestHelper.resolveTVoidCallbacks + TestHelper.resolveTConvertCallbacks +
-                TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                TestHelper.continueTVoidCallbacks + TestHelper.continueTConvertCallbacks +
-                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2,
-                intRejections
-            );
-
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void ThrowingRejectExceptionInOnRejectedRejectsThePromiseWithTheGivenValue()
+        public void AccessingCancelExceptionOrRejectExceptionInOnRejectedDoesNotThrow_T()
         {
-            var promise1 = Promise.Rejected("A different reject value.");
-            var promise2 = Promise.Rejected<int, string>("A different reject value.");
-
-            int voidRejections = 0;
-            int intRejections = 0;
-            string expected = "Reject!";
-
-            Action<Promise> callback = p =>
+            void Test()
             {
-                p.Catch((string e) =>
-                {
-                    Assert.AreEqual(expected, e);
-                    ++voidRejections;
-                });
-                throw Promise.RejectException(expected);
-            };
-            Action<Promise> callbackT = p =>
-            {
-                p.Catch((string e) =>
-                {
-                    Assert.AreEqual(expected, e);
-                    ++intRejections;
-                });
-                throw Promise.RejectException(expected);
-            };
+                var promise = Promise<int>.Rejected("Reject!").Preserve();
 
-            TestHelper.AddCallbacks<int, object, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
-            TestHelper.AddContinueCallbacks<int, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
+                TestHelper.AddCallbacks<int, bool, string, string>(promise,
+                    onReject: (string rej) =>
+                    {
+                        Promise.CancelException();
+                        Promise.CancelException("Cancel!");
+                        Promise.RejectException("Reject!");
+                    },
+                    onUnknownRejection: () =>
+                    {
+                        Promise.CancelException();
+                        Promise.CancelException("Cancel!");
+                        Promise.RejectException("Reject!");
+                    });
 
-            TestHelper.AddCallbacks<int, bool, object, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return false; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(false); }
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return 0; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(0); }
-            );
+                Promise.Manager.HandleCompletes();
 
-            Promise.Manager.HandleCompletes();
+                promise.Forget();
+            }
 
-            Assert.AreEqual(
-                (TestHelper.rejectVoidVoidCallbacks + TestHelper.rejectVoidConvertCallbacks +
-                TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                TestHelper.continueVoidVoidCallbacks + TestHelper.continueVoidConvertCallbacks +
-                TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2,
-                voidRejections
-            );
-            Assert.AreEqual(
-                (TestHelper.rejectTVoidCallbacks + TestHelper.rejectTConvertCallbacks +
-                TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks +
-                TestHelper.continueTVoidCallbacks + TestHelper.continueTConvertCallbacks +
-                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2,
-                intRejections
-            );
-
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void ThrowingCancelExceptionInOnResolvedCancelsThePromiseWithTheGivenValue()
+        public void ThrowingRejectExceptionInOnResolvedRejectsThePromiseWithTheGivenValue_void()
         {
-            var promise1 = Promise.Resolved();
-            var promise2 = Promise.Resolved(100);
-
-            int voidCancelations = 0;
-            int intCancelations = 0;
-            string expected = "Cancel!";
-
-            Action<Promise> callback = p =>
+            void Test()
             {
-                p.CatchCancelation(reason =>
+                var promise = Promise.Resolved().Preserve();
+
+                int rejectCount = 0;
+                string expected = "Reject!";
+
+                Action<Promise> callback = p =>
                 {
-                    Assert.AreEqual(expected, reason.Value);
-                    ++voidCancelations;
-                });
-                throw Promise.CancelException(expected);
-            };
-            Action<Promise> callbackT = p =>
-            {
-                p.CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    ++intCancelations;
-                });
-                throw Promise.CancelException(expected);
-            };
+                    p.Catch((string e) =>
+                    {
+                        Assert.AreEqual(expected, e);
+                        ++rejectCount;
+                    }).Forget();
+                };
 
-            TestHelper.AddResolveCallbacks<int, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
-            TestHelper.AddCallbacks<int, object, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
-            TestHelper.AddContinueCallbacks<int, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
+                TestHelper.AddResolveCallbacks<int, string>(promise,
+                    onResolve: () => { throw Promise.RejectException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddCallbacks<int, object, string>(promise,
+                    onResolve: () => { throw Promise.RejectException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddContinueCallbacks<int, string>(promise,
+                    onContinue: _ => { throw Promise.RejectException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
 
-            TestHelper.AddResolveCallbacks<int, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return 0; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(0); }
-            );
-            TestHelper.AddCallbacks<int, bool, object, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return false; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(false); }
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return 0; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(0); }
-            );
+                Promise.Manager.HandleCompletes();
 
-            Promise.Manager.HandleCompletes();
+                Assert.AreEqual(
+                    (TestHelper.resolveVoidCallbacks + TestHelper.continueVoidCallbacks) * 2,
+                    rejectCount
+                );
 
-            Assert.AreEqual(
-                (TestHelper.resolveVoidVoidCallbacks + TestHelper.resolveVoidConvertCallbacks +
-                TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                TestHelper.continueVoidVoidCallbacks + TestHelper.continueVoidConvertCallbacks +
-                TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2,
-                voidCancelations
-            );
-            Assert.AreEqual(
-                (TestHelper.resolveTVoidCallbacks + TestHelper.resolveTConvertCallbacks +
-                TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                TestHelper.continueTVoidCallbacks + TestHelper.continueTConvertCallbacks +
-                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2,
-                intCancelations
-            );
+                promise.Forget();
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void ThrowingCancelExceptionInOnRejectedCancelsThePromiseWithTheGivenValue()
+        public void ThrowingRejectExceptionInOnResolvedRejectsThePromiseWithTheGivenValue_T()
         {
-            var promise1 = Promise.Rejected("Rejected");
-            var promise2 = Promise.Rejected<int, string>("Rejected");
-
-            int voidCancelations = 0;
-            int intCancelations = 0;
-            string expected = "Cancel!";
-
-            Action<Promise> callback = p =>
+            void Test()
             {
-                p.CatchCancelation(reason =>
+                var promise = Promise.Resolved(100).Preserve();
+
+                int rejectCount = 0;
+                string expected = "Reject!";
+
+                Action<Promise> callback = p =>
                 {
-                    Assert.AreEqual(expected, reason.Value);
-                    ++voidCancelations;
-                });
-                throw Promise.CancelException(expected);
-            };
-            Action<Promise> callbackT = p =>
+                    p.Catch((string e) =>
+                    {
+                        Assert.AreEqual(expected, e);
+                        ++rejectCount;
+                    }).Forget();
+                };
+
+                TestHelper.AddResolveCallbacks<int, bool, string>(promise,
+                    onResolve: v => { throw Promise.RejectException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                    onResolve: v => { throw Promise.RejectException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddContinueCallbacks<int, bool, string>(promise,
+                    onContinue: _ => { throw Promise.RejectException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+
+                Promise.Manager.HandleCompletes();
+
+                Assert.AreEqual(
+                    (TestHelper.resolveTCallbacks + TestHelper.continueTCallbacks) * 2,
+                    rejectCount
+                );
+
+                promise.Forget();
+            }
+
+            Test();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void ThrowingRejectExceptionInOnRejectedRejectsThePromiseWithTheGivenValue_void()
+        {
+            void Test()
             {
-                p.CatchCancelation(reason =>
+                var promise = Promise.Rejected("A different reject value.").Preserve();
+
+                int rejectCount = 0;
+                string expected = "Reject!";
+
+                Action<Promise> callback = p =>
                 {
-                    Assert.AreEqual(expected, reason.Value);
-                    ++intCancelations;
-                });
-                throw Promise.CancelException(expected);
-            };
+                    p.Catch((string e) =>
+                    {
+                        Assert.AreEqual(expected, e);
+                        ++rejectCount;
+                    }).Forget();
+                };
 
-            TestHelper.AddCallbacks<int, object, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
-            TestHelper.AddContinueCallbacks<int, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
+                TestHelper.AddCallbacks<int, object, string>(promise,
+                    onReject: v => { throw Promise.RejectException(expected); },
+                    onUnknownRejection: () => { throw Promise.RejectException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddContinueCallbacks<int, string>(promise,
+                    onContinue: _ => { throw Promise.RejectException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
 
-            TestHelper.AddCallbacks<int, bool, object, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return false; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(false); }
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return 0; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(0); }
-            );
+                Promise.Manager.HandleCompletes();
 
-            Promise.Manager.HandleCompletes();
+                Assert.AreEqual(
+                    (TestHelper.rejectVoidCallbacks + TestHelper.continueVoidCallbacks) * 2,
+                    rejectCount
+                );
 
-            Assert.AreEqual(
-                (TestHelper.rejectVoidVoidCallbacks + TestHelper.rejectVoidConvertCallbacks +
-                TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                TestHelper.continueVoidVoidCallbacks + TestHelper.continueVoidConvertCallbacks +
-                TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2,
-                voidCancelations
-            );
-            Assert.AreEqual(
-                (TestHelper.rejectTVoidCallbacks + TestHelper.rejectTConvertCallbacks +
-                TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks +
-                TestHelper.continueTVoidCallbacks + TestHelper.continueTConvertCallbacks +
-                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2,
-                intCancelations
-            );
+                promise.Forget();
+            }
 
+            Test();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void ThrowingRejectExceptionInOnRejectedRejectsThePromiseWithTheGivenValue_T()
+        {
+            void Test()
+            {
+                var promise = Promise<int>.Rejected("A different reject value.").Preserve();
+
+                int rejectCount = 0;
+                string expected = "Reject!";
+
+                Action<Promise> callback = p =>
+                {
+                    p.Catch((string e) =>
+                    {
+                        Assert.AreEqual(expected, e);
+                        ++rejectCount;
+                    }).Forget();
+                };
+
+                TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                    onReject: v => { throw Promise.RejectException(expected); },
+                    onUnknownRejection: () => { throw Promise.RejectException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p),
+                    onCallbackAddedT: p => callback(p)
+                );
+                TestHelper.AddContinueCallbacks<int, bool, string>(promise,
+                    onContinue: _ => { throw Promise.RejectException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+
+                Promise.Manager.HandleCompletes();
+
+                Assert.AreEqual(
+                    (TestHelper.rejectTCallbacks + TestHelper.continueTCallbacks) * 2,
+                    rejectCount
+                );
+
+                promise.Forget();
+            }
+
+            Test();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void ThrowingCancelExceptionInOnResolvedCancelsThePromiseWithTheGivenValue_void()
+        {
+            void Test()
+            {
+                var promise = Promise.Resolved().Preserve();
+
+                int cancelCount = 0;
+                string expected = "Cancel!";
+
+                Action<Promise> callback = p =>
+                {
+                    p.CatchCancelation(reason =>
+                    {
+                        Assert.AreEqual(expected, reason.Value);
+                        ++cancelCount;
+                    });
+                };
+
+                TestHelper.AddResolveCallbacks<int, string>(promise,
+                    onResolve: () => { throw Promise.CancelException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddCallbacks<int, object, string>(promise,
+                    onResolve: () => { throw Promise.CancelException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddContinueCallbacks<int, string>(promise,
+                    onContinue: _ => { throw Promise.CancelException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+
+                Promise.Manager.HandleCompletes();
+
+                Assert.AreEqual(
+                    (TestHelper.resolveVoidCallbacks + TestHelper.continueVoidCallbacks) * 2,
+                    cancelCount
+                );
+
+                promise.Forget();
+            }
+
+            Test();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void ThrowingCancelExceptionInOnResolvedCancelsThePromiseWithTheGivenValue_T()
+        {
+            void Test()
+            {
+                var promise = Promise.Resolved(100).Preserve();
+
+                int cancelCount = 0;
+                string expected = "Cancel!";
+
+                Action<Promise> callback = p =>
+                {
+                    p.CatchCancelation(reason =>
+                    {
+                        Assert.AreEqual(expected, reason.Value);
+                        ++cancelCount;
+                    });
+                };
+
+                TestHelper.AddResolveCallbacks<int, bool, string>(promise,
+                    onResolve: v => { throw Promise.CancelException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                    onResolve: v => { throw Promise.CancelException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddContinueCallbacks<int, bool, string>(promise,
+                    onContinue: _ => { throw Promise.CancelException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+
+                Promise.Manager.HandleCompletes();
+
+                Assert.AreEqual(
+                    (TestHelper.resolveTCallbacks + TestHelper.continueTCallbacks) * 2,
+                    cancelCount
+                );
+
+                promise.Forget();
+            }
+
+            Test();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void ThrowingCancelExceptionInOnRejectedCancelsThePromiseWithTheGivenValue_void()
+        {
+            void Test()
+            {
+                var promise = Promise.Rejected("Rejected").Preserve();
+
+                int cancelCount = 0;
+                string expected = "Cancel!";
+
+                Action<Promise> callback = p =>
+                {
+                    p.CatchCancelation(reason =>
+                    {
+                        Assert.AreEqual(expected, reason.Value);
+                        ++cancelCount;
+                    });
+                };
+
+                TestHelper.AddCallbacks<int, object, string>(promise,
+                    onReject: v => { throw Promise.CancelException(expected); },
+                    onUnknownRejection: () => { throw Promise.CancelException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddContinueCallbacks<int, string>(promise,
+                    onContinue: _ => { throw Promise.CancelException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+
+                Promise.Manager.HandleCompletes();
+
+                Assert.AreEqual(
+                    (TestHelper.rejectVoidCallbacks + TestHelper.continueVoidCallbacks) * 2,
+                    cancelCount
+                );
+
+                promise.Forget();
+            }
+
+            Test();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void ThrowingCancelExceptionInOnRejectedCancelsThePromiseWithTheGivenValue_T()
+        {
+            void Test()
+            {
+                var promise = Promise<int>.Rejected("Rejected").Preserve();
+
+                int cancelCount = 0;
+                string expected = "Cancel!";
+
+                Action<Promise> callback = p =>
+                {
+                    p.CatchCancelation(reason =>
+                    {
+                        Assert.AreEqual(expected, reason.Value);
+                        ++cancelCount;
+                    });
+                };
+
+                TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                    onReject: v => { throw Promise.CancelException(expected); },
+                    onUnknownRejection: () => { throw Promise.CancelException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p),
+                    onCallbackAddedT: p => callback(p)
+                );
+                TestHelper.AddContinueCallbacks<int, int, string>(promise,
+                    onContinue: _ => { throw Promise.CancelException(expected); },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+
+                Promise.Manager.HandleCompletes();
+
+                Assert.AreEqual(
+                    (TestHelper.rejectTCallbacks + TestHelper.continueTCallbacks) * 2,
+                    cancelCount
+                );
+
+                promise.Forget();
+            }
+
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
         public void AccessingRethrowInNormalCodeThrows()
         {
-            Assert.Throws<InvalidOperationException>(() => { var _ = Promise.Rethrow; });
+            void Test()
+            {
+                Assert.Throws<InvalidOperationException>(() => { var _ = Promise.Rethrow; });
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void AccessingRethrowInOnResolvedThrows()
+        public void AccessingRethrowInOnResolvedThrows_void()
         {
-            var promise1 = Promise.Resolved();
-            var promise2 = Promise.Resolved(100);
-
-            int voidErrors = 0;
-            int intErrors = 0;
-
-            Action<Promise> callback = p =>
+            void Test()
             {
-                p.Catch((object e) =>
+                var promise = Promise.Resolved().Preserve();
+
+                int errorCount = 0;
+
+                Action<Promise> callback = p =>
                 {
-                    Assert.IsInstanceOf(typeof(InvalidOperationException), e);
-                    ++voidErrors;
-                });
-                var _ = Promise.Rethrow;
-            };
-            Action<Promise> callbackT = p =>
-            {
-                p.Catch((object e) =>
-                {
-                    Assert.IsInstanceOf(typeof(InvalidOperationException), e);
-                    ++intErrors;
-                });
-                var _ = Promise.Rethrow;
-            };
+                    p.Catch((object e) =>
+                    {
+                        Assert.IsInstanceOf(typeof(InvalidOperationException), e);
+                        ++errorCount;
+                    }).Forget();
+                };
 
-            TestHelper.AddResolveCallbacks<int, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
-            TestHelper.AddCallbacks<int, object, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
-            TestHelper.AddContinueCallbacks<int, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
+                TestHelper.AddResolveCallbacks<int, string>(promise,
+                    onResolve: () => { var _ = Promise.Rethrow; },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddCallbacks<int, object, string>(promise,
+                    onResolve: () => { var _ = Promise.Rethrow; },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddContinueCallbacks<int, string>(promise,
+                    onContinue: _ => { var __ = Promise.Rethrow; },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
 
-            TestHelper.AddResolveCallbacks<int, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return 0; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(0); }
-            );
-            TestHelper.AddCallbacks<int, bool, object, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return false; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(false); }
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return 0; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(0); }
-            );
+                Promise.Manager.HandleCompletes();
 
-            Promise.Manager.HandleCompletes();
+                Assert.AreEqual(
+                    (TestHelper.resolveVoidCallbacks + TestHelper.continueVoidCallbacks) * 2,
+                    errorCount
+                );
 
-            Assert.AreEqual(
-                (TestHelper.resolveVoidVoidCallbacks + TestHelper.resolveVoidConvertCallbacks +
-                TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                TestHelper.continueVoidVoidCallbacks + TestHelper.continueVoidConvertCallbacks +
-                TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2,
-                voidErrors
-            );
-            Assert.AreEqual(
-                (TestHelper.resolveTVoidCallbacks + TestHelper.resolveTConvertCallbacks +
-                TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                TestHelper.continueTVoidCallbacks + TestHelper.continueTConvertCallbacks +
-                TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2,
-                intErrors
-            );
+                promise.Forget();
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void ThrowingRethrowInOnRejectedRejectsThePromiseWithTheSameReason()
+        public void AccessingRethrowInOnResolvedThrows_T()
         {
-            string expected = "Reject!";
-
-            var promise1 = Promise.Rejected(expected);
-            var promise2 = Promise.Rejected<int, string>(expected);
-
-            int voidRejections = 0;
-            int intRejections = 0;
-
-            Action<Promise> callback = p =>
+            void Test()
             {
-                p.Catch((string e) =>
+                var promise = Promise.Resolved(100).Preserve();
+
+                int errorCount = 0;
+
+                Action<Promise> callback = p =>
                 {
-                    Assert.AreEqual(expected, e);
-                    ++voidRejections;
-                });
-                throw Promise.Rethrow;
-            };
-            Action<Promise> callbackT = p =>
+                    p.Catch((object e) =>
+                    {
+                        Assert.IsInstanceOf(typeof(InvalidOperationException), e);
+                        ++errorCount;
+                    }).Forget();
+                };
+
+                TestHelper.AddResolveCallbacks<int, bool, string>(promise,
+                    onResolve: v => { var _ = Promise.Rethrow; },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                    onResolve: v => { var _ = Promise.Rethrow; },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+                TestHelper.AddContinueCallbacks<int, bool, string>(promise,
+                    onContinue: _ => { var __ = Promise.Rethrow; },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
+
+                Promise.Manager.HandleCompletes();
+
+                Assert.AreEqual(
+                    (TestHelper.resolveTCallbacks + TestHelper.continueTCallbacks) * 2,
+                    errorCount
+                );
+
+                promise.Forget();
+            }
+
+            Test();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void ThrowingRethrowInOnRejectedRejectsThePromiseWithTheSameReason_void()
+        {
+            void Test()
             {
-                p.Catch((string e) =>
+                string expected = "Reject!";
+
+                var promise = Promise.Rejected(expected).Preserve();
+
+                int rejectCount = 0;
+
+                Action<Promise> callback = p =>
                 {
-                    Assert.AreEqual(expected, e);
-                    ++intRejections;
-                });
-                throw Promise.Rethrow;
-            };
+                    p.Catch((string e) =>
+                    {
+                        Assert.AreEqual(expected, e);
+                        ++rejectCount;
+                    }).Forget();
+                };
 
-            TestHelper.AddCallbacks<int, object, string>(promise1,
-                promiseToVoid: callback,
-                promiseToConvert: p => { callback(p); return 0; },
-                promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(0); }
-            );
+                TestHelper.AddCallbacks<int, object, string>(promise,
+                    onReject: _ => { throw Promise.Rethrow; },
+                    onUnknownRejection: () => { throw Promise.Rethrow; },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p)
+                );
 
-            TestHelper.AddCallbacks<int, bool, object, string>(promise2,
-                promiseToVoid: callbackT,
-                promiseToConvert: p => { callbackT(p); return false; },
-                promiseToPromise: p => { callbackT(p); return Promise.Resolved(); },
-                promiseToPromiseConvert: p => { callbackT(p); return Promise.Resolved(false); }
-            );
+                Promise.Manager.HandleCompletes();
 
-            Promise.Manager.HandleCompletes();
+                Assert.AreEqual(
+                    TestHelper.rejectVoidCallbacks * 2,
+                    rejectCount
+                );
 
-            Assert.AreEqual(
-                (TestHelper.rejectVoidVoidCallbacks + TestHelper.rejectVoidConvertCallbacks +
-                TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks) * 2,
-                voidRejections
-            );
-            Assert.AreEqual(
-                (TestHelper.rejectTVoidCallbacks + TestHelper.rejectTConvertCallbacks +
-                TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks) * 2,
-                intRejections
-            );
+                promise.Forget();
+            }
 
+            Test();
+            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void ThrowingRethrowInOnRejectedRejectsThePromiseWithTheSameReason_T()
+        {
+            void Test()
+            {
+                string expected = "Reject!";
+
+                var promise = Promise<int>.Rejected(expected).Preserve();
+
+                int rejectCount = 0;
+
+                Action<Promise> callback = p =>
+                {
+                    p.Catch((string e) =>
+                    {
+                        Assert.AreEqual(expected, e);
+                        ++rejectCount;
+                    }).Forget();
+                };
+
+                TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                    onReject: _ => { throw Promise.Rethrow; },
+                    onUnknownRejection: () => { throw Promise.Rethrow; },
+                    onCallbackAdded: p => callback(p),
+                    onCallbackAddedConvert: p => callback(p),
+                    onCallbackAddedT: p => callback(p)
+                );
+
+                Promise.Manager.HandleCompletes();
+
+                Assert.AreEqual(
+                    TestHelper.rejectTCallbacks * 2,
+                    rejectCount
+                );
+
+                promise.Forget();
+            }
+
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
         public void PromiseResolvedIsResolved()
         {
-            var promise = Promise.Resolved();
-            bool resolved = false;
+            void Test()
+            {
+                bool resolved = false;
 
-            promise
-                .Then(() => resolved = true)
-                .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been resolved"))
-                ;
+                Promise.Resolved()
+                    .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been resolved"))
+                    .Then(() => resolved = true, () => Assert.Fail("Promise was rejected when it should have been resolved"))
+                    .Forget();
 
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(true, resolved);
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(true, resolved);
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
         public void PromiseResolvedIsResolvedWithTheGivenValue()
         {
-            int expected = 100;
-            var promise = Promise.Resolved(expected);
-            bool resolved = false;
+            void Test()
+            {
+                int expected = 100;
+                bool resolved = false;
 
-            promise
-                .Then(val =>
-                {
-                    Assert.AreEqual(expected, val);
-                    resolved = true;
-                })
-                .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been resolved"))
-                ;
+                Promise.Resolved(expected)
+                    .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been resolved"))
+                    .Then(val =>
+                    {
+                        Assert.AreEqual(expected, val);
+                        resolved = true;
+                    }, () => Assert.Fail("Promise was rejected when it should have been resolved"))
+                    .Forget();
 
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(true, resolved);
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(true, resolved);
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void PromiseRejectedIsRejectedWithTheGivenReason0()
+        public void PromiseRejectedIsRejectedWithTheGivenReason_void()
         {
-            string expected = "Reject";
-            var promise = Promise.Rejected(expected);
-            bool rejected = false;
+            void Test()
+            {
+                string expected = "Reject";
+                bool rejected = false;
 
-            promise
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected"))
-                .Catch((object reason) =>
-                {
-                    Assert.AreEqual(expected, reason);
-                    rejected = true;
-                })
-                .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been rejected"))
-                ;
+                Promise.Rejected(expected)
+                    .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been rejected"))
+                    .Then(() => Assert.Fail("Promise was resolved when it should have been rejected"),
+                    (object reason) =>
+                    {
+                        Assert.AreEqual(expected, reason);
+                        rejected = true;
+                    })
+                    .Forget();
 
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(true, rejected);
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(true, rejected);
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void PromiseRejectedIsRejectedWithTheGivenReason1()
+        public void PromiseRejectedIsRejectedWithTheGivenReason_T()
         {
-            string expected = "Reject";
-            var promise = Promise.Rejected<int, string>(expected);
-            bool rejected = false;
+            void Test()
+            {
+                string expected = "Reject";
+                bool rejected = false;
 
-            promise
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected"))
-                .Catch((object reason) =>
-                {
-                    Assert.AreEqual(expected, reason);
-                    rejected = true;
-                })
-                .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been rejected"))
-                ;
+                Promise<int>.Rejected(expected)
+                    .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been rejected"))
+                    .Then(() => Assert.Fail("Promise was resolved when it should have been rejected"),
+                    (object reason) =>
+                    {
+                        Assert.AreEqual(expected, reason);
+                        rejected = true;
+                    })
+                    .Forget();
 
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(true, rejected);
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(true, rejected);
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void PromiseCanceledIsCanceledWithTheGivenReason0()
+        public void PromiseCanceledIsCanceledWithTheGivenReason_void()
         {
-            string expected = "Cancel";
-            var promise = Promise.Canceled(expected);
-            bool canceled = false;
+            void Test()
+            {
+                string expected = "Cancel";
+                bool canceled = false;
 
-            promise
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled"))
-                .Catch(() => Assert.Fail("Promise was rejected when it should have been canceled"))
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    canceled = true;
-                });
+                Promise.Canceled(expected)
+                    .CatchCancelation(reason =>
+                    {
+                        Assert.AreEqual(expected, reason.Value);
+                        canceled = true;
+                    })
+                    .Then(() => Assert.Fail("Promise was resolved when it should have been canceled"), () => Assert.Fail("Promise was rejected when it should have been canceled"))
+                    .Forget();
 
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(true, canceled);
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(true, canceled);
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
 
         [Test]
-        public void PromiseCanceledIsCanceledWithTheGivenReason1()
+        public void PromiseCanceledIsCanceledWithTheGivenReason_T()
         {
-            string expected = "Cancel";
-            var promise = Promise.Canceled<int, string>(expected);
-            bool canceled = false;
+            void Test()
+            {
+                string expected = "Cancel";
+                bool canceled = false;
 
-            promise
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled"))
-                .Catch(() => Assert.Fail("Promise was rejected when it should have been canceled"))
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    canceled = true;
-                });
+                Promise<int>.Canceled(expected)
+                    .CatchCancelation(reason =>
+                    {
+                        Assert.AreEqual(expected, reason.Value);
+                        canceled = true;
+                    })
+                    .Then(() => Assert.Fail("Promise was resolved when it should have been canceled"), () => Assert.Fail("Promise was rejected when it should have been canceled"))
+                    .Forget();
 
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(true, canceled);
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(true, canceled);
+            }
 
+            Test();
             TestHelper.Cleanup();
         }
     }

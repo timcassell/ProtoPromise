@@ -84,16 +84,19 @@ namespace Proto.Promises.Tests
             Action onResolve = null, TConvert convertValue = default(TConvert),
             Action<TCapture> onResolveCapture = null, TCapture captureValue = default(TCapture),
             Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
-            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
+            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
+            Action<Promise> onCallbackAdded = null, Action<Promise<TConvert>> onCallbackAddedConvert = null)
         {
             promise = promise.Preserve();
+            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 
             AddResolveCallbacksWithCancelation(
                 promise,
                 onResolve, convertValue,
                 onResolveCapture, captureValue,
                 promiseToVoid, promiseToConvert,
-                promiseToPromise, promiseToPromiseConvert
+                promiseToPromise, promiseToPromiseConvert,
+                onCallbackAdded, onCallbackAddedConvert
             );
 
             CancelationSource cancelationSource = CancelationSource.New();
@@ -103,6 +106,7 @@ namespace Proto.Promises.Tests
                 onResolveCapture, captureValue,
                 promiseToVoid, promiseToConvert,
                 promiseToPromise, promiseToPromiseConvert,
+                onCallbackAdded, onCallbackAddedConvert,
                 cancelationSource.Token
             );
             cancelationSource.Dispose();
@@ -115,15 +119,19 @@ namespace Proto.Promises.Tests
             Action<TCapture> onResolveCapture = null, TCapture captureValue = default(TCapture),
             Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
+            Action<Promise> onCallbackAdded = null, Action<Promise<TConvert>> onCallbackAddedConvert = null,
             CancelationToken cancelationToken = default(CancelationToken),
             Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null)
         {
             promise = promise.Preserve();
+            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 
             // Add empty delegates so no need for null check.
             onResolve += () => { };
             onResolveCapture += _ => { };
             promiseToVoid += _ => { };
+            onCallbackAdded += _ => { };
+            onCallbackAddedConvert += _ => { };
             if (promiseToConvert == null)
             {
                 promiseToConvert = _ => convertValue;
@@ -144,42 +152,50 @@ namespace Proto.Promises.Tests
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p1.Forget());
+            onCallbackAdded(p1);
             Promise<TConvert> p2 = default(Promise<TConvert>);
             p2 = promise.Then(() => { onResolve(); return promiseToConvert(p2); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p2.Forget());
+            onCallbackAddedConvert(p2);
             Promise p3 = default(Promise);
             p3 = promise.Then(() => { onResolve(); return promiseToPromise(p3); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p3.Forget());
+            onCallbackAdded(p3);
             Promise<TConvert> p4 = default(Promise<TConvert>);
             p4 = promise.Then(() => { onResolve(); return promiseToPromiseConvert(p4); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p4.Forget());
+            onCallbackAddedConvert(p4);
 
             Promise p5 = default(Promise);
             p5 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); promiseToVoid(p5); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p5.Forget());
+            onCallbackAdded(p5);
             Promise<TConvert> p6 = default(Promise<TConvert>);
             p6 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToConvert(p6); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p6.Forget());
+            onCallbackAddedConvert(p6);
             Promise p7 = default(Promise);
             p7 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p7); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p7.Forget());
+            onCallbackAdded(p7);
             Promise<TConvert> p8 = default(Promise<TConvert>);
             p8 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p8); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p8.Forget());
+            onCallbackAddedConvert(p8);
 
             promise.Forget();
         }
@@ -188,16 +204,19 @@ namespace Proto.Promises.Tests
             Action<T> onResolve = null, TConvert convertValue = default(TConvert),
             Action<TCapture> onResolveCapture = null, TCapture captureValue = default(TCapture),
             Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
-            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
+            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
+            Action<Promise> onCallbackAdded = null, Action<Promise<TConvert>> onCallbackAddedConvert = null)
         {
             promise = promise.Preserve();
+            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 
             AddResolveCallbacksWithCancelation(
                 promise,
                 onResolve, convertValue,
                 onResolveCapture, captureValue,
                 promiseToVoid, promiseToConvert,
-                promiseToPromise, promiseToPromiseConvert
+                promiseToPromise, promiseToPromiseConvert,
+                onCallbackAdded, onCallbackAddedConvert
             );
 
             CancelationSource cancelationSource = CancelationSource.New();
@@ -207,6 +226,7 @@ namespace Proto.Promises.Tests
                 onResolveCapture, captureValue,
                 promiseToVoid, promiseToConvert,
                 promiseToPromise, promiseToPromiseConvert,
+                onCallbackAdded, onCallbackAddedConvert,
                 cancelationSource.Token
             );
             cancelationSource.Dispose();
@@ -219,15 +239,19 @@ namespace Proto.Promises.Tests
             Action<TCapture> onResolveCapture = null, TCapture captureValue = default(TCapture),
             Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
+            Action<Promise> onCallbackAdded = null, Action<Promise<TConvert>> onCallbackAddedConvert = null,
             CancelationToken cancelationToken = default(CancelationToken),
             Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null)
         {
             promise = promise.Preserve();
+            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 
             // Add empty delegates so no need for null check.
             onResolve += _ => { };
             onResolveCapture += _ => { };
             promiseToVoid += _ => { };
+            onCallbackAdded += _ => { };
+            onCallbackAddedConvert += _ => { };
             if (promiseToConvert == null)
             {
                 promiseToConvert = _ => convertValue;
@@ -248,42 +272,50 @@ namespace Proto.Promises.Tests
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p1.Forget());
+            onCallbackAdded(p1);
             Promise<TConvert> p2 = default(Promise<TConvert>);
             p2 = promise.Then(x => { onResolve(x); return promiseToConvert(p2); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p2.Forget());
+            onCallbackAddedConvert(p2);
             Promise p3 = default(Promise);
             p3 = promise.Then(x => { onResolve(x); return promiseToPromise(p3); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p3.Forget());
+            onCallbackAdded(p3);
             Promise<TConvert> p4 = default(Promise<TConvert>);
             p4 = promise.Then(x => { onResolve(x); return promiseToPromiseConvert(p4); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p4.Forget());
+            onCallbackAddedConvert(p4);
 
             Promise p5 = default(Promise);
             p5 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); promiseToVoid(p5); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p5.Forget());
+            onCallbackAdded(p5);
             Promise<TConvert> p6 = default(Promise<TConvert>);
             p6 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToConvert(p6); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p6.Forget());
+            onCallbackAddedConvert(p6);
             Promise p7 = default(Promise);
             p7 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p7); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p7.Forget());
+            onCallbackAdded(p7);
             Promise<TConvert> p8 = default(Promise<TConvert>);
             p8 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p8); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p8.Forget());
+            onCallbackAddedConvert(p8);
 
             promise.Forget();
         }
@@ -296,6 +328,7 @@ namespace Proto.Promises.Tests
             Action<Promise> onCallbackAdded = null, Action<Promise<TConvert>> onCallbackAddedConvert = null)
         {
             promise = promise.Preserve();
+            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 
             AddCallbacksWithCancelation(
                 promise,
@@ -331,6 +364,7 @@ namespace Proto.Promises.Tests
             Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null)
         {
             promise = promise.Preserve();
+            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 
             // Add empty delegates so no need for null check.
             onResolve += () => { };
@@ -526,7 +560,7 @@ namespace Proto.Promises.Tests
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p27.Forget());
-            onCallbackAddedConvert(p7);
+            onCallbackAddedConvert(p27);
             Promise<TConvert> p28 = default(Promise<TConvert>);
             p28 = promise.Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToConvert(p28); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p28); }, cancelationToken)
                 .CatchCancelation(onCancel)
@@ -823,6 +857,7 @@ namespace Proto.Promises.Tests
             Action<Promise> onCallbackAdded = null, Action<Promise<TConvert>> onCallbackAddedConvert = null, Action<Promise<T>> onCallbackAddedT = null)
         {
             promise = promise.Preserve();
+            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 
             AddCallbacksWithCancelation(
                 promise,
@@ -860,6 +895,7 @@ namespace Proto.Promises.Tests
             Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null)
         {
             promise = promise.Preserve();
+            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 
             // Add empty delegates so no need for null check.
             onResolve += x => { };
@@ -1065,7 +1101,7 @@ namespace Proto.Promises.Tests
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p27.Forget());
-            onCallbackAddedConvert(p7);
+            onCallbackAddedConvert(p27);
             Promise<TConvert> p28 = default(Promise<TConvert>);
             p28 = promise.Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToConvert(p28); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p28); }, cancelationToken)
                 .CatchCancelation(onCancel)
@@ -1358,16 +1394,19 @@ namespace Proto.Promises.Tests
             Promise.ContinueAction onContinue = null, TConvert convertValue = default(TConvert),
             Promise.ContinueAction<TCapture> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
-            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
+            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
+            Action<Promise> onCallbackAdded = null, Action<Promise<TConvert>> onCallbackAddedConvert = null)
         {
             promise = promise.Preserve();
+            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 
             AddContinueCallbacksWithCancelation(
                 promise,
                 onContinue, convertValue,
                 onContinueCapture, captureValue,
                 promiseToVoid, promiseToConvert,
-                promiseToPromise, promiseToPromiseConvert
+                promiseToPromise, promiseToPromiseConvert,
+                onCallbackAdded, onCallbackAddedConvert
             );
 
             CancelationSource cancelationSource = CancelationSource.New();
@@ -1377,6 +1416,7 @@ namespace Proto.Promises.Tests
                 onContinueCapture, captureValue,
                 promiseToVoid, promiseToConvert,
                 promiseToPromise, promiseToPromiseConvert,
+                onCallbackAdded, onCallbackAddedConvert,
                 cancelationSource.Token
             );
             cancelationSource.Dispose();
@@ -1389,15 +1429,19 @@ namespace Proto.Promises.Tests
             Promise.ContinueAction<TCapture> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
+            Action<Promise> onCallbackAdded = null, Action<Promise<TConvert>> onCallbackAddedConvert = null,
             CancelationToken cancelationToken = default(CancelationToken),
             Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null)
         {
             promise = promise.Preserve();
+            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 
             // Add empty delegate so no need for null check.
             onContinue += _ => { };
             onContinueCapture += (_, __) => { };
             promiseToVoid += _ => { };
+            onCallbackAdded += _ => { };
+            onCallbackAddedConvert += _ => { };
             if (promiseToConvert == null)
             {
                 promiseToConvert = _ => convertValue;
@@ -1418,42 +1462,50 @@ namespace Proto.Promises.Tests
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p1.Forget());
+            onCallbackAdded(p1);
             Promise<TConvert> p2 = default(Promise<TConvert>);
             p2 = promise.ContinueWith(r => { onContinue(r); return promiseToConvert(p2); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p2.Forget());
+            onCallbackAddedConvert(p2);
             Promise p3 = default(Promise);
             p3 = promise.ContinueWith(r => { onContinue(r); return promiseToPromise(p3); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p3.Forget());
+            onCallbackAdded(p3);
             Promise<TConvert> p4 = default(Promise<TConvert>);
             p4 = promise.ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p4.Forget());
+            onCallbackAddedConvert(p4);
 
             Promise p5 = default(Promise);
             p5 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); promiseToVoid(p5); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p5.Forget());
+            onCallbackAdded(p5);
             Promise<TConvert> p6 = default(Promise<TConvert>);
             p6 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToConvert(p6); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p6.Forget());
+            onCallbackAddedConvert(p6);
             Promise p7 = default(Promise);
             p7 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p7.Forget());
+            onCallbackAdded(p7);
             Promise<TConvert> p8 = default(Promise<TConvert>);
             p8 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p8.Forget());
+            onCallbackAddedConvert(p8);
 
             promise.Forget();
         }
@@ -1461,16 +1513,19 @@ namespace Proto.Promises.Tests
         public static void AddContinueCallbacks<T, TConvert, TCapture>(Promise<T> promise, Promise<T>.ContinueAction onContinue = null, TConvert convertValue = default(TConvert),
             Promise<T>.ContinueAction<TCapture> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
-            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null)
+            Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
+            Action<Promise> onCallbackAdded = null, Action<Promise<TConvert>> onCallbackAddedConvert = null)
         {
             promise = promise.Preserve();
+            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 
             AddContinueCallbacksWithCancelation(
                 promise,
                 onContinue, convertValue,
                 onContinueCapture, captureValue,
                 promiseToVoid, promiseToConvert,
-                promiseToPromise, promiseToPromiseConvert
+                promiseToPromise, promiseToPromiseConvert,
+                onCallbackAdded, onCallbackAddedConvert
             );
 
             CancelationSource cancelationSource = CancelationSource.New();
@@ -1480,6 +1535,7 @@ namespace Proto.Promises.Tests
                 onContinueCapture, captureValue,
                 promiseToVoid, promiseToConvert,
                 promiseToPromise, promiseToPromiseConvert,
+                onCallbackAdded, onCallbackAddedConvert,
                 cancelationSource.Token
             );
             cancelationSource.Dispose();
@@ -1491,15 +1547,19 @@ namespace Proto.Promises.Tests
             Promise<T>.ContinueAction<TCapture> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Action<Promise> promiseToVoid = null, Func<Promise<TConvert>, TConvert> promiseToConvert = null,
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
+            Action<Promise> onCallbackAdded = null, Action<Promise<TConvert>> onCallbackAddedConvert = null,
             CancelationToken cancelationToken = default(CancelationToken),
             Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null)
         {
             promise = promise.Preserve();
+            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 
             // Add empty delegate so no need for null check.
             onContinue += _ => { };
             onContinueCapture += (_, __) => { };
             promiseToVoid += _ => { };
+            onCallbackAdded += _ => { };
+            onCallbackAddedConvert += _ => { };
             if (promiseToConvert == null)
             {
                 promiseToConvert = _ => convertValue;
@@ -1520,42 +1580,50 @@ namespace Proto.Promises.Tests
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p1.Forget());
+            onCallbackAdded(p1);
             Promise<TConvert> p2 = default(Promise<TConvert>);
             p2 = promise.ContinueWith(r => { onContinue(r); return promiseToConvert(p2); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p2.Forget());
+            onCallbackAddedConvert(p2);
             Promise p3 = default(Promise);
             p3 = promise.ContinueWith(r => { onContinue(r); return promiseToPromise(p3); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p3.Forget());
+            onCallbackAdded(p3);
             Promise<TConvert> p4 = default(Promise<TConvert>);
             p4 = promise.ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p4.Forget());
+            onCallbackAddedConvert(p4);
 
             Promise p5 = default(Promise);
             p5 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); promiseToVoid(p5); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p5.Forget());
+            onCallbackAdded(p5);
             Promise<TConvert> p6 = default(Promise<TConvert>);
             p6 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToConvert(p6); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p6.Forget());
+            onCallbackAddedConvert(p6);
             Promise p7 = default(Promise);
             p7 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p7.Forget());
+            onCallbackAdded(p7);
             Promise<TConvert> p8 = default(Promise<TConvert>);
             p8 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }, cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p8.Forget());
+            onCallbackAddedConvert(p8);
 
             promise.Forget();
         }
