@@ -15,14 +15,15 @@ namespace Proto.Promises
     {
         partial class PromiseRef : ICancelDelegate
         {
-            protected virtual void CancelCallbacks() { }
+            protected virtual void CancelCallbacks() { ThrowIfInPool(this); }
 
             void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
+                ThrowIfInPool(this);
                 CancelCallbacks();
-                CancelProgressListeners();
-
                 object currentValue = _valueOrPrevious;
+                CancelProgressListeners(currentValue);
+
                 // TODO: don't set _valueOrPrevious, send it into ExecuteCancelation method.
                 _valueOrPrevious = valueContainer;
                 valueContainer.Retain();

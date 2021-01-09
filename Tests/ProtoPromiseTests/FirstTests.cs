@@ -10,379 +10,899 @@ namespace Proto.Promises.Tests
 {
     public class FirstTests
     {
-        [SetUp]
-        public void Setup()
-        {
-            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = null;
-        }
-
         [TearDown]
         public void Teardown()
         {
-            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstIsResolvedWhenFirstPromiseIsResolvedFirst()
+        public void FirstIsResolvedWhenFirstPromiseIsResolvedFirst_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            bool resolved = false;
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .Then(() =>
+                {
+                    resolved = true;
+                })
+                .Forget();
+
+            deferred1.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
+
+            deferred2.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
+        }
+
+        [Test]
+        public void FirstIsResolvedWhenFirstPromiseIsResolvedFirst_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
 
-            var resolved = 0;
+            bool resolved = false;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Then(i => { Assert.AreEqual(5, i); ++resolved; });
-
-            Promise.First((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => ++resolved);
+                .Then(i =>
+                {
+                    Assert.AreEqual(5, i);
+                    resolved = true;
+                })
+                .Forget();
 
             deferred1.Resolve(5);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, resolved);
+            Assert.IsTrue(resolved);
 
             deferred2.Resolve(1);
 
-            TestHelper.Cleanup();
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
         }
 
         [Test]
-        public void FirstIsResolvedWhenSecondPromiseIsResolvedFirst()
+        public void FirstIsResolvedWhenSecondPromiseIsResolvedFirst_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            bool resolved = false;
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .Then(() =>
+                {
+                    resolved = true;
+                })
+                .Forget();
+
+            deferred2.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
+
+            deferred1.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
+        }
+
+        [Test]
+        public void FirstIsResolvedWhenSecondPromiseIsResolvedFirst_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
 
-            var resolved = 0;
+            bool resolved = false;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Then(i => { Assert.AreEqual(5, i); ++resolved; });
-
-            Promise.First((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => ++resolved);
+                .Then(i =>
+                {
+                    Assert.AreEqual(5, i);
+                    resolved = true;
+                })
+                .Forget();
 
             deferred2.Resolve(5);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, resolved);
+            Assert.IsTrue(resolved);
 
             deferred1.Resolve(1);
 
-            TestHelper.Cleanup();
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
         }
 
         [Test]
-        public void FirstIsResolvedWhenFirstPromiseIsRejectedThenSecondPromiseIsResolved()
+        public void FirstIsResolvedWhenFirstPromiseIsRejectedThenSecondPromiseIsResolved_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            bool resolved = false;
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .Then(() =>
+                {
+                    resolved = true;
+                })
+                .Forget();
+
+            deferred1.Reject("Error");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(resolved);
+
+            deferred2.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
+        }
+
+        [Test]
+        public void FirstIsResolvedWhenFirstPromiseIsRejectedThenSecondPromiseIsResolved_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
 
-            var resolved = 0;
+            bool resolved = false;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Then(i => { Assert.AreEqual(5, i); ++resolved; });
+                .Then(i =>
+                {
+                    Assert.AreEqual(5, i);
+                    resolved = true;
+                })
+                .Forget();
 
-            Promise.First((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => ++resolved);
-
-            deferred1.Reject("Error!");
-            deferred1.Promise.Catch((string _) => { });
+            deferred1.Reject("Error");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, resolved);
+            Assert.IsFalse(resolved);
 
             deferred2.Resolve(5);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, resolved);
-
-            TestHelper.Cleanup();
+            Assert.IsTrue(resolved);
         }
 
         [Test]
-        public void FirstIsResolvedWhenSecondPromiseIsRejectedThenFirstPromiseIsResolved()
+        public void FirstIsResolvedWhenSecondPromiseIsRejectedThenFirstPromiseIsResolved_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            bool resolved = false;
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .Then(() =>
+                {
+                    resolved = true;
+                })
+                .Forget();
+
+            deferred2.Reject("Error");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(resolved);
+
+            deferred1.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
+        }
+
+        [Test]
+        public void FirstIsResolvedWhenSecondPromiseIsRejectedThenFirstPromiseIsResolved_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
 
-            var resolved = 0;
+            bool resolved = false;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Then(i => { Assert.AreEqual(5, i); ++resolved; });
+                .Then(i =>
+                {
+                    Assert.AreEqual(5, i);
+                    resolved = true;
+                })
+                .Forget();
 
-            Promise.First((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => ++resolved);
-
-            deferred2.Reject("Error!");
-            deferred2.Promise.Catch((string _) => { });
+            deferred2.Reject("Error");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, resolved);
+            Assert.IsFalse(resolved);
 
             deferred1.Resolve(5);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, resolved);
-
-            TestHelper.Cleanup();
+            Assert.IsTrue(resolved);
         }
 
         [Test]
-        public void FirstIsRejectedWhenAllPromisesAreRejected()
+        public void FirstIsRejectedWhenAllPromisesAreRejected_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            bool rejected = false;
+            string expected = "Error";
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .Catch((string rej) =>
+                {
+                    Assert.AreEqual(expected, rej);
+                    rejected = true;
+                })
+                .Forget();
+
+            deferred1.Reject("Different Error");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(rejected);
+
+            deferred2.Reject(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(rejected);
+        }
+
+        [Test]
+        public void FirstIsRejectedWhenAllPromisesAreRejected_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
 
-            var rejected = 0;
-            string rejection = "Error!";
+            bool rejected = false;
+            string expected = "Error";
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Then(i => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(rej => { Assert.AreEqual(rejection, rej); ++rejected; });
+                .Catch((string rej) =>
+                {
+                    Assert.AreEqual(expected, rej);
+                    rejected = true;
+                })
+                .Forget();
 
-            Promise.First((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(rej => { Assert.AreEqual(rejection, rej); ++rejected; });
-
-            deferred1.Reject("Different Error!");
-            deferred1.Promise.Catch((string _) => { });
-
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, rejected);
-
-            deferred2.Reject(rejection);
+            deferred1.Reject("Different Error");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, rejected);
+            Assert.IsFalse(rejected);
 
-            TestHelper.Cleanup();
+            deferred2.Reject(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(rejected);
         }
 
         [Test]
-        public void FirstIsResolvedWhenFirstPromiseIsCanceledThenSecondPromiseIsResolved()
+        public void FirstIsResolvedWhenFirstPromiseIsCanceledThenSecondPromiseIsResolved_void()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred();
+
+            bool resolved = false;
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .Then(() =>
+                {
+                    resolved = true;
+                })
+                .Forget();
+
+            cancelationSource.Cancel("Cancel");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(resolved);
+
+            deferred2.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void FirstIsResolvedWhenFirstPromiseIsCanceledThenSecondPromiseIsResolved_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
             var deferred2 = Promise.NewDeferred<int>();
 
-            var resolved = 0;
+            bool resolved = false;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Then(i => { Assert.AreEqual(5, i); ++resolved; });
+                .Then(i =>
+                {
+                    Assert.AreEqual(5, i);
+                    resolved = true;
+                })
+                .Forget();
 
-            Promise.First((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => ++resolved);
-
-            cancelationSource.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, resolved);
+            Assert.IsFalse(resolved);
 
             deferred2.Resolve(5);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, resolved);
+            Assert.IsTrue(resolved);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstIsResolvedWhenSecondPromiseIsCanceledThenFirstPromiseIsResolved()
+        public void FirstIsResolvedWhenSecondPromiseIsCanceledThenFirstPromiseIsResolved_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+
+            bool resolved = false;
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .Then(() =>
+                {
+                    resolved = true;
+                })
+                .Forget();
+
+            cancelationSource.Cancel("Cancel");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(resolved);
+
+            deferred1.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void FirstIsResolvedWhenSecondPromiseIsCanceledThenFirstPromiseIsResolved_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
 
-            var resolved = 0;
+            bool resolved = false;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Then(i => { Assert.AreEqual(5, i); ++resolved; });
+                .Then(i =>
+                {
+                    Assert.AreEqual(5, i);
+                    resolved = true;
+                })
+                .Forget();
 
-            Promise.First((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => ++resolved);
-
-            cancelationSource.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, resolved);
+            Assert.IsFalse(resolved);
 
             deferred1.Resolve(5);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, resolved);
+            Assert.IsTrue(resolved);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstIsCanceledWhenAllPromisesAreCanceled()
+        public void FirstIsCanceledWhenAllPromisesAreCanceled_void0()
+        {
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred(cancelationSource1.Token);
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource2.Token);
+
+            bool canceled = false;
+            string expected = "Cancel";
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.AreEqual(expected, reason.Value);
+                    canceled = true;
+                })
+                .Forget();
+
+            cancelationSource1.Cancel("Different Cancel");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(canceled);
+
+            cancelationSource2.Cancel(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(canceled);
+
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
+        }
+
+        [Test]
+        public void FirstIsCanceledWhenAllPromisesAreCanceled_T0()
         {
             CancelationSource cancelationSource1 = CancelationSource.New();
             var deferred1 = Promise.NewDeferred<int>(cancelationSource1.Token);
             CancelationSource cancelationSource2 = CancelationSource.New();
             var deferred2 = Promise.NewDeferred<int>(cancelationSource2.Token);
 
-            var canceled = 0;
-            string cancelation = "Cancel!";
+            bool canceled = false;
+            string expected = "Cancel";
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Then(i => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
+                .CatchCancelation(reason =>
+                {
+                    Assert.AreEqual(expected, reason.Value);
+                    canceled = true;
+                })
+                .Forget();
 
-            Promise.First((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
-
-            cancelationSource1.Cancel("Different Cancel!");
-
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, canceled);
-
-            cancelationSource2.Cancel(cancelation);
+            cancelationSource1.Cancel("Different Cancel");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, canceled);
+            Assert.IsFalse(canceled);
+
+            cancelationSource2.Cancel(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(canceled);
 
             cancelationSource1.Dispose();
             cancelationSource2.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstIsRejectededWhenFirstPromiseIsCanceledThenSecondPromiseIsRejected()
+        public void FirstIsCanceledWhenAllPromisesAreCanceled_void1()
+        {
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred(cancelationSource1.Token);
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource2.Token);
+
+            bool canceled = false;
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.IsNull(reason.ValueType);
+                    canceled = true;
+                })
+                .Forget();
+
+            cancelationSource1.Cancel("Different Cancel");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(canceled);
+
+            cancelationSource2.Cancel();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(canceled);
+
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
+        }
+
+        [Test]
+        public void FirstIsCanceledWhenAllPromisesAreCanceled_T1()
+        {
+            CancelationSource cancelationSource1 = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred<int>(cancelationSource1.Token);
+            CancelationSource cancelationSource2 = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred<int>(cancelationSource2.Token);
+
+            bool canceled = false;
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.IsNull(reason.ValueType);
+                    canceled = true;
+                })
+                .Forget();
+
+            cancelationSource1.Cancel("Different Cancel");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(canceled);
+
+            cancelationSource2.Cancel();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(canceled);
+
+            cancelationSource1.Dispose();
+            cancelationSource2.Dispose();
+        }
+
+        [Test]
+        public void FirstIsRejectededWhenFirstPromiseIsCanceledThenSecondPromiseIsRejected_void()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred();
+
+            bool rejected = false;
+            string expected = "Error";
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .Catch((string rej) =>
+                {
+                    Assert.AreEqual(expected, rej);
+                    rejected = true;
+                })
+                .Forget();
+
+            cancelationSource.Cancel("Cancel");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(rejected);
+
+            deferred2.Reject(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(rejected);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void FirstIsRejectededWhenFirstPromiseIsCanceledThenSecondPromiseIsRejected_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
             var deferred2 = Promise.NewDeferred<int>();
 
-            var rejected = 0;
-            string rejection = "Error!";
+            bool rejected = false;
+            string expected = "Error";
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Then(i => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(rej => { Assert.AreEqual(rejection, rej); ++rejected; });
+                .Catch((string rej) =>
+                {
+                    Assert.AreEqual(expected, rej);
+                    rejected = true;
+                })
+                .Forget();
 
-            Promise.First((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(rej => { Assert.AreEqual(rejection, rej); ++rejected; });
-
-            cancelationSource.Cancel("Cancel!");
-
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, rejected);
-
-            deferred2.Reject(rejection);
+            cancelationSource.Cancel("Cancel");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, rejected);
+            Assert.IsFalse(rejected);
+
+            deferred2.Reject(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(rejected);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstIsRejectededWhenSecondPromiseIsCanceledThenFirstPromiseIsRejected()
+        public void FirstIsRejectededWhenSecondPromiseIsCanceledThenFirstPromiseIsRejected_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+
+            bool rejected = false;
+            string expected = "Error";
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .Catch((string rej) =>
+                {
+                    Assert.AreEqual(expected, rej);
+                    rejected = true;
+                })
+                .Forget();
+
+            cancelationSource.Cancel("Cancel");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(rejected);
+
+            deferred1.Reject(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(rejected);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void FirstIsRejectededWhenSecondPromiseIsCanceledThenFirstPromiseIsRejected_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
 
-            var rejected = 0;
-            string rejection = "Error!";
+            bool rejected = false;
+            string expected = "Error";
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Then(i => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(rej => { Assert.AreEqual(rejection, rej); ++rejected; });
+                .Catch((string rej) =>
+                {
+                    Assert.AreEqual(expected, rej);
+                    rejected = true;
+                })
+                .Forget();
 
-            Promise.First((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(rej => { Assert.AreEqual(rejection, rej); ++rejected; });
-
-            cancelationSource.Cancel("Cancel!");
-
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, rejected);
-
-            deferred1.Reject(rejection);
+            cancelationSource.Cancel("Cancel");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, rejected);
+            Assert.IsFalse(rejected);
+
+            deferred1.Reject(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(rejected);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstIsCancelededWhenFirstPromiseIsRejectedThenSecondPromiseIsCanceled()
+        public void FirstIsCancelededWhenFirstPromiseIsRejectedThenSecondPromiseIsCanceled_void0()
+        {
+            var deferred1 = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+
+            bool canceled = false;
+            string expected = "Cancel";
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.AreEqual(expected, reason.Value);
+                    canceled = true;
+                })
+                .Forget();
+
+            deferred1.Reject("Error");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(canceled);
+
+            cancelationSource.Cancel(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(canceled);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void FirstIsCancelededWhenFirstPromiseIsRejectedThenSecondPromiseIsCanceled_T0()
         {
             var deferred1 = Promise.NewDeferred<int>();
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
 
-            var canceled = 0;
-            string cancelation = "Cancel!";
+            bool canceled = false;
+            string expected = "Cancel";
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Then(i => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
+                .CatchCancelation(reason =>
+                {
+                    Assert.AreEqual(expected, reason.Value);
+                    canceled = true;
+                })
+                .Forget();
 
-            Promise.First((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
-
-            deferred1.Reject("Error!");
-            deferred1.Promise.Catch((string _) => { });
-
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, canceled);
-
-            cancelationSource.Cancel(cancelation);
+            deferred1.Reject("Error");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, canceled);
+            Assert.IsFalse(canceled);
+
+            cancelationSource.Cancel(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(canceled);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstIsCancelededWhenSecondPromiseIsRejectedThenFirstPromiseIsCanceled()
+        public void FirstIsCancelededWhenFirstPromiseIsRejectedThenSecondPromiseIsCanceled_void1()
+        {
+            var deferred1 = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+
+            bool canceled = false;
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.IsNull(reason.ValueType);
+                    canceled = true;
+                })
+                .Forget();
+
+            deferred1.Reject("Error");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(canceled);
+
+            cancelationSource.Cancel();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(canceled);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void FirstIsCancelededWhenFirstPromiseIsRejectedThenSecondPromiseIsCanceled_T1()
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
+
+            bool canceled = false;
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.IsNull(reason.ValueType);
+                    canceled = true;
+                })
+                .Forget();
+
+            deferred1.Reject("Error");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(canceled);
+
+            cancelationSource.Cancel();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(canceled);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void FirstIsCancelededWhenSecondPromiseIsRejectedThenFirstPromiseIsCanceled_void0()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred();
+
+            bool canceled = false;
+            string expected = "Cancel";
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.AreEqual(expected, reason.Value);
+                    canceled = true;
+                })
+                .Forget();
+
+            deferred2.Reject("Error");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(canceled);
+
+            cancelationSource.Cancel(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(canceled);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void FirstIsCancelededWhenSecondPromiseIsRejectedThenFirstPromiseIsCanceled_T0()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
             var deferred2 = Promise.NewDeferred<int>();
 
-            var canceled = 0;
-            string cancelation = "Cancel!";
+            bool canceled = false;
+            string expected = "Cancel";
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Then(i => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
+                .CatchCancelation(reason =>
+                {
+                    Assert.AreEqual(expected, reason.Value);
+                    canceled = true;
+                })
+                .Forget();
 
-            Promise.First((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .CatchCancelation(reason => { Assert.AreEqual(cancelation, reason.Value); ++canceled; });
-
-            deferred2.Reject("Error!");
-            deferred2.Promise.Catch((string _) => { });
-
-            Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, canceled);
-
-            cancelationSource.Cancel(cancelation);
+            deferred2.Reject("Error");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, canceled);
+            Assert.IsFalse(canceled);
+
+            cancelationSource.Cancel(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(canceled);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void FirstIsCancelededWhenSecondPromiseIsRejectedThenFirstPromiseIsCanceled_void1()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred();
+
+            bool canceled = false;
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.IsNull(reason.ValueType);
+                    canceled = true;
+                })
+                .Forget();
+
+            deferred2.Reject("Error");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(canceled);
+
+            cancelationSource.Cancel();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(canceled);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void FirstIsCancelededWhenSecondPromiseIsRejectedThenFirstPromiseIsCanceled_T1()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred<int>();
+
+            bool canceled = false;
+
+            Promise.First(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.IsNull(reason.ValueType);
+                    canceled = true;
+                })
+                .Forget();
+
+            deferred2.Reject("Error");
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsFalse(canceled);
+
+            cancelationSource.Cancel();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(canceled);
+
+            cancelationSource.Dispose();
         }
 
 #if PROMISE_PROGRESS
         [Test]
-        public void FirstProgressReportsTheMaximumProgress0()
+        public void FirstProgressReportsTheMaximumProgress_void0()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -390,7 +910,8 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -420,12 +941,10 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
             deferred2.Resolve();
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressReportsTheMaximumProgress1()
+        public void FirstProgressReportsTheMaximumProgress_T0()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -433,7 +952,8 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -463,50 +983,46 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
             deferred2.Resolve(1);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressReportsTheMaximumProgress2()
+        public void FirstProgressReportsTheMaximumProgress_void1()
         {
             var deferred1 = Promise.NewDeferred();
 
             float progress = float.NaN;
 
             Promise.First(deferred1.Promise, Promise.Resolved())
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, 0f);
 
             deferred1.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressReportsTheMaximumProgress3()
+        public void FirstProgressReportsTheMaximumProgress_T1()
         {
             var deferred1 = Promise.NewDeferred<int>();
 
             float progress = float.NaN;
 
             Promise.First(deferred1.Promise, Promise.Resolved(1))
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, 0f);
 
             deferred1.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressReportsTheMaximumProgress4()
+        public void FirstProgressReportsTheMaximumProgress_void2()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -520,7 +1036,8 @@ namespace Proto.Promises.Tests
                 deferred2.Promise
                     .Then(() => { })
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -556,12 +1073,10 @@ namespace Proto.Promises.Tests
             deferred2.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressReportsTheMaximumProgress5()
+        public void FirstProgressReportsTheMaximumProgress_T2()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -575,7 +1090,8 @@ namespace Proto.Promises.Tests
                 deferred2.Promise
                     .Then(() => 1)
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -611,12 +1127,10 @@ namespace Proto.Promises.Tests
             deferred2.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressReportsTheMaximumProgress6()
+        public void FirstProgressReportsTheMaximumProgress_void3()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -632,7 +1146,8 @@ namespace Proto.Promises.Tests
                 deferred2.Promise
                     .Then(() => deferred4.Promise)
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -692,12 +1207,10 @@ namespace Proto.Promises.Tests
             deferred4.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressReportsTheMaximumProgress7()
+        public void FirstProgressReportsTheMaximumProgress_T3()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -713,7 +1226,8 @@ namespace Proto.Promises.Tests
                 deferred2.Promise
                     .Then(() => deferred4.Promise)
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -773,12 +1287,10 @@ namespace Proto.Promises.Tests
             deferred4.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressReportsTheMaximumProgress8()
+        public void FirstProgressReportsTheMaximumProgress_void4()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -792,7 +1304,8 @@ namespace Proto.Promises.Tests
                 deferred2.Promise
                     .Then(Promise.Resolved)
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -828,12 +1341,10 @@ namespace Proto.Promises.Tests
             deferred2.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressReportsTheMaximumProgress9()
+        public void FirstProgressReportsTheMaximumProgress_T4()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -847,7 +1358,8 @@ namespace Proto.Promises.Tests
                 deferred2.Promise
                     .Then(x => Promise.Resolved(x))
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -883,12 +1395,10 @@ namespace Proto.Promises.Tests
             deferred2.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressIsNoLongerReportedFromRejected0()
+        public void FirstProgressIsNoLongerReportedFromRejected_void()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -897,7 +1407,8 @@ namespace Proto.Promises.Tests
 
             Promise.First(deferred1.Promise, deferred2.Promise)
                 .Progress(p => progress = p)
-                .Catch(() => { });
+                .Catch(() => { })
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -917,12 +1428,10 @@ namespace Proto.Promises.Tests
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.7f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressIsNoLongerReportedFromRejected1()
+        public void FirstProgressIsNoLongerReportedFromRejected_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -931,7 +1440,8 @@ namespace Proto.Promises.Tests
 
             Promise.First(deferred1.Promise, deferred2.Promise)
                 .Progress(p => progress = p)
-                .Catch(() => { });
+                .Catch(() => { })
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -951,12 +1461,10 @@ namespace Proto.Promises.Tests
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.7f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressIsNoLongerReportedFromCanceled0()
+        public void FirstProgressIsNoLongerReportedFromCanceled_void()
         {
             var cancelationSource1 = CancelationSource.New();
             var cancelationSource2 = CancelationSource.New();
@@ -966,7 +1474,8 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -989,11 +1498,10 @@ namespace Proto.Promises.Tests
 
             cancelationSource1.Dispose();
             cancelationSource2.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressIsNoLongerReportedFromCanceled1()
+        public void FirstProgressIsNoLongerReportedFromCanceled_T()
         {
             var cancelationSource1 = CancelationSource.New();
             var cancelationSource2 = CancelationSource.New();
@@ -1003,7 +1511,8 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -1026,11 +1535,10 @@ namespace Proto.Promises.Tests
 
             cancelationSource1.Dispose();
             cancelationSource2.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void FirstProgressWillBeInvokedProperlyFromARecoveredPromise0()
+        public void FirstProgressWillBeInvokedProperlyFromARecoveredPromise_void()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -1050,7 +1558,8 @@ namespace Proto.Promises.Tests
                     .Then(() => deferred3.Promise, cancelationSource.Token)
                     .ContinueWith(_ => deferred4.Promise)
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f / 3f, progress, TestHelper.progressEpsilon);
@@ -1108,11 +1617,11 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
+            deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
         }
 
         [Test]
-        public void FirstProgressWillBeInvokedProperlyFromARecoveredPromise1()
+        public void FirstProgressWillBeInvokedProperlyFromARecoveredPromise_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -1132,7 +1641,8 @@ namespace Proto.Promises.Tests
                     .Then(() => deferred3.Promise, cancelationSource.Token)
                     .ContinueWith(_ => deferred4.Promise)
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f / 3f, progress, TestHelper.progressEpsilon);
@@ -1190,7 +1700,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
+            deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
         }
 #endif
     }

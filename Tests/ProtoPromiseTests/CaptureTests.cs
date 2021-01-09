@@ -16,17 +16,10 @@ namespace Proto.Promises.Tests
 {
     public class CaptureTests
     {
-        [SetUp]
-        public void Setup()
-        {
-            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = null;
-        }
-
         [TearDown]
         public void Teardown()
         {
-            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            TestHelper.Cleanup();
         }
 
 #if PROMISE_DEBUG
@@ -35,630 +28,556 @@ namespace Proto.Promises.Tests
         [Test]
         public void IfOnProgressIsNullThrow_void()
         {
-            void Test()
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                promise.Progress(100, default(Action<int, float>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Progress(100, default(Action<int, float>));
-                });
-
-                deferred.Resolve();
-                promise.Forget();
-
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            deferred.Resolve();
+            promise.Forget();
         }
 
         [Test]
         public void IfOnProgressIsNullThrow_T()
         {
-            void Test()
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                promise.Progress(100, default(Action<int, float>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Progress(100, default(Action<int, float>));
-                });
-
-                deferred.Resolve(1);
-                promise.Forget();
-
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            deferred.Resolve(1);
+            promise.Forget();
         }
 #endif
 
         [Test]
         public void IfOnCanceledIsNullThrow_void()
         {
-            void Test()
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                promise.CatchCancelation(100, default(Promise.CanceledAction<int>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.CatchCancelation(100, default(Promise.CanceledAction<int>));
-                });
-
-                deferred.Resolve();
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            deferred.Resolve();
+            promise.Forget();
         }
 
         [Test]
         public void IfOnCanceledIsNullThrow_T()
         {
-            void Test()
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                promise.CatchCancelation(100, default(Promise.CanceledAction<int>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.CatchCancelation(100, default(Promise.CanceledAction<int>));
-                });
-
-                deferred.Resolve(1);
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            deferred.Resolve(1);
+            promise.Forget();
         }
 
         [Test]
         public void IfOnFinallyIsNullThrow_void()
         {
-            void Test()
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                promise.Finally(100, default(Action<int>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Finally(100, default(Action<int>));
-                });
+            deferred.Resolve();
 
-                deferred.Resolve();
-
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void IfOnFinallyIsNullThrow_T()
         {
-            void Test()
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                promise.Finally(100, default(Action<int>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Finally(100, default(Action<int>));
-                });
+            deferred.Resolve(1);
 
-                deferred.Resolve(1);
-
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void IfOnContinueIsNullThrow_void()
         {
-            void Test()
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                promise.ContinueWith(100, default(Promise.ContinueAction<int>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.ContinueWith(100, default(Promise.ContinueFunc<int, bool>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.ContinueWith(100, default(Promise.ContinueFunc<int, Promise>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.ContinueWith(100, default(Promise.ContinueFunc<int, Promise<bool>>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.ContinueWith(100, default(Promise.ContinueAction<int>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.ContinueWith(100, default(Promise.ContinueFunc<int, bool>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.ContinueWith(100, default(Promise.ContinueFunc<int, Promise>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.ContinueWith(100, default(Promise.ContinueFunc<int, Promise<bool>>));
-                });
+            deferred.Resolve();
 
-                deferred.Resolve();
-
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void IfOnContinueIsNullThrow_T()
         {
-            void Test()
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                promise.ContinueWith(100, default(Promise<int>.ContinueAction<int>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.ContinueWith(100, default(Promise<int>.ContinueFunc<int, bool>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.ContinueWith(100, default(Promise<int>.ContinueFunc<int, Promise>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.ContinueWith(100, default(Promise<int>.ContinueFunc<int, Promise<bool>>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.ContinueWith(100, default(Promise<int>.ContinueAction<int>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.ContinueWith(100, default(Promise<int>.ContinueFunc<int, bool>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.ContinueWith(100, default(Promise<int>.ContinueFunc<int, Promise>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.ContinueWith(100, default(Promise<int>.ContinueFunc<int, Promise<bool>>));
-                });
+            deferred.Resolve(1);
 
-                deferred.Resolve(1);
-
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void IfOnFulfilledIsNullThrow_void()
         {
-            void Test()
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
-
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Action<int>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, bool>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, Promise>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, Promise<bool>>));
-                });
+                promise.Then(100, default(Action<int>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, bool>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, Promise>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, Promise<bool>>));
+            });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Action<int>), () => { });
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Action<int>), (string failValue) => { });
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Action<int>), () => { });
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Action<int>), (string failValue) => { });
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, bool>), () => default(bool));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, bool>), (string failValue) => default(bool));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, bool>), () => default(bool));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, bool>), (string failValue) => default(bool));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, Promise>), () => default(Promise));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, Promise>), (string failValue) => default(Promise));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, Promise>), () => default(Promise));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, Promise>), (string failValue) => default(Promise));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, Promise<bool>>), () => default(Promise<bool>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, Promise<bool>>), (string failValue) => default(Promise<bool>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, Promise<bool>>), () => default(Promise<bool>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, Promise<bool>>), (string failValue) => default(Promise<bool>));
+            });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Action<int>), () => default(Promise));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Action<int>), (string failValue) => default(Promise));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Action<int>), () => default(Promise));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Action<int>), (string failValue) => default(Promise));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, bool>), () => default(Promise<bool>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, bool>), (string failValue) => default(Promise<bool>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, bool>), () => default(Promise<bool>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, bool>), (string failValue) => default(Promise<bool>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, Promise>), () => { });
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, Promise>), (string failValue) => { });
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, Promise>), () => { });
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, Promise>), (string failValue) => { });
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, Promise<bool>>), () => default(bool));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(100, default(Func<int, Promise<bool>>), (string failValue) => default(bool));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, Promise<bool>>), () => default(bool));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(100, default(Func<int, Promise<bool>>), (string failValue) => default(bool));
+            });
 
-                deferred.Resolve();
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            deferred.Resolve();
+            promise.Forget();
         }
 
         [Test]
         public void IfOnFulfilledIsNullThrow_T()
         {
-            void Test()
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
-
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Action<bool, int>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, int>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, Promise>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, Promise<int>>));
-                });
+                promise.Then(true, default(Action<bool, int>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, int>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, Promise>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, Promise<int>>));
+            });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Action<bool, int>), () => { });
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Action<bool, int>), (string failValue) => { });
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Action<bool, int>), () => { });
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Action<bool, int>), (string failValue) => { });
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, int>), () => default(int));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, int>), (string failValue) => default(int));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, int>), () => default(int));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, int>), (string failValue) => default(int));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, Promise>), () => default(Promise));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, Promise>), (string failValue) => default(Promise));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, Promise>), () => default(Promise));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, Promise>), (string failValue) => default(Promise));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, Promise<int>>), () => default(Promise<int>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, Promise<int>>), (string failValue) => default(Promise<int>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, Promise<int>>), () => default(Promise<int>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, Promise<int>>), (string failValue) => default(Promise<int>));
+            });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Action<bool, int>), () => default(Promise));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Action<bool, int>), (string failValue) => default(Promise));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Action<bool, int>), () => default(Promise));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Action<bool, int>), (string failValue) => default(Promise));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, int>), () => default(Promise<int>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, int>), (string failValue) => default(Promise<int>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, int>), () => default(Promise<int>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, int>), (string failValue) => default(Promise<int>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, Promise>), () => { });
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, Promise>), (string failValue) => { });
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, Promise>), () => { });
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, Promise>), (string failValue) => { });
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, Promise<int>>), () => default(int));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(true, default(Func<bool, int, Promise<int>>), (string failValue) => default(int));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, Promise<int>>), () => default(int));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(true, default(Func<bool, int, Promise<int>>), (string failValue) => default(int));
+            });
 
-                deferred.Resolve(1);
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            deferred.Resolve(1);
+            promise.Forget();
         }
 
         [Test]
         public void IfOnRejectedIsNullThrow_void()
         {
-            void Test()
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                promise.Catch(100, default(Action<int>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Catch(100, default(Action<int, string>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Catch(100, default(Action<int>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Catch(100, default(Action<int, string>));
-                });
-
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Catch(100, default(Func<int, Promise>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Catch(100, default(Func<int, string, Promise>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Catch(100, default(Func<int, Promise>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Catch(100, default(Func<int, string, Promise>));
+            });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => { }, 100, default(Action<int>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => { }, 100, default(Action<int, string>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => { }, 100, default(Action<int>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => { }, 100, default(Action<int, string>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => default(Promise), 100, default(Func<int, Promise>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => default(Promise), 100, default(Func<int, string, Promise>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => default(Promise), 100, default(Func<int, Promise>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => default(Promise), 100, default(Func<int, string, Promise>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => "string", 100, default(Func<int, string>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => "string", 100, default(Func<int, Exception, string>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => "string", 100, default(Func<int, string>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => "string", 100, default(Func<int, Exception, string>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => default(Promise<string>), 100, default(Func<int, Promise<string>>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => default(Promise<string>), 100, default(Func<int, Exception, Promise<string>>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => default(Promise<string>), 100, default(Func<int, Promise<string>>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => default(Promise<string>), 100, default(Func<int, Exception, Promise<string>>));
+            });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => default(Promise), 100, default(Action<int>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => default(Promise), 100, default(Action<int, string>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => default(Promise), 100, default(Action<int>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => default(Promise), 100, default(Action<int, string>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => { }, 100, default(Func<int, Promise>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => { }, 100, default(Func<int, string, Promise>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => { }, 100, default(Func<int, Promise>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => { }, 100, default(Func<int, string, Promise>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => default(Promise<string>), 100, default(Func<int, string>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => default(Promise<string>), 100, default(Func<int, Exception, string>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => default(Promise<string>), 100, default(Func<int, string>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => default(Promise<string>), 100, default(Func<int, Exception, string>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => "string", 100, default(Func<int, Promise<string>>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then(() => "string", 100, default(Func<int, Exception, Promise<string>>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => "string", 100, default(Func<int, Promise<string>>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then(() => "string", 100, default(Func<int, Exception, Promise<string>>));
+            });
 
-                deferred.Resolve();
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            deferred.Resolve();
+            promise.Forget();
         }
 
         [Test]
         public void IfOnRejectedIsNullThrow_T()
         {
-            void Test()
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                promise.Catch(true, default(Func<bool, int>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Catch(true, default(Func<bool, string, int>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Catch(true, default(Func<bool, int>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Catch(true, default(Func<bool, string, int>));
-                });
-
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Catch(true, default(Func<bool, Promise<int>>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Catch(true, default(Func<bool, string, Promise<int>>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Catch(true, default(Func<bool, Promise<int>>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Catch(true, default(Func<bool, string, Promise<int>>));
+            });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => { }, true, default(Action<bool>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => { }, true, default(Action<bool, string>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => { }, true, default(Action<bool>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => { }, true, default(Action<bool, string>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => default(Promise), true, default(Func<bool, Promise>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => default(Promise), true, default(Func<bool, string, Promise>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => default(Promise), true, default(Func<bool, Promise>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => default(Promise), true, default(Func<bool, string, Promise>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => "string", true, default(Func<bool, string>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => "string", true, default(Func<bool, Exception, string>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => "string", true, default(Func<bool, string>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => "string", true, default(Func<bool, Exception, string>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => default(Promise<string>), true, default(Func<bool, Promise<string>>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => default(Promise<string>), true, default(Func<bool, Exception, Promise<string>>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => default(Promise<string>), true, default(Func<bool, Promise<string>>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => default(Promise<string>), true, default(Func<bool, Exception, Promise<string>>));
+            });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => default(Promise), true, default(Action<bool>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => default(Promise), true, default(Action<bool, string>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => default(Promise), true, default(Action<bool>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => default(Promise), true, default(Action<bool, string>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => { }, true, default(Func<bool, Promise>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => { }, true, default(Func<bool, string, Promise>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => { }, true, default(Func<bool, Promise>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => { }, true, default(Func<bool, string, Promise>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => default(Promise<string>), true, default(Func<bool, string>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => default(Promise<string>), true, default(Func<bool, Exception, string>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => default(Promise<string>), true, default(Func<bool, string>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => default(Promise<string>), true, default(Func<bool, Exception, string>));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => "string", true, default(Func<bool, Promise<string>>));
-                });
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Then((int x) => "string", true, default(Func<bool, Exception, Promise<string>>));
-                });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => "string", true, default(Func<bool, Promise<string>>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                promise.Then((int x) => "string", true, default(Func<bool, Exception, Promise<string>>));
+            });
 
-                deferred.Resolve(1);
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            deferred.Resolve(1);
+            promise.Forget();
         }
 #endif
 
@@ -666,800 +585,664 @@ namespace Proto.Promises.Tests
         [Test]
         public void OnProgressWillBeInvokedWithCapturedValue_void()
         {
-            void Test()
-            {
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
 
-                promise
-                    .Progress(expected, (cv, progress) =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    });
+            promise
+                .Progress(expected, (cv, progress) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                });
 
-                deferred.ReportProgress(0.5f);
-                Promise.Manager.HandleCompletesAndProgress();
-                deferred.Resolve();
-                Promise.Manager.HandleCompletesAndProgress();
+            deferred.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            deferred.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void OnProgressWillBeInvokedWithCapturedValue_T()
         {
-            void Test()
-            {
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
 
-                promise
-                    .Progress(expected, (cv, progress) =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    });
+            promise
+                .Progress(expected, (cv, progress) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                });
 
-                deferred.ReportProgress(0.5f);
-                Promise.Manager.HandleCompletesAndProgress();
-                deferred.Resolve(1);
-                Promise.Manager.HandleCompletesAndProgress();
+            deferred.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            deferred.Resolve(1);
+            Promise.Manager.HandleCompletesAndProgress();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 #endif
 
         [Test]
         public void OnCanceledWillBeInvokedWithCapturedValue_void0()
         {
-            void Test()
-            {
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                var promise = deferred.Promise.Preserve();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var promise = deferred.Promise.Preserve();
 
-                promise
-                    .CatchCancelation(expected, (cv, reason) =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        Assert.AreEqual(null, reason.ValueType);
-                        invoked = true;
-                    });
+            promise
+                .CatchCancelation(expected, (cv, reason) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    Assert.IsNull(reason.ValueType);
+                    invoked = true;
+                });
 
-                cancelationSource.Cancel();
-                Promise.Manager.HandleCompletes();
+            cancelationSource.Cancel();
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                cancelationSource.Dispose();
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            cancelationSource.Dispose();
+            promise.Forget();
         }
 
         [Test]
         public void OnCanceledWillBeInvokedWithCapturedValue_void1()
         {
-            void Test()
-            {
-                string expected = "expected";
-                int cancelValue = 50;
-                bool invoked = false;
+            string expected = "expected";
+            int cancelValue = 50;
+            bool invoked = false;
 
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                var promise = deferred.Promise.Preserve();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var promise = deferred.Promise.Preserve();
 
-                promise
-                    .CatchCancelation(expected, (cv, reason) =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        Assert.AreEqual(cancelValue, reason.Value);
-                        invoked = true;
-                    });
+            promise
+                .CatchCancelation(expected, (cv, reason) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    Assert.AreEqual(cancelValue, reason.Value);
+                    invoked = true;
+                });
 
-                cancelationSource.Cancel(cancelValue);
-                Promise.Manager.HandleCompletes();
+            cancelationSource.Cancel(cancelValue);
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                cancelationSource.Dispose();
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            cancelationSource.Dispose();
+            promise.Forget();
         }
 
         [Test]
         public void OnCanceledWillBeInvokedWithCapturedValue_T0()
         {
-            void Test()
-            {
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-                var promise = deferred.Promise.Preserve();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var promise = deferred.Promise.Preserve();
 
-                promise
-                    .CatchCancelation(expected, (cv, reason) =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        Assert.AreEqual(null, reason.ValueType);
-                        invoked = true;
-                    });
+            promise
+                .CatchCancelation(expected, (cv, reason) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    Assert.IsNull(reason.ValueType);
+                    invoked = true;
+                });
 
-                cancelationSource.Cancel();
-                Promise.Manager.HandleCompletes();
+            cancelationSource.Cancel();
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                cancelationSource.Dispose();
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            cancelationSource.Dispose();
+            promise.Forget();
         }
 
         [Test]
         public void OnCanceledWillBeInvokedWithCapturedValue_T1()
         {
-            void Test()
-            {
-                string expected = "expected";
-                int cancelValue = 50;
-                bool invoked = false;
+            string expected = "expected";
+            int cancelValue = 50;
+            bool invoked = false;
 
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-                var promise = deferred.Promise.Preserve();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var promise = deferred.Promise.Preserve();
 
-                promise
-                    .CatchCancelation(expected, (cv, reason) =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        Assert.AreEqual(cancelValue, reason.Value);
-                        invoked = true;
-                    });
+            promise
+                .CatchCancelation(expected, (cv, reason) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    Assert.AreEqual(cancelValue, reason.Value);
+                    invoked = true;
+                });
 
-                cancelationSource.Cancel(cancelValue);
-                Promise.Manager.HandleCompletes();
+            cancelationSource.Cancel(cancelValue);
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                cancelationSource.Dispose();
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            cancelationSource.Dispose();
+            promise.Forget();
         }
 
         [Test]
         public void OnFinallyWillBeInvokedWithCapturedValue_resolved_void()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
 
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                promise
-                    .Finally(expected, cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    });
+            promise
+                .Finally(expected, cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                });
 
-                deferred.Resolve();
+            deferred.Resolve();
 
-                Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void OnFinallyWillBeInvokedWithCapturedValue_resolved_T()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
 
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                promise
-                    .Finally(expected, cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    });
+            promise
+                .Finally(expected, cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                });
 
-                deferred.Resolve(1);
+            deferred.Resolve(1);
 
-                Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void OnFinallyWillBeInvokedWithCapturedValue_rejected_void()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
 
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                promise
-                    .Finally(expected, cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    })
-                    .Catch(() => { })
-                    .Forget();
+            promise
+                .Finally(expected, cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                })
+                .Catch(() => { })
+                .Forget();
 
-                deferred.Reject("Reject");
+            deferred.Reject("Reject");
 
-                Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void OnFinallyWillBeInvokedWithCapturedValue_rejected_T()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
 
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                promise
-                    .Finally(expected, cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    })
-                    .Catch(() => { })
-                    .Forget();
+            promise
+                .Finally(expected, cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                })
+                .Catch(() => { })
+                .Forget();
 
-                deferred.Reject("Reject");
+            deferred.Reject("Reject");
 
-                Promise.Manager.HandleCompletes();
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void OnFinallyWillBeInvokedWithCapturedValue_canceled_void()
         {
-            void Test()
+            string expected = "expected";
+            bool repeat = true;
+        Repeat:
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var promise = deferred.Promise.Preserve();
+
+            bool invoked = false;
+
+            promise
+                .Finally(expected, cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                });
+
+            if (repeat)
             {
-                string expected = "expected";
-                bool repeat = true;
-            Repeat:
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                var promise = deferred.Promise.Preserve();
-
-                bool invoked = false;
-
-                promise
-                    .Finally(expected, cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    });
-
-                if (repeat)
-                {
-                    cancelationSource.Cancel();
-                }
-                else
-                {
-                    cancelationSource.Cancel("Cancel");
-                }
-                Promise.Manager.HandleCompletes();
-                Assert.AreEqual(true, invoked);
-
-                promise.Forget();
-                cancelationSource.Dispose();
-                if (repeat)
-                {
-                    repeat = false;
-                    goto Repeat;
-                }
-
+                cancelationSource.Cancel();
             }
+            else
+            {
+                cancelationSource.Cancel("Cancel");
+            }
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
 
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
+            cancelationSource.Dispose();
+            if (repeat)
+            {
+                repeat = false;
+                goto Repeat;
+            }
         }
 
         [Test]
         public void OnFinallyWillBeInvokedWithCapturedValue_canceled_T()
         {
-            void Test()
+            string expected = "expected";
+            bool repeat = true;
+        Repeat:
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var promise = deferred.Promise.Preserve();
+
+            bool invoked = false;
+
+            promise
+                .Finally(expected, cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                });
+
+            if (repeat)
             {
-                string expected = "expected";
-                bool repeat = true;
-            Repeat:
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-                var promise = deferred.Promise.Preserve();
-
-                bool invoked = false;
-
-                promise
-                    .Finally(expected, cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    });
-
-                if (repeat)
-                {
-                    cancelationSource.Cancel();
-                }
-                else
-                {
-                    cancelationSource.Cancel("Cancel");
-                }
-                Promise.Manager.HandleCompletes();
-                Assert.AreEqual(true, invoked);
-
-                promise.Forget();
-                cancelationSource.Dispose();
-                if (repeat)
-                {
-                    repeat = false;
-                    goto Repeat;
-                }
-
+                cancelationSource.Cancel();
             }
+            else
+            {
+                cancelationSource.Cancel("Cancel");
+            }
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
 
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
+            cancelationSource.Dispose();
+            if (repeat)
+            {
+                repeat = false;
+                goto Repeat;
+            }
         }
 
         [Test]
         public void OnContinueWillBeInvokedWithCapturedValue_resolved_void()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
 
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                TestHelper.AddContinueCallbacks<int, string>(promise,
-                    captureValue: expected,
-                    onContinueCapture: (cv, r) =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    }
-                );
+            TestHelper.AddContinueCallbacks<int, string>(promise,
+                captureValue: expected,
+                onContinueCapture: (cv, r) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
 
-                deferred.Resolve();
-                Promise.Manager.HandleCompletes();
+            deferred.Resolve();
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void OnContinueWillBeInvokedWithCapturedValue_resolved_T()
         {
-            void Test()
-            {
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddContinueCallbacks<int, int, string>(promise,
-                    captureValue: expected,
-                    onContinueCapture: (cv, r) =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    }
-                );
+            TestHelper.AddContinueCallbacks<int, int, string>(promise,
+                captureValue: expected,
+                onContinueCapture: (cv, r) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
 
-                deferred.Resolve(50);
-                Promise.Manager.HandleCompletes();
+            deferred.Resolve(50);
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void OnContinueWillBeInvokedWithCapturedValue_rejected_void()
         {
-            void Test()
-            {
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddContinueCallbacks<int, string>(promise,
-                    captureValue: expected,
-                    onContinueCapture: (cv, r) =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    }
-                );
+            TestHelper.AddContinueCallbacks<int, string>(promise,
+                captureValue: expected,
+                onContinueCapture: (cv, r) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
 
-                deferred.Reject("Reject");
-                Promise.Manager.HandleCompletes();
+            deferred.Reject("Reject");
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void OnContinueWillBeInvokedWithCapturedValue_rejected_T()
         {
-            void Test()
-            {
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddContinueCallbacks<int, int, string>(promise,
-                    captureValue: expected,
-                    onContinueCapture: (cv, r) =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    }
-                );
+            TestHelper.AddContinueCallbacks<int, int, string>(promise,
+                captureValue: expected,
+                onContinueCapture: (cv, r) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
 
-                deferred.Reject("Reject");
-                Promise.Manager.HandleCompletes();
+            deferred.Reject("Reject");
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void OnContinueWillBeInvokedWithCapturedValue_canceled_void()
         {
-            void Test()
+            string expected = "expected";
+            bool repeat = true;
+        Repeat:
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var promise = deferred.Promise.Preserve();
+
+            bool invoked = false;
+
+            TestHelper.AddContinueCallbacks<int, string>(promise,
+                captureValue: expected,
+                onContinueCapture: (cv, r) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
+
+            if (repeat)
             {
-                string expected = "expected";
-                bool repeat = true;
-            Repeat:
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-                var promise = deferred.Promise.Preserve();
-
-                bool invoked = false;
-
-                TestHelper.AddContinueCallbacks<int, string>(promise,
-                    captureValue: expected,
-                    onContinueCapture: (cv, r) =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    }
-                );
-
-                if (repeat)
-                {
-                    cancelationSource.Cancel();
-                }
-                else
-                {
-                    cancelationSource.Cancel("Cancel");
-                }
-                Promise.Manager.HandleCompletes();
-
-                Assert.AreEqual(true, invoked);
-
-                cancelationSource.Dispose();
-                promise.Forget();
-                if (repeat)
-                {
-                    repeat = false;
-                    goto Repeat;
-                }
-
+                cancelationSource.Cancel();
             }
+            else
+            {
+                cancelationSource.Cancel("Cancel");
+            }
+            Promise.Manager.HandleCompletes();
 
-            Test();
-            TestHelper.Cleanup();
+            Assert.IsTrue(invoked);
+
+            cancelationSource.Dispose();
+            promise.Forget();
+            if (repeat)
+            {
+                repeat = false;
+                goto Repeat;
+            }
         }
 
         [Test]
         public void OnContinueWillBeInvokedWithCapturedValue_canceled_T()
         {
-            void Test()
+            bool repeat = true;
+        Repeat:
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var promise = deferred.Promise.Preserve();
+
+            string expected = "expected";
+            bool invoked = false;
+
+            TestHelper.AddContinueCallbacks<int, int, string>(promise,
+                captureValue: expected,
+                onContinueCapture: (cv, r) =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
+
+            if (repeat)
             {
-                bool repeat = true;
-            Repeat:
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-                var promise = deferred.Promise.Preserve();
-
-                string expected = "expected";
-                bool invoked = false;
-
-                TestHelper.AddContinueCallbacks<int, int, string>(promise,
-                    captureValue: expected,
-                    onContinueCapture: (cv, r) =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    }
-                );
-
-                if (repeat)
-                {
-                    cancelationSource.Cancel();
-                }
-                else
-                {
-                    cancelationSource.Cancel("Cancel");
-                }
-                Promise.Manager.HandleCompletes();
-
-                Assert.AreEqual(true, invoked);
-
-                cancelationSource.Dispose();
-                promise.Forget();
-                if (repeat)
-                {
-                    repeat = false;
-                    goto Repeat;
-                }
-
+                cancelationSource.Cancel();
             }
+            else
+            {
+                cancelationSource.Cancel("Cancel");
+            }
+            Promise.Manager.HandleCompletes();
 
-            Test();
-            TestHelper.Cleanup();
+            Assert.IsTrue(invoked);
+
+            cancelationSource.Dispose();
+            promise.Forget();
+            if (repeat)
+            {
+                repeat = false;
+                goto Repeat;
+            }
         }
 
         [Test]
         public void OnResolvedWillBeInvokedWithCapturedValue_void()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
 
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                TestHelper.AddResolveCallbacks<int, string>(promise,
-                    captureValue: expected,
-                    onResolveCapture: cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    }
-                );
-                TestHelper.AddCallbacks<int, object, string>(promise,
-                    captureValue: expected,
-                    onResolveCapture: cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    }
-                );
+            TestHelper.AddResolveCallbacks<int, string>(promise,
+                captureValue: expected,
+                onResolveCapture: cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
+            TestHelper.AddCallbacks<int, object, string>(promise,
+                captureValue: expected,
+                onResolveCapture: cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
 
-                deferred.Resolve();
-                Promise.Manager.HandleCompletes();
+            deferred.Resolve();
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void OnResolvedWillBeInvokedWithCapturedValue_T()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
 
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                TestHelper.AddResolveCallbacks<int, bool, string>(promise,
-                    captureValue: expected,
-                    onResolveCapture: cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    }
-                );
-                TestHelper.AddCallbacks<int, bool, object, string>(promise,
-                    captureValue: expected,
-                    onResolveCapture: cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    }
-                );
+            TestHelper.AddResolveCallbacks<int, bool, string>(promise,
+                captureValue: expected,
+                onResolveCapture: cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
+            TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                captureValue: expected,
+                onResolveCapture: cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
 
-                deferred.Resolve(50);
-                Promise.Manager.HandleCompletes();
+            deferred.Resolve(50);
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void OnRejectedWillBeInvokedWithCapturedValue_void()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
 
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                TestHelper.AddCallbacks<int, object, string>(promise,
-                    captureValue: expected,
-                    onRejectCapture: cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    },
-                    onUnknownRejectionCapture: cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    }
-                );
+            TestHelper.AddCallbacks<int, object, string>(promise,
+                captureValue: expected,
+                onRejectCapture: cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                },
+                onUnknownRejectionCapture: cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
 
-                deferred.Reject("Reject");
-                Promise.Manager.HandleCompletes();
+            deferred.Reject("Reject");
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void OnRejectedWillBeInvokedWithCapturedValue_T()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
 
-                string expected = "expected";
-                bool invoked = false;
+            string expected = "expected";
+            bool invoked = false;
 
-                TestHelper.AddCallbacks<int, bool, object, string>(promise,
-                    captureValue: expected,
-                    onResolveCapture: cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    },
-                    onUnknownRejectionCapture: cv =>
-                    {
-                        Assert.AreEqual(expected, cv);
-                        invoked = true;
-                    }
-                );
+            TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                captureValue: expected,
+                onResolveCapture: cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                },
+                onUnknownRejectionCapture: cv =>
+                {
+                    Assert.AreEqual(expected, cv);
+                    invoked = true;
+                }
+            );
 
-                deferred.Reject("Reject");
-                Promise.Manager.HandleCompletes();
+            deferred.Reject("Reject");
+            Promise.Manager.HandleCompletes();
 
-                Assert.AreEqual(true, invoked);
+            Assert.IsTrue(invoked);
 
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
     }
 }

@@ -104,7 +104,7 @@ namespace Proto.Promises
 #endif
         public Promise Progress(Action<float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
-            Internal.PromiseRef.PromiseImpl.Progress(this, onProgress, cancelationToken);
+            Internal.PromiseRef.PromiseImplVoid.Progress(this, onProgress, cancelationToken);
             return this;
         }
 
@@ -116,7 +116,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise CatchCancelation(CanceledAction onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
-            Internal.PromiseRef.PromiseImpl.CatchCancelation(this, onCanceled, cancelationToken);
+            Internal.PromiseRef.PromiseImplVoid.CatchCancelation(this, onCanceled, cancelationToken);
             return this;
         }
 
@@ -126,7 +126,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Finally(Action onFinally)
         {
-            Internal.PromiseRef.PromiseImpl.Finally(this, onFinally);
+            Internal.PromiseRef.PromiseImplVoid.Finally(this, onFinally);
             return this;
         }
 
@@ -142,7 +142,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then(Action onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, cancelationToken);
         }
 
         /// <summary>
@@ -156,7 +156,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult>(Func<TResult> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, cancelationToken);
         }
 
         /// <summary>
@@ -170,7 +170,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then(Func<Promise> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, cancelationToken);
         }
 
         /// <summary>
@@ -184,7 +184,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, cancelationToken);
         }
         #endregion
 
@@ -200,7 +200,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch(Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Catch(this, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Catch(this, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -215,7 +215,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch<TReject>(Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Catch(this, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Catch(this, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -229,7 +229,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch(Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Catch(this, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Catch(this, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -244,7 +244,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch<TReject>(Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Catch(this, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Catch(this, onRejected, cancelationToken);
         }
         #endregion
 
@@ -261,7 +261,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then(Action onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -277,7 +277,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TReject>(Action onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -292,7 +292,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -308,7 +308,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -323,7 +323,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then(Func<Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -339,7 +339,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TReject>(Func<Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -354,7 +354,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -370,7 +370,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -385,7 +385,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then(Action onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -401,7 +401,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TReject>(Action onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -416,7 +416,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -432,7 +432,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -447,7 +447,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then(Func<Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -463,7 +463,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TReject>(Func<Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -478,7 +478,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -494,7 +494,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
         }
         #endregion
 
@@ -508,7 +508,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise ContinueWith(ContinueAction onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.ContinueWith(this, onContinue, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, onContinue, cancelationToken);
         }
 
         /// <summary>
@@ -520,7 +520,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> ContinueWith<TResult>(ContinueFunc<TResult> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.ContinueWith(this, onContinue, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, onContinue, cancelationToken);
         }
 
         /// <summary>
@@ -532,7 +532,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise ContinueWith(ContinueFunc<Promise> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.ContinueWith(this, onContinue, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, onContinue, cancelationToken);
         }
 
         /// <summary>
@@ -544,7 +544,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> ContinueWith<TResult>(ContinueFunc<Promise<TResult>> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.ContinueWith(this, onContinue, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, onContinue, cancelationToken);
         }
         #endregion
 
@@ -561,7 +561,7 @@ namespace Proto.Promises
 #endif
         public Promise Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
-            Internal.PromiseRef.PromiseImpl.Progress(this, ref progressCaptureValue, onProgress, cancelationToken);
+            Internal.PromiseRef.PromiseImplVoid.Progress(this, ref progressCaptureValue, onProgress, cancelationToken);
             return this;
         }
 
@@ -573,7 +573,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, CanceledAction<TCaptureCancel> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
-            Internal.PromiseRef.PromiseImpl.CatchCancelation(this, ref cancelCaptureValue, onCanceled, cancelationToken);
+            Internal.PromiseRef.PromiseImplVoid.CatchCancelation(this, ref cancelCaptureValue, onCanceled, cancelationToken);
             return this;
         }
 
@@ -583,7 +583,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
         {
-            Internal.PromiseRef.PromiseImpl.Finally(this, ref finallyCaptureValue, onFinally);
+            Internal.PromiseRef.PromiseImplVoid.Finally(this, ref finallyCaptureValue, onFinally);
             return this;
         }
 
@@ -599,7 +599,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, cancelationToken);
         }
 
         /// <summary>
@@ -613,7 +613,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, cancelationToken);
         }
 
         /// <summary>
@@ -627,7 +627,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, cancelationToken);
         }
 
         /// <summary>
@@ -641,7 +641,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, cancelationToken);
         }
         #endregion
 
@@ -657,7 +657,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Catch(this, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Catch(this, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -672,7 +672,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Catch(this, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Catch(this, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -686,7 +686,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Catch(this, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Catch(this, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -701,7 +701,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Catch(this, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Catch(this, ref rejectCaptureValue, onRejected, cancelationToken);
         }
         #endregion
 
@@ -718,7 +718,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -733,7 +733,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -748,7 +748,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -764,7 +764,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -780,7 +780,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -796,7 +796,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -811,7 +811,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -826,7 +826,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -841,7 +841,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -857,7 +857,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -873,7 +873,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -889,7 +889,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -904,7 +904,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -919,7 +919,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -934,7 +934,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -950,7 +950,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -966,7 +966,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -982,7 +982,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -997,7 +997,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1012,7 +1012,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1027,7 +1027,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1043,7 +1043,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1059,7 +1059,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1075,7 +1075,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1090,7 +1090,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1105,7 +1105,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1120,7 +1120,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1136,7 +1136,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1152,7 +1152,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1168,7 +1168,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1183,7 +1183,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1198,7 +1198,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1213,7 +1213,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1229,7 +1229,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1245,7 +1245,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1261,7 +1261,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1276,7 +1276,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1291,7 +1291,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1306,7 +1306,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1322,7 +1322,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1338,7 +1338,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1354,7 +1354,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1369,7 +1369,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1384,7 +1384,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1399,7 +1399,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1415,7 +1415,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1431,7 +1431,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
 
         /// <summary>
@@ -1447,7 +1447,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
         }
         #endregion
 
@@ -1461,7 +1461,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, ContinueAction<TCapture> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.ContinueWith(this, ref continueCaptureValue, onContinue, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, ref continueCaptureValue, onContinue, cancelationToken);
         }
 
         /// <summary>
@@ -1473,7 +1473,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, ContinueFunc<TCapture, TResult> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.ContinueWith(this, ref continueCaptureValue, onContinue, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, ref continueCaptureValue, onContinue, cancelationToken);
         }
 
         /// <summary>
@@ -1485,7 +1485,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, ContinueFunc<TCapture, Promise> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.ContinueWith(this, ref continueCaptureValue, onContinue, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, ref continueCaptureValue, onContinue, cancelationToken);
         }
 
         /// <summary>
@@ -1497,7 +1497,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, ContinueFunc<TCapture, Promise<TResult>> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImpl.ContinueWith(this, ref continueCaptureValue, onContinue, cancelationToken);
+            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, ref continueCaptureValue, onContinue, cancelationToken);
         }
         #endregion
 

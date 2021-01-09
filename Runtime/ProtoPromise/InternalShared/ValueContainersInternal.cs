@@ -4,13 +4,8 @@
 #undef PROMISE_DEBUG
 # endif
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable RECS0001 // Class is declared partial but has only one part
 #pragma warning disable IDE0041 // Use 'is null' check
-#pragma warning disable CS0618 // Type or member is obsolete
-#pragma warning disable IDE0031 // Use null propagation
 
 using System;
 using System.Runtime.CompilerServices;
@@ -27,7 +22,7 @@ namespace Proto.Promises
         {
             private struct Creator : ICreator<RejectionContainer<T>>
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public RejectionContainer<T> Create()
                 {
                     return new RejectionContainer<T>();
@@ -36,14 +31,29 @@ namespace Proto.Promises
 
             RejectionContainer<T> ILinked<RejectionContainer<T>>.Next { get; set; }
 
-            public T Value { get; private set; }
+            public T Value
+            {
+                get
+                {
+                    ThrowIfInPool(this);
+                    return _value;
+                }
+            }
 
-            object IValueContainer.Value { get { return Value; } }
+            object IValueContainer.Value
+            {
+                get
+                {
+                    ThrowIfInPool(this);
+                    return Value;
+                }
+            }
 
             Type IValueContainer.ValueType
             {
                 get
                 {
+                    ThrowIfInPool(this);
                     Type type = typeof(T);
                     // Value is never null.
                     if (type.IsValueType)
@@ -54,7 +64,8 @@ namespace Proto.Promises
                 }
             }
 
-            private int _retainCounter;
+            private uint _retainCounter;
+            private T _value;
 
 #if PROMISE_DEBUG
             System.Diagnostics.StackTrace _rejectedStackTrace;
@@ -63,6 +74,7 @@ namespace Proto.Promises
 
             public void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, CausalityTrace createdStacktraces)
             {
+                ThrowIfInPool(this);
                 _rejectedStackTrace = rejectedStacktrace;
                 _stackTraces = createdStacktraces;
             }
@@ -71,23 +83,31 @@ namespace Proto.Promises
             public static RejectionContainer<T> GetOrCreate(ref T value)
             {
                 var container = ObjectPool<RejectionContainer<T>>.GetOrCreate<RejectionContainer<T>, Creator>(new Creator());
-                container.Value = value;
+                container._value = value;
                 return container;
             }
 
             public Promise.State GetState()
             {
+                ThrowIfInPool(this);
                 return Promise.State.Rejected;
             }
 
             public void Retain()
             {
-                ++_retainCounter;
+                ThrowIfInPool(this);
+#if PROMISE_DEBUG
+                checked
+#endif
+                {
+                    ++_retainCounter;
+                }
             }
 
             public void Release()
             {
-                if (--_retainCounter == 0)
+                ThrowIfInPool(this);
+                if (ReleaseInternal())
                 {
                     Dispose();
                 }
@@ -95,7 +115,8 @@ namespace Proto.Promises
 
             public void ReleaseAndMaybeAddToUnhandledStack()
             {
-                if (--_retainCounter == 0)
+                ThrowIfInPool(this);
+                if (ReleaseInternal())
                 {
                     AddUnhandledException(ToException());
                     Dispose();
@@ -104,10 +125,21 @@ namespace Proto.Promises
 
             public void ReleaseAndAddToUnhandledStack()
             {
+                ThrowIfInPool(this);
                 AddUnhandledException(ToException());
-                if (--_retainCounter == 0)
+                if (ReleaseInternal())
                 {
                     Dispose();
+                }
+            }
+
+            private bool ReleaseInternal()
+            {
+#if PROMISE_DEBUG
+                checked
+#endif
+                {
+                    return --_retainCounter == 0;
                 }
             }
 
@@ -117,11 +149,11 @@ namespace Proto.Promises
                 _rejectedStackTrace = null;
                 _stackTraces = null;
 #endif
-                Value = default(T);
+                _value = default(T);
                 ObjectPool<RejectionContainer<T>>.MaybeRepool(this);
             }
 
-            public UnhandledException ToException()
+            private UnhandledException ToException()
             {
 #if PROMISE_DEBUG
                 string innerStacktrace = _rejectedStackTrace == null ? null : FormatStackTrace(new System.Diagnostics.StackTrace[1] { _rejectedStackTrace });
@@ -156,16 +188,19 @@ namespace Proto.Promises
 
             Exception IThrowable.GetException()
             {
+                ThrowIfInPool(this);
                 return ToException();
             }
 
             IRejectValueContainer IRejectionToContainer.ToContainer(ITraceable traceable)
             {
+                ThrowIfInPool(this);
                 return this;
             }
 
             void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
             {
+                ThrowIfInPool(this);
                 AddUnhandledException(ToException());
             }
         }
@@ -177,7 +212,7 @@ namespace Proto.Promises
         {
             private struct Creator : ICreator<CancelContainer<T>>
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public CancelContainer<T> Create()
                 {
                     return new CancelContainer<T>();
@@ -186,15 +221,31 @@ namespace Proto.Promises
 
             CancelContainer<T> ILinked<CancelContainer<T>>.Next { get; set; }
 
-            public T Value { get; private set; }
-            private int _retainCounter;
+            private uint _retainCounter;
+            private T _value;
+            public T Value
+            {
+                get
+                {
+                    ThrowIfInPool(this);
+                    return _value;
+                }
+            }
 
-            object IValueContainer.Value { get { return Value; } }
+            object IValueContainer.Value
+            {
+                get
+                {
+                    ThrowIfInPool(this);
+                    return Value;
+                }
+            }
 
             Type IValueContainer.ValueType
             {
                 get
                 {
+                    ThrowIfInPool(this);
                     Type type = typeof(T);
                     // Value is never null.
                     if (type.IsValueType)
@@ -208,46 +259,62 @@ namespace Proto.Promises
             public static CancelContainer<T> GetOrCreate(ref T value)
             {
                 var container = ObjectPool<CancelContainer<T>>.GetOrCreate<CancelContainer<T>, Creator>(new Creator());
-                container.Value = value;
+                container._value = value;
                 return container;
             }
 
             public Promise.State GetState()
             {
+                ThrowIfInPool(this);
                 return Promise.State.Canceled;
             }
 
             public void Retain()
             {
-                ++_retainCounter;
+                ThrowIfInPool(this);
+#if PROMISE_DEBUG
+                checked
+#endif
+                {
+                    ++_retainCounter;
+                }
             }
 
             public void Release()
             {
-                if (--_retainCounter == 0)
+                ThrowIfInPool(this);
+#if PROMISE_DEBUG
+                checked
+#endif
                 {
-                    Dispose();
+                    if (--_retainCounter == 0)
+                    {
+                        Dispose();
+                    }
                 }
             }
 
             public void ReleaseAndMaybeAddToUnhandledStack()
             {
+                ThrowIfInPool(this);
                 Release();
             }
 
             public void ReleaseAndAddToUnhandledStack()
             {
+                ThrowIfInPool(this);
                 Release();
             }
 
             private void Dispose()
             {
-                Value = default(T);
+                _value = default(T);
                 ObjectPool<CancelContainer<T>>.MaybeRepool(this);
             }
 
             Exception IThrowable.GetException()
             {
+                ThrowIfInPool(this);
                 bool valueIsNull = ReferenceEquals(Value, null);
                 Type type = valueIsNull ? typeof(T) : Value.GetType();
                 string message = "Operation was canceled with a reason, type: " + type + ", value: " + (valueIsNull ? "NULL" : Value.ToString());
@@ -257,6 +324,7 @@ namespace Proto.Promises
 
             ICancelValueContainer ICancelationToContainer.ToContainer()
             {
+                ThrowIfInPool(this);
                 return this;
             }
         }
@@ -306,7 +374,7 @@ namespace Proto.Promises
         {
             private struct Creator : ICreator<ResolveContainer<T>>
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public ResolveContainer<T> Create()
                 {
                     return new ResolveContainer<T>();
@@ -316,16 +384,31 @@ namespace Proto.Promises
             ResolveContainer<T> ILinked<ResolveContainer<T>>.Next { get; set; }
 
             public T value;
-            private int _retainCounter;
+            private uint _retainCounter;
 
-            T IValueContainer<T>.Value { get { return value; } }
+            T IValueContainer<T>.Value
+            {
+                get
+                {
+                    ThrowIfInPool(this);
+                    return value;
+                }
+            }
 
-            object IValueContainer.Value { get { return value; } }
+            object IValueContainer.Value
+            {
+                get
+                {
+                    ThrowIfInPool(this);
+                    return value;
+                }
+            }
 
             Type IValueContainer.ValueType
             {
                 get
                 {
+                    ThrowIfInPool(this);
                     Type type = typeof(T);
                     if (type.IsValueType || ReferenceEquals(value, null))
                     {
@@ -344,29 +427,44 @@ namespace Proto.Promises
 
             public Promise.State GetState()
             {
+                ThrowIfInPool(this);
                 return Promise.State.Resolved;
             }
 
             public void Retain()
             {
-                ++_retainCounter;
+                ThrowIfInPool(this);
+#if PROMISE_DEBUG
+                checked
+#endif
+                {
+                    ++_retainCounter;
+                }
             }
 
             public void Release()
             {
-                if (--_retainCounter == 0)
+                ThrowIfInPool(this);
+#if PROMISE_DEBUG
+                checked
+#endif
                 {
-                    Dispose();
+                    if (--_retainCounter == 0)
+                    {
+                        Dispose();
+                    }
                 }
             }
 
             public void ReleaseAndMaybeAddToUnhandledStack()
             {
+                ThrowIfInPool(this);
                 Release();
             }
 
             public void ReleaseAndAddToUnhandledStack()
             {
+                ThrowIfInPool(this);
                 Release();
             }
 

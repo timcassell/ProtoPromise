@@ -30,7 +30,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<FirstPromise>
                 {
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    [MethodImpl((MethodImplOptions) 256)]
                     public FirstPromise Create()
                     {
                         return new FirstPromise();
@@ -44,17 +44,20 @@ namespace Proto.Promises
 
                 protected override void Dispose()
                 {
-                    base.Dispose();
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    if (_waitCount == 0) // Quick fix until TODO is done.
+                    {
+                        base.Dispose();
+                        ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    }
                 }
 
-                public static FirstPromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
+                public static FirstPromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<FirstPromise, Creator>(new Creator());
 
                     promise._passThroughs = promisePassThroughs;
 
-                    promise._waitCount = (uint) count;
+                    promise._waitCount = pendingAwaits;
                     promise.Reset();
 
                     foreach (var passThrough in promisePassThroughs)
@@ -72,6 +75,9 @@ namespace Proto.Promises
 
                 bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index)
                 {
+                    ThrowIfInPool(this);
+                    // TODO: remove all passthroughs from their owners when this is completed early.
+                    _passThroughs.Remove(passThrough);
                     PromiseRef owner = passThrough.Owner;
                     owner._suppressRejection = true;
                     bool done = --_waitCount == 0;
@@ -80,13 +86,6 @@ namespace Proto.Promises
                     {
                         valueContainer.Retain();
                         _valueOrPrevious = valueContainer;
-                    }
-                    if (done)
-                    {
-                        while (_passThroughs.IsNotEmpty)
-                        {
-                            _passThroughs.Pop().Release();
-                        }
                     }
                     return handle;
                 }
@@ -119,6 +118,7 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous)
                 {
+                    ThrowIfInPool(this);
                     // This is guaranteed to be pending.
                     previous = this;
                     return true;
@@ -126,6 +126,7 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
+                    ThrowIfInPool(this);
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     _progressListeners.Push(progressListener);
                     if (firstSubscribe & _state == Promise.State.Pending)
@@ -139,11 +140,13 @@ namespace Proto.Promises
 
                 protected override UnsignedFixed32 CurrentProgress()
                 {
+                    ThrowIfInPool(this);
                     return _currentAmount;
                 }
 
                 void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
+                    ThrowIfInPool(this);
                     if (_state != Promise.State.Pending) return;
 
                     // TODO: thread synchronization.

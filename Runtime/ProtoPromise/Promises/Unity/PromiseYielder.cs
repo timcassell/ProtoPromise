@@ -3,12 +3,13 @@
 
 using System;
 using System.Collections;
+using System.Runtime.CompilerServices;
 using Proto.Utils;
 using UnityEngine;
 
 namespace Proto.Promises
 {
-    partial class Promise
+    partial struct Promise
     {
         /// <summary>
         /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise"/> it came from has settled.
@@ -17,12 +18,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        public abstract class YieldInstruction : CustomYieldInstruction, IDisposable, Internal.ITreeHandleable
+        public abstract class YieldInstruction : CustomYieldInstruction, IDisposable
         {
-            Internal.ITreeHandleable ILinked<Internal.ITreeHandleable>.Next { get; set; }
-
-            protected object _value;
-            protected State _state;
+            volatile protected object _value;
+            volatile protected State _state;
+            volatile protected bool _isActive;
 
             internal YieldInstruction() { }
 
@@ -34,8 +34,7 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ValidateYieldInstructionOperation(_value, 1);
-
+                    ValidateOperation();
                     return _state;
                 }
             }
@@ -47,8 +46,7 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ValidateYieldInstructionOperation(_value, 1);
-
+                    ValidateOperation();
                     return State == State.Pending;
                 }
             }
@@ -60,7 +58,7 @@ namespace Proto.Promises
             /// </summary>
             public void GetResult()
             {
-                ValidateYieldInstructionOperation(_value, 1);
+                ValidateOperation();
 
                 if (_state == State.Pending)
                 {
@@ -76,7 +74,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Adds this object back to the pool.
+            /// Adds this object back to the pool if object pooling is enabled.
             /// Don't try to access it after disposing! Results are undefined.
             /// </summary>
             /// <remarks>Call <see cref="Dispose"/> when you are finished using the
@@ -87,27 +85,41 @@ namespace Proto.Promises
             /// that the <see cref="T:ProtoPromise.Promise.YieldInstruction"/> was occupying.</remarks>
             public virtual void Dispose()
             {
-                ValidateYieldInstructionOperation(_value, 1);
+                ValidateOperation();
 
-                ((IRetainable) _value).Release();
-                _value = disposedObject;
+                // Not bothering to remove from owner's branches, just mark for when the promise completes.
+                _isActive = false;
+                if (_state != State.Pending)
+                {
+                    ((IRetainable) _value).Release();
+                    _value = null;
+                }
             }
 
-            void Internal.ITreeHandleable.MakeReady(Promise owner, Internal.IValueContainer valueContainer, ref ValueLinkedQueue<Internal.ITreeHandleable> handleQueue)
+#if CSHARP_7_3_OR_NEWER // private protected not available in language versions.
+            private protected void Settle(Internal.IValueContainer valueContainer)
             {
-                valueContainer.Retain();
-                _value = valueContainer;
-                _state = valueContainer.GetState();
-            }
-
-            void Internal.ITreeHandleable.MakeReadyFromSettled(Promise owner, Internal.IValueContainer valueContainer)
+#else
+            protected void Settle(object container)
             {
-                valueContainer.Retain();
-                _value = valueContainer;
-                _state = valueContainer.GetState();
+                Internal.IValueContainer valueContainer = (Internal.IValueContainer) container;
+#endif
+                // TODO: thread safety
+                if (_isActive)
+                {
+                    valueContainer.Retain();
+                    _value = valueContainer;
+                    _state = valueContainer.GetState();
+                }
             }
 
-            void Internal.ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
+            protected void ValidateOperation()
+            {
+                if (!_isActive)
+                {
+                    throw new InvalidOperationException("Promise yield instruction is not valid. You can get a validate yield instruction by calling promise.ToYieldInstruction(). After you have disposed ", Internal.GetFormattedStacktrace(1));
+                }
+            }
         }
 
         /// <summary>
@@ -115,15 +127,23 @@ namespace Proto.Promises
         /// </summary>
         public YieldInstruction ToYieldInstruction()
         {
-            ValidateOperation(this, 1);
+            ValidateOperation(1);
 
-            var yield = InternalProtected.YieldInstructionVoid.GetOrCreate(this);
-            AddWaiter(yield);
-            return yield;
+            Internal.YieldInstructionVoid yieldInstruction;
+            if (_ref != null)
+            {
+                yieldInstruction = Internal.YieldInstructionVoid.GetOrCreate(null, State.Pending);
+                _ref.AddWaiter(yieldInstruction);
+            }
+            else
+            {
+                yieldInstruction = Internal.YieldInstructionVoid.GetOrCreate(Internal.ResolveContainerVoid.GetOrCreate(), State.Resolved);
+            }
+            return yieldInstruction;
         }
     }
 
-    partial class Promise<T>
+    partial struct Promise<T>
     {
         /// <summary>
         /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise{T}"/> it came from has settled.
@@ -132,7 +152,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        public abstract new class YieldInstruction : Promise.YieldInstruction
+        public abstract class YieldInstruction : Promise.YieldInstruction
         {
             internal YieldInstruction() { }
 
@@ -143,14 +163,14 @@ namespace Proto.Promises
             /// </summary>
             public new T GetResult()
             {
-                ValidateYieldInstructionOperation(_value, 1);
+                ValidateOperation();
 
-                if (_state == State.Pending)
+                if (_state == Promise.State.Pending)
                 {
                     throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
                 }
 
-                if (_state == State.Resolved)
+                if (_state == Promise.State.Resolved)
                 {
                     return ((Internal.ResolveContainer<T>) _value).value;
                 }
@@ -162,81 +182,116 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a new <see cref="Promise{T}.YieldInstruction"/> that can be yielded in a coroutine to wait until this is settled.
         /// </summary>
-        public new YieldInstruction ToYieldInstruction()
+        public YieldInstruction ToYieldInstruction()
         {
-            ValidateOperation(this, 1);
+            ValidateOperation(1);
 
-            var yield = InternalProtected.YieldInstruction<T>.GetOrCreate(this);
-            AddWaiter(yield);
-            return yield;
+            Internal.YieldInstruction<T> yieldInstruction;
+            if (_ref != null)
+            {
+                yieldInstruction = Internal.YieldInstruction<T>.GetOrCreate(null, Promise.State.Pending);
+                _ref.AddWaiter(yieldInstruction);
+            }
+            else
+            {
+                yieldInstruction = Internal.YieldInstruction<T>.GetOrCreate(Internal.ResolveContainerVoid.GetOrCreate(), Promise.State.Resolved);
+            }
+            return yieldInstruction;
         }
     }
 
-    partial class Promise
+    partial class Internal
     {
-        partial class InternalProtected
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
+        internal sealed class YieldInstructionVoid : Promise.YieldInstruction, ITreeHandleable // Annoying old runtime can't compile generic ObjectPool with interface only in the base.
         {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            public sealed class YieldInstructionVoid : YieldInstruction
+            private struct Creator : ICreator<YieldInstructionVoid>
             {
-                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
-
-                static YieldInstructionVoid()
+                [MethodImpl(256)]
+                public YieldInstructionVoid Create()
                 {
-                    Internal.OnClearPool += () => _pool.Clear();
-                }
-
-                private YieldInstructionVoid() { }
-
-                public static YieldInstructionVoid GetOrCreate(Promise owner)
-                {
-                    var yieldInstruction = _pool.IsNotEmpty ? (YieldInstructionVoid) _pool.Pop() : new YieldInstructionVoid();
-                    yieldInstruction._state = owner._state;
-                    return yieldInstruction;
-                }
-
-                public override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
+                    return new YieldInstructionVoid();
                 }
             }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            public sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, Internal.ITreeHandleable
+            private YieldInstructionVoid() { }
+
+            public static YieldInstructionVoid GetOrCreate(object valueContainer, Promise.State state)
             {
-                private static ValueLinkedStack<Internal.ITreeHandleable> _pool;
+                var yieldInstruction = ObjectPool<ITreeHandleable>.GetOrCreate<YieldInstructionVoid, Creator>(new Creator());
+                yieldInstruction._value = valueContainer;
+                yieldInstruction._state = state;
+                yieldInstruction._isActive = true;
+                return yieldInstruction;
+            }
 
-                static YieldInstruction()
+            public override void Dispose()
+            {
+                base.Dispose();
+                ObjectPool<ITreeHandleable>.MaybeRepool(this);
+            }
+
+            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+
+            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+            {
+                Settle(valueContainer);
+            }
+
+            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+            {
+                Settle(valueContainer);
+            }
+
+            void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
+        internal sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, ITreeHandleable // Annoying old runtime can't compile generic ObjectPool with interface only in the base.
+        {
+            private struct Creator : ICreator<YieldInstruction<T>>
+            {
+                [MethodImpl(256)]
+                public YieldInstruction<T> Create()
                 {
-                    Internal.OnClearPool += () => _pool.Clear();
-                }
-
-                private YieldInstruction() { }
-
-                public static YieldInstruction<T> GetOrCreate(Promise owner)
-                {
-                    var yieldInstruction = _pool.IsNotEmpty ? (YieldInstruction<T>) _pool.Pop() : new YieldInstruction<T>();
-                    yieldInstruction._state = owner._state;
-                    return yieldInstruction;
-                }
-
-                public override void Dispose()
-                {
-                    base.Dispose();
-                    if (Config.ObjectPooling == PoolType.All)
-                    {
-                        _pool.Push(this);
-                    }
+                    return new YieldInstruction<T>();
                 }
             }
+
+            private YieldInstruction() { }
+
+            public static YieldInstruction<T> GetOrCreate(object valueContainer, Promise.State state)
+            {
+                var yieldInstruction = ObjectPool<ITreeHandleable>.GetOrCreate<YieldInstruction<T>, Creator>(new Creator());
+                yieldInstruction._value = valueContainer;
+                yieldInstruction._state = state;
+                yieldInstruction._isActive = true;
+                return yieldInstruction;
+            }
+
+            public override void Dispose()
+            {
+                base.Dispose();
+                ObjectPool<ITreeHandleable>.MaybeRepool(this);
+            }
+
+            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+
+            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+            {
+                Settle(valueContainer);
+            }
+
+            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+            {
+                Settle(valueContainer);
+            }
+
+            void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
         }
     }
 
@@ -304,18 +359,20 @@ namespace Proto.Promises
 #endif
         private class Routine : IEnumerator, ILinked<Routine>
         {
-            Routine ILinked<Routine>.Next { get; set; }
+            private struct Creator : Internal.ICreator<Routine>
+            {
+                [MethodImpl(256)]
+                public Routine Create()
+                {
+                    return new Routine();
+                }
+            }
 
-            private static ValueLinkedStack<Routine> _pool;
+            Routine ILinked<Routine>.Next { get; set; }
 
             public static Routine GetOrCreate()
             {
-                return _pool.IsNotEmpty ? _pool.Pop() : new Routine();
-            }
-
-            static Routine()
-            {
-                _onClearObjects += () => _pool.Clear();
+                return Internal.ObjectPool<Routine>.GetOrCreate<Routine, Creator>(new Creator());
             }
 
             private Routine() { }
@@ -340,7 +397,7 @@ namespace Proto.Promises
                 var deferred = onComplete;
                 onComplete = default(Promise.Deferred);
                 // Place this back in the pool before invoking in case the invocation will re-use this.
-                _pool.Push(this);
+                Internal.ObjectPool<Routine>.MaybeRepool(this);
                 try
                 {
                     deferred.Resolve();
@@ -362,20 +419,20 @@ namespace Proto.Promises
 #endif
         private class Routine<T> : IEnumerator, ILinked<Routine<T>>
         {
-            Routine<T> ILinked<Routine<T>>.Next { get; set; }
+            private struct Creator : Internal.ICreator<Routine<T>>
+            {
+                [MethodImpl(256)]
+                public Routine<T> Create()
+                {
+                    return new Routine<T>();
+                }
+            }
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-            private static ValueLinkedStack<Routine<T>> _pool;
-#pragma warning restore RECS0108 // Warns about static fields in generic types
+            Routine<T> ILinked<Routine<T>>.Next { get; set; }
 
             public static Routine<T> GetOrCreate()
             {
-                return _pool.IsNotEmpty ? _pool.Pop() : new Routine<T>();
-            }
-
-            static Routine()
-            {
-                _onClearObjects += () => _pool.Clear();
+                return Internal.ObjectPool<Routine<T>>.GetOrCreate<Routine<T>, Creator>(new Creator());
             }
 
             private Routine() { }
@@ -403,7 +460,7 @@ namespace Proto.Promises
                 T tempObj = Current;
                 Current = default(T);
                 // Place this back in the pool before invoking in case the invocation will re-use this.
-                _pool.Push(this);
+                Internal.ObjectPool<Routine<T>>.MaybeRepool(this);
                 try
                 {
                     deferred.Resolve(tempObj);

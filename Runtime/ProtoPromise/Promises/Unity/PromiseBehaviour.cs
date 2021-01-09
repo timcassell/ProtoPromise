@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Proto.Promises
 {
-    partial class Promise
+    partial struct Promise
     {
         static Promise()
         {

@@ -20,205 +20,205 @@ namespace Proto.Promises
             // These static functions help with the implementation so we don't need to type the generics every time.
             private static class DelegateWrapper
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateResolvePassthroughCancel CreatePassthroughCancelable()
                 {
                     return new DelegateResolvePassthroughCancel(true);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateResolvePassthrough CreatePassthrough()
                 {
                     return new DelegateResolvePassthrough();
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateVoidVoidCancel CreateCancelable(Action callback)
                 {
                     return new DelegateVoidVoidCancel(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateVoidVoid Create(Action callback)
                 {
                     return new DelegateVoidVoid(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateVoidResultCancel<TResult> CreateCancelable<TResult>(Func<TResult> callback)
                 {
                     return new DelegateVoidResultCancel<TResult>(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateVoidResult<TResult> Create<TResult>(Func<TResult> callback)
                 {
                     return new DelegateVoidResult<TResult>(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateVoidPromiseCancel CreateCancelable(Func<Promise> callback)
                 {
                     return new DelegateVoidPromiseCancel(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateVoidPromise Create(Func<Promise> callback)
                 {
                     return new DelegateVoidPromise(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateVoidPromiseTCancel<TResult> CreateCancelable<TResult>(Func<Promise<TResult>> callback)
                 {
                     return new DelegateVoidPromiseTCancel<TResult>(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateVoidPromiseT<TResult> Create<TResult>(Func<Promise<TResult>> callback)
                 {
                     return new DelegateVoidPromiseT<TResult>(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateArgVoidCancel<TArg> CreateCancelable<TArg>(Action<TArg> callback)
                 {
                     return new DelegateArgVoidCancel<TArg>(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateArgVoid<TArg> Create<TArg>(Action<TArg> callback)
                 {
                     return new DelegateArgVoid<TArg>(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateArgResultCancel<TArg, TResult> CreateCancelable<TArg, TResult>(Func<TArg, TResult> callback)
                 {
                     return new DelegateArgResultCancel<TArg, TResult>(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateArgResult<TArg, TResult> Create<TArg, TResult>(Func<TArg, TResult> callback)
                 {
                     return new DelegateArgResult<TArg, TResult>(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateArgPromiseCancel<TArg> CreateCancelable<TArg>(Func<TArg, Promise> callback)
                 {
                     return new DelegateArgPromiseCancel<TArg>(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateArgPromise<TArg> Create<TArg>(Func<TArg, Promise> callback)
                 {
                     return new DelegateArgPromise<TArg>(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateArgPromiseTCancel<TArg, TResult> CreateCancelable<TArg, TResult>(Func<TArg, Promise<TResult>> callback)
                 {
                     return new DelegateArgPromiseTCancel<TArg, TResult>(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateArgPromiseT<TArg, TResult> Create<TArg, TResult>(Func<TArg, Promise<TResult>> callback)
                 {
                     return new DelegateArgPromiseT<TArg, TResult>(callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureVoidVoidCancel<TCapture> CreateCancelable<TCapture>(ref TCapture capturedValue, Action<TCapture> callback)
                 {
                     return new DelegateCaptureVoidVoidCancel<TCapture>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureVoidVoid<TCapture> Create<TCapture>(ref TCapture capturedValue, Action<TCapture> callback)
                 {
                     return new DelegateCaptureVoidVoid<TCapture>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureVoidResultCancel<TCapture, TResult> CreateCancelable<TCapture, TResult>(ref TCapture capturedValue, Func<TCapture, TResult> callback)
                 {
                     return new DelegateCaptureVoidResultCancel<TCapture, TResult>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(ref TCapture capturedValue, Func<TCapture, TResult> callback)
                 {
                     return new DelegateCaptureVoidResult<TCapture, TResult>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureVoidPromiseCancel<TCapture> CreateCancelable<TCapture>(ref TCapture capturedValue, Func<TCapture, Promise> callback)
                 {
                     return new DelegateCaptureVoidPromiseCancel<TCapture>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureVoidPromise<TCapture> Create<TCapture>(ref TCapture capturedValue, Func<TCapture, Promise> callback)
                 {
                     return new DelegateCaptureVoidPromise<TCapture>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureVoidPromiseTCancel<TCapture, TResult> CreateCancelable<TCapture, TResult>(ref TCapture capturedValue, Func<TCapture, Promise<TResult>> callback)
                 {
                     return new DelegateCaptureVoidPromiseTCancel<TCapture, TResult>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureVoidPromiseT<TCapture, TResult> Create<TCapture, TResult>(ref TCapture capturedValue, Func<TCapture, Promise<TResult>> callback)
                 {
                     return new DelegateCaptureVoidPromiseT<TCapture, TResult>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureArgVoidCancel<TCapture, TArg> CreateCancelable<TCapture, TArg>(ref TCapture capturedValue, Action<TCapture, TArg> callback)
                 {
                     return new DelegateCaptureArgVoidCancel<TCapture, TArg>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(ref TCapture capturedValue, Action<TCapture, TArg> callback)
                 {
                     return new DelegateCaptureArgVoid<TCapture, TArg>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureArgResultCancel<TCapture, TArg, TResult> CreateCancelable<TCapture, TArg, TResult>(ref TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
                 {
                     return new DelegateCaptureArgResultCancel<TCapture, TArg, TResult>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(ref TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
                 {
                     return new DelegateCaptureArgResult<TCapture, TArg, TResult>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureArgPromiseCancel<TCapture, TArg> CreateCancelable<TCapture, TArg>(ref TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
                 {
                     return new DelegateCaptureArgPromiseCancel<TCapture, TArg>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureArgPromise<TCapture, TArg> Create<TCapture, TArg>(ref TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
                 {
                     return new DelegateCaptureArgPromise<TCapture, TArg>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureArgPromiseTCancel<TCapture, TArg, TResult> CreateCancelable<TCapture, TArg, TResult>(ref TCapture capturedValue, Func<TCapture, TArg, Promise<TResult>> callback)
                 {
                     return new DelegateCaptureArgPromiseTCancel<TCapture, TArg, TResult>(ref capturedValue, callback);
                 }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public static DelegateCaptureArgPromiseT<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(ref TCapture capturedValue, Func<TCapture, TArg, Promise<TResult>> callback)
                 {
                     return new DelegateCaptureArgPromiseT<TCapture, TArg, TResult>(ref capturedValue, callback);
@@ -247,7 +247,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<FinallyDelegate>
                 {
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    [MethodImpl((MethodImplOptions) 256)]
                     public FinallyDelegate Create()
                     {
                         return new FinallyDelegate();
@@ -295,16 +295,19 @@ namespace Proto.Promises
 
                 void ITreeHandleable.Handle()
                 {
+                    ThrowIfInPool(this);
                     InvokeAndCatchAndDispose();
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
+                    ThrowIfInPool(this);
                     handleQueue.Push(this);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
                 {
+                    ThrowIfInPool(this);
                     AddToHandleQueueBack(this);
                 }
             }
@@ -773,7 +776,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<FinallyDelegateCapture<TCapture>>
                 {
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    [MethodImpl((MethodImplOptions) 256)]
                     public FinallyDelegateCapture<TCapture> Create()
                     {
                         return new FinallyDelegateCapture<TCapture>();
@@ -825,16 +828,19 @@ namespace Proto.Promises
 
                 void ITreeHandleable.Handle()
                 {
+                    ThrowIfInPool(this);
                     InvokeAndCatchAndDispose();
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
+                    ThrowIfInPool(this);
                     handleQueue.Push(this);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
                 {
+                    ThrowIfInPool(this);
                     AddToHandleQueueBack(this);
                 }
             }

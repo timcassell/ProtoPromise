@@ -22,7 +22,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal static partial class PromiseImpl
+            internal static partial class PromiseImplVoid
             {
                 internal static void Progress(Promise _this, Action<float> onProgress, CancelationToken cancelationToken)
                 {

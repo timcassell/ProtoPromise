@@ -41,7 +41,7 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Use IsPending.", false)]
+            [Obsolete("Use IsPending. Promise may still be valid when Deferred is invalid.", false)]
             public bool IsValid
             {
                 get
@@ -175,11 +175,7 @@ namespace Proto.Promises
 #if CSHARP_7_OR_LATER
                 return obj is DeferredBase deferredBase && Equals(deferredBase);
 #else
-                if (other is DeferredBase)
-                {
-                    return Equals((DeferredBase) other);
-                }
-                return false;
+                return obj is DeferredBase && Equals((DeferredBase) obj);
 #endif
             }
 
@@ -260,7 +256,7 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Use IsPending.", false)]
+            [Obsolete("Use IsPending. Promise may still be valid when Deferred is invalid.", false)]
             public bool IsValid
             {
                 get
@@ -297,7 +293,7 @@ namespace Proto.Promises
             public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
             {
                 var promise = cancelationToken.CanBeCanceled
-                    ? Internal.PromiseRef.DeferredPromiseCancel.GetOrCreate(cancelationToken)
+                    ? Internal.PromiseRef.DeferredPromiseVoidCancel.GetOrCreate(cancelationToken)
                     : Internal.PromiseRef.DeferredPromiseVoid.GetOrCreate();
                 return new Deferred(promise, promise.Id, promise.DeferredId);
             }
@@ -401,11 +397,7 @@ namespace Proto.Promises
 #if CSHARP_7_OR_LATER
                 return obj is Deferred deferred && Equals(deferred);
 #else
-                if (other is DeferredBase)
-                {
-                    return Equals((DeferredBase) other);
-                }
-                return false;
+                return obj is Deferred && Equals((Deferred) obj);
 #endif
             }
 
@@ -489,7 +481,7 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Use IsPending.", false)]
+            [Obsolete("Use IsPending. Promise may still be valid when Deferred is invalid.", false)]
             public bool IsValid
             {
                 get
@@ -630,11 +622,7 @@ namespace Proto.Promises
 #if CSHARP_7_OR_LATER
                 return obj is Deferred deferred && Equals(deferred);
 #else
-                if (other is DeferredBase)
-                {
-                    return Equals((DeferredBase) other);
-                }
-                return false;
+                return obj is Deferred && Equals((Deferred) obj);
 #endif
             }
 

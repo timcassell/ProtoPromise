@@ -24,8 +24,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="ProtoPromiseTests\ProtoPromiseTests.asmdef" />
-    <None Remove="ProtoPromiseTests\ProtoPromiseTests.asmdef.meta" />
+    <None Remove="**/*.meta" />
+    <None Remove="**/*.asmdef" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="ProtoPromiseTests\.gitignore" />
   </ItemGroup>
 
   <ItemGroup>

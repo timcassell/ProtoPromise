@@ -58,7 +58,7 @@ namespace Proto.Promises
         {
             private struct Creator : ICreator<CancelDelegate<TCanceler>>
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public CancelDelegate<TCanceler> Create()
                 {
                     return new CancelDelegate<TCanceler>();
@@ -83,6 +83,7 @@ namespace Proto.Promises
 
             void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
             {
+                ThrowIfInPool(this);
                 if (valueContainer.GetState() == Promise.State.Canceled && canceler.TrySetValue(valueContainer))
                 {
                     handleQueue.Push(this);
@@ -95,6 +96,7 @@ namespace Proto.Promises
 
             void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
             {
+                ThrowIfInPool(this);
                 if (valueContainer.GetState() == Promise.State.Canceled && canceler.TrySetValue(valueContainer))
                 {
                     AddToHandleQueueBack(this);
@@ -107,6 +109,7 @@ namespace Proto.Promises
 
             void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
+                ThrowIfInPool(this);
                 SetCurrentInvoker(this);
                 try
                 {
@@ -121,6 +124,7 @@ namespace Proto.Promises
 
             void ITreeHandleable.Handle()
             {
+                ThrowIfInPool(this);
                 SetCurrentInvoker(this);
                 TCanceler callback = canceler;
                 Dispose();
@@ -146,6 +150,7 @@ namespace Proto.Promises
 
             void ICancelDelegate.Dispose()
             {
+                ThrowIfInPool(this);
                 canceler.MaybeDispose(this);
             }
         }
@@ -157,7 +162,7 @@ namespace Proto.Promises
         {
             private struct Creator : ICreator<CancelationRef>
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public CancelationRef Create()
                 {
                     return new CancelationRef();
@@ -232,6 +237,7 @@ namespace Proto.Promises
 
             public void AddLinkedCancelation(CancelationRef listener)
             {
+                ThrowIfInPool(this);
                 if (IsCanceled)
                 {
                     // Don't need to worry about invoking callbacks here since this is only called from CancelationSource.New.
@@ -246,6 +252,7 @@ namespace Proto.Promises
 
             public uint Register(ICancelDelegate callback)
             {
+                ThrowIfInPool(this);
                 if (ValueContainer != null)
                 {
                     callback.Invoke(ValueContainer);
@@ -270,6 +277,7 @@ namespace Proto.Promises
                 int index = IndexOf(order);
                 if (tokenId == TokenId & index >= 0)
                 {
+                    ThrowIfInPool(this);
                     RegisteredDelegate del = _registeredCallbacks[index];
                     if (!_isInvoking)
                     {
@@ -294,12 +302,14 @@ namespace Proto.Promises
 
             public void SetCanceled()
             {
+                ThrowIfInPool(this);
                 ValueContainer = CancelContainerVoid.GetOrCreate();
                 InvokeCallbacks();
             }
 
             public void SetCanceled<T>(ref T cancelValue)
             {
+                ThrowIfInPool(this);
                 ValueContainer = CreateCancelContainer(ref cancelValue);
                 ValueContainer.Retain();
                 InvokeCallbacks();
@@ -344,6 +354,7 @@ namespace Proto.Promises
 
             public void Retain()
             {
+                ThrowIfInPool(this);
                 // Make sure Retain doesn't overflow the ushort. 1 retain is reserved for internal use.
                 if (_retainCounter == ushort.MaxValue - 1)
                 {
@@ -354,6 +365,7 @@ namespace Proto.Promises
 
             public void Release()
             {
+                ThrowIfInPool(this);
                 if (_retainCounter == 0 | (_isInvoking & _retainCounter == 1))
                 {
                     throw new InvalidOperationException("You must call Retain before you call Release!", GetFormattedStacktrace(1));
@@ -377,6 +389,7 @@ namespace Proto.Promises
 
             public void Dispose()
             {
+                ThrowIfInPool(this);
                 _isDisposed = true;
                 ++SourceId;
                 _registeredCount = 0;
@@ -424,6 +437,7 @@ namespace Proto.Promises
 
             void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
+                ThrowIfInPool(this);
                 // In case this is called recursively from another callback.
                 if (_isDisposed | IsCanceled) return;
 

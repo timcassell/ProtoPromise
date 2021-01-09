@@ -12,17 +12,10 @@ namespace Proto.Promises.Tests
 {
     public class SequenceTests
     {
-        [SetUp]
-        public void Setup()
-        {
-            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = null;
-        }
-
         [TearDown]
         public void Teardown()
         {
-            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            TestHelper.Cleanup();
         }
 
         [Test]
@@ -31,53 +24,50 @@ namespace Proto.Promises.Tests
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
 
-            var completed = 0;
+            bool completed = false;
 
             Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
-                .Then(() => ++completed);
+                .Then(() => { completed = true; })
+                .Forget();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, completed);
+            Assert.IsFalse(completed);
 
             deferred1.Resolve();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, completed);
+            Assert.IsFalse(completed);
 
             deferred2.Resolve();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(1, completed);
-
-            TestHelper.Cleanup();
+            Assert.IsTrue(completed);
         }
 
         [Test]
         public void SequencePromiseIsResolvedIfThereAreNoDelegates()
         {
-            var completed = 0;
+            bool completed = false;
 
             Promise.Sequence(Enumerable.Empty<Func<Promise>>())
-                .Then(() => ++completed);
+                .Then(() => { completed = true; })
+                .Forget();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(1, completed);
-
-            TestHelper.Cleanup();
+            Assert.IsTrue(completed);
         }
 
         [Test]
         public void SequencePromiseIsResolvedWhenAllPromisesAreAlreadyResolved()
         {
-            var completed = 0;
+            bool completed = false;
 
             Promise.Sequence(() => Promise.Resolved(), () => Promise.Resolved())
-                .Then(() => ++completed);
+                .Then(() => { completed = true; })
+                .Forget();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(1, completed);
-
-            TestHelper.Cleanup();
+            Assert.IsTrue(completed);
         }
 
         [Test]
@@ -86,26 +76,25 @@ namespace Proto.Promises.Tests
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
 
-            var errors = 0;
+            bool invoked = false;
 
             Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(e => ++errors);
+                .Catch((string e) => { invoked = true; })
+                .Forget();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, errors);
+            Assert.IsFalse(invoked);
 
-            deferred1.Reject("Error!");
+            deferred1.Reject("Error");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(1, errors);
+            Assert.IsTrue(invoked);
 
             deferred2.Resolve();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(1, errors);
-
-            TestHelper.Cleanup();
+            Assert.IsTrue(invoked);
+            deferred2.Promise.Forget(); // Need to forget this promise because it was never awaited due to the rejection.
         }
 
         [Test]
@@ -114,26 +103,24 @@ namespace Proto.Promises.Tests
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
 
-            var errors = 0;
+            bool invoked = false;
 
             Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(e => ++errors);
+                .Catch((string e) => { invoked = true; })
+                .Forget();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, errors);
+            Assert.IsFalse(invoked);
 
             deferred1.Resolve();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, errors);
+            Assert.IsFalse(invoked);
 
-            deferred2.Reject("Error!");
+            deferred2.Reject("Error");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(1, errors);
-
-            TestHelper.Cleanup();
+            Assert.IsTrue(invoked);
         }
 
         [Test]
@@ -144,16 +131,19 @@ namespace Proto.Promises.Tests
 
             int invokes = 0;
 
-            Promise.Sequence(() => { ++invokes; return deferred1.Promise; }, () => { ++invokes; return deferred2.Promise; })
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch((object e) => { if (e is AssertionException) throw (AssertionException) e; });
+            Promise.Sequence(
+                () => { ++invokes; return deferred1.Promise; },
+                () => { ++invokes; return deferred2.Promise; }
+            )
+                .Catch(() => { })
+                .Forget();
 
             Assert.AreEqual(0, invokes);
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
 
-            deferred1.Reject("Error!");
+            deferred1.Reject("Error");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
@@ -162,35 +152,32 @@ namespace Proto.Promises.Tests
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
-
-            TestHelper.Cleanup();
+            deferred2.Promise.Forget(); // Need to forget this promise because it was never awaited due to the rejection.
         }
 
         [Test]
         public void SequencePromiseIsRejectedWhenAnyPromiseIsAlreadyRejected()
         {
-            int rejected = 0;
-            string rejection = "Error!";
+            bool invoked = false;
+            string rejection = "Error";
 
             var deferred = Promise.NewDeferred<int>();
 
-            Promise.Sequence(() => deferred.Promise, () => Promise.Rejected<int, string>(rejection))
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(ex =>
+            Promise.Sequence(() => deferred.Promise, () => Promise<int>.Rejected(rejection))
+                .Catch((string ex) =>
                 {
                     Assert.AreEqual(rejection, ex);
-                    ++rejected;
-                });
+                    invoked = true;
+                })
+                .Forget();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, rejected);
+            Assert.IsFalse(invoked);
 
-            deferred.Resolve(0);
+            deferred.Resolve(1);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(1, rejected);
-
-            TestHelper.Cleanup();
+            Assert.IsTrue(invoked);
         }
 
         [Test]
@@ -200,27 +187,27 @@ namespace Proto.Promises.Tests
             var deferred1 = Promise.NewDeferred(cancelationSource.Token);
             var deferred2 = Promise.NewDeferred();
 
-            var cancelations = 0;
+            bool invoked = false;
 
             Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(e => ++cancelations);
+                .CatchCancelation(e => invoked = true)
+                .Forget();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, cancelations);
+            Assert.IsFalse(invoked);
 
-            cancelationSource.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(1, cancelations);
+            Assert.IsTrue(invoked);
 
             deferred2.Resolve();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(1, cancelations);
+            Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
+            deferred2.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
         }
 
         [Test]
@@ -230,27 +217,26 @@ namespace Proto.Promises.Tests
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred2 = Promise.NewDeferred(cancelationSource.Token);
 
-            var cancelations = 0;
+            bool invoked = false;
 
             Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(e => ++cancelations);
+                .CatchCancelation(e => invoked = true)
+                .Forget();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, cancelations);
+            Assert.IsFalse(invoked);
 
             deferred1.Resolve();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, cancelations);
+            Assert.IsFalse(invoked);
 
-            cancelationSource.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel");
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(1, cancelations);
+            Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
@@ -262,15 +248,18 @@ namespace Proto.Promises.Tests
 
             int invokes = 0;
 
-            Promise.Sequence(() => { ++invokes; return deferred1.Promise; }, () => { ++invokes; return deferred2.Promise; })
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."));
+            Promise.Sequence(
+                () => { ++invokes; return deferred1.Promise; },
+                () => { ++invokes; return deferred2.Promise; }
+            )
+                .Forget();
 
             Assert.AreEqual(0, invokes);
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
 
-            cancelationSource.Cancel("Cancel!");
+            cancelationSource.Cancel("Cancel");
 
             Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
@@ -281,34 +270,32 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(1, invokes);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
+            deferred2.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
         }
 
         [Test]
         public void SequencePromiseIsCanceledWhenAnyPromiseIsAlreadyCanceled()
         {
-            int canceled = 0;
-            string cancelation = "Cancel!";
+            bool invoked = false;
+            string cancelation = "Cancel";
 
             var deferred = Promise.NewDeferred<int>();
 
             Promise.Sequence(() => deferred.Promise, () => Promise.Canceled<int, string>(cancelation))
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
                 .CatchCancelation(reason =>
                 {
                     Assert.AreEqual(cancelation, reason.Value);
-                    ++canceled;
-                });
+                    invoked = true;
+                })
+                .Forget();
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(0, canceled);
+            Assert.IsFalse(invoked);
 
-            deferred.Resolve(0);
+            deferred.Resolve(1);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(1, canceled);
-
-            TestHelper.Cleanup();
+            Assert.IsTrue(invoked);
         }
 
         [Test]
@@ -334,7 +321,8 @@ namespace Proto.Promises.Tests
                 .CatchCancelation(reason =>
                 {
                     canceled = true;
-                });
+                })
+                .Forget();
 
             cancelationSource.Cancel();
             Promise.Manager.HandleCompletes();
@@ -343,7 +331,6 @@ namespace Proto.Promises.Tests
             Assert.IsTrue(canceled);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
@@ -366,7 +353,8 @@ namespace Proto.Promises.Tests
                     invokedIndex = 1;
                     return Promise.Resolved();
                 }
-            );
+            )
+                .Forget();
 
             Promise.Manager.HandleCompletes();
             cancelationSource.Cancel();
@@ -376,7 +364,6 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(0, invokedIndex);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
@@ -398,14 +385,14 @@ namespace Proto.Promises.Tests
                     invokedIndex = 1;
                     return Promise.Resolved();
                 }
-            );
+            )
+                .Forget();
 
             Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(0, invokedIndex);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
@@ -437,7 +424,8 @@ namespace Proto.Promises.Tests
                 .CatchCancelation(reason =>
                 {
                     canceled = true;
-                });
+                })
+                .Forget();
 
             Promise.Manager.HandleCompletes();
 
@@ -445,7 +433,6 @@ namespace Proto.Promises.Tests
             Assert.IsFalse(canceled);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
         }
 
 #if PROMISE_PROGRESS
@@ -460,7 +447,8 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise, () => deferred3.Promise, () => deferred4.Promise)
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -496,8 +484,6 @@ namespace Proto.Promises.Tests
             deferred4.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(4f / 4f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
@@ -512,7 +498,8 @@ namespace Proto.Promises.Tests
 
             Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise, () => deferred3.Promise, () => deferred4.Promise)
                 .Progress(p => progress = p)
-                .Catch(() => { });
+                .Catch(() => { })
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -548,8 +535,8 @@ namespace Proto.Promises.Tests
             deferred4.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
+            deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the rejection.
+            deferred4.Promise.Forget(); // Need to forget this promise because it was never awaited due to the rejection.
         }
 
         [Test]
@@ -564,7 +551,8 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise, () => deferred3.Promise, () => deferred4.Promise)
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -602,7 +590,8 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
+            deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
+            deferred4.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
         }
 #endif
     }

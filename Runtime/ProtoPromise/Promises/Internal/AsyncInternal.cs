@@ -4,9 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
-#if CSHARP_7_OR_LATER // async/await not available in old runtime.
+#if CSHARP_7_OR_LATER // async not available in old runtime.
 
-#pragma warning disable CS0436 // Type conflicts with imported type
 #pragma warning disable IDE0060 // Remove unused parameter
 
 using System;
@@ -18,201 +17,16 @@ using Proto.Utils;
 
 namespace Proto.Promises
 {
-    namespace Async.CompilerServices
-    {
-        /// <summary>
-        /// Used to support the await keyword.
-        /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct PromiseAwaiter : ICriticalNotifyCompletion
-        {
-            private readonly Promise _promise;
-
-            /// <summary>
-            /// Internal use.
-            /// </summary>
-            internal PromiseAwaiter(Promise promise)
-            {
-                if (promise._ref != null)
-                {
-                    promise._ref.MarkAwaited(promise._id);
-                    _promise = new Promise(promise._ref, promise._ref.Id);
-                }
-                else
-                {
-                    _promise = promise;
-                }
-            }
-
-            public bool IsCompleted
-            {
-                get
-                {
-                    ValidateOperation(1);
-
-                    return _promise._ref == null || _promise._ref.State != Promise.State.Pending;
-                }
-            }
-
-            public void GetResult()
-            {
-                ValidateOperation(1);
-
-                if (_promise._ref != null)
-                {
-                    _promise._ref.GetResultForAwaiter(_promise._id);
-                }
-            }
-
-            public void OnCompleted(Action continuation)
-            {
-                ValidateOperation(1);
-
-                // If this is called only from the `await` keyword, the check is unnecessary.
-                // The check is added for safety in case users call `promise.GetAwaiter()` and use the awaiter directly.
-                if (_promise._ref != null)
-                {
-                    _promise._ref.OnCompletedForAwaiter(continuation);
-                }
-                else
-                {
-                    _promise.Finally(continuation);
-                }
-            }
-
-            public void UnsafeOnCompleted(Action continuation)
-            {
-                OnCompleted(continuation);
-            }
-
-            partial void ValidateOperation(int skipFrames);
-#if PROMISE_DEBUG
-            partial void ValidateOperation(int skipFrames)
-            {
-                Internal.ValidateOperation(_promise, skipFrames + 1);
-            }
-#endif
-        }
-
-        /// <summary>
-        /// Used to support the await keyword.
-        /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct PromiseAwaiter<T> : ICriticalNotifyCompletion
-        {
-            private readonly Promise<T> _promise;
-
-            /// <summary>
-            /// Internal use.
-            /// </summary>
-            internal PromiseAwaiter(Promise<T> promise)
-            {
-                if (promise._ref != null)
-                {
-                    promise._ref.MarkAwaited(promise._id);
-                    _promise = new Promise<T>(promise._ref, promise._ref.Id);
-                }
-                else
-                {
-                    _promise = promise;
-                }
-            }
-
-            public bool IsCompleted
-            {
-                get
-                {
-                    ValidateOperation(1);
-
-                    return _promise._ref == null || _promise._ref.State != Promise.State.Pending;
-                }
-            }
-
-            public T GetResult()
-            {
-                ValidateOperation(1);
-
-                if (_promise._ref != null)
-                {
-                    return _promise._ref.GetResultForAwaiter<T>(_promise._id);
-                }
-                return _promise._result;
-            }
-
-            public void OnCompleted(Action continuation)
-            {
-                ValidateOperation(1);
-
-                // If this is called only from the `await` keyword, the check is unnecessary.
-                // The check is added for safety in case users call `promise.GetAwaiter()` and use the awaiter directly.
-                if (_promise._ref != null)
-                {
-                    _promise._ref.OnCompletedForAwaiter(continuation);
-                }
-                else
-                {
-                    _promise.Finally(continuation);
-                }
-            }
-
-            public void UnsafeOnCompleted(Action continuation)
-            {
-                OnCompleted(continuation);
-            }
-
-            partial void ValidateOperation(int skipFrames);
-#if PROMISE_DEBUG
-            partial void ValidateOperation(int skipFrames)
-            {
-                Internal.ValidateOperation(_promise, skipFrames + 1);
-            }
-#endif
-        }
-    }
-
     [AsyncMethodBuilder(typeof(PromiseMethodBuilder))]
-    partial struct Promise
-    {
-        /// <summary>
-        /// Used to support the await keyword.
-        /// </summary>
-        public PromiseAwaiter GetAwaiter()
-        {
-            ValidateOperation(1);
-
-            return new PromiseAwaiter(this);
-        }
-    }
+    partial struct Promise { }
 
     [AsyncMethodBuilder(typeof(PromiseMethodBuilder<>))]
-    partial struct Promise<T>
-    {
-        /// <summary>
-        /// Used to support the await keyword.
-        /// </summary>
-        public PromiseAwaiter<T> GetAwaiter()
-        {
-            ValidateOperation(1);
-
-            return new PromiseAwaiter<T>(this);
-        }
-    }
+    partial struct Promise<T> { }
 }
 
 namespace System.Runtime.CompilerServices
 {
+#pragma warning disable CS0436 // Type conflicts with imported type
     internal sealed class AsyncMethodBuilderAttribute : Attribute
     {
         public Type BuilderType { get; }
@@ -222,6 +36,7 @@ namespace System.Runtime.CompilerServices
             BuilderType = builderType;
         }
     }
+#pragma warning restore CS0436 // Type conflicts with imported type
 }
 
 namespace Proto.Promises.Async.CompilerServices
@@ -236,7 +51,7 @@ namespace Proto.Promises.Async.CompilerServices
     {
         private struct Creator : Internal.ICreator<AsyncPromiseRef>
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl((MethodImplOptions) 256)]
             public AsyncPromiseRef Create()
             {
                 return new AsyncPromiseRef();
@@ -313,7 +128,7 @@ namespace Proto.Promises.Async.CompilerServices
             {
                 private struct Creator : Internal.ICreator<Continuer<TStateMachine>>
                 {
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    [MethodImpl((MethodImplOptions) 256)]
                     public Continuer<TStateMachine> Create()
                     {
                         return new Continuer<TStateMachine>();
@@ -431,6 +246,7 @@ namespace Proto.Promises.Async.CompilerServices
             where TAwaiter : INotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
+            // TODO: check for circular awaits (promise waiting on itself)
             awaiter.OnCompleted(_promise.GetContinuation(ref stateMachine));
         }
 
@@ -522,7 +338,7 @@ namespace Proto.Promises.Async.CompilerServices
         {
             new private struct Creator : Internal.ICreator<AsyncPromiseRefMachine<TStateMachine>>
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl((MethodImplOptions) 256)]
                 public AsyncPromiseRefMachine<TStateMachine> Create()
                 {
                     return new AsyncPromiseRefMachine<TStateMachine>();
@@ -545,7 +361,7 @@ namespace Proto.Promises.Async.CompilerServices
 
             protected override void Dispose()
             {
-                base.Dispose();
+                SuperDispose();
                 _stateMachine = default;
                 Internal.ObjectPool<Internal.ITreeHandleable>.MaybeRepool(this);
             }
@@ -577,6 +393,20 @@ namespace Proto.Promises.Async.CompilerServices
         internal static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref) where TStateMachine : IAsyncStateMachine
         {
             AsyncPromiseRefMachine<TStateMachine>.SetStateMachine(ref stateMachine, ref _ref);
+        }
+
+        protected override void Dispose()
+        {
+            base.Dispose();
+            Internal.ObjectPool<Internal.ITreeHandleable>.MaybeRepool(this);
+        }
+
+        // Used for child to call base dispose without repooling for both types.
+        // This is necessary because C# doesn't allow `base.base.Dispose()`.
+        [MethodImpl((MethodImplOptions) 256)]
+        protected void SuperDispose()
+        {
+            base.Dispose();
         }
     }
 
@@ -698,6 +528,10 @@ namespace Proto.Promises.Async.CompilerServices
             if (_ref != null)
             {
                 _ref.SetResult(ref result);
+            }
+            else
+            {
+                _result = result;
             }
         }
 

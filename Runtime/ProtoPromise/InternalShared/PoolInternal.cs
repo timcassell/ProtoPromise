@@ -1,6 +1,13 @@
-﻿#pragma warning disable RECS0108 // Warns about static fields in generic types
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
+#pragma warning disable RECS0108 // Warns about static fields in generic types
 
 using Proto.Utils;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -9,7 +16,7 @@ namespace Proto.Promises
     partial class Internal
     {
         // Using static generic classes to hold the pools allows direct pool access at runtime without doing a dictionary lookup.
-        internal static class ObjectPool<TLinked> where TLinked : class, ILinked<TLinked>
+        internal static partial class ObjectPool<TLinked> where TLinked : class, ILinked<TLinked>
         {
             private static class Type<T> where T : TLinked
             {
@@ -32,8 +39,8 @@ namespace Proto.Promises
             // `new` constraint uses reflection, too expensive. Delegate consumes memory and has indirection costs.
             // Generic constraint for the creator allows using a struct to make a new object, so no extra memory is consumed.
             // If the compiler/JIT is smart, it should be able to resolve the creator statically and inline it, so no indirection or function call costs.
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static T GetOrCreate<T, TCreator>(TCreator creator) where T : TLinked where TCreator : ICreator<T>
+            [MethodImpl((MethodImplOptions) 256)]
+            internal static T GetOrCreate<T, TCreator>(TCreator creator) where T : TLinked where TCreator : ICreator<T>
             {
                 // TODO
                 //Monitor.Enter(Type<T>.lockObject);
@@ -44,14 +51,16 @@ namespace Proto.Promises
                 }
                 var obj = Type<T>.pool.Pop();
                 //Monitor.Exit(Type<T>.lockObject);
+                RemoveFromTrackedObjects(obj);
                 return (T) obj;
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void MaybeRepool<T>(T obj) where T : TLinked
+            [MethodImpl((MethodImplOptions) 256)]
+            internal static void MaybeRepool<T>(T obj) where T : TLinked
             {
                 if (Promise.Config.ObjectPoolingEnabled)
                 {
+                    AddToTrackedObjects(obj);
                     // TODO
                     //lock (Type<T>.lockObject)
                     {
@@ -59,6 +68,57 @@ namespace Proto.Promises
                     }
                 }
             }
+
+            static partial void AddToTrackedObjects(object obj);
+            static partial void RemoveFromTrackedObjects(object obj);
+#if PROMISE_DEBUG
+            static partial void AddToTrackedObjects(object obj)
+            {
+                lock (_pooledObjects)
+                {
+                    if (!_pooledObjects.Add(obj))
+                    {
+                        throw new InvalidOperationException("Same object was added to the pool twice");
+                    }
+                }
+            }
+
+            static partial void RemoveFromTrackedObjects(object obj)
+            {
+                lock (_pooledObjects)
+                {
+                    _pooledObjects.Remove(obj);
+                }
+            }
+#endif
         }
+
+        static partial void ThrowIfInPool(object obj);
+#if PROMISE_DEBUG
+        private static readonly HashSet<object> _pooledObjects = new HashSet<object>();
+
+        static Internal()
+        {
+            OnClearPool += () =>
+            {
+                lock (_pooledObjects)
+                {
+                    _pooledObjects.Clear();
+                }
+            };
+        }
+
+        static partial void ThrowIfInPool(object obj)
+        {
+            lock (_pooledObjects)
+            {
+                if (_pooledObjects.Contains(obj))
+                {
+                    throw new InvalidOperationException("Object is in pool.");
+                }
+            }
+        }
+#endif
     }
 }
+

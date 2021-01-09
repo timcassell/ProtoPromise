@@ -11,198 +11,149 @@ namespace Proto.Promises.Tests
 {
     public class FinallyTests
     {
-        [SetUp]
-        public void Setup()
-        {
-            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = null;
-        }
-
         [TearDown]
         public void Teardown()
         {
-            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            TestHelper.Cleanup();
         }
 
 #if PROMISE_DEBUG
         [Test]
         public void IfOnFinallyIsNullThrow_void()
         {
-            void Test()
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                promise.Finally(default(Action));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Finally(default(Action));
-                });
+            deferred.Resolve();
 
-                deferred.Resolve();
-
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 
         [Test]
         public void IfOnFinallyIsNullThrow_T()
         {
-            void Test()
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
+
+            Assert.Throws<ArgumentNullException>(() =>
             {
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                promise.Finally(default(Action));
+            });
 
-                Assert.Throws<ArgumentNullException>(() =>
-                {
-                    promise.Finally(default(Action));
-                });
+            deferred.Resolve(1);
 
-                deferred.Resolve(1);
-
-                promise.Forget();
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            promise.Forget();
         }
 #endif
 
         [Test]
         public void OnFinallyIsInvokedWhenPromiseIsResolved_void()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred();
+            var deferred = Promise.NewDeferred();
 
-                bool invoked = false;
+            bool invoked = false;
 
-                deferred.Promise
-                    .Finally(() => invoked = true)
-                    .Forget();
+            deferred.Promise
+                .Finally(() => invoked = true)
+                .Forget();
 
-                deferred.Resolve();
+            deferred.Resolve();
 
-                Promise.Manager.HandleCompletes();
-                Assert.IsTrue(invoked);
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
         }
 
         [Test]
         public void OnFinallyIsInvokedWhenPromiseIsResolved_T()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred<int>();
+            var deferred = Promise.NewDeferred<int>();
 
-                bool invoked = false;
+            bool invoked = false;
 
-                deferred.Promise
-                    .Finally(() => invoked = true)
-                    .Forget();
+            deferred.Promise
+                .Finally(() => invoked = true)
+                .Forget();
 
-                deferred.Resolve(1);
+            deferred.Resolve(1);
 
-                Promise.Manager.HandleCompletes();
-                Assert.IsTrue(invoked);
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
         }
 
         [Test]
         public void OnFinallyIsInvokedWhenPromiseIsRejected_void()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred();
+            var deferred = Promise.NewDeferred();
 
-                bool invoked = false;
+            bool invoked = false;
 
-                deferred.Promise
-                    .Finally(() => invoked = true)
-                    .Catch(() => { })
-                    .Forget();
+            deferred.Promise
+                .Finally(() => invoked = true)
+                .Catch(() => { })
+                .Forget();
 
-                deferred.Reject("Reject");
+            deferred.Reject("Reject");
 
-                Promise.Manager.HandleCompletes();
-                Assert.IsTrue(invoked);
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
         }
 
         [Test]
         public void OnFinallyIsInvokedWhenPromiseIsRejected_T()
         {
-            void Test()
-            {
-                var deferred = Promise.NewDeferred<int>();
+            var deferred = Promise.NewDeferred<int>();
 
-                bool invoked = false;
+            bool invoked = false;
 
-                deferred.Promise
-                    .Finally(() => invoked = true)
-                    .Catch(() => { })
-                    .Forget();
+            deferred.Promise
+                .Finally(() => invoked = true)
+                .Catch(() => { })
+                .Forget();
 
-                deferred.Reject("Reject");
+            deferred.Reject("Reject");
 
-                Promise.Manager.HandleCompletes();
-                Assert.IsTrue(invoked);
-            }
-
-            Test();
-            TestHelper.Cleanup();
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
         }
 
         [Test]
         public void OnFinallyIsInvokedWhenPromiseIsCanceled_void()
         {
-            void Test()
+            bool repeat = true;
+        Repeat:
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
+
+            bool invoked = false;
+
+            deferred.Promise
+                .Finally(() => invoked = true)
+                .Forget();
+
+            if (repeat)
             {
-                bool repeat = true;
-            Repeat:
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
-
-                bool invoked = false;
-
-                deferred.Promise
-                    .Finally(() => invoked = true)
-                    .Forget();
-
-                if (repeat)
-                {
-                    cancelationSource.Cancel();
-                }
-                else
-                {
-                    cancelationSource.Cancel("Cancel");
-                }
-
-                Promise.Manager.HandleCompletes();
-                Assert.AreEqual(true, invoked);
-
-                cancelationSource.Dispose();
-
-                if (repeat)
-                {
-                    repeat = false;
-                    goto Repeat;
-                }
+                cancelationSource.Cancel();
+            }
+            else
+            {
+                cancelationSource.Cancel("Cancel");
             }
 
-            Test();
-            TestHelper.Cleanup();
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+
+            cancelationSource.Dispose();
+
+            if (repeat)
+            {
+                repeat = false;
+                goto Repeat;
+            }
         }
     }
 }

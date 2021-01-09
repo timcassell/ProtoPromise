@@ -7,18 +7,33 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
+using System.Threading;
 
 namespace Proto.Promises.Tests
 {
     // These help test all Then/Catch functions at once.
     public static class TestHelper
     {
+        internal static Exception exception = null;
+        
+        static TestHelper()
+        {
+            // Capture first exception from finalizers.
+            Promise.Config.UncaughtRejectionHandler = e => Interlocked.CompareExchange(ref exception, e, null);
+            Promise.Config.ObjectPoolingEnabled = true; // Make sure to test object pool.
+        }
+
         public static void Cleanup()
         {
             Promise.Manager.HandleCompletesAndProgress();
             GC.Collect();
             GC.WaitForPendingFinalizers();
             Promise.Manager.HandleCompletesAndProgress();
+            Exception e = Interlocked.Exchange(ref exception, null);
+            if (e != null)
+            {
+                throw e;
+            }
         }
 
         public static Promise ThenDuplicate(this Promise promise)
@@ -30,8 +45,6 @@ namespace Proto.Promises.Tests
         {
             return promise.Then(v => v);
         }
-
-        public static Action<UnhandledException> cachedRejectionHandler;
 
 #if PROMISE_PROGRESS
         public static readonly double progressEpsilon = 1d / Math.Pow(2d, Promise.Config.ProgressDecimalBits);
@@ -1576,50 +1589,50 @@ namespace Proto.Promises.Tests
             onCancelCapture += (_, __) => { };
 
             Promise p1 = default(Promise);
-            p1 = promise.ContinueWith(r => { onContinue(r); promiseToVoid(p1); }, cancelationToken)
+            p1 = promise.ContinueWith(new Promise<T>.ContinueAction(r => { onContinue(r); promiseToVoid(p1); }), cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p1.Forget());
             onCallbackAdded(p1);
             Promise<TConvert> p2 = default(Promise<TConvert>);
-            p2 = promise.ContinueWith(r => { onContinue(r); return promiseToConvert(p2); }, cancelationToken)
+            p2 = promise.ContinueWith(new Promise<T>.ContinueFunc<TConvert>(r => { onContinue(r); return promiseToConvert(p2); }), cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p2.Forget());
             onCallbackAddedConvert(p2);
             Promise p3 = default(Promise);
-            p3 = promise.ContinueWith(r => { onContinue(r); return promiseToPromise(p3); }, cancelationToken)
+            p3 = promise.ContinueWith(new Promise<T>.ContinueFunc<Promise>(r => { onContinue(r); return promiseToPromise(p3); }), cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p3.Forget());
             onCallbackAdded(p3);
             Promise<TConvert> p4 = default(Promise<TConvert>);
-            p4 = promise.ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); }, cancelationToken)
+            p4 = promise.ContinueWith(new Promise<T>.ContinueFunc<Promise<TConvert>>(r => { onContinue(r); return promiseToPromiseConvert(p4); }), cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p4.Forget());
             onCallbackAddedConvert(p4);
 
             Promise p5 = default(Promise);
-            p5 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); promiseToVoid(p5); }, cancelationToken)
+            p5 = promise.ContinueWith(captureValue, new Promise<T>.ContinueAction<TCapture>((cv, r) => { onContinueCapture(cv, r); onContinue(r); promiseToVoid(p5); }), cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p5.Forget());
             onCallbackAdded(p5);
             Promise<TConvert> p6 = default(Promise<TConvert>);
-            p6 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToConvert(p6); }, cancelationToken)
+            p6 = promise.ContinueWith(captureValue, new Promise<T>.ContinueFunc<TCapture, TConvert>((cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToConvert(p6); }), cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p6.Forget());
             onCallbackAddedConvert(p6);
             Promise p7 = default(Promise);
-            p7 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }, cancelationToken)
+            p7 = promise.ContinueWith(captureValue, new Promise<T>.ContinueFunc<TCapture, Promise>((cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }), cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p7.Forget());
             onCallbackAdded(p7);
             Promise<TConvert> p8 = default(Promise<TConvert>);
-            p8 = promise.ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }, cancelationToken)
+            p8 = promise.ContinueWith(captureValue, new Promise<T>.ContinueFunc<TCapture, Promise<TConvert>>((cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }), cancelationToken)
                 .CatchCancelation(onCancel)
                 .CatchCancelation(captureValue, onCancelCapture)
                 .Preserve().Finally(() => p8.Forget());

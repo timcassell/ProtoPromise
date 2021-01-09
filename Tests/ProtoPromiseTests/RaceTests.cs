@@ -10,182 +10,477 @@ namespace Proto.Promises.Tests
 {
     public class RaceTests
     {
-        [SetUp]
-        public void Setup()
-        {
-            TestHelper.cachedRejectionHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = null;
-        }
-
         [TearDown]
         public void Teardown()
         {
-            Promise.Config.UncaughtRejectionHandler = TestHelper.cachedRejectionHandler;
+            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceIsResolvedWhenFirstPromiseIsResolvedFirst()
+        public void RaceIsResolvedWhenFirstPromiseIsResolvedFirst_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            bool resolved = false;
+
+            Promise.Race(deferred1.Promise, deferred2.Promise)
+                .Then(() =>
+                {
+                    resolved = true;
+                })
+                .Forget();
+
+            deferred1.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
+
+            deferred2.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
+        }
+
+        [Test]
+        public void RaceIsResolvedWhenFirstPromiseIsResolvedFirst_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
 
-            var resolved = 0;
+            bool resolved = false;
 
-            //Promise.Race(deferred1.Promise, deferred2.Promise)
-            //.Then(i => { Assert.AreEqual(5, i); ++resolved; });
-
-            Promise.Race((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => ++resolved);
+            Promise.Race(deferred1.Promise, deferred2.Promise)
+                .Then(i =>
+                {
+                    Assert.AreEqual(5, i);
+                    resolved = true;
+                })
+                .Forget();
 
             deferred1.Resolve(5);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(1, resolved);
+            Assert.IsTrue(resolved);
 
             deferred2.Resolve(1);
 
-            TestHelper.Cleanup();
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
         }
 
         [Test]
-        public void RaceIsResolvedWhenSecondPromiseIsResolvedFirst()
+        public void RaceIsResolvedWhenSecondPromiseIsResolvedFirst_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            bool resolved = false;
+
+            Promise.Race(deferred1.Promise, deferred2.Promise)
+                .Then(() =>
+                {
+                    resolved = true;
+                })
+                .Forget();
+
+            deferred2.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
+
+            deferred1.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
+        }
+
+        [Test]
+        public void RaceIsResolvedWhenSecondPromiseIsResolvedFirst_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
 
-            var resolved = 0;
+            bool resolved = false;
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
-                .Then(i => { Assert.AreEqual(5, i); ++resolved; });
-
-            Promise.Race((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => ++resolved);
+                .Then(i =>
+                {
+                    Assert.AreEqual(5, i);
+                    resolved = true;
+                })
+                .Forget();
 
             deferred2.Resolve(5);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, resolved);
+            Assert.IsTrue(resolved);
 
             deferred1.Resolve(1);
 
-            TestHelper.Cleanup();
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(resolved);
         }
 
         [Test]
-        public void RaceIsRejectedWhenFirstPromiseIsRejectedFirst()
+        public void RaceIsRejectedWhenFirstPromiseIsRejectedFirst_void()
         {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
 
-            var invoked = 0;
-            string expected = "Error!";
+            bool invoked = false;
+            string expected = "Error";
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
-                .Then(i => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(rej => { Assert.AreEqual(expected, rej); ++invoked; });
-
-            Promise.Race((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(rej => { Assert.AreEqual(expected, rej); ++invoked; });
+                .Catch((string rej) =>
+                {
+                    Assert.AreEqual(expected, rej);
+                    invoked = true;
+                })
+                .Forget();
 
             deferred1.Reject(expected);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, invoked);
+            Assert.IsTrue(invoked);
 
-            deferred2.Resolve(5);
+            deferred2.Resolve();
 
-            TestHelper.Cleanup();
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
         }
 
         [Test]
-        public void RaceIsRejectedWhenSecondPromiseIsRejectedFirst()
+        public void RaceIsRejectedWhenFirstPromiseIsRejectedFirst_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
 
-            var invoked = 0;
-            string expected = "Error!";
+            bool invoked = false;
+            string expected = "Error";
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
-                .Then(i => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(rej => { Assert.AreEqual(expected, rej); ++invoked; });
+                .Catch((string rej) =>
+                {
+                    Assert.AreEqual(expected, rej);
+                    invoked = true;
+                })
+                .Forget();
 
-            Promise.Race((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been rejected."))
-                .Catch<string>(rej => { Assert.AreEqual(expected, rej); ++invoked; });
+            deferred1.Reject(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+
+            deferred2.Resolve(5);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+        }
+
+        [Test]
+        public void RaceIsRejectedWhenSecondPromiseIsRejectedFirst_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            bool invoked = false;
+            string expected = "Error";
+
+            Promise.Race(deferred1.Promise, deferred2.Promise)
+                .Catch((string rej) =>
+                {
+                    Assert.AreEqual(expected, rej);
+                    invoked = true;
+                })
+                .Forget();
 
             deferred2.Reject(expected);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, invoked);
+            Assert.IsTrue(invoked);
 
-            deferred1.Resolve(5);
+            deferred1.Resolve();
 
-            TestHelper.Cleanup();
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
         }
 
         [Test]
-        public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst()
+        public void RaceIsRejectedWhenSecondPromiseIsRejectedFirst_T()
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+
+            bool invoked = false;
+            string expected = "Error";
+
+            Promise.Race(deferred1.Promise, deferred2.Promise)
+                .Catch((string rej) =>
+                {
+                    Assert.AreEqual(expected, rej);
+                    invoked = true;
+                })
+                .Forget();
+
+            deferred2.Reject(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+
+            deferred1.Resolve(5);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+        }
+
+        [Test]
+        public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst_void0()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred();
+
+            bool invoked = false;
+            string expected = "Cancel";
+
+            Promise.Race(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.AreEqual(expected, reason.Value);
+                    invoked = true;
+                })
+                .Forget();
+
+            cancelationSource.Cancel(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+
+            deferred2.Resolve();
+
+            cancelationSource.Dispose();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+        }
+
+        [Test]
+        public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst_T0()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
             var deferred2 = Promise.NewDeferred<int>();
 
-            var invoked = 0;
-            string expected = "Error!";
+            bool invoked = false;
+            string expected = "Cancel";
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
-                .Then(i => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(reason => { Assert.AreEqual(expected, reason.Value); ++invoked; });
-
-            Promise.Race((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(reason => { Assert.AreEqual(expected, reason.Value); ++invoked; });
+                .CatchCancelation(reason =>
+                {
+                    Assert.AreEqual(expected, reason.Value);
+                    invoked = true;
+                })
+                .Forget();
 
             cancelationSource.Cancel(expected);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, invoked);
+            Assert.IsTrue(invoked);
 
             deferred2.Resolve(5);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
         }
 
         [Test]
-        public void RaceIsCanceledWhenSecondPromiseIsCanceledFirst()
+        public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst_void1()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred();
+
+            bool invoked = false;
+
+            Promise.Race(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.IsNull(reason.ValueType);
+                    invoked = true;
+                })
+                .Forget();
+
+            cancelationSource.Cancel();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+
+            deferred2.Resolve();
+
+            cancelationSource.Dispose();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+        }
+
+        [Test]
+        public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst_T1()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred<int>();
+
+            bool invoked = false;
+
+            Promise.Race(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.IsNull(reason.ValueType);
+                    invoked = true;
+                })
+                .Forget();
+
+            cancelationSource.Cancel();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+
+            deferred2.Resolve(5);
+
+            cancelationSource.Dispose();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+        }
+
+        [Test]
+        public void RaceIsCanceledWhenSecondPromiseIsCanceledFirst_void0()
+        {
+            var deferred1 = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+
+            bool invoked = false;
+            string expected = "Cancel";
+
+            Promise.Race(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.AreEqual(expected, reason.Value);
+                    invoked = true;
+                })
+                .Forget();
+
+            cancelationSource.Cancel(expected);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+
+            deferred1.Resolve();
+
+            cancelationSource.Dispose();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+        }
+
+        [Test]
+        public void RaceIsCanceledWhenSecondPromiseIsCanceledFirst_T0()
         {
             var deferred1 = Promise.NewDeferred<int>();
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
 
-            var invoked = 0;
-            string expected = "Error!";
+            bool invoked = false;
+            string expected = "Cancel";
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
-                .Then(i => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(reason => { Assert.AreEqual(expected, reason.Value); ++invoked; });
-
-            Promise.Race((Promise) deferred1.Promise, deferred2.Promise)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(reason => { Assert.AreEqual(expected, reason.Value); ++invoked; });
+                .CatchCancelation(reason =>
+                {
+                    Assert.AreEqual(expected, reason.Value);
+                    invoked = true;
+                })
+                .Forget();
 
             cancelationSource.Cancel(expected);
 
             Promise.Manager.HandleCompletes();
-            Assert.AreEqual(2, invoked);
+            Assert.IsTrue(invoked);
 
             deferred1.Resolve(5);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+        }
+
+        [Test]
+        public void RaceIsCanceledWhenSecondPromiseIsCanceledFirst_void1()
+        {
+            var deferred1 = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+
+            bool invoked = false;
+
+            Promise.Race(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.IsNull(reason.ValueType);
+                    invoked = true;
+                })
+                .Forget();
+
+            cancelationSource.Cancel();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+
+            deferred1.Resolve();
+
+            cancelationSource.Dispose();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+        }
+
+        [Test]
+        public void RaceIsCanceledWhenSecondPromiseIsCanceledFirst_T1()
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
+
+            bool invoked = false;
+
+            Promise.Race(deferred1.Promise, deferred2.Promise)
+                .CatchCancelation(reason =>
+                {
+                    Assert.IsNull(reason.ValueType);
+                    invoked = true;
+                })
+                .Forget();
+
+            cancelationSource.Cancel();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+
+            deferred1.Resolve(5);
+
+            cancelationSource.Dispose();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
         }
 
 #if PROMISE_PROGRESS
         [Test]
-        public void RaceProgressReportsTheMaximumProgress0()
+        public void RaceProgressReportsTheMaximumProgress_void0()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -193,7 +488,8 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -229,12 +525,10 @@ namespace Proto.Promises.Tests
             deferred2.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressReportsTheMaximumProgress1()
+        public void RaceProgressReportsTheMaximumProgress_T0()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -242,7 +536,8 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -278,19 +573,18 @@ namespace Proto.Promises.Tests
             deferred2.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressReportsTheMaximumProgress2()
+        public void RaceProgressReportsTheMaximumProgress_void1()
         {
             var deferred1 = Promise.NewDeferred();
 
             float progress = float.NaN;
 
             Promise.Race(deferred1.Promise, Promise.Resolved())
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, 0f);
@@ -298,19 +592,18 @@ namespace Proto.Promises.Tests
             deferred1.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, 0f);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressReportsTheMaximumProgress3()
+        public void RaceProgressReportsTheMaximumProgress_T1()
         {
             var deferred1 = Promise.NewDeferred<int>();
 
             float progress = float.NaN;
 
             Promise.Race(deferred1.Promise, Promise.Resolved(1))
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, 0f);
@@ -318,12 +611,10 @@ namespace Proto.Promises.Tests
             deferred1.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, 0f);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressReportsTheMaximumProgress4()
+        public void RaceProgressReportsTheMaximumProgress_void2()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -337,7 +628,8 @@ namespace Proto.Promises.Tests
                 deferred2.Promise
                     .Then(() => { })
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -373,12 +665,10 @@ namespace Proto.Promises.Tests
             deferred2.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressReportsTheMaximumProgress5()
+        public void RaceProgressReportsTheMaximumProgress_T2()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -392,7 +682,8 @@ namespace Proto.Promises.Tests
                 deferred2.Promise
                     .Then(() => 1)
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -428,12 +719,10 @@ namespace Proto.Promises.Tests
             deferred2.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressReportsTheMaximumProgress6()
+        public void RaceProgressReportsTheMaximumProgress_void3()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -449,7 +738,8 @@ namespace Proto.Promises.Tests
                 deferred2.Promise
                     .Then(() => deferred4.Promise)
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -509,12 +799,10 @@ namespace Proto.Promises.Tests
             deferred4.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressReportsTheMaximumProgress7()
+        public void RaceProgressReportsTheMaximumProgress_T3()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -530,7 +818,8 @@ namespace Proto.Promises.Tests
                 deferred2.Promise
                     .Then(() => deferred4.Promise)
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -590,12 +879,10 @@ namespace Proto.Promises.Tests
             deferred4.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressReportsTheMaximumProgress8()
+        public void RaceProgressReportsTheMaximumProgressvoid_4()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -609,7 +896,8 @@ namespace Proto.Promises.Tests
                 deferred2.Promise
                     .Then(Promise.Resolved)
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -645,12 +933,10 @@ namespace Proto.Promises.Tests
             deferred2.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressReportsTheMaximumProgress9()
+        public void RaceProgressReportsTheMaximumProgress_T4()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -664,7 +950,8 @@ namespace Proto.Promises.Tests
                 deferred2.Promise
                     .Then(x => Promise.Resolved(x))
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -700,12 +987,10 @@ namespace Proto.Promises.Tests
             deferred2.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressIsNoLongerReportedFromRejected0()
+        public void RaceProgressIsNoLongerReportedFromRejected_void()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -714,7 +999,8 @@ namespace Proto.Promises.Tests
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
                 .Progress(p => progress = p)
-                .Catch(() => { });
+                .Catch(() => { })
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -738,12 +1024,10 @@ namespace Proto.Promises.Tests
             deferred1.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.7f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressIsNoLongerReportedFromRejected1()
+        public void RaceProgressIsNoLongerReportedFromRejected_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -752,7 +1036,8 @@ namespace Proto.Promises.Tests
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
                 .Progress(p => progress = p)
-                .Catch(() => { });
+                .Catch(() => { })
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -776,12 +1061,10 @@ namespace Proto.Promises.Tests
             deferred1.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.7f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressIsNoLongerReportedFromCanceled0()
+        public void RaceProgressIsNoLongerReportedFromCanceled_void()
         {
             var deferred1 = Promise.NewDeferred();
             var cancelationSource1 = CancelationSource.New();
@@ -790,7 +1073,8 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -816,11 +1100,10 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(0.7f, progress, TestHelper.progressEpsilon);
 
             cancelationSource1.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressIsNoLongerReportedFromCanceled1()
+        public void RaceProgressIsNoLongerReportedFromCanceled_T()
         {
             var deferred1 = Promise.NewDeferred();
             var cancelationSource1 = CancelationSource.New();
@@ -829,7 +1112,8 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, 0f);
@@ -855,11 +1139,10 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(0.7f, progress, TestHelper.progressEpsilon);
 
             cancelationSource1.Dispose();
-            TestHelper.Cleanup();
         }
 
         [Test]
-        public void RaceProgressWillBeInvokedProperlyFromARecoveredPromise0()
+        public void RaceProgressWillBeInvokedProperlyFromARecoveredPromise_void()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -879,7 +1162,8 @@ namespace Proto.Promises.Tests
                     .Then(() => deferred3.Promise, cancelationSource.Token)
                     .ContinueWith(_ => deferred4.Promise)
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f / 3f, progress, TestHelper.progressEpsilon);
@@ -937,11 +1221,11 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
+            deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
         }
 
         [Test]
-        public void RaceProgressWillBeInvokedProperlyFromARecoveredPromise1()
+        public void RaceProgressWillBeInvokedProperlyFromARecoveredPromise_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -961,7 +1245,8 @@ namespace Proto.Promises.Tests
                     .Then(() => deferred3.Promise, cancelationSource.Token)
                     .ContinueWith(_ => deferred4.Promise)
             )
-                .Progress(p => progress = p);
+                .Progress(p => progress = p)
+                .Forget();
 
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f / 3f, progress, TestHelper.progressEpsilon);
@@ -1019,7 +1304,7 @@ namespace Proto.Promises.Tests
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
-            TestHelper.Cleanup();
+            deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
         }
 #endif
     }

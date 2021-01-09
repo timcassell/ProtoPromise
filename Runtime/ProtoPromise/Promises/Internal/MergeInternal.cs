@@ -29,7 +29,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<MergePromise>
                 {
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    [MethodImpl((MethodImplOptions) 256)]
                     public MergePromise Create()
                     {
                         return new MergePromise();
@@ -45,9 +45,12 @@ namespace Proto.Promises
 
                 protected override void Dispose()
                 {
-                    base.Dispose();
-                    _onPromiseResolved = null;
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    if (_waitCount == 0) // Quick fix until TODO is done.
+                    {
+                        base.Dispose();
+                        _onPromiseResolved = null;
+                        ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    }
                 }
 
                 private static MergePromise Create()
@@ -55,31 +58,33 @@ namespace Proto.Promises
                     return ObjectPool<ITreeHandleable>.GetOrCreate<MergePromise, Creator>(new Creator());
                 }
 
-                public static MergePromise GetOrCreate<T>(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref T value, Action<IValueContainer, object, int> onPromiseResolved, int count)
+                public static MergePromise GetOrCreate<T>(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref T value, Action<IValueContainer, object, int> onPromiseResolved,
+                    uint pendingAwaits, uint totalAwaits, ulong completedProgress)
                 {
                     var promise = Create();
                     promise._onPromiseResolved = onPromiseResolved;
                     var container = ResolveContainer<T>.GetOrCreate(ref value);
                     container.Retain();
                     promise._valueOrPrevious = container;
-                    promise.Setup(promisePassThroughs, count);
+                    promise.Setup(promisePassThroughs, pendingAwaits, totalAwaits, completedProgress);
                     return promise;
                 }
 
-                public static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
+                public static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, uint totalAwaits, ulong completedProgress)
                 {
                     var promise = Create();
                     promise._onPromiseResolved = (_, __, ___) => { };
                     promise._valueOrPrevious = ResolveContainerVoid.GetOrCreate();
-                    promise.Setup(promisePassThroughs, count);
+                    promise.Setup(promisePassThroughs, pendingAwaits, totalAwaits, completedProgress);
                     return promise;
                 }
 
-                private void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int count)
+                private void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, uint totalAwaits, ulong completedProgress)
                 {
                     _passThroughs = promisePassThroughs;
-                    _waitCount = (uint) count;
+                    _waitCount = pendingAwaits;
                     Reset();
+                    SetupProgress(totalAwaits, completedProgress);
                     _pending = true;
 
                     foreach (var passThrough in promisePassThroughs)
@@ -95,6 +100,9 @@ namespace Proto.Promises
 
                 bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index)
                 {
+                    ThrowIfInPool(this);
+                    // TODO: remove all passthroughs from their owners when this is completed early.
+                    _passThroughs.Remove(passThrough);
                     PromiseRef owner = passThrough.Owner;
                     bool done = --_waitCount == 0;
                     bool handle = false;
@@ -123,13 +131,6 @@ namespace Proto.Promises
                             }
                         }
                     }
-                    if (done)
-                    {
-                        while (_passThroughs.IsNotEmpty)
-                        {
-                            _passThroughs.Pop().Release();
-                        }
-                    }
                     return handle;
                 }
 
@@ -139,6 +140,7 @@ namespace Proto.Promises
                 }
 
                 partial void IncrementProgress(PromisePassThrough passThrough);
+                partial void SetupProgress(uint totalAwaits, ulong completedProgress);
             }
 
 #if PROMISE_PROGRESS
@@ -149,14 +151,13 @@ namespace Proto.Promises
                 private double _progressScaler;
                 private UnsignedFixed64 _unscaledProgress;
 
-                protected override void Reset()
+                partial void SetupProgress(uint totalAwaits, ulong completedProgress)
                 {
 #if PROMISE_DEBUG
                     checked
 #endif
                     {
-                        base.Reset();
-                        _unscaledProgress = default(UnsignedFixed64);
+                        _unscaledProgress = new UnsignedFixed64(completedProgress);
 
                         ulong expectedProgressCounter = 0L;
                         uint maxWaitDepth = 0;
@@ -173,7 +174,7 @@ namespace Proto.Promises
 
                         // Use the longest chain as this depth.
                         _waitDepthAndProgress = new UnsignedFixed32(maxWaitDepth);
-                        _progressScaler = (double) NextWholeProgress / (double) (expectedProgressCounter + _waitCount);
+                        _progressScaler = (double) NextWholeProgress / (double) (expectedProgressCounter + totalAwaits);
                     }
                 }
 
@@ -184,6 +185,7 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous)
                 {
+                    ThrowIfInPool(this);
                     // This is guaranteed to be pending.
                     previous = this;
                     return true;
@@ -191,6 +193,7 @@ namespace Proto.Promises
 
                 protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
+                    ThrowIfInPool(this);
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     _progressListeners.Push(progressListener);
                     if (firstSubscribe & _state == Promise.State.Pending)
@@ -204,11 +207,13 @@ namespace Proto.Promises
 
                 protected override UnsignedFixed32 CurrentProgress()
                 {
+                    ThrowIfInPool(this);
                     return new UnsignedFixed32(_unscaledProgress.ToDouble() * _progressScaler);
                 }
 
                 void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
+                    ThrowIfInPool(this);
                     IncrementProgress(amount);
                 }
 

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp3.1;netstandard2.1;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <RootNamespace>ProtoPromise</RootNamespace>
     <DefineConstants>TRACE;CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER</DefineConstants>
     <Configurations>Debug With Progress;Release Without Progress;Release With Progress;Debug Without Progress</Configurations>
@@ -44,8 +44,12 @@
   <ItemGroup>
     <None Remove=".gitignore" />
     <None Remove="DeveloperNotes.txt" />
-    <None Remove="ProtoPromise\ProtoPromise.asmdef" />
-    <None Remove="ProtoPromise\ProtoPromise.asmdef.meta" />
+    <None Remove="ProtoPromise\.gitignore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="**/*.meta" />
+    <None Remove="**/*.asmdef" />
   </ItemGroup>
 
 </Project>
