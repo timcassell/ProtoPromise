@@ -6,9 +6,6 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable IDE0062 // Make local function 'static'
-
-using System;
 using NUnit.Framework;
 
 namespace Proto.Promises.Tests
@@ -339,6 +336,362 @@ namespace Proto.Promises.Tests
 
             Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
+        }
+
+        [Test]
+        public void ResolveDoubleAwaitedPromiseContinuesExecution()
+        {
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+
+            int continuedCount = 0;
+
+            async void Func()
+            {
+                await promise;
+                ++continuedCount;
+            }
+
+            Func();
+            Func();
+            promise.Forget();
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(0, continuedCount);
+
+            deferred.Resolve();
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, continuedCount);
+        }
+
+        [Test]
+        public void ResolveDoubleAwaitedPromiseReturnsValueAndContinuesExecution()
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
+
+            int expected = 50;
+            int continuedCount = 0;
+
+            async void Func()
+            {
+                int value = await promise;
+                Assert.AreEqual(expected, value);
+                ++continuedCount;
+            }
+
+            Func();
+            Func();
+            promise.Forget();
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(0, continuedCount);
+
+            deferred.Resolve(expected);
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, continuedCount);
+        }
+
+        [Test]
+        public void DoubleAwaitAlreadyResolvedPromiseContinuesExecution()
+        {
+            var promise = Promise.Resolved().Preserve();
+            int continuedCount = 0;
+
+            async void Func()
+            {
+                await promise;
+                ++continuedCount;
+            }
+
+            Assert.AreEqual(0, continuedCount);
+            Func();
+            Func();
+            promise.Forget();
+            Assert.AreEqual(2, continuedCount);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, continuedCount);
+        }
+
+        [Test]
+        public void DoubleAwaitAlreadyResolvedPromiseReturnsValueAndContinuesExecution()
+        {
+            int expected = 50;
+            var promise = Promise.Resolved(expected).Preserve();
+            int continuedCount = 0;
+
+            async void Func()
+            {
+                int value = await promise;
+                Assert.AreEqual(expected, value);
+                ++continuedCount;
+            }
+
+            Assert.AreEqual(0, continuedCount);
+            Func();
+            Func();
+            promise.Forget();
+            Assert.AreEqual(2, continuedCount);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, continuedCount);
+        }
+
+        [Test]
+        public void RejectDoubleAwaitedPromiseThrows_void()
+        {
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+
+            string rejectValue = "Reject";
+            int continuedCount = 0;
+
+            async void Func()
+            {
+                try
+                {
+                    await promise;
+                }
+                catch (UnhandledException e)
+                {
+                    Assert.AreEqual(rejectValue, e.Value);
+                    ++continuedCount;
+                }
+            }
+
+            Func();
+            Func();
+            promise.Forget();
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(0, continuedCount);
+
+            deferred.Reject(rejectValue);
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, continuedCount);
+        }
+
+        [Test]
+        public void RejectDoubleAwaitedPromiseThrows_T()
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
+
+            string rejectValue = "Reject";
+            int continuedCount = 0;
+
+            async void Func()
+            {
+                try
+                {
+                    int value = await promise;
+                }
+                catch (UnhandledException e)
+                {
+                    Assert.AreEqual(rejectValue, e.Value);
+                    ++continuedCount;
+                }
+            }
+
+            Func();
+            Func();
+            promise.Forget();
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(0, continuedCount);
+
+            deferred.Reject(rejectValue);
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, continuedCount);
+        }
+
+        [Test]
+        public void DoubleAwaitAlreadyRejectedPromiseThrows_void()
+        {
+            string rejectValue = "Reject";
+            var promise = Promise.Rejected(rejectValue).Preserve();
+            int continuedCount = 0;
+
+            async void Func()
+            {
+                try
+                {
+                    await promise;
+                }
+                catch (UnhandledException e)
+                {
+                    Assert.AreEqual(rejectValue, e.Value);
+                    ++continuedCount;
+                }
+            }
+
+            Assert.AreEqual(0, continuedCount);
+            Func();
+            Func();
+            promise.Forget();
+            Assert.AreEqual(2, continuedCount);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, continuedCount);
+        }
+
+        [Test]
+        public void DoubleAwaitAlreadyRejectedPromiseThrows_T()
+        {
+            string rejectValue = "Reject";
+            var promise = Promise<int>.Rejected(rejectValue).Preserve();
+            int continuedCount = 0;
+
+            async void Func()
+            {
+                try
+                {
+                    int value = await promise;
+                }
+                catch (UnhandledException e)
+                {
+                    Assert.AreEqual(rejectValue, e.Value);
+                    ++continuedCount;
+                }
+            }
+
+            Assert.AreEqual(0, continuedCount);
+            Func();
+            Func();
+            promise.Forget();
+            Assert.AreEqual(2, continuedCount);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, continuedCount);
+        }
+
+        [Test]
+        public void CancelDoubleAwaitedPromiseThrowsOperationCanceled_void()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var promise = deferred.Promise.Preserve();
+
+            string cancelValue = "Cancel";
+            int continuedCount = 0;
+
+            async void Func()
+            {
+                try
+                {
+                    await promise;
+                }
+                catch (CanceledException e)
+                {
+                    Assert.AreEqual(cancelValue, e.Value);
+                    ++continuedCount;
+                }
+            }
+
+            Func();
+            Func();
+            promise.Forget();
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(0, continuedCount);
+
+            cancelationSource.Cancel(cancelValue);
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, continuedCount);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void CancelDoubleAwaitedPromiseThrowsOperationCanceled_T()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var promise = deferred.Promise.Preserve();
+
+            string cancelValue = "Cancel";
+            int continuedCount = 0;
+
+            async void Func()
+            {
+                try
+                {
+                    int value = await promise;
+                }
+                catch (CanceledException e)
+                {
+                    Assert.AreEqual(cancelValue, e.Value);
+                    ++continuedCount;
+                }
+            }
+
+            Func();
+            Func();
+            promise.Forget();
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(0, continuedCount);
+
+            cancelationSource.Cancel(cancelValue);
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, continuedCount);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void DoubleAwaitAlreadyCanceledPromiseThrowsOperationCanceled_void()
+        {
+            string cancelValue = "Cancel";
+            var promise = Promise.Canceled(cancelValue).Preserve();
+            int continuedCount = 0;
+
+            async void Func()
+            {
+                try
+                {
+                    await promise;
+                }
+                catch (CanceledException e)
+                {
+                    Assert.AreEqual(cancelValue, e.Value);
+                    ++continuedCount;
+                }
+            }
+
+            Assert.AreEqual(0, continuedCount);
+            Func();
+            Func();
+            promise.Forget();
+            Assert.AreEqual(2, continuedCount);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, continuedCount);
+        }
+
+        [Test]
+        public void DoubleAwaitAlreadyCanceledPromiseThrowsOperationCanceled_T()
+        {
+            string cancelValue = "Cancel";
+            var promise = Promise<int>.Canceled(cancelValue).Preserve();
+            int continuedCount = 0;
+
+            async void Func()
+            {
+                try
+                {
+                    int value = await promise;
+                }
+                catch (CanceledException e)
+                {
+                    Assert.AreEqual(cancelValue, e.Value);
+                    ++continuedCount;
+                }
+            }
+
+            Assert.AreEqual(0, continuedCount);
+            Func();
+            Func();
+            promise.Forget();
+            Assert.AreEqual(2, continuedCount);
+
+            Promise.Manager.HandleCompletes();
+            Assert.AreEqual(2, continuedCount);
         }
     }
 }

@@ -18,7 +18,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        public sealed class RejectionContainer<T> : ILinked<RejectionContainer<T>>, IRejectValueContainer, IValueContainer<T>, IRejectionToContainer, ICantHandleException
+        internal sealed class RejectionContainer<T> : ILinked<RejectionContainer<T>>, IRejectValueContainer, IValueContainer<T>, IRejectionToContainer, ICantHandleException
         {
             private struct Creator : ICreator<RejectionContainer<T>>
             {
@@ -208,7 +208,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        public sealed class CancelContainer<T> : ILinked<CancelContainer<T>>, ICancelValueContainer, IValueContainer<T>, ICancelationToContainer
+        internal sealed class CancelContainer<T> : ILinked<CancelContainer<T>>, ICancelValueContainer, IValueContainer<T>, ICancelationToContainer
         {
             private struct Creator : ICreator<CancelContainer<T>>
             {
@@ -332,7 +332,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        public sealed class CancelContainerVoid : ICancelValueContainer, ICancelationToContainer
+        internal sealed class CancelContainerVoid : ICancelValueContainer, ICancelationToContainer
         {
             // We can reuse the same object.
             private static readonly CancelContainerVoid _instance = new CancelContainerVoid();
@@ -370,7 +370,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        public sealed class ResolveContainer<T> : ILinked<ResolveContainer<T>>, IValueContainer, IValueContainer<T>
+        internal sealed class ResolveContainer<T> : ILinked<ResolveContainer<T>>, IValueContainer, IValueContainer<T>
         {
             private struct Creator : ICreator<ResolveContainer<T>>
             {
@@ -478,7 +478,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        public sealed class ResolveContainerVoid : IValueContainer
+        internal sealed class ResolveContainerVoid : IValueContainer
         {
             // We can reuse the same object.
             private static readonly ResolveContainerVoid _instance = new ResolveContainerVoid();

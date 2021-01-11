@@ -102,8 +102,16 @@ namespace Proto.Promises
 
             ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
             internal int Id { get { return _id; } }
-            internal Promise.State State { get { return _state; } }
-            private bool IsPreserved { get { return _idIncrementer == 0; } }
+            internal Promise.State State
+            {
+                [MethodImpl((MethodImplOptions) 256)]
+                get { return _state; }
+            }
+            private bool IsPreserved
+            {
+                [MethodImpl((MethodImplOptions) 256)]
+                get { return _idIncrementer == 0; }
+            }
 
             ~PromiseRef()
             {
@@ -131,68 +139,6 @@ namespace Proto.Promises
                         ((IValueContainer) _valueOrPrevious).ReleaseAndAddToUnhandledStack();
                     }
                 }
-            }
-
-            internal virtual void OnCompletedForAwaiter(Action onCompleted)
-            {
-                ThrowIfInPool(this);
-                AddWaiter(FinallyDelegate.GetOrCreate(onCompleted));
-            }
-
-            internal void GetResultForAwaiter(int promiseId)
-            {
-                ThrowIfInPool(this);
-#if PROMISE_DEBUG
-                if (_state == Promise.State.Pending)
-                {
-                    throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
-                }
-#endif
-                // Mark awaited since GetAwaiter doesn't mark it awaited.
-                MarkAwaited(promiseId);
-                if (_state == Promise.State.Resolved)
-                {
-                    MaybeDispose();
-                    return;
-                }
-                // Throw unhandled exception or canceled exception.
-                Exception exception = ((IThrowable) _valueOrPrevious).GetException();
-                // We're throwing here, no need to throw again.
-                _suppressRejection = true;
-                MaybeDispose();
-                throw exception;
-            }
-
-            internal T GetResultForAwaiter<T>(int promiseId)
-            {
-                ThrowIfInPool(this);
-#if PROMISE_DEBUG
-                if (_state == Promise.State.Pending)
-                {
-                    throw new InvalidOperationException("PromiseAwaiter<T>.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
-                }
-#endif
-                // Mark awaited since GetAwaiter doesn't mark it awaited.
-                MarkAwaited(promiseId);
-                if (_state == Promise.State.Resolved)
-                {
-                    T result = ((ResolveContainer<T>) _valueOrPrevious).value;
-                    MaybeDispose();
-                    return result;
-                }
-                // Throw unhandled exception or canceled exception.
-                Exception exception = ((IThrowable) _valueOrPrevious).GetException();
-                // We're throwing here, no need to throw again.
-                _suppressRejection = true;
-                MaybeDispose();
-                throw exception;
-            }
-
-            internal void IncrementIdFromAwaiter(int promiseId)
-            {
-                ThrowIfInPool(this);
-                // Don't mark awaited so that this won't be disposed twice.
-                IncrementId(promiseId, _idIncrementer);
             }
 
             internal PromiseRef GetPreserved(int promiseId)
@@ -406,6 +352,7 @@ namespace Proto.Promises
 
             internal void AddWaiter(ITreeHandleable waiter)
             {
+                // TODO: thread synchronization
                 ThrowIfInPool(this);
                 if (_state == Promise.State.Pending)
                 {
@@ -441,7 +388,7 @@ namespace Proto.Promises
                         string stacktrace = new System.Diagnostics.StackTrace(e, true).ToString();
 #endif
                         Exception exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-                        RejectOrCancelAndMaybeDispose(CreateCancelContainer(ref exception));
+                        RejectOrCancelInternal(CreateCancelContainer(ref exception));
                     }
                     else
                     {
@@ -457,25 +404,18 @@ namespace Proto.Promises
                 catch (OperationCanceledException e)
                 {
                     container.Release();
-                    RejectOrCancelAndMaybeDispose(CreateCancelContainer(ref e));
+                    RejectOrCancelInternal(CreateCancelContainer(ref e));
                 }
                 catch (Exception e)
                 {
                     container.Release();
-                    RejectOrCancelAndMaybeDispose(CreateRejectContainer(ref e, int.MinValue, this));
+                    RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this));
                 }
                 finally
                 {
                     invokingRejected = false;
                     ClearCurrentInvoker();
                 }
-            }
-
-            private void ResolveAndMaybeDispose(IValueContainer container)
-            {
-                // TODO: thread synchronization
-                ResolveInternal(container);
-                MaybeDispose();
             }
 
             private void ResolveInternal(IValueContainer container)
@@ -486,12 +426,6 @@ namespace Proto.Promises
                 _valueOrPrevious = container;
                 HandleBranches();
                 ResolveProgressListeners();
-            }
-
-            private void RejectOrCancelAndMaybeDispose(IValueContainer container)
-            {
-                // TODO: thread synchronization
-                RejectOrCancelInternal(container);
                 MaybeDispose();
             }
 
@@ -504,6 +438,7 @@ namespace Proto.Promises
                 _valueOrPrevious = container;
                 HandleBranches();
                 CancelProgressListeners(previous);
+                MaybeDispose();
             }
 
             private void HandleSelf(IValueContainer valueContainer)
@@ -594,7 +529,7 @@ namespace Proto.Promises
                     var _ref = other._ref;
                     if (_ref == null)
                     {
-                        ResolveAndMaybeDispose(ResolveContainerVoid.GetOrCreate());
+                        ResolveInternal(ResolveContainerVoid.GetOrCreate());
                     }
                     else
                     {
@@ -613,7 +548,7 @@ namespace Proto.Promises
                     if (_ref == null)
                     {
                         T value = other._result;
-                        ResolveAndMaybeDispose(ResolveContainer<T>.GetOrCreate(ref value));
+                        ResolveInternal(ResolveContainer<T>.GetOrCreate(ref value));
                     }
                     else
                     {
@@ -632,72 +567,34 @@ namespace Proto.Promises
 #endif
             internal abstract partial class AsyncPromiseBase : PromiseRef
             {
-#if CSHARP_7_OR_LATER
-                // Optimize for awaits. Adds memory per-object for the delegate, but saves us from having to create a Finally wrapper per-await.
-                private Action _onComplete;
-                internal override sealed void OnCompletedForAwaiter(Action onCompleted)
-                {
-                    if (_state == Promise.State.Pending)
-                    {
-                        _onComplete += onCompleted;
-                    }
-                    else
-                    {
-                        AddToHandleQueueBack(FinallyDelegate.GetOrCreate(onCompleted));
-                    }
-                }
-#endif
-
-                private void OnComplete()
-                {
-#if CSHARP_7_OR_LATER
-                    var temp = _onComplete;
-                    if (temp != null)
-                    {
-                        _onComplete = null;
-                        temp.Invoke();
-                        // Don't need to dispose here since GetResultFromAwaiter will dispose.
-                    }
-                    else
-#endif
-                    {
-                        MaybeDispose();
-                    }
-                }
-
                 protected void ResolveDirect()
                 {
                     ThrowIfInPool(this);
                     ResolveInternal(ResolveContainerVoid.GetOrCreate());
-                    OnComplete();
                 }
 
                 protected void ResolveDirect<T>(ref T value)
                 {
                     ThrowIfInPool(this);
                     ResolveInternal(ResolveContainer<T>.GetOrCreate(ref value));
-                    OnComplete();
                 }
 
                 protected void RejectDirect<TReject>(ref TReject reason, int rejectSkipFrames)
                 {
                     ThrowIfInPool(this);
                     RejectOrCancelInternal(CreateRejectContainer(ref reason, rejectSkipFrames + 1, this));
-                    OnComplete();
                 }
 
                 protected void CancelDirect()
                 {
                     ThrowIfInPool(this);
                     RejectOrCancelInternal(CancelContainerVoid.GetOrCreate());
-                    OnComplete();
                 }
 
                 protected void CancelDirect<TCancel>(ref TCancel reason)
                 {
                     ThrowIfInPool(this);
                     RejectOrCancelInternal(CreateCancelContainer(ref reason));
-                    OnComplete();
                 }
             }
 
@@ -1041,7 +938,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            RejectOrCancelAndMaybeDispose(valueContainer);
+                            RejectOrCancelInternal(valueContainer);
                         }
                     }
                 }
@@ -1097,7 +994,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            RejectOrCancelAndMaybeDispose(valueContainer);
+                            RejectOrCancelInternal(valueContainer);
                         }
                     }
                 }
@@ -1204,7 +1101,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            RejectOrCancelAndMaybeDispose(valueContainer);
+                            RejectOrCancelInternal(valueContainer);
                         }
                     }
                 }
@@ -1269,7 +1166,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            RejectOrCancelAndMaybeDispose(valueContainer);
+                            RejectOrCancelInternal(valueContainer);
                         }
                     }
                 }

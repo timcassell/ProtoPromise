@@ -613,7 +613,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Canceled()
         {
-            var promise = Internal.PromiseRef.DeferredPromise<T>.GetOrCreate();
+            var promise = Internal.PromiseRef.DeferredPromiseCancel<T>.GetOrCreate();
             promise.CancelDirect();
             return new Promise<T>(promise, promise.Id);
         }
@@ -623,7 +623,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Canceled<TCancel>(TCancel reason)
         {
-            var promise = Internal.PromiseRef.DeferredPromise<T>.GetOrCreate();
+            var promise = Internal.PromiseRef.DeferredPromiseCancel<T>.GetOrCreate();
             promise.CancelDirect(ref reason);
             return new Promise<T>(promise, promise.Id);
         }
