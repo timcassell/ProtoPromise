@@ -65,7 +65,7 @@ namespace Proto.Promises
             StackTrace stackTrace = Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
                 ? GetStackTrace(skipFrames + 1)
                 : null;
-            traceable.Trace = new CausalityTrace(stackTrace, CurrentTrace);
+            traceable.Trace = new CausalityTrace(stackTrace, _currentTrace);
         }
 
         static partial void SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable)
@@ -85,16 +85,22 @@ namespace Proto.Promises
 
         [ThreadStatic]
         private static CausalityTrace _currentTrace;
-        internal static CausalityTrace CurrentTrace { get { return _currentTrace; } set { _currentTrace = value; } }
+        [ThreadStatic]
+        private static Stack<CausalityTrace> _traces;
 
         static partial void SetCurrentInvoker(ITraceable current)
         {
+            if (_traces == null)
+            {
+                _traces = new Stack<CausalityTrace>();
+            }
+            _traces.Push(_currentTrace);
             _currentTrace = current.Trace;
         }
 
         static partial void ClearCurrentInvoker()
         {
-            _currentTrace = null;
+            _currentTrace = _traces.Pop();
 #if !CSHARP_7_3_OR_NEWER
             ++_invokeId;
 #endif

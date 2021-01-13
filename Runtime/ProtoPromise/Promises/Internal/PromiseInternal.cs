@@ -12,11 +12,11 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
 
+using Proto.Utils;
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
-using Proto.Utils;
 
 namespace Proto.Promises
 {
@@ -232,7 +232,7 @@ namespace Proto.Promises
                 _nextBranches.Remove(treeHandleable);
             }
 
-            protected virtual void Reset()
+            protected void Reset()
             {
                 _state = Promise.State.Pending;
                 _suppressRejection = false;
@@ -369,19 +369,19 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
                 // TODO: thread synchronization, maybe cancelationToken.TryUnregister here?
-                IValueContainer container = (IValueContainer) _valueOrPrevious;
+                IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                 _valueOrPrevious = null;
                 SetCurrentInvoker(this);
                 try
                 {
-                    Execute(container);
-                    container.Release();
+                    Execute(valueContainer);
+                    valueContainer.Release();
                 }
                 catch (RethrowException e)
                 {
                     if (!invokingRejected)
                     {
-                        container.Release();
+                        valueContainer.Release();
 #if PROMISE_DEBUG
                         string stacktrace = FormatStackTrace(new System.Diagnostics.StackTrace[1] { new System.Diagnostics.StackTrace(e, true) });
 #else
@@ -392,10 +392,10 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _state = container.GetState();
+                        _state = valueContainer.GetState();
                         var previous = _valueOrPrevious;
-                        _valueOrPrevious = container;
-                        HandleBranches();
+                        _valueOrPrevious = valueContainer;
+                        HandleBranches(valueContainer);
                         CancelProgressListeners(previous);
 
                         MaybeDispose();
@@ -403,12 +403,12 @@ namespace Proto.Promises
                 }
                 catch (OperationCanceledException e)
                 {
-                    container.Release();
+                    valueContainer.Release();
                     RejectOrCancelInternal(CreateCancelContainer(ref e));
                 }
                 catch (Exception e)
                 {
-                    container.Release();
+                    valueContainer.Release();
                     RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this));
                 }
                 finally
@@ -418,26 +418,28 @@ namespace Proto.Promises
                 }
             }
 
-            private void ResolveInternal(IValueContainer container)
+            private void ResolveInternal(IValueContainer valueContainer)
             {
                 // TODO: thread synchronization
                 _state = Promise.State.Resolved;
-                container.Retain();
-                _valueOrPrevious = container;
-                HandleBranches();
+                valueContainer.Retain();
+                _valueOrPrevious = valueContainer;
+                HandleBranches(valueContainer);
                 ResolveProgressListeners();
+
                 MaybeDispose();
             }
 
-            private void RejectOrCancelInternal(IValueContainer container)
+            private void RejectOrCancelInternal(IValueContainer valueContainer)
             {
                 // TODO: thread synchronization
-                _state = container.GetState();
-                container.Retain();
+                _state = valueContainer.GetState();
+                valueContainer.Retain();
                 var previous = _valueOrPrevious;
-                _valueOrPrevious = container;
-                HandleBranches();
+                _valueOrPrevious = valueContainer;
+                HandleBranches(valueContainer);
                 CancelProgressListeners(previous);
+
                 MaybeDispose();
             }
 
@@ -449,7 +451,7 @@ namespace Proto.Promises
                 valueContainer.Retain();
                 _valueOrPrevious = valueContainer;
 
-                HandleBranches();
+                HandleBranches(valueContainer);
                 if (_state == Promise.State.Resolved)
                 {
                     ResolveProgressListeners();
@@ -464,9 +466,8 @@ namespace Proto.Promises
 
             protected virtual void Execute(IValueContainer valueContainer) { }
 
-            private void HandleBranches()
+            private void HandleBranches(IValueContainer valueContainer)
             {
-                var valueContainer = (IValueContainer) _valueOrPrevious;
                 while (_nextBranches.IsNotEmpty)
                 {
                     _nextBranches.Pop().MakeReady(this, valueContainer, ref _handleQueue);

@@ -230,11 +230,13 @@ namespace Proto.Promises
 #endif
             private struct DelegateResolvePassthrough : IDelegateResolve, IDelegateResolvePromise
             {
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     owner.ResolveInternal(valueContainer);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
                 public bool IsNull { get { throw new System.InvalidOperationException(); } }
             }
@@ -263,6 +265,7 @@ namespace Proto.Promises
 
                 private FinallyDelegate() { }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public static FinallyDelegate GetOrCreate(Action onFinally)
                 {
                     var del = ObjectPool<ITreeHandleable>.GetOrCreate<FinallyDelegate, Creator>(new Creator());
@@ -271,8 +274,16 @@ namespace Proto.Promises
                     return del;
                 }
 
-                private void InvokeAndCatchAndDispose()
+                [MethodImpl((MethodImplOptions) 256)]
+                void Dispose()
                 {
+                    _onFinally = null;
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                void ITreeHandleable.Handle()
+                {
+                    ThrowIfInPool(this);
                     var callback = _onFinally;
                     SetCurrentInvoker(this);
                     Dispose();
@@ -285,18 +296,6 @@ namespace Proto.Promises
                         AddRejectionToUnhandledStack(e, this);
                     }
                     ClearCurrentInvoker();
-                }
-
-                void Dispose()
-                {
-                    _onFinally = null;
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
-                }
-
-                void ITreeHandleable.Handle()
-                {
-                    ThrowIfInPool(this);
-                    InvokeAndCatchAndDispose();
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
@@ -320,13 +319,19 @@ namespace Proto.Promises
             {
                 private readonly Action _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateVoidVoid(Action callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke();
@@ -339,6 +344,7 @@ namespace Proto.Promises
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -349,19 +355,26 @@ namespace Proto.Promises
             {
                 private readonly Action<TArg> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateArgVoid(Action<TArg> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 private void Invoke(TArg arg, PromiseRef owner)
                 {
                     _callback.Invoke(arg);
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
@@ -380,6 +393,7 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -390,13 +404,19 @@ namespace Proto.Promises
             {
                 private readonly Func<TResult> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateVoidResult(Func<TResult> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke();
@@ -409,6 +429,7 @@ namespace Proto.Promises
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -419,13 +440,19 @@ namespace Proto.Promises
             {
                 private readonly Func<TArg, TResult> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateArgResult(Func<TArg, TResult> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 private void Invoke(TArg arg, PromiseRef owner)
                 {
                     var temp = _callback;
@@ -433,6 +460,7 @@ namespace Proto.Promises
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
@@ -451,6 +479,7 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -462,13 +491,19 @@ namespace Proto.Promises
             {
                 private readonly Func<Promise> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateVoidPromise(Func<Promise> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
@@ -479,6 +514,7 @@ namespace Proto.Promises
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -489,18 +525,25 @@ namespace Proto.Promises
             {
                 private readonly Func<TArg, Promise> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateArgPromise(Func<TArg, Promise> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 private void Invoke(TArg arg, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(arg));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
@@ -519,6 +562,7 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -529,13 +573,19 @@ namespace Proto.Promises
             {
                 private readonly Func<Promise<TPromise>> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateVoidPromiseT(Func<Promise<TPromise>> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
@@ -546,6 +596,7 @@ namespace Proto.Promises
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -556,18 +607,25 @@ namespace Proto.Promises
             {
                 private readonly Func<TArg, Promise<TPromise>> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateArgPromiseT(Func<TArg, Promise<TPromise>> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 private void Invoke(TArg arg, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(arg));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
@@ -586,6 +644,7 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -597,11 +656,13 @@ namespace Proto.Promises
             {
                 private readonly Promise.ContinueAction _callback;
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueVoidVoid(Promise.ContinueAction callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(new Promise.ResultContainer(valueContainer));
@@ -618,11 +679,13 @@ namespace Proto.Promises
             {
                 private readonly Promise.ContinueFunc<TResult> _callback;
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueVoidResult(Promise.ContinueFunc<TResult> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
@@ -639,11 +702,13 @@ namespace Proto.Promises
             {
                 private readonly Promise<TArg>.ContinueAction _callback;
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueArgVoid(Promise<TArg>.ContinueAction callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
@@ -660,11 +725,13 @@ namespace Proto.Promises
             {
                 private readonly Promise<TArg>.ContinueFunc<TResult> _callback;
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueArgResult(Promise<TArg>.ContinueFunc<TResult> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
@@ -682,13 +749,19 @@ namespace Proto.Promises
             {
                 private readonly Promise.ContinueFunc<Promise> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueVoidPromise(Promise.ContinueFunc<Promise> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Promise result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
@@ -705,13 +778,19 @@ namespace Proto.Promises
             {
                 private readonly Promise.ContinueFunc<Promise<TPromise>> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueVoidPromiseT(Promise.ContinueFunc<Promise<TPromise>> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Promise<TPromise> result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
@@ -728,13 +807,19 @@ namespace Proto.Promises
             {
                 private readonly Promise<TArg>.ContinueFunc<Promise> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueArgPromise(Promise<TArg>.ContinueFunc<Promise> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Promise result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
@@ -751,13 +836,19 @@ namespace Proto.Promises
             {
                 private readonly Promise<TArg>.ContinueFunc<Promise<TPromise>> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueArgPromiseT(Promise<TArg>.ContinueFunc<Promise<TPromise>> callback)
                 {
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Promise<TPromise> result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
@@ -793,6 +884,7 @@ namespace Proto.Promises
 
                 private FinallyDelegateCapture() { }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public static FinallyDelegateCapture<TCapture> GetOrCreate(ref TCapture capturedValue, Action<TCapture> onFinally)
                 {
                     var del = ObjectPool<ITreeHandleable>.GetOrCreate<FinallyDelegateCapture<TCapture>, Creator>(new Creator());
@@ -802,8 +894,17 @@ namespace Proto.Promises
                     return del;
                 }
 
-                private void InvokeAndCatchAndDispose()
+                [MethodImpl((MethodImplOptions) 256)]
+                void Dispose()
                 {
+                    _capturedValue = default(TCapture);
+                    _onFinally = null;
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                void ITreeHandleable.Handle()
+                {
+                    ThrowIfInPool(this);
                     var value = _capturedValue;
                     var callback = _onFinally;
                     SetCurrentInvoker(this);
@@ -817,19 +918,6 @@ namespace Proto.Promises
                         AddRejectionToUnhandledStack(e, this);
                     }
                     ClearCurrentInvoker();
-                }
-
-                void Dispose()
-                {
-                    _capturedValue = default(TCapture);
-                    _onFinally = null;
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
-                }
-
-                void ITreeHandleable.Handle()
-                {
-                    ThrowIfInPool(this);
-                    InvokeAndCatchAndDispose();
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
@@ -854,14 +942,20 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Action<TCapture> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureVoidVoid(ref TCapture capturedValue, Action<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue);
@@ -874,6 +968,7 @@ namespace Proto.Promises
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -885,20 +980,27 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Action<TCapture, TArg> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureArgVoid(ref TCapture capturedValue, Action<TCapture, TArg> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 private void Invoke(TArg arg, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue, arg);
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
@@ -917,6 +1019,7 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -928,14 +1031,20 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, TResult> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureVoidResult(ref TCapture capturedValue, Func<TCapture, TResult> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue);
@@ -948,6 +1057,7 @@ namespace Proto.Promises
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -959,20 +1069,27 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, TArg, TResult> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureArgResult(ref TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 private void Invoke(TArg arg, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, arg);
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
@@ -991,6 +1108,7 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -1003,14 +1121,20 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, Promise> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureVoidPromise(ref TCapture capturedValue, Func<TCapture, Promise> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
@@ -1021,6 +1145,7 @@ namespace Proto.Promises
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -1032,19 +1157,26 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, TArg, Promise> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureArgPromise(ref TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 private void Invoke(TArg arg, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
@@ -1063,6 +1195,7 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -1074,14 +1207,20 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 public readonly Func<TCapture, Promise<TPromise>> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureVoidPromiseT(ref TCapture capturedValue, Func<TCapture, Promise<TPromise>> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
@@ -1092,6 +1231,7 @@ namespace Proto.Promises
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -1103,20 +1243,27 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Func<TCapture, TArg, Promise<TPromise>> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureArgPromiseT(ref TCapture capturedValue, Func<TCapture, TArg, Promise<TPromise>> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 private void Invoke(TArg arg, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
                 }
 
-                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                [MethodImpl((MethodImplOptions) 256)]
+                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Invoke(((ResolveContainer<TArg>) valueContainer).value, owner);
                 }
@@ -1134,6 +1281,7 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation() { }
             }
 
@@ -1146,12 +1294,14 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Promise.ContinueAction<TCapture> _callback;
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureVoidVoid(ref TCapture capturedValue, Promise.ContinueAction<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
@@ -1169,12 +1319,14 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Promise.ContinueFunc<TCapture, TResult> _callback;
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureVoidResult(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, TResult> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
@@ -1192,12 +1344,14 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Promise<TArg>.ContinueAction<TCapture> _callback;
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureArgVoid(ref TCapture capturedValue, Promise<TArg>.ContinueAction<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
@@ -1215,12 +1369,14 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Promise<TArg>.ContinueFunc<TCapture, TResult> _callback;
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureArgResult(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, TResult> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
@@ -1239,14 +1395,20 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Promise.ContinueFunc<TCapture, Promise> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureVoidPromise(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Promise result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
@@ -1264,14 +1426,20 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Promise.ContinueFunc<TCapture, Promise<TPromise>> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureVoidPromiseT(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise<TPromise>> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Promise<TPromise> result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
@@ -1289,14 +1457,20 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Promise<TArg>.ContinueFunc<TCapture, Promise> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureArgPromise(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Promise result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
@@ -1314,14 +1488,20 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
                 private readonly Promise<TArg>.ContinueFunc<TCapture, Promise<TPromise>> _callback;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureArgPromiseT(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TPromise>> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     Promise<TPromise> result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
@@ -1340,24 +1520,32 @@ namespace Proto.Promises
                 private readonly bool _isActive;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return !_isActive; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return !_isActive; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateResolvePassthroughCancel(bool isActive)
                 {
                     _isActive = isActive;
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     owner.ResolveInternal(valueContainer);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1373,25 +1561,33 @@ namespace Proto.Promises
                 private readonly Action _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateVoidVoidCancel(Action callback)
                 {
                     _callback = callback;
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke();
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1406,25 +1602,33 @@ namespace Proto.Promises
                 private readonly Action<TArg> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateArgVoidCancel(Action<TArg> callback)
                 {
                     _callback = callback;
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(((ResolveContainer<TArg>) valueContainer).value);
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1439,25 +1643,33 @@ namespace Proto.Promises
                 private readonly Func<TResult> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateVoidResultCancel(Func<TResult> callback)
                 {
                     _callback = callback;
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke();
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1472,25 +1684,33 @@ namespace Proto.Promises
                 private readonly Func<TArg, TResult> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateArgResultCancel(Func<TArg, TResult> callback)
                 {
                     _callback = callback;
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(((ResolveContainer<TArg>) valueContainer).value);
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1506,24 +1726,32 @@ namespace Proto.Promises
                 private readonly Func<Promise> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateVoidPromiseCancel(Func<Promise> callback)
                 {
                     _callback = callback;
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1538,25 +1766,33 @@ namespace Proto.Promises
                 private readonly Func<TArg, Promise> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateArgPromiseCancel(Func<TArg, Promise> callback)
                 {
                     _callback = callback;
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(arg));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1571,24 +1807,32 @@ namespace Proto.Promises
                 private readonly Func<Promise<TPromise>> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateVoidPromiseTCancel(Func<Promise<TPromise>> callback)
                 {
                     _callback = callback;
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke());
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1603,25 +1847,33 @@ namespace Proto.Promises
                 private readonly Func<TArg, Promise<TPromise>> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateArgPromiseTCancel(Func<TArg, Promise<TPromise>> callback)
                 {
                     _callback = callback;
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(arg));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1638,8 +1890,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueVoidVoidCancel(Promise.ContinueAction callback)
                 {
                     _callback = callback;
@@ -1647,6 +1904,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -1661,11 +1919,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1681,8 +1941,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueVoidResultCancel(Promise.ContinueFunc<TResult> callback)
                 {
                     _callback = callback;
@@ -1690,6 +1955,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -1704,11 +1970,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1724,8 +1992,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueArgVoidCancel(Promise<TArg>.ContinueAction callback)
                 {
                     _callback = callback;
@@ -1733,6 +2006,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -1747,16 +2021,19 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1772,8 +2049,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueArgResultCancel(Promise<TArg>.ContinueFunc<TResult> callback)
                 {
                     _callback = callback;
@@ -1781,6 +2063,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -1795,11 +2078,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1816,8 +2101,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueVoidPromiseCancel(Promise.ContinueFunc<Promise> callback)
                 {
                     _callback = callback;
@@ -1825,6 +2115,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -1839,11 +2130,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1859,8 +2152,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueVoidPromiseTCancel(Promise.ContinueFunc<Promise<TPromise>> callback)
                 {
                     _callback = callback;
@@ -1868,6 +2166,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -1882,11 +2181,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1902,8 +2203,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueArgPromiseCancel(Promise<TArg>.ContinueFunc<Promise> callback)
                 {
                     _callback = callback;
@@ -1911,6 +2217,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -1925,16 +2232,19 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1950,8 +2260,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueArgPromiseTCancel(Promise<TArg>.ContinueFunc<Promise<TPromise>> callback)
                 {
                     _callback = callback;
@@ -1959,6 +2274,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -1973,11 +2289,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -1995,8 +2313,13 @@ namespace Proto.Promises
                 private readonly Action<TCapture> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureVoidVoidCancel(ref TCapture capturedValue, Action<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2004,17 +2327,20 @@ namespace Proto.Promises
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue);
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2030,8 +2356,13 @@ namespace Proto.Promises
                 private readonly Action<TCapture, TArg> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureArgVoidCancel(ref TCapture capturedValue, Action<TCapture, TArg> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2039,17 +2370,20 @@ namespace Proto.Promises
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(_capturedValue, ((ResolveContainer<TArg>) valueContainer).value);
                     owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2065,8 +2399,13 @@ namespace Proto.Promises
                 private readonly Func<TCapture, TResult> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureVoidResultCancel(ref TCapture capturedValue, Func<TCapture, TResult> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2074,17 +2413,20 @@ namespace Proto.Promises
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue);
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2100,8 +2442,13 @@ namespace Proto.Promises
                 private readonly Func<TCapture, TArg, TResult> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureArgResultCancel(ref TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2109,17 +2456,20 @@ namespace Proto.Promises
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, ((ResolveContainer<TArg>) valueContainer).value);
                     owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2136,8 +2486,13 @@ namespace Proto.Promises
                 private readonly Func<TCapture, Promise> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureVoidPromiseCancel(ref TCapture capturedValue, Func<TCapture, Promise> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2145,16 +2500,19 @@ namespace Proto.Promises
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2170,8 +2528,13 @@ namespace Proto.Promises
                 private readonly Func<TCapture, TArg, Promise> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureArgPromiseCancel(ref TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2179,17 +2542,20 @@ namespace Proto.Promises
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2205,8 +2571,13 @@ namespace Proto.Promises
                 private readonly Func<TCapture, Promise<TPromise>> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureVoidPromiseTCancel(ref TCapture capturedValue, Func<TCapture, Promise<TPromise>> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2214,16 +2585,19 @@ namespace Proto.Promises
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2239,8 +2613,13 @@ namespace Proto.Promises
                 private readonly Func<TCapture, TArg, Promise<TPromise>> _callback;
                 private CancelationRegistration _cancelationRegistration;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateCaptureArgPromiseTCancel(ref TCapture capturedValue, Func<TCapture, TArg, Promise<TPromise>> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2248,17 +2627,20 @@ namespace Proto.Promises
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     ((PromiseWaitPromise) owner).WaitFor(_callback.Invoke(_capturedValue, arg));
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void MaybeUnregisterCancelation()
                 {
                     _cancelationRegistration.TryUnregister();
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2276,8 +2658,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureVoidVoidCancel(ref TCapture capturedValue, Promise.ContinueAction<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2286,6 +2673,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -2300,11 +2688,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2321,8 +2711,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureVoidResultCancel(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, TResult> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2331,6 +2726,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -2345,11 +2741,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2366,8 +2764,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureArgVoidCancel(ref TCapture capturedValue, Promise<TArg>.ContinueAction<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2376,6 +2779,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -2390,11 +2794,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2411,8 +2817,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureArgResultCancel(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, TResult> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2421,6 +2832,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -2435,11 +2847,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2457,8 +2871,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureVoidPromiseCancel(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2467,6 +2886,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -2481,11 +2901,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2502,8 +2924,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureVoidPromiseTCancel(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise<TPromise>> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2512,6 +2939,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -2526,11 +2954,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2547,8 +2977,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureArgPromiseCancel(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2557,6 +2992,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -2571,11 +3007,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;
@@ -2592,8 +3030,13 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 private bool _canceled;
 
-                public bool IsNull { get { return _callback == null; } }
+                public bool IsNull
+                {
+                    [MethodImpl((MethodImplOptions) 256)]
+                    get { return _callback == null; }
+                }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public DelegateContinueCaptureArgPromiseTCancel(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TPromise>> callback)
                 {
                     _capturedValue = capturedValue;
@@ -2602,6 +3045,7 @@ namespace Proto.Promises
                     _canceled = false;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     if (_canceled)
@@ -2616,11 +3060,13 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void CancelCallback()
                 {
                     _canceled = true;
                 }
 
+                [MethodImpl((MethodImplOptions) 256)]
                 public void SetCancelationRegistration(CancelationRegistration cancelationRegistration)
                 {
                     _cancelationRegistration = cancelationRegistration;

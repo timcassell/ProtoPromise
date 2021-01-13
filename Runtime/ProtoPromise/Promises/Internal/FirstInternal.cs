@@ -56,9 +56,9 @@ namespace Proto.Promises
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<FirstPromise, Creator>(new Creator());
 
                     promise._passThroughs = promisePassThroughs;
-
                     promise._waitCount = pendingAwaits;
                     promise.Reset();
+                    promise.SetupProgress();
 
                     foreach (var passThrough in promisePassThroughs)
                     {
@@ -94,6 +94,8 @@ namespace Proto.Promises
                 {
                     _passThroughs.Push(passThrough);
                 }
+
+                partial void SetupProgress();
             }
 
 #if PROMISE_PROGRESS
@@ -101,9 +103,8 @@ namespace Proto.Promises
             {
                 private UnsignedFixed32 _currentAmount;
 
-                protected override void Reset()
+                partial void SetupProgress()
                 {
-                    base.Reset();
                     _currentAmount = default(UnsignedFixed32);
 
                     uint minWaitDepth = uint.MaxValue;

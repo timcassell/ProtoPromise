@@ -93,8 +93,6 @@ namespace Proto.Promises
 
             partial void CancelProgressListeners(object previous)
             {
-                // TODO: listeners aren't removed from non-wait promises.
-
                 // TODO: this algorithm is O(n^3), refactor progress to reduce runtime costs of cancelations.
                 UnsignedFixed32 progress = _waitDepthAndProgress.GetIncrementedWholeTruncated();
                 while (_progressListeners.IsNotEmpty)
@@ -669,9 +667,9 @@ namespace Proto.Promises
                 private UnsignedFixed32 _currentAmount;
                 private bool _secondPrevious;
 
-                protected override void Reset()
+                protected override void Dispose()
                 {
-                    base.Reset();
+                    base.Dispose();
                     _secondPrevious = false;
                 }
 
