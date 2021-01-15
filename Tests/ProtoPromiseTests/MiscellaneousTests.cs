@@ -1,4 +1,10 @@
-﻿using System;
+﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+# endif
+
+using System;
 using NUnit.Framework;
 
 namespace Proto.Promises.Tests
@@ -9,6 +15,270 @@ namespace Proto.Promises.Tests
         public void Teardown()
         {
             TestHelper.Cleanup();
+        }
+
+        [Test]
+        public void PromiseIsInvalidAfterAwaited_void()
+        {
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise;
+
+            Assert.IsTrue(promise.IsValid);
+
+            promise.Then(() => { }).Forget();
+
+            Assert.IsFalse(promise.IsValid);
+
+#if CSHARP_7_OR_LATER
+            Assert.Throws<InvalidOperationException>(() => promise.GetAwaiter());
+#endif
+            Assert.Throws<InvalidOperationException>(() => promise.Preserve());
+            Assert.Throws<InvalidOperationException>(() => promise.Forget());
+            Assert.Throws<InvalidOperationException>(() => promise.Duplicate());
+
+#if PROMISE_PROGRESS
+            Assert.Throws<InvalidOperationException>(() => promise.Progress(v => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Progress(1, (cv, v) => { }));
+#endif
+            Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(r => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(1, (cv, r) => { }));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Finally(() => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Finally(1, cv => { }));
+
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(r => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(r => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(r => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(r => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(1, (cv, r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(1, (cv, r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(1, (cv, r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(1, (cv, r) => Promise.Resolved(1)));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Catch(() => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch(() => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch((object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch((object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch(1, cv => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch(1, cv => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch(1, (int cv, object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch(1, (int cv, object r) => Promise.Resolved()));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(1)));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => { }, () => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => 1, () => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(), () => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(1), () => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => { }, () => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => 1, () => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(), () => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(1), () => 1));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => { }, 1, cv => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => 1, 1, cv => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(), 1, cv => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(1), 1, cv => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => { }, 1, cv => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => 1, 1, cv => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(), 1, cv => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(1), 1, cv => 1));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => { }, (object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => 1, (object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(), (object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(1), (object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => { }, (object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => 1, (object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(), (object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(1), (object r) => 1));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => { }, 1, (int cv, object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => 1, 1, (int cv, object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(), 1, (int cv, object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(1), 1, (int cv, object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => { }, 1, (int cv, object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => 1, 1, (int cv, object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(), 1, (int cv, object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(1), 1, (int cv, object r) => 1));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => { }, () => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => 1, () => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(), () => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(1), () => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => { }, () => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => 1, () => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(), () => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(1), () => Promise.Resolved(1)));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => { }, 1, cv => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => 1, 1, cv => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(), 1, cv => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(1), 1, cv => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => { }, 1, cv => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => 1, 1, cv => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(), 1, cv => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(1), 1, cv => Promise.Resolved(1)));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => { }, (object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => 1, (object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(), (object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(1), (object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => { }, (object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => 1, (object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(), (object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(1), (object r) => Promise.Resolved(1)));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => { }, 1, (int cv, object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => 1, 1, (int cv, object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(), 1, (int cv, object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(() => Promise.Resolved(1), 1, (int cv, object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => { }, 1, (int cv, object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => 1, 1, (int cv, object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(), 1, (int cv, object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(1), 1, (int cv, object r) => Promise.Resolved(1)));
+
+            deferred.Resolve();
+            Promise.Manager.HandleCompletes();
+        }
+
+        [Test]
+        public void PromiseIsInvalidAfterAwaited_T()
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise;
+
+            Assert.IsTrue(promise.IsValid);
+
+            promise.Then(v => { }).Forget();
+
+            Assert.IsFalse(promise.IsValid);
+
+#if CSHARP_7_OR_LATER
+            Assert.Throws<InvalidOperationException>(() => promise.GetAwaiter());
+#endif
+            Assert.Throws<InvalidOperationException>(() => promise.Preserve());
+            Assert.Throws<InvalidOperationException>(() => promise.Forget());
+            Assert.Throws<InvalidOperationException>(() => promise.Duplicate());
+
+#if PROMISE_PROGRESS
+            Assert.Throws<InvalidOperationException>(() => promise.Progress(v => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Progress(1, (cv, v) => { }));
+#endif
+            Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(r => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(1, (cv, r) => { }));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Finally(() => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Finally(1, cv => { }));
+
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(r => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(r => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(r => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(r => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(1, (cv, r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(1, (cv, r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(1, (cv, r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.ContinueWith(1, (cv, r) => Promise.Resolved(1)));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Catch(() => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch(() => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch((object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch((object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch(1, cv => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch(1, cv => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch(1, (int cv, object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Catch(1, (int cv, object r) => Promise.Resolved(1)));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(1)));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => { }, () => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => 1, () => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(), () => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(1), () => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => { }, () => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => 1, () => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(), () => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(1), () => 1));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => { }, 1, cv => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => 1, 1, cv => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(), 1, cv => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(1), 1, cv => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => { }, 1, cv => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => 1, 1, cv => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(), 1, cv => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(1), 1, cv => 1));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => { }, (object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => 1, (object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(), (object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(1), (object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => { }, (object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => 1, (object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(), (object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(1), (object r) => 1));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => { }, 1, (int cv, object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => 1, 1, (int cv, object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(), 1, (int cv, object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(1), 1, (int cv, object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => { }, 1, (int cv, object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => 1, 1, (int cv, object r) => 1));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(), 1, (int cv, object r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(1), 1, (int cv, object r) => 1));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => { }, () => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => 1, () => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(), () => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(1), () => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => { }, () => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => 1, () => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(), () => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(1), () => Promise.Resolved(1)));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => { }, 1, cv => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => 1, 1, cv => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(), 1, cv => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(1), 1, cv => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => { }, 1, cv => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => 1, 1, cv => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(), 1, cv => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(1), 1, cv => Promise.Resolved(1)));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => { }, (object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => 1, (object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(), (object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(1), (object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => { }, (object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => 1, (object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(), (object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(1), (object r) => Promise.Resolved(1)));
+
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => { }, 1, (int cv, object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => 1, 1, (int cv, object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(), 1, (int cv, object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(v => Promise.Resolved(1), 1, (int cv, object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => { }, 1, (int cv, object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => 1, 1, (int cv, object r) => Promise.Resolved(1)));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(), 1, (int cv, object r) => Promise.Resolved()));
+            Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(1), 1, (int cv, object r) => Promise.Resolved(1)));
+
+            deferred.Resolve(1);
+            Promise.Manager.HandleCompletes();
         }
 
         [Test]

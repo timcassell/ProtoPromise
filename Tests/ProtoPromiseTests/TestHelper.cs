@@ -14,11 +14,12 @@ namespace Proto.Promises.Tests
     // These help test all Then/Catch functions at once.
     public static class TestHelper
     {
-        internal static Exception exception = null;
+        private static Exception exception = null;
         
         static TestHelper()
         {
             // Capture first exception from finalizers.
+            // Only throw one exception instead of aggregate to try to avoid overloading the test error output.
             Promise.Config.UncaughtRejectionHandler = e => Interlocked.CompareExchange(ref exception, e, null);
             Promise.Config.ObjectPoolingEnabled = true; // Make sure to test object pool.
         }

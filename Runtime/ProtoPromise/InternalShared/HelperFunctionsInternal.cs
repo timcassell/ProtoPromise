@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable RECS0085 // When initializing explicitly typed local variable or array type, array creation expression can be replaced with array initializer.
-#pragma warning disable IDE1006 // Naming Styles
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0041 // Use 'is null' check
 
@@ -183,7 +181,7 @@ namespace Proto.Promises
 #endif
         }
 #else
-            public static string GetFormattedStacktrace(int skipFrames)
+        public static string GetFormattedStacktrace(int skipFrames)
         {
             return null;
         }
@@ -243,12 +241,8 @@ namespace Proto.Promises
                     return internalRejection.ToContainer(traceable);
                 }
 
-                object o = reason;
-                if (ReferenceEquals(o, null))
-                {
-                    // reason is null, behave the same way .Net behaves if you throw null.
-                    o = new NullReferenceException();
-                }
+                // If reason is null, behave the same way .Net behaves if you throw null.
+                object o = reason == null ? new NullReferenceException() : (object) reason;
                 // Only need to create one object pool for reference types.
                 valueContainer = RejectionContainer<object>.GetOrCreate(ref o);
             }
