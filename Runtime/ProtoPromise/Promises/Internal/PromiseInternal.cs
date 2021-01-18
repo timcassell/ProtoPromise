@@ -372,25 +372,15 @@ namespace Proto.Promises
                 IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                 _valueOrPrevious = null;
                 SetCurrentInvoker(this);
+                bool invokingRejected = false;
                 try
                 {
-                    Execute(valueContainer);
+                    Execute(valueContainer, ref invokingRejected);
                     valueContainer.Release();
                 }
                 catch (RethrowException e)
                 {
-                    if (!invokingRejected)
-                    {
-                        valueContainer.Release();
-#if PROMISE_DEBUG
-                        string stacktrace = FormatStackTrace(new System.Diagnostics.StackTrace[1] { new System.Diagnostics.StackTrace(e, true) });
-#else
-                        string stacktrace = new System.Diagnostics.StackTrace(e, true).ToString();
-#endif
-                        Exception exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-                        RejectOrCancelInternal(CreateCancelContainer(ref exception));
-                    }
-                    else
+                    if (invokingRejected || e is ForcedRethrowException)
                     {
                         _state = valueContainer.GetState();
                         var previous = _valueOrPrevious;
@@ -399,6 +389,17 @@ namespace Proto.Promises
                         CancelProgressListeners(previous);
 
                         MaybeDispose();
+                    }
+                    else
+                    {
+                        valueContainer.Release();
+#if PROMISE_DEBUG
+                        string stacktrace = FormatStackTrace(new System.Diagnostics.StackTrace[1] { new System.Diagnostics.StackTrace(e, true) });
+#else
+                        string stacktrace = new System.Diagnostics.StackTrace(e, true).ToString();
+#endif
+                        object exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+                        RejectOrCancelInternal(RejectionContainer<object>.GetOrCreate(ref exception));
                     }
                 }
                 catch (OperationCanceledException e)
@@ -464,7 +465,7 @@ namespace Proto.Promises
                 MaybeDispose();
             }
 
-            protected virtual void Execute(IValueContainer valueContainer) { }
+            protected virtual void Execute(IValueContainer valueContainer, ref bool invokingRejected) { }
 
             private void HandleBranches(IValueContainer valueContainer)
             {
@@ -512,7 +513,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     HandleSelf(valueContainer);
                 }
@@ -927,7 +928,7 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    protected override void Execute(IValueContainer valueContainer)
+                    protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                     {
                         var resolveCallback = resolver;
                         resolver = default(TResolver);
@@ -976,7 +977,7 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    protected override void Execute(IValueContainer valueContainer)
+                    protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                     {
                         if (resolver.IsNull)
                         {
@@ -1082,7 +1083,7 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    protected override void Execute(IValueContainer valueContainer)
+                    protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                     {
                         var resolveCallback = resolver;
                         resolver = default(TResolver);
@@ -1140,7 +1141,7 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    protected override void Execute(IValueContainer valueContainer)
+                    protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                     {
                         if (rejecter.IsNull)
                         {
@@ -1241,7 +1242,7 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    protected override void Execute(IValueContainer valueContainer)
+                    protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                     {
                         var callback = continuer;
                         continuer = default(TContinuer);
@@ -1286,7 +1287,7 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    protected override void Execute(IValueContainer valueContainer)
+                    protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                     {
                         if (continuer.IsNull)
                         {

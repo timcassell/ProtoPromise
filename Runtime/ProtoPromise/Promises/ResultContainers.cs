@@ -142,8 +142,7 @@ namespace Proto.Promises
                 ValidateCall();
                 if (_valueContainer.GetState() == State.Rejected)
                 {
-                    Internal.invokingRejected = true;
-                    throw RethrowException.instance;
+                    throw Internal.ForcedRethrowException.GetOrCreate();
                 }
             }
 
@@ -155,8 +154,7 @@ namespace Proto.Promises
                 ValidateCall();
                 if (_valueContainer.GetState() == State.Canceled)
                 {
-                    Internal.invokingRejected = true;
-                    throw RethrowException.instance;
+                    throw Internal.ForcedRethrowException.GetOrCreate();
                 }
             }
 
@@ -274,8 +272,7 @@ namespace Proto.Promises
                 ValidateCall();
                 if (_valueContainer.GetState() == Promise.State.Rejected)
                 {
-                    Internal.invokingRejected = true;
-                    throw RethrowException.instance;
+                    throw Internal.ForcedRethrowException.GetOrCreate();
                 }
             }
 
@@ -287,8 +284,7 @@ namespace Proto.Promises
                 ValidateCall();
                 if (_valueContainer.GetState() == Promise.State.Canceled)
                 {
-                    Internal.invokingRejected = true;
-                    throw RethrowException.instance;
+                    throw Internal.ForcedRethrowException.GetOrCreate();
                 }
             }
 

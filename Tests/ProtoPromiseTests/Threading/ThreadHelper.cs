@@ -1,4 +1,4 @@
-﻿#if !UNITY_EDITOR || CSHARP_7_OR_LATER
+﻿#if CSHARP_7_OR_LATER
 
 using System;
 using System.Collections.Generic;
@@ -9,10 +9,10 @@ namespace Proto.Promises.Tests.Threading
 {
     public class ThreadHelper
     {
-        public static readonly int multiThreadCount = Environment.ProcessorCount * 100;
+        public static readonly int multiExecutionCount = Math.Min(Environment.ProcessorCount * 100, 32766); // Maximum participants Barrier allows is 32767 (15 bits), subtract 1 for main/test thread.
         private static readonly int[] offsets = new int[] { 0, 10, 100, 1000 };
 
-        private readonly Stack<Task> _executingTasks = new Stack<Task>(multiThreadCount);
+        private readonly Stack<Task> _executingTasks = new Stack<Task>(multiExecutionCount);
         private readonly Barrier _barrier = new Barrier(1);
         private int _currentParticipants = 0;
         private readonly TimeSpan _timeout;
@@ -29,7 +29,7 @@ namespace Proto.Promises.Tests.Threading
         /// </summary>
         public void ExecuteMultiActionParallel(Action action)
         {
-            for (int i = 0; i < multiThreadCount; ++i)
+            for (int i = 0; i < multiExecutionCount; ++i)
             {
                 AddParallelAction(action);
             }
@@ -96,7 +96,7 @@ namespace Proto.Promises.Tests.Threading
             catch (AggregateException e)
             {
                 // Only throw one exception instead of aggregate to try to avoid overloading the test error output.
-                throw e.Flatten().InnerException;
+                throw new Exception(null, e.Flatten().InnerException);
             }
         }
 

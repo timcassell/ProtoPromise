@@ -282,90 +282,6 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void AccessingCancelExceptionOrRejectExceptionInOnResolvedDoesNotThrow_void()
-        {
-            var promise = Promise.Resolved().Preserve();
-
-            TestHelper.AddCallbacks<int, object, string>(promise,
-                onResolve: () =>
-                {
-                    Promise.CancelException();
-                    Promise.CancelException("Cancel!");
-                    Promise.RejectException("Reject!");
-                });
-
-            Promise.Manager.HandleCompletes();
-
-            promise.Forget();
-        }
-
-        [Test]
-        public void AccessingCancelExceptionOrRejectExceptionInOnResolvedDoesNotThrow_T()
-        {
-            var promise = Promise.Resolved(100).Preserve();
-
-            TestHelper.AddCallbacks<int, bool, object, string>(promise,
-                onResolve: v =>
-                {
-                    Promise.CancelException();
-                    Promise.CancelException("Cancel!");
-                    Promise.RejectException("Reject!");
-                });
-
-            Promise.Manager.HandleCompletes();
-
-            promise.Forget();
-        }
-
-        [Test]
-        public void AccessingCancelExceptionOrRejectExceptionInOnRejectedDoesNotThrow_void()
-        {
-            var promise = Promise.Rejected("Reject!").Preserve();
-
-            TestHelper.AddCallbacks<int, string, string>(promise,
-                onReject: (string rej) =>
-                {
-                    Promise.CancelException();
-                    Promise.CancelException("Cancel!");
-                    Promise.RejectException("Reject!");
-                },
-                onUnknownRejection: () =>
-                {
-                    Promise.CancelException();
-                    Promise.CancelException("Cancel!");
-                    Promise.RejectException("Reject!");
-                });
-
-            Promise.Manager.HandleCompletes();
-
-            promise.Forget();
-        }
-
-        [Test]
-        public void AccessingCancelExceptionOrRejectExceptionInOnRejectedDoesNotThrow_T()
-        {
-            var promise = Promise<int>.Rejected("Reject!").Preserve();
-
-            TestHelper.AddCallbacks<int, bool, string, string>(promise,
-                onReject: (string rej) =>
-                {
-                    Promise.CancelException();
-                    Promise.CancelException("Cancel!");
-                    Promise.RejectException("Reject!");
-                },
-                onUnknownRejection: () =>
-                {
-                    Promise.CancelException();
-                    Promise.CancelException("Cancel!");
-                    Promise.RejectException("Reject!");
-                });
-
-            Promise.Manager.HandleCompletes();
-
-            promise.Forget();
-        }
-
-        [Test]
         public void ThrowingRejectExceptionInOnResolvedRejectsThePromiseWithTheGivenValue_void()
         {
             var promise = Promise.Resolved().Preserve();
@@ -696,13 +612,7 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void AccessingRethrowInNormalCodeThrows()
-        {
-            Assert.Throws<InvalidOperationException>(() => { var _ = Promise.Rethrow; });
-        }
-
-        [Test]
-        public void AccessingRethrowInOnResolvedThrows_void()
+        public void ThrowingRethrowInOnResolvedRejectsThePromiseWithInvalidOperationException_void()
         {
             var promise = Promise.Resolved().Preserve();
 
@@ -718,17 +628,17 @@ namespace Proto.Promises.Tests
             };
 
             TestHelper.AddResolveCallbacks<int, string>(promise,
-                onResolve: () => { var _ = Promise.Rethrow; },
+                onResolve: () => { throw Promise.Rethrow; },
                 onCallbackAdded: p => callback(p),
                 onCallbackAddedConvert: p => callback(p)
             );
             TestHelper.AddCallbacks<int, object, string>(promise,
-                onResolve: () => { var _ = Promise.Rethrow; },
+                onResolve: () => { throw Promise.Rethrow; },
                 onCallbackAdded: p => callback(p),
                 onCallbackAddedConvert: p => callback(p)
             );
             TestHelper.AddContinueCallbacks<int, string>(promise,
-                onContinue: _ => { var __ = Promise.Rethrow; },
+                onContinue: _ => { throw Promise.Rethrow; },
                 onCallbackAdded: p => callback(p),
                 onCallbackAddedConvert: p => callback(p)
             );
@@ -744,7 +654,7 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void AccessingRethrowInOnResolvedThrows_T()
+        public void ThrowingRethrowInOnResolvedRejectsThePromiseWithInvalidOperationException_T()
         {
             var promise = Promise.Resolved(100).Preserve();
 
@@ -760,17 +670,17 @@ namespace Proto.Promises.Tests
             };
 
             TestHelper.AddResolveCallbacks<int, bool, string>(promise,
-                onResolve: v => { var _ = Promise.Rethrow; },
+                onResolve: v => { throw Promise.Rethrow; },
                 onCallbackAdded: p => callback(p),
                 onCallbackAddedConvert: p => callback(p)
             );
             TestHelper.AddCallbacks<int, bool, object, string>(promise,
-                onResolve: v => { var _ = Promise.Rethrow; },
+                onResolve: v => { throw Promise.Rethrow; },
                 onCallbackAdded: p => callback(p),
                 onCallbackAddedConvert: p => callback(p)
             );
             TestHelper.AddContinueCallbacks<int, bool, string>(promise,
-                onContinue: _ => { var __ = Promise.Rethrow; },
+                onContinue: _ => { throw Promise.Rethrow; },
                 onCallbackAdded: p => callback(p),
                 onCallbackAddedConvert: p => callback(p)
             );

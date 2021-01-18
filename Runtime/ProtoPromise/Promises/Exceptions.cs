@@ -210,11 +210,22 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
 #endif
-    public sealed class RethrowException : Exception
+    public class RethrowException : Exception
     {
-        internal static readonly RethrowException instance = new RethrowException();
+#if !PROMISE_DEBUG
+        private static readonly RethrowException _instance = new RethrowException();
+#endif
 
-        private RethrowException() { }
+        protected RethrowException() { }
+
+        internal static RethrowException GetOrCreate()
+        {
+#if PROMISE_DEBUG
+            return new RethrowException(); // Don't re-use instance in DEBUG mode so that we can read its stacktrace on any thread.
+#else
+            return _instance;
+#endif
+        }
     }
 
     /// <summary>
@@ -251,6 +262,24 @@ namespace Proto.Promises
             get
             {
                 return "This is used to cancel a Promise from an onResolved or onRejected handler.";
+            }
+        }
+    }
+
+    partial class Internal
+    {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        internal sealed class ForcedRethrowException : RethrowException
+        {
+            private static readonly ForcedRethrowException _instance = new ForcedRethrowException();
+
+            private ForcedRethrowException() { }
+
+            new internal static ForcedRethrowException GetOrCreate()
+            {
+                return _instance;
             }
         }
     }

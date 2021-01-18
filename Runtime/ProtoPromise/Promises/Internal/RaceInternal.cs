@@ -68,7 +68,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     HandleSelf(valueContainer);
                 }

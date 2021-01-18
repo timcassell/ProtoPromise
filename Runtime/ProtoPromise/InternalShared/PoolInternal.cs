@@ -7,6 +7,7 @@
 #pragma warning disable RECS0108 // Warns about static fields in generic types
 
 using Proto.Utils;
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -15,6 +16,17 @@ namespace Proto.Promises
 {
     partial class Internal
     {
+        internal static event Action OnClearPool;
+
+        public static void ClearPool()
+        {
+            Action temp = OnClearPool;
+            if (temp != null)
+            {
+                temp.Invoke();
+            }
+        }
+
         // Using static generic classes to hold the pools allows direct pool access at runtime without doing a dictionary lookup.
         internal static partial class ObjectPool<TLinked> where TLinked : class, ILinked<TLinked>
         {

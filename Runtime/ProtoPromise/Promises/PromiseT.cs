@@ -92,7 +92,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Mark <see cref="this"/> as awaited and get a new <see cref="Promise{T}"/> of <typeparamref name="T"/> that inherits the state of <see cref="this"/> and can be awaited once.
-        /// <para/>Preserved promiseses are unsafe to return from public APIs. Use <see cref="Duplicate"/> to get a <see cref="Promise{T}"/> that is publicly safe.
+        /// <para/>Preserved promises are unsafe to return from public APIs. Use <see cref="Duplicate"/> to get a <see cref="Promise{T}"/> that is publicly safe.
         /// <para/><see cref="Duplicate"/> is safe to call even if you are unsure if <see cref="this"/> is preserved.
         /// </summary>
         public Promise<T> Duplicate()

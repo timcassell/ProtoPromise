@@ -1419,16 +1419,11 @@ namespace Proto.Promises
         /// This should be used as "throw Promise.Rethrow;"
         /// This is similar to "throw;" in a synchronous catch clause.
         /// </summary>
-        /// <exception cref="InvalidOperationException"/>
         public static RethrowException Rethrow
         {
             get
             {
-                if (Internal.invokingRejected)
-                {
-                    return RethrowException.instance;
-                }
-                throw new InvalidOperationException("Rethrow can only be accessed inside an onRejected callback.", Internal.GetFormattedStacktrace(1));
+                return RethrowException.GetOrCreate();
             }
         }
 

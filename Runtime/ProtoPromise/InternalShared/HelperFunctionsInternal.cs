@@ -26,19 +26,6 @@ namespace Proto.Promises
 #endif
     internal static partial class Internal
     {
-        public static bool invokingRejected;
-
-        public static event Action OnClearPool;
-
-        public static void ClearPool()
-        {
-            Action temp = OnClearPool;
-            if (temp != null)
-            {
-                temp.Invoke();
-            }
-        }
-
         public static string CausalityTraceMessage
         {
             get

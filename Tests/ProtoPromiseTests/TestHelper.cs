@@ -11,8 +11,8 @@ using System.Threading;
 
 namespace Proto.Promises.Tests
 {
-    // These help test all Then/Catch functions at once.
-    public static class TestHelper
+    // These help test all Then/Catch/ContinueWith methods at once.
+    public static partial class TestHelper
     {
         private static Exception exception = null;
         
