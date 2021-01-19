@@ -31,7 +31,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Get whether the callback is registered and has not been invoked.
+        /// Get whether the callback is registered and the associated <see cref="CancelationToken"/> has not been canceled.
         /// </summary>
         public bool IsRegistered
         {
@@ -55,7 +55,7 @@ namespace Proto.Promises
         /// <summary>
         /// Try to unregister the callback from the associated <see cref="CancelationToken"/>. Returns true if the callback was successfully unregistered, false otherwise.
         /// </summary>
-        /// <returns>true if the callback was previously registered and not yet invoked, false otherwise</returns>
+        /// <returns>true if the callback was previously registered and the associated <see cref="CancelationToken"/> not yet canceled, false otherwise</returns>
         public bool TryUnregister()
         {
             if (_ref == null)
@@ -88,20 +88,21 @@ namespace Proto.Promises
             unchecked
             {
                 int hash = 17;
-                hash = hash * 31 + _order.GetHashCode();
                 hash = hash * 31 + _ref.GetHashCode();
+                hash = hash * 31 + _order.GetHashCode();
+                hash = hash * 31 + _id.GetHashCode();
                 return hash;
             }
         }
 
-        public static bool operator ==(CancelationRegistration c1, CancelationRegistration c2)
+        public static bool operator ==(CancelationRegistration lhs, CancelationRegistration rhs)
         {
-            return c1._ref == c2._ref & c1._order == c2._order;
+            return lhs._ref == rhs._ref & lhs._order == rhs._order & lhs._id == rhs._id;
         }
 
-        public static bool operator !=(CancelationRegistration c1, CancelationRegistration c2)
+        public static bool operator !=(CancelationRegistration lhs, CancelationRegistration rhs)
         {
-            return !(c1 == c2);
+            return !(lhs == rhs);
         }
     }
 }

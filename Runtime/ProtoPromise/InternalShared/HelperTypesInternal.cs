@@ -20,7 +20,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        public class CausalityTrace
+        internal class CausalityTrace
         {
             private readonly StackTrace _stackTrace;
             private readonly CausalityTrace _next;
@@ -54,7 +54,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        public sealed class CancelDelegate<TCanceler> : ICancelDelegate, IDisposableTreeHandleable, ITraceable where TCanceler : IDelegateCancel
+        internal sealed class CancelDelegate<TCanceler> : ICancelDelegate, IDisposableTreeHandleable, ITraceable where TCanceler : IDelegateCancel
         {
             private struct Creator : ICreator<CancelDelegate<TCanceler>>
             {
@@ -74,6 +74,7 @@ namespace Proto.Promises
 
             private CancelDelegate() { }
 
+            [MethodImpl((MethodImplOptions) 256)]
             public static CancelDelegate<TCanceler> GetOrCreate()
             {
                 var del = ObjectPool<ITreeHandleable>.GetOrCreate<CancelDelegate<TCanceler>, Creator>(new Creator());
@@ -84,26 +85,18 @@ namespace Proto.Promises
             void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
             {
                 ThrowIfInPool(this);
-                if (owner.State == Promise.State.Canceled && canceler.TrySetValue(valueContainer))
+                if (canceler.TryMakeReady(valueContainer, this))
                 {
                     handleQueue.Push(this);
-                }
-                else
-                {
-                    Dispose();
                 }
             }
 
             void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
             {
                 ThrowIfInPool(this);
-                if (owner.State == Promise.State.Canceled && canceler.TrySetValue(valueContainer))
+                if (canceler.TryMakeReady(valueContainer, this))
                 {
                     AddToHandleQueueBack(this);
-                }
-                else
-                {
-                    Dispose();
                 }
             }
 
@@ -113,7 +106,7 @@ namespace Proto.Promises
                 SetCurrentInvoker(this);
                 try
                 {
-                    // Canceler will dispose this if it can.
+                    // Canceler may dispose this.
                     canceler.InvokeFromToken(valueContainer, this);
                 }
                 finally
@@ -126,15 +119,21 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
                 SetCurrentInvoker(this);
-                TCanceler callback = canceler;
-                Dispose();
+#if PROMISE_DEBUG
+                var traceContainer = new CausalityTraceContainer(this); // Store the causality trace so that this can be disposed before the callback is invoked.
+#endif
                 try
                 {
-                    callback.InvokeFromPromise(this);
+                    // Canceler may dispose this.
+                    canceler.InvokeFromPromise(this);
                 }
                 catch (Exception e)
                 {
-                    AddRejectionToUnhandledStack(e, this);
+#if PROMISE_DEBUG
+                    AddRejectionToUnhandledStack(e, traceContainer);
+#else
+                    AddRejectionToUnhandledStack(e, null);
+#endif
                 }
                 finally
                 {
@@ -268,29 +267,19 @@ namespace Proto.Promises
 
             public bool IsRegistered(ushort tokenId, uint order)
             {
-                int index = IndexOf(order);
-                return index >= 0 && (tokenId == TokenId & _registeredCallbacks[index].callback != null);
+                return IndexOf(order) >= 0 & tokenId == TokenId & ValueContainer == null;
             }
 
             public bool TryUnregister(ushort tokenId, uint order)
             {
                 int index = IndexOf(order);
-                if (tokenId == TokenId & index >= 0)
+                if (index >= 0 & tokenId == TokenId & ValueContainer == null)
                 {
                     ThrowIfInPool(this);
                     RegisteredDelegate del = _registeredCallbacks[index];
-                    if (!_isInvoking)
-                    {
-                        _registeredCallbacks.RemoveAt(index);
-                        del.callback.Dispose();
-                        return true;
-                    }
-                    if (del.callback != null)
-                    {
-                        _registeredCallbacks[index] = new RegisteredDelegate(del.order);
-                        del.callback.Dispose();
-                        return true;
-                    }
+                    _registeredCallbacks.RemoveAt(index);
+                    del.callback.Dispose();
+                    return true;
                 }
                 return false;
             }
@@ -324,22 +313,17 @@ namespace Proto.Promises
                 List<Exception> exceptions = null;
                 for (int i = 0, max = _registeredCallbacks.Count; i < max; ++i)
                 {
-                    RegisteredDelegate del = _registeredCallbacks[i];
-                    _registeredCallbacks[i] = default(RegisteredDelegate);
-                    if (del.callback != null)
+                    try
                     {
-                        try
+                        _registeredCallbacks[i].callback.Invoke(ValueContainer);
+                    }
+                    catch (Exception e)
+                    {
+                        if (exceptions == null)
                         {
-                            del.callback.Invoke(ValueContainer);
+                            exceptions = new List<Exception>();
                         }
-                        catch (Exception e)
-                        {
-                            if (exceptions == null)
-                            {
-                                exceptions = new List<Exception>();
-                            }
-                            exceptions.Add(e);
-                        }
+                        exceptions.Add(e);
                     }
                 }
                 _registeredCallbacks.Clear();
@@ -390,8 +374,8 @@ namespace Proto.Promises
             public void Dispose()
             {
                 ThrowIfInPool(this);
-                _isDisposed = true;
                 ++SourceId;
+                _isDisposed = true;
                 _registeredCount = 0;
                 Unlink();
                 // In case Dispose is called from a callback.
@@ -400,12 +384,7 @@ namespace Proto.Promises
                     _isInvoking = true;
                     for (int i = 0, max = _registeredCallbacks.Count; i < max; ++i)
                     {
-                        RegisteredDelegate del = _registeredCallbacks[i];
-                        _registeredCallbacks[i] = default(RegisteredDelegate);
-                        if (del.callback != null)
-                        {
-                            del.callback.Dispose();
-                        }
+                        _registeredCallbacks[i].callback.Dispose();
                     }
                     _registeredCallbacks.Clear();
                     _isInvoking = false;

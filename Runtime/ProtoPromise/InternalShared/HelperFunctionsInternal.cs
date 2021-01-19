@@ -297,7 +297,6 @@ namespace Proto.Promises
             _unhandledExceptions.Push(exception);
         }
 
-        // Generate stack trace if traceable is null.
         public static void AddRejectionToUnhandledStack(object unhandledValue, ITraceable traceable)
         {
 #if CSHARP_7_OR_LATER
@@ -318,12 +317,7 @@ namespace Proto.Promises
             }
 
 #if PROMISE_DEBUG
-            string stackTrace =
-                traceable != null
-                    ? GetFormattedStacktrace(traceable)
-                : Promise.Config.DebugCausalityTracer != Promise.TraceLevel.None
-                    ? GetFormattedStacktrace(1)
-                    : null;
+            string stackTrace = GetFormattedStacktrace(traceable);
 #else
             string stackTrace = null;
 #endif

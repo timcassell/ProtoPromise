@@ -194,7 +194,7 @@ namespace Proto.Promises
                 {
                     // Public APIs do a simple validation check in DEBUG mode, this is an extra thread-safe validation in case the same object is concurrently used and/or forgotten at the same time.
                     // This is left in RELEASE mode because concurrency issues can be very difficult to track down, and might not show up in DEBUG mode.
-                    throw new InvalidOperationException("Attempted to mark an invalid Promise as awaited. This may be because you are attempting to use a promise simultaneously on multiple threads that you have not preserved.",
+                    throw new InvalidOperationException("Attempted to use an invalid Promise. This may be because you are attempting to use a promise simultaneously on multiple threads that you have not preserved.",
                         GetFormattedStacktrace(3));
                 }
                 return newId;
@@ -228,6 +228,7 @@ namespace Proto.Promises
 
             void ITreeHandleableCollection.Remove(ITreeHandleable treeHandleable)
             {
+                // TODO: thread synchronization
                 ThrowIfInPool(this);
                 _nextBranches.Remove(treeHandleable);
             }

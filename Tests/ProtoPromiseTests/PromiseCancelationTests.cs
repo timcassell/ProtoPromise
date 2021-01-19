@@ -809,7 +809,7 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void OnCanceledIsNotInvokedIfTokenIsCanceled_void()
+            public void OnCanceledIsNotInvokedIfTokenIsCanceled_void0()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred(cancelationSource.Token);
@@ -827,7 +827,7 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void OnCanceledIsNotInvokedIfTokenIsCanceled_T()
+            public void OnCanceledIsNotInvokedIfTokenIsCanceled_T0()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
@@ -841,6 +841,48 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
+                promise.Forget();
+            }
+
+            [Test]
+            public void OnCanceledIsNotInvokedIfTokenIsCanceled_void1()
+            {
+                CancelationSource deferredCancelationSource = CancelationSource.New();
+                CancelationSource catchCancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred(deferredCancelationSource.Token);
+                var promise = deferred.Promise.Preserve();
+
+                promise
+                    .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token);
+
+                catchCancelationSource.Cancel();
+                deferredCancelationSource.Cancel();
+                Promise.Manager.HandleCompletes();
+
+                catchCancelationSource.Dispose();
+                deferredCancelationSource.Dispose();
+                promise.Forget();
+            }
+
+            [Test]
+            public void OnCanceledIsNotInvokedIfTokenIsCanceled_T1()
+            {
+                CancelationSource deferredCancelationSource = CancelationSource.New();
+                CancelationSource catchCancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred<int>(deferredCancelationSource.Token);
+                var promise = deferred.Promise.Preserve();
+
+                promise
+                    .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token);
+
+                catchCancelationSource.Cancel();
+                deferredCancelationSource.Cancel();
+                Promise.Manager.HandleCompletes();
+
+                catchCancelationSource.Dispose();
+                deferredCancelationSource.Dispose();
                 promise.Forget();
             }
 
@@ -862,6 +904,80 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void OnCanceledIsNotInvokedIfPromiseIsResolved_void0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred();
+                var promise = deferred.Promise.Preserve();
+
+                promise
+                    .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+
+                deferred.Resolve();
+                cancelationSource.Cancel();
+                Promise.Manager.HandleCompletes();
+
+                cancelationSource.Dispose();
+                promise.Forget();
+            }
+
+            [Test]
+            public void OnCanceledIsNotInvokedIfPromiseIsResolved_T0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred<int>();
+                var promise = deferred.Promise.Preserve();
+
+                promise
+                    .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+
+                deferred.Resolve(1);
+                cancelationSource.Cancel();
+                Promise.Manager.HandleCompletes();
+
+                cancelationSource.Dispose();
+                promise.Forget();
+            }
+
+            [Test]
+            public void OnCanceledIsNotInvokedIfPromiseIsResolved_void1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred();
+                var promise = deferred.Promise.Preserve();
+
+                promise
+                    .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+
+                deferred.Resolve();
+                Promise.Manager.HandleCompletes();
+
+                cancelationSource.Dispose();
+                promise.Forget();
+            }
+
+            [Test]
+            public void OnCanceledIsNotInvokedIfPromiseIsResolved_T1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred<int>();
+                var promise = deferred.Promise.Preserve();
+
+                promise
+                    .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+
+                deferred.Resolve(1);
+                Promise.Manager.HandleCompletes();
+
+                cancelationSource.Dispose();
+                promise.Forget();
             }
 
             [Test]

@@ -1,6 +1,7 @@
 ﻿#pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -15,28 +16,41 @@ namespace Proto.Promises
             private readonly Promise.CanceledAction _callback;
             private IValueContainer _valueContainer;
 
+            [MethodImpl((MethodImplOptions) 256)]
             public CancelDelegatePromise(Promise.CanceledAction callback)
             {
                 _callback = callback;
                 _valueContainer = null;
             }
 
-            public bool TrySetValue(IValueContainer valueContainer)
+            [MethodImpl((MethodImplOptions) 256)]
+            public bool TryMakeReady(IValueContainer valueContainer, IDisposable owner)
             {
-                valueContainer.Retain();
-                _valueContainer = valueContainer;
-                return true;
+                bool canceled = valueContainer.GetState() == Promise.State.Canceled;
+                if (canceled)
+                {
+                    valueContainer.Retain();
+                    _valueContainer = valueContainer;
+                }
+                else
+                {
+                    owner.Dispose();
+                }
+                return canceled;
             }
 
-            public void InvokeFromPromise(ITraceable owner)
+            [MethodImpl((MethodImplOptions) 256)]
+            public void InvokeFromPromise(IDisposable owner)
             {
+                var temp = this;
+                owner.Dispose();
                 try
                 {
-                    _callback.Invoke(new ReasonContainer(_valueContainer));
+                    temp._callback.Invoke(new ReasonContainer(temp._valueContainer));
                 }
                 finally
                 {
-                    _valueContainer.Release();
+                    temp._valueContainer.Release();
                 }
             }
 
@@ -53,6 +67,7 @@ namespace Proto.Promises
             private readonly Promise.CanceledAction<TCapture> _callback;
             private IValueContainer _valueContainer;
 
+            [MethodImpl((MethodImplOptions) 256)]
             public CancelDelegatePromise(ref TCapture captureValue, Promise.CanceledAction<TCapture> callback)
             {
                 _captureValue = captureValue;
@@ -60,22 +75,34 @@ namespace Proto.Promises
                 _valueContainer = null;
             }
 
-            public bool TrySetValue(IValueContainer valueContainer)
+            [MethodImpl((MethodImplOptions) 256)]
+            public bool TryMakeReady(IValueContainer valueContainer, IDisposable owner)
             {
-                valueContainer.Retain();
-                _valueContainer = valueContainer;
-                return true;
+                bool canceled = valueContainer.GetState() == Promise.State.Canceled;
+                if (canceled)
+                {
+                    valueContainer.Retain();
+                    _valueContainer = valueContainer;
+                }
+                else
+                {
+                    owner.Dispose();
+                }
+                return canceled;
             }
 
-            public void InvokeFromPromise(ITraceable owner)
+            [MethodImpl((MethodImplOptions) 256)]
+            public void InvokeFromPromise(IDisposable owner)
             {
+                var temp = this;
+                owner.Dispose();
                 try
                 {
-                    _callback.Invoke(_captureValue, new ReasonContainer(_valueContainer));
+                    temp._callback.Invoke(temp._captureValue, new ReasonContainer(temp._valueContainer));
                 }
                 finally
                 {
-                    _valueContainer.Release();
+                    temp._valueContainer.Release();
                 }
             }
 
@@ -92,78 +119,84 @@ namespace Proto.Promises
 
             private readonly Promise.CanceledAction _callback;
             private readonly ITreeHandleableCollection _previous;
-            private IValueContainer _valueContainer;
-            // TODO
-            //volatile private bool _isSettingValue;
+            volatile private IValueContainer _valueContainer;
+            private int _cancelFlag;
 
+            [MethodImpl((MethodImplOptions) 256)]
             public CancelDelegatePromiseCancel(Promise.CanceledAction callback, PromiseRef previous)
             {
                 _callback = callback;
                 _previous = previous;
                 _valueContainer = null;
                 cancelationRegistration = default(CancelationRegistration);
-                //_isSettingValue = false;
+                _cancelFlag = 1;
             }
 
+            [MethodImpl((MethodImplOptions) 256)]
             public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
-                //SpinWait spinner = new SpinWait();
-                //while (_isSettingValue)
-                //{
-                //    spinner.SpinOnce();
-                //}
-                //Thread.MemoryBarrier();
-                if (_valueContainer != null)
+                int oldFlag = Interlocked.Exchange(ref _cancelFlag, 0);
+                if (oldFlag == 2)
                 {
-                    // Owner is in the event queue, just release the container.
-                    _valueContainer.Release();
-                    _valueContainer = null;
-                }
-                else
-                {
-                    _previous.Remove(owner);
-                    owner.Dispose();
-                }
-            }
-
-            public bool TrySetValue(IValueContainer valueContainer)
-            {
-                //_isSettingValue = true;
-                bool isStillRegistered = cancelationRegistration.IsRegistered;
-                if (isStillRegistered)
-                {
-                    valueContainer.Retain();
-                    _valueContainer = valueContainer;
-                    //Thread.MemoryBarrier();
-                }
-                //_isSettingValue = false;
-                return isStillRegistered;
-            }
-
-            public void InvokeFromPromise(ITraceable owner)
-            {
-                if (!cancelationRegistration.TryUnregister())
-                {
-                    // If we couldn't unregister the cancelation, it means the cancelation already ran. Don't invoke the callback.
+                    // TryMakeReady was already called without InvokeFromPromise.
                     return;
                 }
+                if (oldFlag != 3) // If InvokeFromPromise was called before this, just dispose without removing.
+                {
+                    _previous.Remove(owner);
+                }
+                owner.Dispose();
+            }
+
+            [MethodImpl((MethodImplOptions) 256)]
+            public bool TryMakeReady(IValueContainer valueContainer, IDisposable owner)
+            {
+                if (Interlocked.Exchange(ref _cancelFlag, 2) == 0)
+                {
+                    // InvokeFromToken was already called.
+                    return false;
+                }
+                // Always make ready, even if state is not canceled. This makes it easier to make this thread-safe.
+                valueContainer.Retain();
+                _valueContainer = valueContainer;
+                return true;
+            }
+
+            [MethodImpl((MethodImplOptions) 256)]
+            public void InvokeFromPromise(IDisposable owner)
+            {
+                var tempValueContainer = _valueContainer;
+                int oldFlag = Interlocked.Exchange(ref _cancelFlag, 3);
+                if (oldFlag == 0)
+                {
+                    // InvokeFromPromise can only be called after TryMakeReady, so we know that if oldFlag == 0, InvokeFromToken previously saw it == 2 and did nothing.
+                    tempValueContainer.Release();
+                    owner.Dispose();
+                    return;
+                }
+                if (!cancelationRegistration.TryUnregister())
+                {
+                    // If we couldn't unregister the cancelation, it means the token was already canceled, and InvokeFromToken maybe hasn't been called yet (or was called after the flag exchange).
+                    tempValueContainer.Release();
+                    return;
+                }
+                var tempCallback = _callback;
+                owner.Dispose();
                 try
                 {
-                    _callback.Invoke(new ReasonContainer(_valueContainer));
+                    if (tempValueContainer.GetState() == Promise.State.Canceled) // We have to check canceled state before invoking the callback instead of in TryMakeReady for thread safety reasons.
+                    {
+                        tempCallback.Invoke(new ReasonContainer(tempValueContainer));
+                    }
                 }
                 finally
                 {
-                    _valueContainer.Release();
+                    tempValueContainer.Release();
                 }
             }
 
-            public void MaybeDispose(IDisposable owner)
-            {
-                if (_valueContainer != null)
-                {
-                    owner.Dispose();
-                }
-            }
+            [MethodImpl((MethodImplOptions) 256)]
+            public void MaybeDispose(IDisposable owner) { }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -173,83 +206,89 @@ namespace Proto.Promises
         {
             public CancelationRegistration cancelationRegistration;
 
-            private readonly TCapture _captureValue;
+            private readonly TCapture _capturedValue;
             private readonly Promise.CanceledAction<TCapture> _callback;
             private readonly ITreeHandleableCollection _previous;
-            private IValueContainer _valueContainer;
-            // TODO
-            //volatile private bool _isSettingValue;
+            volatile private IValueContainer _valueContainer;
+            private int _cancelFlag;
 
-            public CancelDelegatePromiseCancel(ref TCapture captureValue, Promise.CanceledAction<TCapture> callback, PromiseRef previous)
+            [MethodImpl((MethodImplOptions) 256)]
+            public CancelDelegatePromiseCancel(ref TCapture capturedValue, Promise.CanceledAction<TCapture> callback, PromiseRef previous)
             {
-                _captureValue = captureValue;
+                _capturedValue = capturedValue;
                 _callback = callback;
-                cancelationRegistration = default(CancelationRegistration);
                 _previous = previous;
                 _valueContainer = null;
-                //_isSettingValue = false;
+                cancelationRegistration = default(CancelationRegistration);
+                _cancelFlag = 1;
             }
 
+            [MethodImpl((MethodImplOptions) 256)]
             public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
-                //SpinWait spinner = new SpinWait();
-                //while (_isSettingValue)
-                //{
-                //    spinner.SpinOnce();
-                //}
-                //Thread.MemoryBarrier();
-                if (_valueContainer != null)
+                int oldFlag = Interlocked.Exchange(ref _cancelFlag, 0);
+                if (oldFlag == 2)
                 {
-                    // Owner is in the event queue, just release the container.
-                    _valueContainer.Release();
-                    _valueContainer = null;
-                }
-                else
-                {
-                    _previous.Remove(owner);
-                    owner.Dispose();
-                }
-            }
-
-            public bool TrySetValue(IValueContainer valueContainer)
-            {
-                //_isSettingValue = true;
-                bool isStillRegistered = cancelationRegistration.IsRegistered;
-                if (isStillRegistered)
-                {
-                    valueContainer.Retain();
-                    _valueContainer = valueContainer;
-                    //Thread.MemoryBarrier();
-                }
-                //_isSettingValue = false;
-                return isStillRegistered;
-            }
-
-            public void InvokeFromPromise(ITraceable owner)
-            {
-                if (_valueContainer == null)
-                {
-                    // Make sure invocation is still valid in case this is canceled while waiting in the event queue.
+                    // TryMakeReady was already called without InvokeFromPromise.
                     return;
                 }
+                if (oldFlag != 3) // If InvokeFromPromise was called before this, just dispose without removing.
+                {
+                    _previous.Remove(owner);
+                }
+                owner.Dispose();
+            }
+
+            [MethodImpl((MethodImplOptions) 256)]
+            public bool TryMakeReady(IValueContainer valueContainer, IDisposable owner)
+            {
+                if (Interlocked.Exchange(ref _cancelFlag, 2) == 0)
+                {
+                    // InvokeFromToken was already called.
+                    return false;
+                }
+                // Always make ready, even if state is not canceled. This makes it easier to make this thread-safe.
+                valueContainer.Retain();
+                _valueContainer = valueContainer;
+                return true;
+            }
+
+            [MethodImpl((MethodImplOptions) 256)]
+            public void InvokeFromPromise(IDisposable owner)
+            {
+                var tempValueContainer = _valueContainer;
+                int oldFlag = Interlocked.Exchange(ref _cancelFlag, 3);
+                if (oldFlag == 0)
+                {
+                    // InvokeFromPromise can only be called after TryMakeReady, so we know that if oldFlag == 0, InvokeFromToken previously saw it == 2 and did nothing.
+                    tempValueContainer.Release();
+                    owner.Dispose();
+                    return;
+                }
+                if (!cancelationRegistration.TryUnregister())
+                {
+                    // If we couldn't unregister the cancelation, it means the token was already canceled, and InvokeFromToken maybe hasn't been called yet (or was called after the flag exchange).
+                    tempValueContainer.Release();
+                    return;
+                }
+                var tempCallback = _callback;
+                var tempCapturedValue = _capturedValue;
+                owner.Dispose();
                 try
                 {
-                    cancelationRegistration.TryUnregister();
-                    _callback.Invoke(_captureValue, new ReasonContainer(_valueContainer));
+                    if (tempValueContainer.GetState() == Promise.State.Canceled) // We have to check canceled state before invoking the callback instead of in TryMakeReady for thread safety reasons.
+                    {
+                        tempCallback.Invoke(tempCapturedValue, new ReasonContainer(tempValueContainer));
+                    }
                 }
                 finally
                 {
-                    _valueContainer.Release();
+                    tempValueContainer.Release();
                 }
             }
 
-            public void MaybeDispose(IDisposable owner)
-            {
-                if (_valueContainer != null)
-                {
-                    owner.Dispose();
-                }
-            }
+            [MethodImpl((MethodImplOptions) 256)]
+            public void MaybeDispose(IDisposable owner) { }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -259,26 +298,28 @@ namespace Proto.Promises
         {
             private readonly Promise.CanceledAction _callback;
 
+            [MethodImpl((MethodImplOptions) 256)]
             public CancelDelegateToken(Promise.CanceledAction callback)
             {
                 _callback = callback;
             }
 
+            [MethodImpl((MethodImplOptions) 256)]
             public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
-                // Disposing the owner sets _callback to null, so copy to stack first.
-                var callback = _callback;
+                var tempCallback = _callback;
                 owner.Dispose();
-                callback.Invoke(new ReasonContainer(valueContainer));
+                tempCallback.Invoke(new ReasonContainer(valueContainer));
             }
 
+            [MethodImpl((MethodImplOptions) 256)]
             public void MaybeDispose(IDisposable owner)
             {
                 owner.Dispose();
             }
 
-            public bool TrySetValue(IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
-            public void InvokeFromPromise(ITraceable owner) { throw new System.InvalidOperationException(); }
+            public bool TryMakeReady(IValueContainer valueContainer, IDisposable owner) { throw new System.InvalidOperationException(); }
+            public void InvokeFromPromise(IDisposable owner) { throw new System.InvalidOperationException(); }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -286,31 +327,33 @@ namespace Proto.Promises
 #endif
         internal struct CancelDelegateToken<TCapture> : IDelegateCancel
         {
-            private readonly TCapture _captureValue;
+            private readonly TCapture _capturedValue;
             private readonly Promise.CanceledAction<TCapture> _callback;
 
-            public CancelDelegateToken(ref TCapture captureValue, Promise.CanceledAction<TCapture> callback)
+            [MethodImpl((MethodImplOptions) 256)]
+            public CancelDelegateToken(ref TCapture capturedValue, Promise.CanceledAction<TCapture> callback)
             {
-                _captureValue = captureValue;
+                _capturedValue = capturedValue;
                 _callback = callback;
             }
 
+            [MethodImpl((MethodImplOptions) 256)]
             public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
-                // Disposing the owner sets fields to default, so copy to stack first.
-                var callback = _callback;
-                var capturevalue = _captureValue;
+                var tempCallback = _callback;
+                var tempCapturedValue = _capturedValue;
                 owner.Dispose();
-                callback.Invoke(capturevalue, new ReasonContainer(valueContainer));
+                tempCallback.Invoke(tempCapturedValue, new ReasonContainer(valueContainer));
             }
 
+            [MethodImpl((MethodImplOptions) 256)]
             public void MaybeDispose(IDisposable owner)
             {
                 owner.Dispose();
             }
 
-            public bool TrySetValue(IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
-            public void InvokeFromPromise(ITraceable owner) { throw new System.InvalidOperationException(); }
+            public bool TryMakeReady(IValueContainer valueContainer, IDisposable owner) { throw new System.InvalidOperationException(); }
+            public void InvokeFromPromise(IDisposable owner) { throw new System.InvalidOperationException(); }
         }
     }
 }

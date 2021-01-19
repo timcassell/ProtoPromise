@@ -151,14 +151,18 @@ namespace Proto.Promises
                 //return (previous = _valueOrPrevious as PromiseRef) != null;
             }
 
-            private static void SubscribeProgress(PromiseRef _ref, Action<float> onProgress, CancelationToken cancelationToken)
+            private static void SubscribeProgress(Promise promise, Action<float> onProgress, CancelationToken cancelationToken)
             {
+                var _ref = promise._ref;
                 ThrowIfInPool(_ref);
                 if (_ref == null || _ref._state == Promise.State.Resolved)
                 {
                     AddToHandleQueueBack(ProgressDelegate.GetOrCreate(onProgress, _ref));
+                    return;
                 }
-                else if (_ref._state == Promise.State.Pending)
+
+                _ref.IncrementId(promise._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
+                if (_ref._state == Promise.State.Pending)
                 {
                     SubscribeListenerToTree(_ref, ProgressDelegate.GetOrCreate(onProgress, _ref, cancelationToken));
                 }
@@ -166,14 +170,18 @@ namespace Proto.Promises
                 // Don't report progress if the promise is canceled or rejected.
             }
 
-            private static void SubscribeProgress<TCapture>(PromiseRef _ref, TCapture capturedValue, Action<TCapture, float> onProgress, CancelationToken cancelationToken)
+            private static void SubscribeProgress<TCapture>(Promise promise, TCapture capturedValue, Action<TCapture, float> onProgress, CancelationToken cancelationToken)
             {
+                var _ref = promise._ref;
                 ThrowIfInPool(_ref);
                 if (_ref == null || _ref._state == Promise.State.Resolved)
                 {
                     AddToHandleQueueBack(ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, _ref));
+                    return;
                 }
-                else if (_ref._state == Promise.State.Pending)
+
+                _ref.IncrementId(promise._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
+                if (_ref._state == Promise.State.Pending)
                 {
                     SubscribeListenerToTree(_ref, ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, _ref, cancelationToken));
                 }

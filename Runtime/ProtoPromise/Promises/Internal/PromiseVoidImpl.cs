@@ -32,7 +32,7 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onProgress, "onProgress", 2);
 
-                    SubscribeProgress(_this._ref, onProgress, cancelationToken);
+                    SubscribeProgress(_this, onProgress, cancelationToken);
 #endif
                 }
 
@@ -44,6 +44,7 @@ namespace Proto.Promises
                     var _ref = _this._ref;
                     if (_ref == null) return;
 
+                    _ref.IncrementId(_this._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
                     var state = _ref._state;
                     if (state == Promise.State.Pending | state == Promise.State.Canceled)
                     {
@@ -76,6 +77,7 @@ namespace Proto.Promises
                     var del = FinallyDelegate.GetOrCreate(onFinally);
                     if (_this._ref != null)
                     {
+                        _this._ref.IncrementId(_this._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
                         _this._ref.AddWaiter(del);
                     }
                     else
@@ -862,7 +864,7 @@ namespace Proto.Promises
                     ValidateOperation(_this, 2);
                     ValidateArgument(onProgress, "onProgress", 2);
 
-                    SubscribeProgress(_this._ref, progressCaptureValue, onProgress, cancelationToken);
+                    SubscribeProgress(_this, progressCaptureValue, onProgress, cancelationToken);
 #endif
                 }
 
@@ -874,6 +876,7 @@ namespace Proto.Promises
                     var _ref = _this._ref;
                     if (_ref == null) return;
 
+                    _ref.IncrementId(_this._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
                     var state = _ref._state;
                     if (state == Promise.State.Pending | state == Promise.State.Canceled)
                     {
@@ -906,6 +909,7 @@ namespace Proto.Promises
                     var del = FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(ref finallyCaptureValue, onFinally);
                     if (_this._ref != null)
                     {
+                        _this._ref.IncrementId(_this._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
                         _this._ref.AddWaiter(del);
                     }
                     else
