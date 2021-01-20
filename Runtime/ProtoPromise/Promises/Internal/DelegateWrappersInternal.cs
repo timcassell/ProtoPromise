@@ -286,6 +286,9 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     var callback = _onFinally;
                     SetCurrentInvoker(this);
+#if PROMISE_DEBUG
+                    var traceContainer = new CausalityTraceContainer(this); // Store the causality trace so that this can be disposed before the callback is invoked.
+#endif
                     Dispose();
                     try
                     {
@@ -293,9 +296,16 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        AddRejectionToUnhandledStack(e, this);
+#if PROMISE_DEBUG
+                        AddRejectionToUnhandledStack(e, traceContainer);
+#else
+                        AddRejectionToUnhandledStack(e, null);
+#endif
                     }
-                    ClearCurrentInvoker();
+                    finally
+                    {
+                        ClearCurrentInvoker();
+                    }
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
@@ -908,6 +918,9 @@ namespace Proto.Promises
                     var value = _capturedValue;
                     var callback = _onFinally;
                     SetCurrentInvoker(this);
+#if PROMISE_DEBUG
+                    var traceContainer = new CausalityTraceContainer(this); // Store the causality trace so that this can be disposed before the callback is invoked.
+#endif
                     Dispose();
                     try
                     {
@@ -915,7 +928,11 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        AddRejectionToUnhandledStack(e, this);
+#if PROMISE_DEBUG
+                        AddRejectionToUnhandledStack(e, traceContainer);
+#else
+                        AddRejectionToUnhandledStack(e, null);
+#endif
                     }
                     ClearCurrentInvoker();
                 }

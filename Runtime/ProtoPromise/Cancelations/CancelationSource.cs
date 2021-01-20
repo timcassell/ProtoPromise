@@ -84,6 +84,7 @@ namespace Proto.Promises
         /// <summary>
         /// Get the <see cref="CancelationToken"/> associated with this <see cref="CancelationSource"/>.
         /// </summary>
+        /// <exception cref="InvalidOperationException"/>
         public CancelationToken Token
         {
             get
@@ -120,8 +121,37 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Communicates a request for cancelation without providing a reason, and invokes all callbacks that are registered to any associated <see cref="CancelationToken"/>.
+        /// Try to communicate a request for cancelation without providing a reason, and invoke all callbacks that are registered to the associated <see cref="Token"/>. Returns true if successful, false otherwise.
         /// </summary>
+        /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
+        public bool TryCancel()
+        {
+            if (!IsValid || _ref.IsCanceled)
+            {
+                return false;
+            }
+            _ref.SetCanceled();
+            return true;
+        }
+
+        /// <summary>
+        /// Try to communicate a request for cancelation with the provided reason, and invoke all callbacks that are registered to the associated <see cref="Token"/>.
+        /// </summary>
+        /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
+        public bool TryCancel<TCancel>(TCancel reason)
+        {
+            if (!IsValid || _ref.IsCanceled)
+            {
+                return false;
+            }
+            _ref.SetCanceled(ref reason);
+            return true;
+        }
+
+        /// <summary>
+        /// Communicate a request for cancelation without providing a reason, and invoke all callbacks that are registered to the associated <see cref="Token"/>.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"/>
         public void Cancel()
         {
             if (!IsValid)
@@ -136,8 +166,9 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Communicates a request for cancelation with the provided reason, and invokes all callbacks that are registered to any associated <see cref="CancelationToken"/>.
+        /// Communicate a request for cancelation with the provided reason, and invoke all callbacks that are registered to the associated <see cref="Token"/>.
         /// </summary>
+        /// <exception cref="InvalidOperationException"/>
         public void Cancel<TCancel>(TCancel reason)
         {
             if (!IsValid)
@@ -152,15 +183,29 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Release all resources used by this <see cref="CancelationSource"/>. This instance will no longer be valid.
+        /// Try to release all resources used by this <see cref="CancelationSource"/>. This instance will no longer be valid.
         /// </summary>
-        public void Dispose()
+        /// <returns>True if this is valid and was not already disposed, false otherwise.</returns>
+        public bool TryDispose()
         {
             if (!IsValid)
             {
-                throw new InvalidOperationException("CancelationSource.Dispose: source is not valid.", Internal.GetFormattedStacktrace(1));
+                return false;
             }
             _ref.Dispose();
+            return true;
+        }
+
+        /// <summary>
+        /// Release all resources used by this <see cref="CancelationSource"/>. This instance will no longer be valid.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"/>
+        public void Dispose()
+        {
+            if (!TryDispose())
+            {
+                throw new InvalidOperationException("CancelationSource.Dispose: source is not valid.", Internal.GetFormattedStacktrace(1));
+            }
         }
 
         public bool Equals(CancelationSource other)

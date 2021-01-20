@@ -44,6 +44,7 @@ namespace Proto.Promises
         /// <summary>
         /// Unregister the callback from the associated <see cref="CancelationToken"/>.
         /// </summary>
+        /// <exception cref="InvalidOperationException"/>
         public void Unregister()
         {
             if (!TryUnregister())

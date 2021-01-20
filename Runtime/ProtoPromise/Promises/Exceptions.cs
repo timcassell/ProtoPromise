@@ -265,22 +265,4 @@ namespace Proto.Promises
             }
         }
     }
-
-    partial class Internal
-    {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-        internal sealed class ForcedRethrowException : RethrowException
-        {
-            private static readonly ForcedRethrowException _instance = new ForcedRethrowException();
-
-            private ForcedRethrowException() { }
-
-            new internal static ForcedRethrowException GetOrCreate()
-            {
-                return _instance;
-            }
-        }
-    }
 }

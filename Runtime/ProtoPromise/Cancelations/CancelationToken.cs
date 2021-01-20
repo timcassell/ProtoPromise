@@ -65,6 +65,7 @@ namespace Proto.Promises
         /// <summary>
         /// Gets whether this token is capable of being in the canceled state.
         /// </summary>
+        /// <remarks>A <see cref="CancelationToken"/> is capable of being in the canceled state when the <see cref="CancelationSource"/> it is attached to is valid, or if the token has been retained and not yet released.</remarks>
         public bool CanBeCanceled
         {
             get
@@ -87,6 +88,7 @@ namespace Proto.Promises
         /// <summary>
         /// If cancelation was requested on this token, throws a <see cref="CancelException"/>.
         /// </summary>
+        /// <exception cref="CancelException"/>
         public void ThrowIfCancelationRequested()
         {
             if (IsCancelationRequested)
@@ -99,6 +101,7 @@ namespace Proto.Promises
         /// Get the type of the cancelation value, or null if there is no value.
         /// </summary>
         /// <value>The type of the value.</value>
+        /// <exception cref="InvalidOperationException"/>
         public Type CancelationValueType
         {
             get
@@ -115,6 +118,7 @@ namespace Proto.Promises
         /// Get the cancelation value.
         /// <para/>NOTE: Use <see cref="TryGetCancelationValueAs{T}(out T)"/> if you want to prevent value type boxing.
         /// </summary>
+        /// <exception cref="InvalidOperationException"/>
         public object CancelationValue
         {
             get
@@ -131,6 +135,7 @@ namespace Proto.Promises
         /// Try to get the cancelation value casted to <typeparamref name="T"/>.
         /// Returns true if successful, false otherwise.
         /// </summary>
+        /// <exception cref="InvalidOperationException"/>
         public bool TryGetCancelationValueAs<T>(out T value)
         {
             if (!IsCancelationRequested)
@@ -146,6 +151,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
         /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
+        /// <exception cref="InvalidOperationException"/>
         public CancelationRegistration Register(Promise.CanceledAction callback)
         {
             if (!CanBeCanceled)
@@ -169,6 +175,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
         /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
+        /// <exception cref="InvalidOperationException"/>
         public CancelationRegistration Register<TCapture>(TCapture captureValue, Promise.CanceledAction<TCapture> callback)
         {
             if (!CanBeCanceled)
@@ -187,22 +194,38 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Retain this instance. Allows continued use of this instance, even after the associated <see cref="CancelationSource"/> has been disposed, until this is released.
-        /// <para/>This should always be paired with a call to <see cref="Release"/>
+        /// Try to retain this instance. Return true if successful, false otherwise.
+        /// <para/>If successful, allows continued use of this instance, even after the associated <see cref="CancelationSource"/> has been disposed, until this is released.
+        /// If successful, this should be paired with a call to <see cref="Release"/>.
         /// </summary>
-        public void Retain()
+        public bool TryRetain()
         {
             if (!CanBeCanceled)
             {
-                throw new InvalidOperationException("CancelationToken.Retain: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
+                return false;
             }
             _ref.Retain();
+            return true;
+        }
+
+        /// <summary>
+        /// Retain this instance. Allows continued use of this instance, even after the associated <see cref="CancelationSource"/> has been disposed, until this is released.
+        /// <para/>This should always be paired with a call to <see cref="Release"/>.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"/>
+        public void Retain()
+        {
+            if (!TryRetain())
+            {
+                throw new InvalidOperationException("CancelationToken.Retain: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
+            }
         }
 
         /// <summary>
         /// Release this instance. Allows resources to be released when the associated <see cref="CancelationSource"/> is disposed (if <see cref="Release"/> has been called for all <see cref="Retain"/> calls).
-        /// <para/>This should always be paired with a call to <see cref="Retain"/>
+        /// <para/>This should always be paired with a call to <see cref="Retain"/>.
         /// </summary>
+        /// <exception cref="InvalidOperationException"/>
         public void Release()
         {
             if (!CanBeCanceled)
