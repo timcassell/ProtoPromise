@@ -642,6 +642,28 @@ namespace Proto.Promises
                     return false;
                 }
 
+                internal bool TryCancel<TCancel>(ref TCancel reason, int deferredId)
+                {
+                    if (TryIncrementDeferredId(deferredId))
+                    {
+                        MaybeUnregisterCancelation();
+                        base.CancelDirect(ref reason);
+                        return true;
+                    }
+                    return false;
+                }
+
+                internal bool TryCancel(int deferredId)
+                {
+                    if (TryIncrementDeferredId(deferredId))
+                    {
+                        MaybeUnregisterCancelation();
+                        base.CancelDirect();
+                        return true;
+                    }
+                    return false;
+                }
+
                 new internal void CancelDirect()
                 {
                     ThrowIfInPool(this);

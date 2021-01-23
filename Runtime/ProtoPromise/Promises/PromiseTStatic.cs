@@ -375,28 +375,49 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2)
+        /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
         {
-            T[] values = new T[2];
             var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref values[0], ref passThroughs, 0, ref completedProgress);
+            T v0 = default(T);
+            pendingCount += Internal.PrepareForMulti(promise1, ref v0, ref passThroughs, 0, ref completedProgress);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref values[1], ref passThroughs, 1, ref completedProgress);
+            T v1 = default(T);
+            pendingCount += Internal.PrepareForMulti(promise2, ref v1, ref passThroughs, 1, ref completedProgress);
 
-            IList<T> vals = values;
+            if (valueContainer == null)
+            {
+                valueContainer = new T[2] { v0, v1 };
+            }
+            else
+            {
+                // Make sure list has the same count as promises.
+                int listSize = valueContainer.Count;
+                while (listSize > 2)
+                {
+                    valueContainer.RemoveAt(--listSize);
+                }
+                while (listSize < 2)
+                {
+                    valueContainer.Add(default(T));
+                    ++listSize;
+                }
+                valueContainer[0] = v0;
+                valueContainer[1] = v1;
+            }
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref vals);
+                return Internal.CreateResolved(ref valueContainer);
             }
 
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref vals, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
             {
                 ((Internal.ResolveContainer<IList<T>>) target).value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, 2, completedProgress);
@@ -404,30 +425,53 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
+        /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<T> valueContainer = null)
         {
-            T[] values = new T[3];
             var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref values[0], ref passThroughs, 0, ref completedProgress);
+            T v0 = default(T);
+            pendingCount += Internal.PrepareForMulti(promise1, ref v0, ref passThroughs, 0, ref completedProgress);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref values[1], ref passThroughs, 1, ref completedProgress);
+            T v1 = default(T);
+            pendingCount += Internal.PrepareForMulti(promise2, ref v1, ref passThroughs, 1, ref completedProgress);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref values[2], ref passThroughs, 2, ref completedProgress);
+            T v2 = default(T);
+            pendingCount += Internal.PrepareForMulti(promise3, ref v2, ref passThroughs, 2, ref completedProgress);
 
-            IList<T> vals = values;
+            if (valueContainer == null)
+            {
+                valueContainer = new T[3] { v0, v1, v2 };
+            }
+            else
+            {
+                // Make sure list has the same count as promises.
+                int listSize = valueContainer.Count;
+                while (listSize > 3)
+                {
+                    valueContainer.RemoveAt(--listSize);
+                }
+                while (listSize < 3)
+                {
+                    valueContainer.Add(default(T));
+                    ++listSize;
+                }
+                valueContainer[0] = v0;
+                valueContainer[1] = v1;
+                valueContainer[2] = v2;
+            }
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref vals);
+                return Internal.CreateResolved(ref valueContainer);
             }
 
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref vals, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
             {
                 ((Internal.ResolveContainer<IList<T>>) target).value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, 3, completedProgress);
@@ -435,32 +479,57 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
+        /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<T> valueContainer = null)
         {
-            T[] values = new T[4];
             var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref values[0], ref passThroughs, 0, ref completedProgress);
+            T v0 = default(T);
+            pendingCount += Internal.PrepareForMulti(promise1, ref v0, ref passThroughs, 0, ref completedProgress);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref values[1], ref passThroughs, 1, ref completedProgress);
+            T v1 = default(T);
+            pendingCount += Internal.PrepareForMulti(promise2, ref v1, ref passThroughs, 1, ref completedProgress);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref values[2], ref passThroughs, 2, ref completedProgress);
+            T v2 = default(T);
+            pendingCount += Internal.PrepareForMulti(promise3, ref v2, ref passThroughs, 2, ref completedProgress);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref values[3], ref passThroughs, 3, ref completedProgress);
+            T v3 = default(T);
+            pendingCount += Internal.PrepareForMulti(promise4, ref v3, ref passThroughs, 3, ref completedProgress);
 
-            IList<T> vals = values;
+            if (valueContainer == null)
+            {
+                valueContainer = new T[4] { v0, v1, v2, v3 };
+            }
+            else
+            {
+                // Make sure list has the same count as promises.
+                int listSize = valueContainer.Count;
+                while (listSize > 4)
+                {
+                    valueContainer.RemoveAt(--listSize);
+                }
+                while (listSize < 4)
+                {
+                    valueContainer.Add(default(T));
+                    ++listSize;
+                }
+                valueContainer[0] = v0;
+                valueContainer[1] = v1;
+                valueContainer[2] = v2;
+                valueContainer[3] = v3;
+            }
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref vals);
+                return Internal.CreateResolved(ref valueContainer);
             }
 
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref vals, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
             {
                 ((Internal.ResolveContainer<IList<T>>) target).value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, 4, completedProgress);
@@ -546,7 +615,8 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked with a <see cref="Deferred"/> that controls the state of the new <see cref="Promise{T}"/>.
-        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
+        /// or rejected with that <see cref="Exception"/>
         /// </summary>
 		public static Promise<T> New(Action<Deferred> resolver)
         {
@@ -559,17 +629,23 @@ namespace Proto.Promises
                     {
                         cv.Item2.Invoke(def);
                     }
+                    catch (OperationCanceledException e)
+                    {
+                        def.TryCancel(e); // Don't rethrow cancelation.
+                    }
                     catch (Exception e)
                     {
                         if (!def.TryReject(e)) throw;
                     }
-                });
+                })
+                .Forget();
             return deferred.Promise;
         }
 
         /// <summary>
         /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with <paramref name="captureValue"/> and a <see cref="Deferred"/> that controls the state of the new <see cref="Promise{T}"/>.
-        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
+        /// or rejected with that <see cref="Exception"/>
         /// </summary>
         public static Promise<T> New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver)
         {
@@ -581,6 +657,10 @@ namespace Proto.Promises
                     try
                     {
                         cv.Item2.Invoke(cv.Item3, def);
+                    }
+                    catch (OperationCanceledException e)
+                    {
+                        def.TryCancel(e); // Don't rethrow cancelation.
                     }
                     catch (Exception e)
                     {

@@ -578,30 +578,33 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2)
+        /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
         {
-            return Promise<T>.All(promise1, promise2);
+            return Promise<T>.All(promise1, promise2, valueContainer);
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
+        /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<T> valueContainer = null)
         {
-            return Promise<T>.All(promise1, promise2, promise3);
+            return Promise<T>.All(promise1, promise2, promise3, valueContainer);
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
+        /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
-        public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
+        /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<T> valueContainer = null)
         {
-            return Promise<T>.All(promise1, promise2, promise3, promise4);
+            return Promise<T>.All(promise1, promise2, promise3, promise4, valueContainer);
         }
 
         /// <summary>
@@ -1264,7 +1267,8 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Deferred"/> that controls the state of the new <see cref="Promise"/>.
-        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
+        /// or rejected with that <see cref="Exception"/>.
         /// </summary>
 		public static Promise New(Action<Deferred> resolver)
         {
@@ -1277,6 +1281,10 @@ namespace Proto.Promises
                     {
                         cv.Item2.Invoke(def);
                     }
+                    catch (OperationCanceledException e)
+                    {
+                        def.TryCancel(e); // Don't rethrow cancelation.
+                    }
                     catch (Exception e)
                     {
                         if (!def.TryReject(e)) throw;
@@ -1287,7 +1295,8 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Promise{T}.Deferred"/> that controls the state of the new <see cref="Promise{T}"/>.
-        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Promise{T}.Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Promise{T}.Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
+        /// or rejected with that <see cref="Exception"/>.
         /// </summary>
 		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver)
         {
@@ -1296,7 +1305,8 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with <paramref name="captureValue"/> and a <see cref="Deferred"/> that controls the state of the <see cref="Promise"/>.
-        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
+        /// or rejected with that <see cref="Exception"/>.
         /// </summary>
         public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver)
         {
@@ -1309,17 +1319,23 @@ namespace Proto.Promises
                     {
                         cv.Item2.Invoke(cv.Item3, def);
                     }
+                    catch (OperationCanceledException e)
+                    {
+                        def.TryCancel(e); // Don't rethrow cancelation.
+                    }
                     catch (Exception e)
                     {
                         if (!def.TryReject(e)) throw;
                     }
-                });
+                })
+                .Forget();
             return deferred.Promise;
         }
 
         /// <summary>
         /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with <paramref name="captureValue"/> and a <see cref="Promise{T}.Deferred"/> that controls the state of the new <see cref="Promise{T}"/>.
-        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Promise{T}.Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Promise{T}.Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
+        /// or rejected with that <see cref="Exception"/>.
         /// </summary>
         public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver)
         {

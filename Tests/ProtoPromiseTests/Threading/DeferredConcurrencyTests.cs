@@ -671,7 +671,7 @@ namespace Proto.Promises.Tests.Threading
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
-                () => deferred.Reject("Reject"),
+                () => deferred.Reject(1),
                 () => promise.Catch(() => { Interlocked.Increment(ref invokedCount); }).Forget()
             );
         }
@@ -703,7 +703,7 @@ namespace Proto.Promises.Tests.Threading
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
-                () => deferred.Reject("Reject"),
+                () => deferred.Reject(1),
                 () => promise.Catch(() => { Interlocked.Increment(ref invokedCount); }).Forget()
             );
         }
@@ -732,7 +732,7 @@ namespace Proto.Promises.Tests.Threading
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
-                () => deferred.Reject("Reject"),
+                () => deferred.Reject(1),
                 () => promise.Catch(() => { Interlocked.Increment(ref invokedCount); }).Forget()
             );
         }
@@ -764,7 +764,7 @@ namespace Proto.Promises.Tests.Threading
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
-                () => deferred.Reject("Reject"),
+                () => deferred.Reject(1),
                 () => promise.Catch(() => { Interlocked.Increment(ref invokedCount); }).Forget()
             );
         }

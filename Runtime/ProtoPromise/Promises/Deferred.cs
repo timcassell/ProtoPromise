@@ -123,7 +123,53 @@ namespace Proto.Promises
             /// </summary>
             public bool TryReject<TReject>(TReject reason)
             {
-                return _ref != null && _ref.TryReject(ref reason, _deferredId, _deferredId);
+                return _ref != null && _ref.TryReject(ref reason, _deferredId, 1);
+            }
+
+            /// <summary>
+            /// Cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// </summary>
+            /// <exception cref="InvalidOperationException"/>
+            public void Cancel<TCancel>(TCancel reason)
+            {
+                if (!TryCancel(reason))
+                {
+                    throw new InvalidOperationException("Deferred.Cancel: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+            }
+
+            /// <summary>
+            /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// <para/> Returns true if successful, false otherwise.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// </summary>
+            public bool TryCancel<TCancel>(TCancel reason)
+            {
+                return _ref != null && _ref.TryCancel(ref reason, _deferredId);
+            }
+
+            /// <summary>
+            /// Cancel the linked <see cref="Promise"/> without a reason.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// </summary>
+            /// <exception cref="InvalidOperationException"/>
+            public void Cancel()
+            {
+                if (!TryCancel())
+                {
+                    throw new InvalidOperationException("Deferred.Cancel: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+            }
+
+            /// <summary>
+            /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// <para/> Returns true if successful, false otherwise.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// </summary>
+            public bool TryCancel()
+            {
+                return _ref != null && _ref.TryCancel(_deferredId);
             }
 
             /// <summary>
@@ -316,7 +362,53 @@ namespace Proto.Promises
             /// </summary>
             public bool TryReject<TReject>(TReject reason)
             {
-                return _ref != null && _ref.TryReject(ref reason, _deferredId, _deferredId);
+                return _ref != null && _ref.TryReject(ref reason, _deferredId, 1);
+            }
+
+            /// <summary>
+            /// Cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// </summary>
+            /// <exception cref="InvalidOperationException"/>
+            public void Cancel<TCancel>(TCancel reason)
+            {
+                if (!TryCancel(reason))
+                {
+                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+            }
+
+            /// <summary>
+            /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// <para/> Returns true if successful, false otherwise.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// </summary>
+            public bool TryCancel<TCancel>(TCancel reason)
+            {
+                return _ref != null && _ref.TryCancel(ref reason, _deferredId);
+            }
+
+            /// <summary>
+            /// Cancel the linked <see cref="Promise"/> without a reason.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// </summary>
+            /// <exception cref="InvalidOperationException"/>
+            public void Cancel()
+            {
+                if (!TryCancel())
+                {
+                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+            }
+
+            /// <summary>
+            /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// <para/> Returns true if successful, false otherwise.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// </summary>
+            public bool TryCancel()
+            {
+                return _ref != null && _ref.TryCancel(_deferredId);
             }
 
             /// <summary>
@@ -541,7 +633,53 @@ namespace Proto.Promises
             /// </summary>
             public bool TryReject<TReject>(TReject reason)
             {
-                return _ref != null && _ref.TryReject(ref reason, _deferredId, _deferredId);
+                return _ref != null && _ref.TryReject(ref reason, _deferredId, 1);
+            }
+
+            /// <summary>
+            /// Cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// </summary>
+            /// <exception cref="InvalidOperationException"/>
+            public void Cancel<TCancel>(TCancel reason)
+            {
+                if (!TryCancel(reason))
+                {
+                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+            }
+
+            /// <summary>
+            /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// <para/> Returns true if successful, false otherwise.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// </summary>
+            public bool TryCancel<TCancel>(TCancel reason)
+            {
+                return _ref != null && _ref.TryCancel(ref reason, _deferredId);
+            }
+
+            /// <summary>
+            /// Cancel the linked <see cref="Promise"/> without a reason.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// </summary>
+            /// <exception cref="InvalidOperationException"/>
+            public void Cancel()
+            {
+                if (!TryCancel())
+                {
+                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+            }
+
+            /// <summary>
+            /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// <para/> Returns true if successful, false otherwise.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// </summary>
+            public bool TryCancel()
+            {
+                return _ref != null && _ref.TryCancel(_deferredId);
             }
 
             /// <summary>
