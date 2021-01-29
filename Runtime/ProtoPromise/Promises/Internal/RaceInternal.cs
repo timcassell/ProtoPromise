@@ -30,7 +30,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<RacePromise>
                 {
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public RacePromise Create()
                     {
                         return new RacePromise();

@@ -147,7 +147,6 @@ namespace Proto.Promises.Tests.Threading
             );
             Assert.AreEqual(1, successCount);
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
-            cancelationSource.Dispose();
         }
 
         [Test]
@@ -175,7 +174,6 @@ namespace Proto.Promises.Tests.Threading
             );
             Assert.AreEqual(1, successCount);
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
-            cancelationSource.Dispose();
         }
 
         [Test]
@@ -203,7 +201,6 @@ namespace Proto.Promises.Tests.Threading
             );
             Assert.AreEqual(1, successCount);
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
-            cancelationSource.Dispose();
         }
 
         [Test]
@@ -229,7 +226,6 @@ namespace Proto.Promises.Tests.Threading
             );
             Assert.AreEqual(1, successCount);
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
-            cancelationSource.Dispose();
         }
 
         [Test]
@@ -256,7 +252,6 @@ namespace Proto.Promises.Tests.Threading
             );
             Assert.AreEqual(1, successCount);
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
-            cancelationSource.Dispose();
         }
 
         [Test]
@@ -283,7 +278,82 @@ namespace Proto.Promises.Tests.Threading
             );
             Assert.AreEqual(1, successCount);
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
-            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void CancelationSourceMayBeCanceledAndDisposedConcurrently0()
+        {
+            var cancelationSource = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () => cancelationSource = CancelationSource.New(),
+                // Teardown
+                () => { },
+                // Parallel actions
+                () => cancelationSource.TryCancel(),
+                () => cancelationSource.Dispose()
+            );
+        }
+
+        [Test]
+        public void CancelationSourceMayBeCanceledAndDisposedConcurrently1()
+        {
+            var cancelationSource = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () => cancelationSource = CancelationSource.New(),
+                // Teardown
+                () => { },
+                // Parallel actions
+                () => cancelationSource.TryCancel("Cancel"),
+                () => cancelationSource.Dispose()
+            );
+        }
+
+        [Test]
+        public void CancelationSourceMayBeCanceledAndDisposedConcurrently2()
+        {
+            var cancelationSource = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource = CancelationSource.New();
+                    cancelationSource.Token.Register(_ => { });
+                },
+                // Teardown
+                () => { },
+                // Parallel actions
+                () => cancelationSource.TryCancel(),
+                () => cancelationSource.Dispose()
+            );
+        }
+
+        [Test]
+        public void CancelationSourceMayBeCanceledAndDisposedConcurrently3()
+        {
+            var cancelationSource = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource = CancelationSource.New();
+                    cancelationSource.Token.Register(_ => { });
+                },
+                // Teardown
+                () => { },
+                // Parallel actions
+                () => cancelationSource.TryCancel("Cancel"),
+                () => cancelationSource.Dispose()
+            );
         }
 
         [Test]
@@ -512,6 +582,380 @@ namespace Proto.Promises.Tests.Threading
             Assert.AreEqual(1, successCount);
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
             cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void LinkedCancelationSourcesMayBeCanceledConcurrently0()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+            var cancelationSource3 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New();
+                    cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource1.Dispose();
+                    cancelationSource2.Dispose();
+                    cancelationSource3.Dispose();
+                },
+                // Parallel actions
+                () => cancelationSource1.Cancel(),
+                () => cancelationSource2.Cancel(),
+                () => cancelationSource3.Cancel()
+            );
+        }
+
+        [Test]
+        public void LinkedCancelationSourcesMayBeCanceledConcurrently1()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+            var cancelationSource3 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New();
+                    cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource1.Dispose();
+                    cancelationSource2.Dispose();
+                    cancelationSource3.Dispose();
+                },
+                // Parallel actions
+                () => cancelationSource1.Cancel(),
+                () => cancelationSource2.Cancel(1),
+                () => cancelationSource3.Cancel("Cancel")
+            );
+        }
+
+        [Test]
+        public void CancelationSourceLinkedToToken1TwiceMayBeCanceledConcurrently0()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New(cancelationSource1.Token, cancelationSource1.Token);
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource1.Dispose();
+                    cancelationSource2.Dispose();
+                },
+                // Parallel actions
+                () => cancelationSource1.Cancel(),
+                () => cancelationSource2.Cancel()
+            );
+        }
+
+        [Test]
+        public void CancelationSourceLinkedToToken1TwiceMayBeCanceledConcurrently1()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New(cancelationSource1.Token, cancelationSource1.Token);
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource1.Dispose();
+                    cancelationSource2.Dispose();
+                },
+                // Parallel actions
+                () => cancelationSource1.Cancel(),
+                () => cancelationSource2.Cancel(1)
+            );
+        }
+
+        [Test]
+        public void LinkedCancelationSourcesMayBeDisposedConcurrently()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+            var cancelationSource3 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New();
+                    cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                },
+                // Teardown
+                () => { },
+                // Parallel actions
+                () => cancelationSource1.Dispose(),
+                () => cancelationSource2.Dispose(),
+                () => cancelationSource3.Dispose()
+            );
+        }
+
+        [Test]
+        public void CancelationSourceLinkedToToken1TwiceMayBeDisposedConcurrently()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New(cancelationSource1.Token, cancelationSource1.Token);
+                },
+                // Teardown
+                () => { },
+                // Parallel actions
+                () => cancelationSource1.Dispose(),
+                () => cancelationSource2.Dispose()
+            );
+        }
+
+        [Test]
+        public void LinkedCancelationSourcesMayBeCanceledAndDisposedConcurrently0()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+            var cancelationSource3 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New();
+                    cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                },
+                // Teardown
+                () => { },
+                // Parallel actions
+                () => cancelationSource1.TryCancel(),
+                () => cancelationSource1.Dispose(),
+                () => cancelationSource2.TryCancel(),
+                () => cancelationSource2.Dispose(),
+                () => cancelationSource3.TryCancel(),
+                () => cancelationSource3.Dispose()
+            );
+        }
+
+        [Test]
+        public void LinkedCancelationSourcesMayBeCanceledAndDisposedConcurrently1()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+            var cancelationSource3 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New();
+                    cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                },
+                // Teardown
+                () => { },
+                // Parallel actions
+                () => cancelationSource1.TryCancel(),
+                () => cancelationSource1.Dispose(),
+                () => cancelationSource2.TryCancel(1),
+                () => cancelationSource2.Dispose(),
+                () => cancelationSource3.TryCancel("Cancel"),
+                () => cancelationSource3.Dispose()
+            );
+        }
+
+        [Test]
+        public void CancelationSourceLinkedToToken1TwiceMayBeCanceledAndDisposedConcurrently0()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New(cancelationSource1.Token, cancelationSource1.Token);
+                },
+                // Teardown
+                () => { },
+                // Parallel actions
+                () => cancelationSource1.TryCancel(),
+                () => cancelationSource1.Dispose(),
+                () => cancelationSource2.TryCancel(),
+                () => cancelationSource2.Dispose()
+            );
+        }
+
+        [Test]
+        public void CancelationSourceLinkedToToken1TwiceMayBeCanceledAndDisposedConcurrently1()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New(cancelationSource1.Token, cancelationSource1.Token);
+                },
+                // Teardown
+                () => { },
+                // Parallel actions
+                () => cancelationSource1.TryCancel(),
+                () => cancelationSource1.Dispose(),
+                () => cancelationSource2.TryCancel(1),
+                () => cancelationSource2.Dispose()
+            );
+        }
+
+        [Test]
+        public void CancelationSourceMayBeCanceledAndItsTokenLinkedToANewCancelationSourceConcurrently()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+            var cancelationSource3 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () => cancelationSource1 = CancelationSource.New(),
+                // Teardown
+                () =>
+                {
+                    cancelationSource1.Dispose();
+                    cancelationSource2.Dispose();
+                    cancelationSource3.Dispose();
+                },
+                // Parallel actions
+                () => cancelationSource1.TryCancel(),
+                () => cancelationSource2 = CancelationSource.New(cancelationSource1.Token),
+                () => cancelationSource3 = CancelationSource.New(cancelationSource1.Token)
+            );
+        }
+
+        [Test]
+        public void CancelationSourceMayBeDisposedAndItsTokenLinkedToANewCancelationSourceConcurrently()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+            var cancelationSource3 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () => cancelationSource1 = CancelationSource.New(),
+                // Teardown
+                () =>
+                {
+                    cancelationSource2.Dispose();
+                    cancelationSource3.Dispose();
+                },
+                // Parallel actions
+                () => cancelationSource1.Dispose(),
+                () => cancelationSource2 = CancelationSource.New(cancelationSource1.Token),
+                () => cancelationSource3 = CancelationSource.New(cancelationSource1.Token)
+            );
+        }
+
+        [Test]
+        public void CancelationSourcesMayBeCanceledAndTheirTokensLinkedToANewCancelationSourceConcurrently()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+            var cancelationSource3 = default(CancelationSource);
+            var cancelationSource4 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New();
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource1.Dispose();
+                    cancelationSource2.Dispose();
+                    cancelationSource3.Dispose();
+                    cancelationSource4.Dispose();
+                },
+                // Parallel actions
+                () => cancelationSource1.TryCancel(),
+                () => cancelationSource2.TryCancel(),
+                () => cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token),
+                () => cancelationSource4 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token)
+            );
+        }
+
+        [Test]
+        public void CancelationSourcesMayBeDisposedAndTheirTokensLinkedToANewCancelationSourceConcurrently()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+            var cancelationSource3 = default(CancelationSource);
+            var cancelationSource4 = default(CancelationSource);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New();
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource3.Dispose();
+                    cancelationSource4.Dispose();
+                },
+                // Parallel actions
+                () => cancelationSource1.Dispose(),
+                () => cancelationSource2.Dispose(),
+                () => cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token),
+                () => cancelationSource4 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token)
+            );
         }
     }
 }

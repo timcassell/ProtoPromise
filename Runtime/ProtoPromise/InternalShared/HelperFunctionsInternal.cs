@@ -14,6 +14,7 @@ using Proto.Utils;
 
 #if PROMISE_DEBUG
 using System.Linq;
+using System.Threading;
 #endif
 
 namespace Proto.Promises
@@ -26,7 +27,7 @@ namespace Proto.Promises
 #endif
     internal static partial class Internal
     {
-        public static string CausalityTraceMessage
+        internal static string CausalityTraceMessage
         {
             get
             {
@@ -65,7 +66,7 @@ namespace Proto.Promises
         // This is only needed in older language versions that don't support ref structs.
         [ThreadStatic]
         private static ulong _invokeId;
-        public static ulong InvokeId { get { return _invokeId; } }
+        internal static ulong InvokeId { get { return _invokeId; } }
 #endif
 
         [ThreadStatic]
@@ -96,17 +97,17 @@ namespace Proto.Promises
             return new StackTrace(skipFrames + 1, true);
         }
 
-        public static string GetFormattedStacktrace(ITraceable traceable)
+        internal static string GetFormattedStacktrace(ITraceable traceable)
         {
             return traceable.Trace.ToString();
         }
 
-        public static string GetFormattedStacktrace(int skipFrames)
+        internal static string GetFormattedStacktrace(int skipFrames)
         {
             return FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
         }
 
-        public static void ValidateArgument(object arg, string argName, int skipFrames)
+        internal static void ValidateArgument(object arg, string argName, int skipFrames)
         {
             if (arg == null)
             {
@@ -114,7 +115,7 @@ namespace Proto.Promises
             }
         }
 
-        public static string FormatStackTrace(IEnumerable<StackTrace> stackTraces)
+        internal static string FormatStackTrace(IEnumerable<StackTrace> stackTraces)
         {
 #if !CSHARP_7_OR_LATER
             // Format stack trace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
@@ -168,18 +169,18 @@ namespace Proto.Promises
 #endif
         }
 #else
-        public static string GetFormattedStacktrace(int skipFrames)
+        internal static string GetFormattedStacktrace(int skipFrames)
         {
             return null;
         }
 
-        public static string GetFormattedStacktrace(Internal.ITraceable traceable)
+        internal static string GetFormattedStacktrace(Internal.ITraceable traceable)
         {
             return null;
         }
 #endif
 
-        public static bool TryConvert<TConvert>(IValueContainer valueContainer, out TConvert converted)
+        internal static bool TryConvert<TConvert>(IValueContainer valueContainer, out TConvert converted)
         {
             // Try to avoid boxing value types.
 #if CSHARP_7_OR_LATER
@@ -205,7 +206,7 @@ namespace Proto.Promises
             return false;
         }
 
-        public static IRejectValueContainer CreateRejectContainer<TReject>(ref TReject reason, int rejectSkipFrames, ITraceable traceable)
+        internal static IRejectValueContainer CreateRejectContainer<TReject>(ref TReject reason, int rejectSkipFrames, ITraceable traceable)
         {
             IRejectValueContainer valueContainer;
 
@@ -237,7 +238,7 @@ namespace Proto.Promises
             return valueContainer;
         }
 
-        public static ICancelValueContainer CreateCancelContainer<TCancel>(ref TCancel reason)
+        internal static ICancelValueContainer CreateCancelContainer<TCancel>(ref TCancel reason)
         {
             ICancelValueContainer cancelValue;
             if (typeof(TCancel).IsValueType)
@@ -275,29 +276,29 @@ namespace Proto.Promises
         private static ValueLinkedQueue<ITreeHandleable> _handleQueue;
         private static bool _runningHandles;
 
-        public static void AddToHandleQueueFront(ITreeHandleable handleable)
+        internal static void AddToHandleQueueFront(ITreeHandleable handleable)
         {
             _handleQueue.Push(handleable);
         }
 
-        public static void AddToHandleQueueBack(ITreeHandleable handleable)
+        internal static void AddToHandleQueueBack(ITreeHandleable handleable)
         {
             _handleQueue.Enqueue(handleable);
         }
 
-        public static void AddToHandleQueueFront(ref ValueLinkedQueue<ITreeHandleable> handleables)
+        internal static void AddToHandleQueueFront(ref ValueLinkedQueue<ITreeHandleable> handleables)
         {
             _handleQueue.PushAndClear(ref handleables);
         }
 
         private static ValueLinkedStackZeroGC<UnhandledException> _unhandledExceptions;
 
-        public static void AddUnhandledException(UnhandledException exception)
+        internal static void AddUnhandledException(UnhandledException exception)
         {
             _unhandledExceptions.Push(exception);
         }
 
-        public static void AddRejectionToUnhandledStack(object unhandledValue, ITraceable traceable)
+        internal static void AddRejectionToUnhandledStack(object unhandledValue, ITraceable traceable)
         {
 #if CSHARP_7_OR_LATER
             if (unhandledValue is ICantHandleException ex)
@@ -328,7 +329,7 @@ namespace Proto.Promises
             AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, type, message + CausalityTraceMessage, stackTrace, innerException));
         }
 
-        public static void HandleEvents()
+        internal static void HandleEvents()
         {
             if (_runningHandles)
             {
@@ -347,7 +348,7 @@ namespace Proto.Promises
             _runningHandles = false;
         }
 
-        public static void ThrowUnhandledRejections()
+        internal static void ThrowUnhandledRejections()
         {
             if (_unhandledExceptions.IsEmpty)
             {
@@ -381,6 +382,19 @@ namespace Proto.Promises
             unhandledExceptions.Clear();
             throw new AggregateException(exceptions);
 #endif
+        }
+
+        internal static bool InterlockedAddIfNotEqual(ref int location, int value, int comparand, out int newValue)
+        {
+            int initialValue;
+            do
+            {
+                initialValue = location;
+                newValue = initialValue + value;
+                if (initialValue == comparand) return false;
+            }
+            while (Interlocked.CompareExchange(ref location, newValue, initialValue) != initialValue);
+            return true;
         }
     }
 }

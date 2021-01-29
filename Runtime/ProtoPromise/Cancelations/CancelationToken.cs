@@ -19,7 +19,7 @@ namespace Proto.Promises
     public partial struct CancelationToken : IRetainable, IEquatable<CancelationToken>
     {
         private readonly Internal.CancelationRef _ref;
-        private readonly ushort _id;
+        private readonly int _id;
 
         /// <summary>
         /// Returns an empty <see cref="CancelationToken"/>.
@@ -29,10 +29,10 @@ namespace Proto.Promises
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal CancelationToken(Internal.CancelationRef cancelationRef)
+        internal CancelationToken(Internal.CancelationRef cancelationRef, int tokenId)
         {
             _ref = cancelationRef;
-            _id = _ref.TokenId;
+            _id = tokenId;
         }
 
         /// <summary>
@@ -40,9 +40,16 @@ namespace Proto.Promises
         /// </summary>
         internal void MaybeLinkSourceInternal(Internal.CancelationRef cancelationRef)
         {
-            if (CanBeCanceled)
+            if (TryRetain()) // Retain for thread safety.
             {
-                _ref.AddLinkedCancelation(cancelationRef);
+                try
+                {
+                    _ref.MaybeAddLinkedCancelation(cancelationRef);
+                }
+                finally
+                {
+                    _ref.ReleaseAfterRetain();
+                }
             }
         }
 
@@ -51,15 +58,7 @@ namespace Proto.Promises
         /// </summary>
         internal CancelationRegistration RegisterInternal(Internal.ICancelDelegate listener)
         {
-            if (CanBeCanceled)
-            {
-                if (!_ref.IsCanceled)
-                {
-                    return new CancelationRegistration(_ref, listener);
-                }
-                listener.Invoke(_ref.ValueContainer);
-            }
-            return default(CancelationRegistration);
+            return _ref.Register(listener, true);
         }
 
         /// <summary>
@@ -81,7 +80,7 @@ namespace Proto.Promises
         {
             get
             {
-                return CanBeCanceled && _ref.IsCanceled;
+                return _ref != null && _ref.IsTokenCanceled(_id);
             }
         }
 
@@ -154,19 +153,19 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public CancelationRegistration Register(Promise.CanceledAction callback)
         {
-            if (!CanBeCanceled)
+            ValidateArgument(callback, "callback", 1);
+            if (!TryRetain()) // Retain for thread safety.
             {
                 throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
             }
-            ValidateArgument(callback, "callback", 1);
-            if (_ref.IsCanceled)
+            try
             {
-                callback.Invoke(new ReasonContainer(_ref.ValueContainer));
-                return default(CancelationRegistration);
+                return _ref.Register(callback);
             }
-            var cancelDelegate = Internal.CancelDelegate<Internal.CancelDelegateToken>.GetOrCreate();
-            cancelDelegate.canceler = new Internal.CancelDelegateToken(callback);
-            return new CancelationRegistration(_ref, cancelDelegate);
+            finally
+            {
+                _ref.ReleaseAfterRetain();
+            }
         }
 
         /// <summary>
@@ -178,19 +177,19 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public CancelationRegistration Register<TCapture>(TCapture captureValue, Promise.CanceledAction<TCapture> callback)
         {
-            if (!CanBeCanceled)
+            ValidateArgument(callback, "callback", 1);
+            if (!TryRetain()) // Retain for thread safety.
             {
                 throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
             }
-            ValidateArgument(callback, "callback", 1);
-            if (_ref.IsCanceled)
+            try
             {
-                callback.Invoke(captureValue, new ReasonContainer(_ref.ValueContainer));
-                return default(CancelationRegistration);
+                return _ref.Register(ref captureValue, callback);
             }
-            var cancelDelegate = Internal.CancelDelegate<Internal.CancelDelegateToken<TCapture>>.GetOrCreate();
-            cancelDelegate.canceler = new Internal.CancelDelegateToken<TCapture>(ref captureValue, callback);
-            return new CancelationRegistration(_ref, cancelDelegate);
+            finally
+            {
+                _ref.ReleaseAfterRetain();
+            }
         }
 
         /// <summary>
@@ -200,12 +199,7 @@ namespace Proto.Promises
         /// </summary>
         public bool TryRetain()
         {
-            if (!CanBeCanceled)
-            {
-                return false;
-            }
-            _ref.Retain();
-            return true;
+            return _ref != null && _ref.TryRetain(_id);
         }
 
         /// <summary>
@@ -228,11 +222,10 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public void Release()
         {
-            if (!CanBeCanceled)
+            if (_ref == null || !_ref.TryRelease(_id))
             {
-                throw new InvalidOperationException("CancelationToken.Release: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
+                throw new InvalidOperationException("CancelationToken.Release: you must call Retain before you call Release.", Internal.GetFormattedStacktrace(1));
             }
-            _ref.Release();
         }
 
         public bool Equals(CancelationToken other)

@@ -22,7 +22,6 @@ namespace Proto.Promises
             internal void AddAwaiter(ITreeHandleable awaiter, int promiseId)
             {
                 // TODO: thread synchronization
-                ThrowIfInPool(this);
                 MarkAwaited(promiseId);
                 _suppressRejection = true;
                 AddWaiter(awaiter);
@@ -30,7 +29,6 @@ namespace Proto.Promises
 
             internal T MarkAwaitedAndGetResultAndMaybeDispose<T>(int promiseId)
             {
-                ThrowIfInPool(this);
                 MarkAwaited(promiseId);
                 T result = ((ResolveContainer<T>) _valueOrPrevious).value;
                 MaybeDispose();
@@ -45,7 +43,7 @@ namespace Proto.Promises
         {
             private struct Creator : ICreator<AwaiterRef>
             {
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public AwaiterRef Create()
                 {
                     return new AwaiterRef();
@@ -61,13 +59,13 @@ namespace Proto.Promises
 
             internal int Id
             {
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 get { return _id; }
             }
 
             private AwaiterRef() { }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             internal static AwaiterRef GetOrCreate()
             {
                 var awaiter = ObjectPool<ITreeHandleable>.GetOrCreate<AwaiterRef, Creator>(new Creator());
@@ -83,7 +81,7 @@ namespace Proto.Promises
                 ObjectPool<ITreeHandleable>.MaybeRepool(this);
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             private void IncrementId(int promiseId)
             {
                 unchecked
@@ -95,7 +93,7 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             internal bool GetCompleted(int awaiterId)
             {
                 ValidateId(awaiterId);
@@ -103,7 +101,7 @@ namespace Proto.Promises
                 return _state != Promise.State.Pending;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, int awaiterId)
             {
                 ValidateId(awaiterId);
@@ -111,7 +109,7 @@ namespace Proto.Promises
                 _continuation = continuation;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             internal void GetResult(int awaiterId)
             {
                 ThrowIfInPool(this);
@@ -133,7 +131,7 @@ namespace Proto.Promises
                 throw exception;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             internal T GetResult<T>(int awaiterId)
             {
                 ThrowIfInPool(this);
@@ -223,7 +221,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use.
             /// </summary>
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(Internal.InlineOption)]
             internal PromiseAwaiter(Promise promise)
             {
                 if (promise._ref == null)
@@ -247,7 +245,7 @@ namespace Proto.Promises
 
             public bool IsCompleted
             {
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(Internal.InlineOption)]
                 get
                 {
                     ValidateOperation(1);
@@ -256,7 +254,7 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(Internal.InlineOption)]
             public void GetResult()
             {
                 ValidateOperation(1);
@@ -267,7 +265,7 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
                 ValidateOperation(1);
@@ -281,7 +279,7 @@ namespace Proto.Promises
                 _ref.OnCompleted(continuation, _id);
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
             {
                 OnCompleted(continuation);
@@ -319,7 +317,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use.
             /// </summary>
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(Internal.InlineOption)]
             internal PromiseAwaiter(Promise<T> promise)
             {
                 if (promise._ref == null)
@@ -345,7 +343,7 @@ namespace Proto.Promises
 
             public bool IsCompleted
             {
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(Internal.InlineOption)]
                 get
                 {
                     ValidateOperation(1);
@@ -354,7 +352,7 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(Internal.InlineOption)]
             public T GetResult()
             {
                 ValidateOperation(1);
@@ -366,7 +364,7 @@ namespace Proto.Promises
                 return _result;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
                 ValidateOperation(1);
@@ -380,7 +378,7 @@ namespace Proto.Promises
                 _ref.OnCompleted(continuation, _id);
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
             {
                 OnCompleted(continuation);
@@ -407,7 +405,7 @@ namespace Proto.Promises
         /// <summary>
         /// Used to support the await keyword.
         /// </summary>
-        [MethodImpl((MethodImplOptions) 256)]
+        [MethodImpl(Internal.InlineOption)]
         public PromiseAwaiter GetAwaiter()
         {
             ValidateOperation(1);
@@ -421,7 +419,7 @@ namespace Proto.Promises
         /// <summary>
         /// Used to support the await keyword.
         /// </summary>
-        [MethodImpl((MethodImplOptions) 256)]
+        [MethodImpl(Internal.InlineOption)]
         public PromiseAwaiter<T> GetAwaiter()
         {
             ValidateOperation(1);

@@ -198,7 +198,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise)
-                        .Then(v => invoked = true) // Result is indeterminate, so don't check it.
+                        .Then(v => invoked = true) // Result is indeterminable, so don't check it.
                         .Forget();
                 }
             );
@@ -235,7 +235,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
-                        .Then(v => invoked = true) // Result is indeterminate, so don't check it.
+                        .Then(v => invoked = true) // Result is indeterminable, so don't check it.
                         .Forget();
                 }
             );
@@ -275,7 +275,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
-                        .Then(v => invoked = true) // Result is indeterminate, so don't check it.
+                        .Then(v => invoked = true) // Result is indeterminable, so don't check it.
                         .Forget();
                 }
             );
@@ -315,7 +315,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferreds.Select(d => d.Promise))
-                        .Then(v => invoked = true) // Result is indeterminate, so don't check it.
+                        .Then(v => invoked = true) // Result is indeterminable, so don't check it.
                         .Forget();
                 }
             );
@@ -350,7 +350,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise)
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -388,7 +388,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -429,7 +429,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -470,7 +470,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferreds.Select(d => d.Promise))
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -505,7 +505,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise)
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -543,7 +543,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -584,7 +584,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -625,7 +625,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferreds.Select(d => d.Promise))
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -662,7 +662,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise)
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -701,7 +701,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -743,7 +743,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -785,7 +785,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferreds.Select(d => d.Promise))
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -821,7 +821,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise)
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -860,7 +860,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -902,7 +902,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );
@@ -944,7 +944,7 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     Promise.Race(deferreds.Select(d => d.Promise))
-                        .Finally(() => invoked = true) // State is indeterminate, so just make sure promise completes.
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
             );

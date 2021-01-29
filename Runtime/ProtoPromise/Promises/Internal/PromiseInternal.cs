@@ -101,15 +101,19 @@ namespace Proto.Promises
             private byte _idIncrementer = 1; // Used to increment _id only if not preserved. 0 = preserved, 1 = not preserved.
 
             ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
-            internal int Id { get { return _id; } }
+            internal int Id
+            {
+                [MethodImpl(InlineOption)]
+                get { return _id; }
+            }
             internal Promise.State State
             {
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 get { return _state; }
             }
             private bool IsPreserved
             {
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 get { return _idIncrementer == 0; }
             }
 
@@ -150,7 +154,6 @@ namespace Proto.Promises
 
             internal void Forget(int promiseId)
             {
-                ThrowIfInPool(this);
                 IncrementId(promiseId, 1); // Always increment, whether preserved or not.
                 _wasAwaited = true;
                 _idIncrementer = 1; // Mark not preserved.
@@ -159,7 +162,6 @@ namespace Proto.Promises
 
             internal PromiseRef GetDuplicate(int promiseId)
             {
-                ThrowIfInPool(this);
                 // If new id is same as old, this is preserved and we must create a new object.
                 // Otherwise, the simple increment is enough and we can reuse this object.
                 var newId = IncrementId(promiseId, _idIncrementer);
@@ -178,13 +180,13 @@ namespace Proto.Promises
 
             private void MarkAwaited(int promiseId)
             {
-                ThrowIfInPool(this);
                 IncrementId(promiseId, _idIncrementer);
                 _wasAwaited = true;
             }
 
             private int IncrementId(int promiseId, int increment)
             {
+                ThrowIfInPool(this);
                 int newId;
                 unchecked // We want the id to wrap around.
                 {
@@ -491,7 +493,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<PromiseDuplicate>
                 {
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public PromiseDuplicate Create()
                     {
                         return new PromiseDuplicate();
@@ -506,7 +508,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public static PromiseDuplicate GetOrCreate()
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseDuplicate, Creator>(new Creator());
@@ -608,7 +610,11 @@ namespace Proto.Promises
             {
                 // Only using int because Interlocked does not support ushort.
                 private int _deferredId = 1;
-                public int DeferredId { get { return _deferredId; } }
+                internal int DeferredId
+                {
+                    [MethodImpl(InlineOption)]
+                    get { return _deferredId; }
+                }
 
                 protected DeferredPromiseBase() { }
 
@@ -621,21 +627,21 @@ namespace Proto.Promises
                     }
                 }
 
-                protected virtual void MaybeUnregisterCancelation() { }
+                protected virtual bool TryUnregisterCancelation() { return true; }
 
-                protected bool TryIncrementDeferredId(int comparand)
+                protected bool TryIncrementDeferredIdAndUnregisterCancelation(int comparand)
                 {
                     unchecked // We want the id to wrap around.
                     {
-                        return Interlocked.CompareExchange(ref _deferredId, comparand + 1, comparand) == comparand;
+                        return Interlocked.CompareExchange(ref _deferredId, comparand + 1, comparand) == comparand
+                            && TryUnregisterCancelation(); // If TryUnregisterCancelation returns false, it means the CancelationSource was canceled.
                     }
                 }
 
                 internal bool TryReject<TReject>(ref TReject reason, int deferredId, int rejectSkipFrames)
                 {
-                    if (TryIncrementDeferredId(deferredId))
+                    if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
-                        MaybeUnregisterCancelation();
                         RejectDirect(ref reason, rejectSkipFrames + 1);
                         return true;
                     }
@@ -644,9 +650,8 @@ namespace Proto.Promises
 
                 internal bool TryCancel<TCancel>(ref TCancel reason, int deferredId)
                 {
-                    if (TryIncrementDeferredId(deferredId))
+                    if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
-                        MaybeUnregisterCancelation();
                         base.CancelDirect(ref reason);
                         return true;
                     }
@@ -655,9 +660,8 @@ namespace Proto.Promises
 
                 internal bool TryCancel(int deferredId)
                 {
-                    if (TryIncrementDeferredId(deferredId))
+                    if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
-                        MaybeUnregisterCancelation();
                         base.CancelDirect();
                         return true;
                     }
@@ -667,7 +671,8 @@ namespace Proto.Promises
                 new internal void CancelDirect()
                 {
                     ThrowIfInPool(this);
-                    // TODO: proper thread synchronization
+                    // A simple increment is sufficient.
+                    // If the CancelationSource was canceled before the Deferred was completed, even if the Deferred was completed before the cancelation was invoked, the cancelation takes precedence.
                     Interlocked.Increment(ref _deferredId);
                     base.CancelDirect();
                 }
@@ -675,7 +680,8 @@ namespace Proto.Promises
                 new internal void CancelDirect<TCancel>(ref TCancel reason)
                 {
                     ThrowIfInPool(this);
-                    // TODO: proper thread synchronization
+                    // A simple increment is sufficient.
+                    // If the CancelationSource was canceled before the Deferred was completed, even if the Deferred was completed before the cancelation was invoked, the cancelation takes precedence.
                     Interlocked.Increment(ref _deferredId);
                     base.CancelDirect(ref reason);
                 }
@@ -690,7 +696,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<DeferredPromiseVoid>
                 {
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public DeferredPromiseVoid Create()
                     {
                         return new DeferredPromiseVoid();
@@ -707,24 +713,23 @@ namespace Proto.Promises
 
                 // Used for child to call base dispose without repooling for both types.
                 // This is necessary because C# doesn't allow `base.base.Dispose()`.
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 protected void SuperDispose()
                 {
                     base.Dispose();
                 }
 
-                public bool TryResolve(int deferredId)
+                internal bool TryResolve(int deferredId)
                 {
-                    if (TryIncrementDeferredId(deferredId))
+                    if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
-                        MaybeUnregisterCancelation();
                         ResolveDirect();
                         return true;
                     }
                     return false;
                 }
 
-                public static DeferredPromiseVoid GetOrCreate()
+                internal static DeferredPromiseVoid GetOrCreate()
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseVoid, Creator>(new Creator());
                     promise.Reset();
@@ -740,7 +745,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<DeferredPromiseVoidCancel>
                 {
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public DeferredPromiseVoidCancel Create()
                     {
                         return new DeferredPromiseVoidCancel();
@@ -758,7 +763,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                public static DeferredPromiseVoidCancel GetOrCreate(CancelationToken cancelationToken)
+                internal static DeferredPromiseVoidCancel GetOrCreate(CancelationToken cancelationToken)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseVoidCancel, Creator>(new Creator());
                     promise.Reset();
@@ -772,10 +777,10 @@ namespace Proto.Promises
                     CancelDirect(ref valueContainer);
                 }
 
-                protected override void MaybeUnregisterCancelation()
+                protected override bool TryUnregisterCancelation()
                 {
                     ThrowIfInPool(this);
-                    _cancelationRegistration.TryUnregister();
+                    return _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -786,7 +791,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<DeferredPromise<T>>
                 {
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public DeferredPromise<T> Create()
                     {
                         return new DeferredPromise<T>();
@@ -803,24 +808,23 @@ namespace Proto.Promises
 
                 // Used for child to call base dispose without repooling for both types.
                 // This is necessary because C# doesn't allow `base.base.Dispose()`.
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 protected void SuperDispose()
                 {
                     base.Dispose();
                 }
 
-                public bool TryResolve(ref T value, int deferredId)
+                internal bool TryResolve(ref T value, int deferredId)
                 {
-                    if (TryIncrementDeferredId(deferredId))
+                    if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
-                        MaybeUnregisterCancelation();
                         ResolveDirect(ref value);
                         return true;
                     }
                     return false;
                 }
 
-                public static DeferredPromise<T> GetOrCreate()
+                internal static DeferredPromise<T> GetOrCreate()
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromise<T>, Creator>(new Creator());
                     promise.Reset();
@@ -836,7 +840,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<DeferredPromiseCancel<T>>
                 {
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public DeferredPromiseCancel<T> Create()
                     {
                         return new DeferredPromiseCancel<T>();
@@ -854,7 +858,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                public static DeferredPromiseCancel<T> GetOrCreate(CancelationToken cancelationToken)
+                internal static DeferredPromiseCancel<T> GetOrCreate(CancelationToken cancelationToken)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseCancel<T>, Creator>(new Creator());
                     promise.Reset();
@@ -868,10 +872,10 @@ namespace Proto.Promises
                     CancelDirect(ref valueContainer);
                 }
 
-                protected override void MaybeUnregisterCancelation()
+                protected override bool TryUnregisterCancelation()
                 {
                     ThrowIfInPool(this);
-                    _cancelationRegistration.TryUnregister();
+                    return _cancelationRegistration.TryUnregister();
                 }
             }
 
@@ -885,16 +889,16 @@ namespace Proto.Promises
 #region Resolve Promises
                 // Resolve types for more common .Then(onResolved) calls to be more efficient.
 
-                [MethodImpl((MethodImplOptions) 256)]
-                public static PromiseRef CreateResolve<TResolver>(TResolver resolver) where TResolver : IDelegateResolve
+                [MethodImpl(InlineOption)]
+                internal static PromiseRef CreateResolve<TResolver>(TResolver resolver) where TResolver : IDelegateResolve
                 {
                     var promise = PromiseResolve<TResolver>.GetOrCreate();
                     promise.resolver = resolver;
                     return promise;
                 }
 
-                [MethodImpl((MethodImplOptions) 256)]
-                public static PromiseRef CreateResolve<TResolver>(TResolver resolver, CancelationToken cancelationToken) where TResolver : IDelegateResolve, ICancelableDelegate
+                [MethodImpl(InlineOption)]
+                internal static PromiseRef CreateResolve<TResolver>(TResolver resolver, CancelationToken cancelationToken) where TResolver : IDelegateResolve, ICancelableDelegate
                 {
                     var promise = PromiseResolve<TResolver>.GetOrCreate();
                     promise.resolver = resolver;
@@ -902,16 +906,16 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                [MethodImpl((MethodImplOptions) 256)]
-                public static PromiseRef CreateResolveWait<TResolver>(TResolver resolver) where TResolver : IDelegateResolvePromise
+                [MethodImpl(InlineOption)]
+                internal static PromiseRef CreateResolveWait<TResolver>(TResolver resolver) where TResolver : IDelegateResolvePromise
                 {
                     var promise = PromiseResolvePromise<TResolver>.GetOrCreate();
                     promise.resolver = resolver;
                     return promise;
                 }
 
-                [MethodImpl((MethodImplOptions) 256)]
-                public static PromiseRef CreateResolveWait<TResolver>(TResolver resolver, CancelationToken cancelationToken) where TResolver : IDelegateResolvePromise, ICancelableDelegate
+                [MethodImpl(InlineOption)]
+                internal static PromiseRef CreateResolveWait<TResolver>(TResolver resolver, CancelationToken cancelationToken) where TResolver : IDelegateResolvePromise, ICancelableDelegate
                 {
                     var promise = PromiseResolvePromise<TResolver>.GetOrCreate();
                     promise.resolver = resolver;
@@ -926,7 +930,7 @@ namespace Proto.Promises
                 {
                     private struct Creator : ICreator<PromiseResolve<TResolver>>
                     {
-                        [MethodImpl((MethodImplOptions) 256)]
+                        [MethodImpl(InlineOption)]
                         public PromiseResolve<TResolver> Create()
                         {
                             return new PromiseResolve<TResolver>();
@@ -943,7 +947,7 @@ namespace Proto.Promises
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
 
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public static PromiseResolve<TResolver> GetOrCreate()
                     {
                         var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolve<TResolver>, Creator>(new Creator());
@@ -975,7 +979,7 @@ namespace Proto.Promises
                 {
                     private struct Creator : ICreator<PromiseResolvePromise<TResolver>>
                     {
-                        [MethodImpl((MethodImplOptions) 256)]
+                        [MethodImpl(InlineOption)]
                         public PromiseResolvePromise<TResolver> Create()
                         {
                             return new PromiseResolvePromise<TResolver>();
@@ -992,7 +996,7 @@ namespace Proto.Promises
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
 
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public static PromiseResolvePromise<TResolver> GetOrCreate()
                     {
                         var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolvePromise<TResolver>, Creator>(new Creator());
@@ -1027,7 +1031,7 @@ namespace Proto.Promises
 
 #region Resolve or Reject Promises
 
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public static PromiseRef CreateResolveReject<TResolver, TRejecter>(TResolver resolver, TRejecter rejecter)
                     where TResolver : IDelegateResolve
                     where TRejecter : IDelegateReject
@@ -1038,7 +1042,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public static PromiseRef CreateResolveReject<TResolver, TRejecter>(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
                     where TResolver : IDelegateResolve, ICancelableDelegate
                     where TRejecter : IDelegateReject
@@ -1050,7 +1054,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public static PromiseRef CreateResolveRejectWait<TResolver, TRejecter>(TResolver resolver, TRejecter rejecter)
                     where TResolver : IDelegateResolvePromise
                     where TRejecter : IDelegateRejectPromise
@@ -1061,7 +1065,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public static PromiseRef CreateResolveRejectWait<TResolver, TRejecter>(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
                     where TResolver : IDelegateResolvePromise, ICancelableDelegate
                     where TRejecter : IDelegateRejectPromise
@@ -1080,7 +1084,7 @@ namespace Proto.Promises
                 {
                     private struct Creator : ICreator<PromiseResolveReject<TResolver, TRejecter>>
                     {
-                        [MethodImpl((MethodImplOptions) 256)]
+                        [MethodImpl(InlineOption)]
                         public PromiseResolveReject<TResolver, TRejecter> Create()
                         {
                             return new PromiseResolveReject<TResolver, TRejecter>();
@@ -1098,7 +1102,7 @@ namespace Proto.Promises
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
 
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public static PromiseResolveReject<TResolver, TRejecter> GetOrCreate()
                     {
                         var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolveReject<TResolver, TRejecter>, Creator>(new Creator());
@@ -1138,7 +1142,7 @@ namespace Proto.Promises
                 {
                     private struct Creator : ICreator<PromiseResolveRejectPromise<TResolver, TRejecter>>
                     {
-                        [MethodImpl((MethodImplOptions) 256)]
+                        [MethodImpl(InlineOption)]
                         public PromiseResolveRejectPromise<TResolver, TRejecter> Create()
                         {
                             return new PromiseResolveRejectPromise<TResolver, TRejecter>();
@@ -1156,7 +1160,7 @@ namespace Proto.Promises
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
 
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public static PromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate()
                     {
                         var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolveRejectPromise<TResolver, TRejecter>, Creator>(new Creator());
@@ -1199,7 +1203,7 @@ namespace Proto.Promises
 
 #region Continue Promises
 
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public static PromiseRef CreateContinue<TContinuer>(TContinuer resolver) where TContinuer : IDelegateContinue
                 {
                     var promise = PromiseContinue<TContinuer>.GetOrCreate();
@@ -1207,7 +1211,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public static PromiseRef CreateContinue<TContinuer>(TContinuer resolver, CancelationToken cancelationToken) where TContinuer : IDelegateContinue, ICancelableDelegate
                 {
                     var promise = PromiseContinue<TContinuer>.GetOrCreate();
@@ -1216,7 +1220,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public static PromiseRef CreateContinueWait<TContinuer>(TContinuer resolver) where TContinuer : IDelegateContinuePromise
                 {
                     var promise = PromiseContinuePromise<TContinuer>.GetOrCreate();
@@ -1224,7 +1228,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public static PromiseRef CreateContinueWait<TContinuer>(TContinuer resolver, CancelationToken cancelationToken) where TContinuer : IDelegateContinuePromise, ICancelableDelegate
                 {
                     var promise = PromiseContinuePromise<TContinuer>.GetOrCreate();
@@ -1240,7 +1244,7 @@ namespace Proto.Promises
                 {
                     private struct Creator : ICreator<PromiseContinue<TContinuer>>
                     {
-                        [MethodImpl((MethodImplOptions) 256)]
+                        [MethodImpl(InlineOption)]
                         public PromiseContinue<TContinuer> Create()
                         {
                             return new PromiseContinue<TContinuer>();
@@ -1257,7 +1261,7 @@ namespace Proto.Promises
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
 
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public static PromiseContinue<TContinuer> GetOrCreate()
                     {
                         var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseContinue<TContinuer>, Creator>(new Creator());
@@ -1285,7 +1289,7 @@ namespace Proto.Promises
                 {
                     private struct Creator : ICreator<PromiseContinuePromise<TContinuer>>
                     {
-                        [MethodImpl((MethodImplOptions) 256)]
+                        [MethodImpl(InlineOption)]
                         public PromiseContinuePromise<TContinuer> Create()
                         {
                             return new PromiseContinuePromise<TContinuer>();
@@ -1302,7 +1306,7 @@ namespace Proto.Promises
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
 
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public static PromiseContinuePromise<TContinuer> GetOrCreate()
                     {
                         var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseContinuePromise<TContinuer>, Creator>(new Creator());
@@ -1340,7 +1344,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<PromisePassThrough>
                 {
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public PromisePassThrough Create()
                     {
                         return new PromisePassThrough();
@@ -1486,7 +1490,7 @@ namespace Proto.Promises
             return 0;
         }
 
-        [MethodImpl((MethodImplOptions) 256)]
+        [MethodImpl(InlineOption)]
         internal static Promise CreateResolved()
         {
 #if PROMISE_DEBUG
@@ -1500,7 +1504,7 @@ namespace Proto.Promises
 #endif
         }
 
-        [MethodImpl((MethodImplOptions) 256)]
+        [MethodImpl(InlineOption)]
         internal static Promise<T> CreateResolved<T>(ref T value)
         {
 #if PROMISE_DEBUG

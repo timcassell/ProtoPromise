@@ -17,7 +17,8 @@ namespace Proto.Promises
     public struct CancelationSource : ICancelableAny, IDisposable, IEquatable<CancelationSource>
     {
         private readonly Internal.CancelationRef _ref;
-        private readonly ushort _id;
+        private readonly int _sourceId;
+        private readonly int _tokenId;
 
         /// <summary>
         /// Create a new <see cref="CancelationSource"/>.
@@ -31,7 +32,8 @@ namespace Proto.Promises
         private CancelationSource(Internal.CancelationRef cancelationRef)
         {
             _ref = cancelationRef;
-            _id = _ref.SourceId;
+            _sourceId = _ref.SourceId;
+            _tokenId = _ref.TokenId;
         }
 
         /// <summary>
@@ -56,11 +58,9 @@ namespace Proto.Promises
         /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
         public static CancelationSource New(CancelationToken token1, CancelationToken token2)
         {
-            CancelationSource newCancelationSource = New(token1);
-            if (!newCancelationSource._ref.IsCanceled)
-            {
-                token2.MaybeLinkSourceInternal(newCancelationSource._ref);
-            }
+            CancelationSource newCancelationSource = New();
+            token1.MaybeLinkSourceInternal(newCancelationSource._ref);
+            token2.MaybeLinkSourceInternal(newCancelationSource._ref);
             return newCancelationSource;
         }
 
@@ -73,10 +73,9 @@ namespace Proto.Promises
         public static CancelationSource New(params CancelationToken[] tokens)
         {
             CancelationSource newCancelationSource = New();
-            Internal.CancelationRef newCancelation = newCancelationSource._ref;
-            for (int i = 0, max = tokens.Length; i < max & !newCancelation.IsCanceled; ++i)
+            for (int i = 0, max = tokens.Length; i < max; ++i)
             {
-                tokens[i].MaybeLinkSourceInternal(newCancelation);
+                tokens[i].MaybeLinkSourceInternal(newCancelationSource._ref);
             }
             return newCancelationSource;
         }
@@ -84,16 +83,11 @@ namespace Proto.Promises
         /// <summary>
         /// Get the <see cref="CancelationToken"/> associated with this <see cref="CancelationSource"/>.
         /// </summary>
-        /// <exception cref="InvalidOperationException"/>
         public CancelationToken Token
         {
             get
             {
-                if (!IsValid)
-                {
-                    throw new InvalidOperationException("CancelationSource.Token: source is not valid.", Internal.GetFormattedStacktrace(1));
-                }
-                return new CancelationToken(_ref);
+                return new CancelationToken(_ref, _tokenId);
             }
         }
 
@@ -105,7 +99,7 @@ namespace Proto.Promises
         {
             get
             {
-                return _ref != null && _ref.SourceId == _id;
+                return _ref != null && _ref.SourceId == _sourceId;
             }
         }
 
@@ -116,7 +110,7 @@ namespace Proto.Promises
         {
             get
             {
-                return IsValid && _ref.IsCanceled;
+                return _ref != null && _ref.IsSourceCanceled(_sourceId);
             }
         }
 
@@ -126,12 +120,18 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel()
         {
-            if (!IsValid || _ref.IsCanceled)
+            if (_ref == null || !_ref.TryRetain(_tokenId)) // Retain for thread safety.
             {
                 return false;
             }
-            _ref.SetCanceled();
-            return true;
+            try
+            {
+                return _ref.TrySetCanceled(_sourceId);
+            }
+            finally
+            {
+                _ref.ReleaseAfterRetain();
+            }
         }
 
         /// <summary>
@@ -140,12 +140,18 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel<TCancel>(TCancel reason)
         {
-            if (!IsValid || _ref.IsCanceled)
+            if (_ref == null || !_ref.TryRetain(_tokenId)) // Retain for thread safety.
             {
                 return false;
             }
-            _ref.SetCanceled(ref reason);
-            return true;
+            try
+            {
+                return _ref.TrySetCanceled(ref reason, _sourceId);
+            }
+            finally
+            {
+                _ref.ReleaseAfterRetain();
+            }
         }
 
         /// <summary>
@@ -154,15 +160,10 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public void Cancel()
         {
-            if (!IsValid)
+            if (!TryCancel())
             {
-                throw new InvalidOperationException("CancelationSource.Cancel: source is not valid.", Internal.GetFormattedStacktrace(1));
+                throw new InvalidOperationException("CancelationSource.Cancel: source is not valid or was already canceled.", Internal.GetFormattedStacktrace(1));
             }
-            if (_ref.IsCanceled)
-            {
-                throw new InvalidOperationException("CancelationSource.Cancel: source was already canceled.", Internal.GetFormattedStacktrace(1));
-            }
-            _ref.SetCanceled();
         }
 
         /// <summary>
@@ -171,15 +172,10 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public void Cancel<TCancel>(TCancel reason)
         {
-            if (!IsValid)
+            if (!TryCancel(reason))
             {
-                throw new InvalidOperationException("CancelationSource.Cancel: source is not valid.", Internal.GetFormattedStacktrace(1));
+                throw new InvalidOperationException("CancelationSource.Cancel: source is not valid or was already canceled.", Internal.GetFormattedStacktrace(1));
             }
-            if (_ref.IsCanceled)
-            {
-                throw new InvalidOperationException("CancelationSource.Cancel: source was already canceled.", Internal.GetFormattedStacktrace(1));
-            }
-            _ref.SetCanceled(ref reason);
         }
 
         /// <summary>
@@ -188,12 +184,7 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already disposed, false otherwise.</returns>
         public bool TryDispose()
         {
-            if (!IsValid)
-            {
-                return false;
-            }
-            _ref.Dispose();
-            return true;
+            return _ref != null && _ref.TryDispose(_sourceId);
         }
 
         /// <summary>
@@ -231,7 +222,7 @@ namespace Proto.Promises
             unchecked
             {
                 int hash = 17;
-                hash = hash * 31 + _id.GetHashCode();
+                hash = hash * 31 + _sourceId.GetHashCode();
                 hash = hash * 31 + _ref.GetHashCode();
                 return hash;
             }
@@ -239,7 +230,7 @@ namespace Proto.Promises
 
         public static bool operator ==(CancelationSource c1, CancelationSource c2)
         {
-            return c1._ref == c2._ref & c1._id == c2._id;
+            return c1._ref == c2._ref & c1._sourceId == c2._sourceId;
         }
 
         public static bool operator !=(CancelationSource c1, CancelationSource c2)

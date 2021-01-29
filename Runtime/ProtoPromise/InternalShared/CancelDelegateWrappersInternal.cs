@@ -16,14 +16,14 @@ namespace Proto.Promises
             private readonly Promise.CanceledAction _callback;
             private IValueContainer _valueContainer;
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public CancelDelegatePromise(Promise.CanceledAction callback)
             {
                 _callback = callback;
                 _valueContainer = null;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public bool TryMakeReady(IValueContainer valueContainer, IDisposable owner)
             {
                 bool canceled = valueContainer.GetState() == Promise.State.Canceled;
@@ -39,7 +39,7 @@ namespace Proto.Promises
                 return canceled;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public void InvokeFromPromise(IDisposable owner)
             {
                 var temp = this;
@@ -67,7 +67,7 @@ namespace Proto.Promises
             private readonly Promise.CanceledAction<TCapture> _callback;
             private IValueContainer _valueContainer;
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public CancelDelegatePromise(ref TCapture captureValue, Promise.CanceledAction<TCapture> callback)
             {
                 _captureValue = captureValue;
@@ -75,7 +75,7 @@ namespace Proto.Promises
                 _valueContainer = null;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public bool TryMakeReady(IValueContainer valueContainer, IDisposable owner)
             {
                 bool canceled = valueContainer.GetState() == Promise.State.Canceled;
@@ -91,7 +91,7 @@ namespace Proto.Promises
                 return canceled;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public void InvokeFromPromise(IDisposable owner)
             {
                 var temp = this;
@@ -122,7 +122,7 @@ namespace Proto.Promises
             volatile private IValueContainer _valueContainer;
             private int _cancelFlag;
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public CancelDelegatePromiseCancel(Promise.CanceledAction callback, PromiseRef previous)
             {
                 _callback = callback;
@@ -132,7 +132,7 @@ namespace Proto.Promises
                 _cancelFlag = 1;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
                 int oldFlag = Interlocked.Exchange(ref _cancelFlag, 0);
@@ -148,7 +148,7 @@ namespace Proto.Promises
                 owner.Dispose();
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public bool TryMakeReady(IValueContainer valueContainer, IDisposable owner)
             {
                 if (Interlocked.Exchange(ref _cancelFlag, 2) == 0)
@@ -162,7 +162,7 @@ namespace Proto.Promises
                 return true;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public void InvokeFromPromise(IDisposable owner)
             {
                 var tempValueContainer = _valueContainer;
@@ -195,7 +195,7 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public void MaybeDispose(IDisposable owner) { }
         }
 
@@ -212,7 +212,7 @@ namespace Proto.Promises
             volatile private IValueContainer _valueContainer;
             private int _cancelFlag;
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public CancelDelegatePromiseCancel(ref TCapture capturedValue, Promise.CanceledAction<TCapture> callback, PromiseRef previous)
             {
                 _capturedValue = capturedValue;
@@ -223,7 +223,7 @@ namespace Proto.Promises
                 _cancelFlag = 1;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
                 int oldFlag = Interlocked.Exchange(ref _cancelFlag, 0);
@@ -239,7 +239,7 @@ namespace Proto.Promises
                 owner.Dispose();
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public bool TryMakeReady(IValueContainer valueContainer, IDisposable owner)
             {
                 if (Interlocked.Exchange(ref _cancelFlag, 2) == 0)
@@ -253,7 +253,7 @@ namespace Proto.Promises
                 return true;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public void InvokeFromPromise(IDisposable owner)
             {
                 var tempValueContainer = _valueContainer;
@@ -287,7 +287,7 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public void MaybeDispose(IDisposable owner) { }
         }
 
@@ -298,13 +298,13 @@ namespace Proto.Promises
         {
             private readonly Promise.CanceledAction _callback;
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public CancelDelegateToken(Promise.CanceledAction callback)
             {
                 _callback = callback;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
                 var tempCallback = _callback;
@@ -312,7 +312,7 @@ namespace Proto.Promises
                 tempCallback.Invoke(new ReasonContainer(valueContainer));
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public void MaybeDispose(IDisposable owner)
             {
                 owner.Dispose();
@@ -330,14 +330,14 @@ namespace Proto.Promises
             private readonly TCapture _capturedValue;
             private readonly Promise.CanceledAction<TCapture> _callback;
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public CancelDelegateToken(ref TCapture capturedValue, Promise.CanceledAction<TCapture> callback)
             {
                 _capturedValue = capturedValue;
                 _callback = callback;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner)
             {
                 var tempCallback = _callback;
@@ -346,7 +346,7 @@ namespace Proto.Promises
                 tempCallback.Invoke(tempCapturedValue, new ReasonContainer(valueContainer));
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             public void MaybeDispose(IDisposable owner)
             {
                 owner.Dispose();

@@ -29,7 +29,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<MergePromise>
                 {
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public MergePromise Create()
                     {
                         return new MergePromise();

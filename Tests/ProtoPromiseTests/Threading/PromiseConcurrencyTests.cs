@@ -272,11 +272,7 @@ namespace Proto.Promises.Tests.Threading
             var resolveActions = TestHelper.ResolveActionsVoid(() => Interlocked.Increment(ref invokedCount));
             var thenActions = TestHelper.ThenActionsVoid(() => Interlocked.Increment(ref invokedCount), null);
             var threadHelper = new ThreadHelper();
-            foreach (var action in resolveActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            foreach (var action in thenActions)
+            foreach (var action in resolveActions.Concat(thenActions))
             {
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
@@ -295,11 +291,7 @@ namespace Proto.Promises.Tests.Threading
             var resolveActions = TestHelper.ResolveActionsVoid(() => Interlocked.Increment(ref invokedCount));
             var thenActions = TestHelper.ThenActionsVoid(() => Interlocked.Increment(ref invokedCount), null);
             var threadHelper = new ThreadHelper();
-            foreach (var action in resolveActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            foreach (var action in thenActions)
+            foreach (var action in resolveActions.Concat(thenActions))
             {
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
@@ -318,11 +310,7 @@ namespace Proto.Promises.Tests.Threading
             var resolveActions = TestHelper.ResolveActions<int>(v => Interlocked.Increment(ref invokedCount));
             var thenActions = TestHelper.ThenActions<int>(v => Interlocked.Increment(ref invokedCount), null);
             var threadHelper = new ThreadHelper();
-            foreach (var action in resolveActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            foreach (var action in thenActions)
+            foreach (var action in resolveActions.Concat(thenActions))
             {
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
@@ -341,11 +329,7 @@ namespace Proto.Promises.Tests.Threading
             var resolveActions = TestHelper.ResolveActions<int>(v => Interlocked.Increment(ref invokedCount));
             var thenActions = TestHelper.ThenActions<int>(v => Interlocked.Increment(ref invokedCount), null);
             var threadHelper = new ThreadHelper();
-            foreach (var action in resolveActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            foreach (var action in thenActions)
+            foreach (var action in resolveActions.Concat(thenActions))
             {
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
@@ -364,11 +348,7 @@ namespace Proto.Promises.Tests.Threading
             var catchActions = TestHelper.CatchActionsVoid(() => Interlocked.Increment(ref invokedCount));
             var thenActions = TestHelper.ThenActionsVoid(null, () => Interlocked.Increment(ref invokedCount));
             var threadHelper = new ThreadHelper();
-            foreach (var action in catchActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            foreach (var action in thenActions)
+            foreach (var action in catchActions.Concat(thenActions))
             {
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
@@ -387,11 +367,7 @@ namespace Proto.Promises.Tests.Threading
             var catchActions = TestHelper.CatchActionsVoid(() => Interlocked.Increment(ref invokedCount));
             var thenActions = TestHelper.ThenActionsVoid(null, () => Interlocked.Increment(ref invokedCount));
             var threadHelper = new ThreadHelper();
-            foreach (var action in catchActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            foreach (var action in thenActions)
+            foreach (var action in catchActions.Concat(thenActions))
             {
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
@@ -410,11 +386,7 @@ namespace Proto.Promises.Tests.Threading
             var catchActions = TestHelper.CatchActions<int>(() => Interlocked.Increment(ref invokedCount));
             var thenActions = TestHelper.ThenActions<int>(null, () => Interlocked.Increment(ref invokedCount));
             var threadHelper = new ThreadHelper();
-            foreach (var action in catchActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            foreach (var action in thenActions)
+            foreach (var action in catchActions.Concat(thenActions))
             {
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
@@ -433,11 +405,7 @@ namespace Proto.Promises.Tests.Threading
             var catchActions = TestHelper.CatchActions<int>(() => Interlocked.Increment(ref invokedCount));
             var thenActions = TestHelper.ThenActions<int>(null, () => Interlocked.Increment(ref invokedCount));
             var threadHelper = new ThreadHelper();
-            foreach (var action in catchActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            foreach (var action in thenActions)
+            foreach (var action in catchActions.Concat(thenActions))
             {
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
@@ -906,366 +874,6 @@ namespace Proto.Promises.Tests.Threading
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenResolved_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        await promise;
-                        Interlocked.Increment(ref invokedCount);
-                    }
-                }
-            );
-
-            promise.Forget();
-            deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_Resolved_void()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Resolved().Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        await promise;
-                        Interlocked.Increment(ref invokedCount);
-                    }
-                }
-            );
-
-            promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenResolved_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        _ = await promise;
-                        Interlocked.Increment(ref invokedCount);
-                    }
-                }
-            );
-
-            promise.Forget();
-            deferred.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_Resolved_T()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Resolved(1).Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        _ = await promise;
-                        Interlocked.Increment(ref invokedCount);
-                    }
-                }
-            );
-
-            promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenRejected_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        try
-                        {
-                            await promise;
-                        }
-                        catch (UnhandledException)
-                        {
-                            Interlocked.Increment(ref invokedCount);
-                        }
-                    }
-                }
-            );
-
-            promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_Rejected_void()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Rejected("Reject").Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        try
-                        {
-                            await promise;
-                        }
-                        catch (UnhandledException)
-                        {
-                            Interlocked.Increment(ref invokedCount);
-                        }
-                    }
-                }
-            );
-
-            promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenRejected_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        try
-                        {
-                            _ = await promise;
-                        }
-                        catch (UnhandledException)
-                        {
-                            Interlocked.Increment(ref invokedCount);
-                        }
-                    }
-                }
-            );
-
-            promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_Rejected_T()
-        {
-            int invokedCount = 0;
-            var promise = Promise<int>.Rejected("Reject").Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        try
-                        {
-                            _ = await promise;
-                        }
-                        catch (UnhandledException)
-                        {
-                            Interlocked.Increment(ref invokedCount);
-                        }
-                    }
-                }
-            );
-
-            promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenCanceled_void()
-        {
-            int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        try
-                        {
-                            await promise;
-                        }
-                        catch (CanceledException)
-                        {
-                            Interlocked.Increment(ref invokedCount);
-                        }
-                    }
-                }
-            );
-
-            promise.Forget();
-            cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_Canceled_void()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Canceled().Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        try
-                        {
-                            await promise;
-                        }
-                        catch (CanceledException)
-                        {
-                            Interlocked.Increment(ref invokedCount);
-                        }
-                    }
-                }
-            );
-
-            promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenCanceled_T()
-        {
-            int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        try
-                        {
-                            _ = await promise;
-                        }
-                        catch (CanceledException)
-                        {
-                            Interlocked.Increment(ref invokedCount);
-                        }
-                    }
-                }
-            );
-
-            promise.Forget();
-            cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_Canceled_T()
-        {
-            int invokedCount = 0;
-            var promise = Promise<int>.Canceled().Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        try
-                        {
-                            _ = await promise;
-                        }
-                        catch (CanceledException)
-                        {
-                            Interlocked.Increment(ref invokedCount);
-                        }
-                    }
-                }
-            );
-
-            promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
     }
 }

@@ -33,7 +33,6 @@ namespace Proto.Promises.Tests
             public void CancelationSourceInvalidOperations()
             {
                 CancelationSource cancelationSource = new CancelationSource();
-                Assert.Throws<InvalidOperationException>(() => { var _ = cancelationSource.Token; });
                 Assert.Throws<InvalidOperationException>(() => { cancelationSource.Cancel(); });
                 Assert.Throws<InvalidOperationException>(() => { cancelationSource.Cancel("Cancel"); });
                 Assert.Throws<InvalidOperationException>(() => { cancelationSource.Dispose(); });
@@ -56,7 +55,7 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void CancelationSourceIsValidAfterCancel0()
+            public void CancelationSourceIsValidAfterCancel_0()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel();
@@ -65,7 +64,7 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void CancelationSourceIsValidAfterCancel1()
+            public void CancelationSourceIsValidAfterCancel_1()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel("Canceled");
@@ -82,7 +81,7 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void CancelationSourceCancelationRequestedAfterCanceled0()
+            public void CancelationSourceCancelationRequestedAfterCanceled_0()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel();
@@ -91,7 +90,7 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void CancelationSourceCancelationRequestedAfterCanceled1()
+            public void CancelationSourceCancelationRequestedAfterCanceled_1()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel("Canceled");
@@ -100,11 +99,22 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void CancelationSource2WithTokenCancelationRequestedAfterToken1Canceled()
+            public void CancelationSource2WithTokenCancelationRequestedAfterToken1Canceled_0()
             {
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token);
                 cancelationSource1.Cancel();
+                Assert.IsTrue(cancelationSource2.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource2WithTokenCancelationRequestedAfterToken1Canceled_1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                cancelationSource1.Cancel();
+                CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token);
                 Assert.IsTrue(cancelationSource2.IsCancelationRequested);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -122,18 +132,36 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void CancelationSource2CanceledWithSameValueAsToken1()
+            public void CancelationSource2CanceledWithSameValueAsToken1_0()
             {
-                CancelationSource cancelationSource1 = CancelationSource.New();
-                CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token);
                 string cancelValue = "CancelValue";
                 bool invoked = false;
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token);
                 cancelationSource2.Token.Register(reason =>
                 {
                     Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
                 cancelationSource1.Cancel(cancelValue);
+                Assert.IsTrue(invoked);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource2CanceledWithSameValueAsToken1_1()
+            {
+                string cancelValue = "CancelValue";
+                bool invoked = false;
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                cancelationSource1.Cancel(cancelValue);
+                CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token);
+                cancelationSource2.Token.Register(reason =>
+                {
+                    Assert.AreEqual(cancelValue, reason.Value);
+                    invoked = true;
+                });
                 Assert.IsTrue(invoked);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -153,12 +181,38 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken1Canceled_1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                cancelationSource1.Cancel();
+                CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                Assert.IsTrue(cancelationSource3.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
             public void CancelationSource3WithTokensCancelationRequestedAfterToken2Canceled_0()
             {
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
                 CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
                 cancelationSource2.Cancel();
+                Assert.IsTrue(cancelationSource3.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken2Canceled_1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                cancelationSource2.Cancel();
+                CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
                 Assert.IsTrue(cancelationSource3.IsCancelationRequested);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -195,11 +249,11 @@ namespace Proto.Promises.Tests
             [Test]
             public void CancelationSource3CanceledWithSameValueAsToken1_0()
             {
+                string cancelValue = "CancelValue";
+                bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
                 CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
-                string cancelValue = "CancelValue";
-                bool invoked = false;
                 cancelationSource3.Token.Register(reason =>
                 {
                     Assert.AreEqual(cancelValue, reason.Value);
@@ -216,13 +270,36 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
+            public void CancelationSource3CanceledWithSameValueAsToken1_1()
+            {
+                string cancelValue = "CancelValue";
+                bool invoked = false;
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                cancelationSource1.Cancel(cancelValue);
+                CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                cancelationSource3.Token.Register(reason =>
+                {
+                    Assert.AreEqual(cancelValue, reason.Value);
+                    invoked = true;
+                });
+                Assert.IsTrue(invoked);
+                invoked = false;
+                cancelationSource2.Cancel("Different value");
+                Assert.IsFalse(invoked);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
             public void CancelationSource3CanceledWithSameValueAsToken2_0()
             {
+                string cancelValue = "CancelValue";
+                bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
                 CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
-                string cancelValue = "CancelValue";
-                bool invoked = false;
                 cancelationSource3.Token.Register(reason =>
                 {
                     Assert.AreEqual(cancelValue, reason.Value);
@@ -239,7 +316,30 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void CancelationSource3WithTokensCancelationRequestedAfterToken1Canceled_1()
+            public void CancelationSource3CanceledWithSameValueAsToken2_1()
+            {
+                string cancelValue = "CancelValue";
+                bool invoked = false;
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                cancelationSource2.Cancel(cancelValue);
+                CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
+                cancelationSource3.Token.Register(reason =>
+                {
+                    Assert.AreEqual(cancelValue, reason.Value);
+                    invoked = true;
+                });
+                Assert.IsTrue(invoked);
+                invoked = false;
+                cancelationSource1.Cancel("Different value");
+                Assert.IsFalse(invoked);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken1Canceled_2()
             {
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
@@ -252,12 +352,38 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void CancelationSource3WithTokensCancelationRequestedAfterToken2Canceled_1()
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken1Canceled_3()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                cancelationSource1.Cancel();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
+                Assert.IsTrue(cancelationSource3.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken2Canceled_2()
             {
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
                 CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
                 cancelationSource2.Cancel();
+                Assert.IsTrue(cancelationSource3.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken2Canceled_3()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                cancelationSource2.Cancel();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
                 Assert.IsTrue(cancelationSource3.IsCancelationRequested);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -292,13 +418,13 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void CancelationSource3CanceledWithSameValueAsToken1_1()
+            public void CancelationSource3CanceledWithSameValueAsToken1_2()
             {
+                string cancelValue = "CancelValue";
+                bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
                 CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
-                string cancelValue = "CancelValue";
-                bool invoked = false;
                 cancelationSource3.Token.Register(reason =>
                 {
                     Assert.AreEqual(cancelValue, reason.Value);
@@ -315,13 +441,36 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void CancelationSource3CanceledWithSameValueAsToken2_1()
+            public void CancelationSource3CanceledWithSameValueAsToken1_3()
             {
+                string cancelValue = "CancelValue";
+                bool invoked = false;
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                cancelationSource1.Cancel(cancelValue);
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
+                cancelationSource3.Token.Register(reason =>
+                {
+                    Assert.AreEqual(cancelValue, reason.Value);
+                    invoked = true;
+                });
+                Assert.IsTrue(invoked);
+                invoked = false;
+                cancelationSource2.Cancel("Different value");
+                Assert.IsFalse(invoked);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3CanceledWithSameValueAsToken2_2()
+            {
+                string cancelValue = "CancelValue";
+                bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
                 CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
-                string cancelValue = "CancelValue";
-                bool invoked = false;
                 cancelationSource3.Token.Register(reason =>
                 {
                     Assert.AreEqual(cancelValue, reason.Value);
@@ -335,6 +484,86 @@ namespace Proto.Promises.Tests
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
                 cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3CanceledWithSameValueAsToken2_3()
+            {
+                string cancelValue = "CancelValue";
+                bool invoked = false;
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                cancelationSource2.Cancel(cancelValue);
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
+                cancelationSource3.Token.Register(reason =>
+                {
+                    Assert.AreEqual(cancelValue, reason.Value);
+                    invoked = true;
+                });
+                Assert.IsTrue(invoked);
+                invoked = false;
+                cancelationSource1.Cancel("Different value");
+                Assert.IsFalse(invoked);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSourceLinkedToToken1TwiceIsCanceledWithSameValueAsToken1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token, cancelationSource1.Token);
+                string cancelValue = "CancelValue";
+                bool invoked = false;
+                cancelationSource2.Token.Register(reason =>
+                {
+                    Assert.AreEqual(cancelValue, reason.Value);
+                    invoked = true;
+                });
+                cancelationSource1.Cancel(cancelValue);
+                Assert.IsTrue(invoked);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+            }
+
+            [Test]
+            public void CancelationSourceLinkedToToken1TwiceIsCanceledWithDifferentValueAsToken1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token, cancelationSource1.Token);
+                string cancelValue = "CancelValue";
+                bool invoked = false;
+                cancelationSource2.Token.Register(reason =>
+                {
+                    Assert.AreEqual(cancelValue, reason.Value);
+                    invoked = true;
+                });
+                cancelationSource2.Cancel(cancelValue);
+                Assert.IsTrue(invoked);
+                invoked = false;
+                cancelationSource1.Cancel("Different value");
+                Assert.IsFalse(invoked);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+            }
+
+            [Test]
+            public void CancelationSourceLinkedToToken1TwiceMayBeDisposedSeparately0()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token, cancelationSource1.Token);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+            }
+
+            [Test]
+            public void CancelationSourceLinkedToToken1TwiceMayBeDisposedSeparately1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token, cancelationSource1.Token);
+                cancelationSource2.Dispose();
+                cancelationSource1.Dispose();
             }
         }
 
@@ -566,7 +795,7 @@ namespace Proto.Promises.Tests
             }
 
             [Test]
-            public void ReleasedCancelationTokenFromSourceCanBeCanceledAfterSourceIsDisposed()
+            public void ReleasedCancelationTokenFromSourceCannotBeCanceledAfterSourceIsDisposed()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;

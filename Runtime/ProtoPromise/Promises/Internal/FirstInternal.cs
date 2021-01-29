@@ -30,7 +30,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<FirstPromise>
                 {
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public FirstPromise Create()
                     {
                         return new FirstPromise();

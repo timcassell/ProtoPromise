@@ -51,7 +51,7 @@ namespace Proto.Promises
             // `new` constraint uses reflection, too expensive. Delegate consumes memory and has indirection costs.
             // Generic constraint for the creator allows using a struct to make a new object, so no extra memory is consumed.
             // If the compiler/JIT is smart, it should be able to resolve the creator statically and inline it, so no indirection or function call costs.
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             internal static T GetOrCreate<T, TCreator>(TCreator creator) where T : TLinked where TCreator : ICreator<T>
             {
                 // TODO
@@ -67,7 +67,7 @@ namespace Proto.Promises
                 return (T) obj;
             }
 
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(InlineOption)]
             internal static void MaybeRepool<T>(T obj) where T : TLinked
             {
                 if (Promise.Config.ObjectPoolingEnabled)

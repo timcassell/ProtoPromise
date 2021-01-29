@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 # endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0041 // Use 'is null' check
 
@@ -22,7 +23,7 @@ namespace Proto.Promises
         {
             private struct Creator : ICreator<RejectionContainer<T>>
             {
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public RejectionContainer<T> Create()
                 {
                     return new RejectionContainer<T>();
@@ -64,7 +65,7 @@ namespace Proto.Promises
                 }
             }
 
-            private uint _retainCounter;
+            private int _retainCounter;
             private T _value;
 
 #if PROMISE_DEBUG
@@ -96,18 +97,24 @@ namespace Proto.Promises
             public void Retain()
             {
                 ThrowIfInPool(this);
-#if PROMISE_DEBUG
-                checked
-#endif
+                int _;
+                // Don't let counter wrap around past 0.
+                if (!InterlockedAddIfNotEqual(ref _retainCounter, 1, -1, out _))
                 {
-                    ++_retainCounter;
+                    throw new OverflowException();
                 }
             }
 
             public void Release()
             {
                 ThrowIfInPool(this);
-                if (ReleaseInternal())
+                int newValue;
+                // Don't let counter go below 0.
+                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
+                {
+                    throw new OverflowException(); // This should never happen, but checking just in case.
+                }
+                if (newValue == 0)
                 {
                     Dispose();
                 }
@@ -212,7 +219,7 @@ namespace Proto.Promises
         {
             private struct Creator : ICreator<CancelContainer<T>>
             {
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public CancelContainer<T> Create()
                 {
                     return new CancelContainer<T>();
@@ -221,7 +228,7 @@ namespace Proto.Promises
 
             CancelContainer<T> ILinked<CancelContainer<T>>.Next { get; set; }
 
-            private uint _retainCounter;
+            private int _retainCounter;
             private T _value;
             public T Value
             {
@@ -272,25 +279,26 @@ namespace Proto.Promises
             public void Retain()
             {
                 ThrowIfInPool(this);
-#if PROMISE_DEBUG
-                checked
-#endif
+                int _;
+                // Don't let counter wrap around past 0.
+                if (!InterlockedAddIfNotEqual(ref _retainCounter, 1, -1, out _))
                 {
-                    ++_retainCounter;
+                    throw new OverflowException();
                 }
             }
 
             public void Release()
             {
                 ThrowIfInPool(this);
-#if PROMISE_DEBUG
-                checked
-#endif
+                int newValue;
+                // Don't let counter go below 0.
+                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
                 {
-                    if (--_retainCounter == 0)
-                    {
-                        Dispose();
-                    }
+                    throw new OverflowException(); // This should never happen, but checking just in case.
+                }
+                if (newValue == 0)
+                {
+                    Dispose();
                 }
             }
 
@@ -374,7 +382,7 @@ namespace Proto.Promises
         {
             private struct Creator : ICreator<ResolveContainer<T>>
             {
-                [MethodImpl((MethodImplOptions) 256)]
+                [MethodImpl(InlineOption)]
                 public ResolveContainer<T> Create()
                 {
                     return new ResolveContainer<T>();
@@ -383,8 +391,8 @@ namespace Proto.Promises
 
             ResolveContainer<T> ILinked<ResolveContainer<T>>.Next { get; set; }
 
+            private int _retainCounter;
             public T value;
-            private uint _retainCounter;
 
             T IValueContainer<T>.Value
             {
@@ -434,25 +442,26 @@ namespace Proto.Promises
             public void Retain()
             {
                 ThrowIfInPool(this);
-#if PROMISE_DEBUG
-                checked
-#endif
+                int _;
+                // Don't let counter wrap around past 0.
+                if (!InterlockedAddIfNotEqual(ref _retainCounter, 1, -1, out _))
                 {
-                    ++_retainCounter;
+                    throw new OverflowException();
                 }
             }
 
             public void Release()
             {
                 ThrowIfInPool(this);
-#if PROMISE_DEBUG
-                checked
-#endif
+                int newValue;
+                // Don't let counter go below 0.
+                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
                 {
-                    if (--_retainCounter == 0)
-                    {
-                        Dispose();
-                    }
+                    throw new OverflowException(); // This should never happen, but checking just in case.
+                }
+                if (newValue == 0)
+                {
+                    Dispose();
                 }
             }
 

@@ -325,7 +325,7 @@ namespace Proto.Utils
     {
         private struct Creator : Promises.Internal.ICreator<ReusableValueContainer<T>>
         {
-            [MethodImpl((MethodImplOptions) 256)]
+            [MethodImpl(Promises.Internal.InlineOption)]
             public ReusableValueContainer<T> Create()
             {
                 return new ReusableValueContainer<T>();

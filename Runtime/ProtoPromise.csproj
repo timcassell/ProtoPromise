@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <RootNamespace>ProtoPromise</RootNamespace>
-    <DefineConstants>TRACE;CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER</DefineConstants>
+    <DefineConstants>TRACE;CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
     <Configurations>Debug With Progress;Release Without Progress;Release With Progress;Debug Without Progress</Configurations>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>

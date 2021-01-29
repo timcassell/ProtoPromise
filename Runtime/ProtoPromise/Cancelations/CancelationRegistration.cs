@@ -17,17 +17,17 @@ namespace Proto.Promises
     public struct CancelationRegistration : IEquatable<CancelationRegistration>
     {
         private readonly Internal.CancelationRef _ref;
+        private readonly int _id;
         private readonly uint _order;
-        private readonly ushort _id;
 
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal CancelationRegistration(Internal.CancelationRef cancelationRef, Internal.ICancelDelegate cancelDelegate)
+        internal CancelationRegistration(Internal.CancelationRef cancelationRef, int registrationId, uint registrationPosition)
         {
             _ref = cancelationRef;
-            _id = _ref.TokenId;
-            _order = _ref.Register(cancelDelegate);
+            _id = registrationId;
+            _order = registrationPosition;
         }
 
         /// <summary>
@@ -59,11 +59,7 @@ namespace Proto.Promises
         /// <returns>true if the callback was previously registered and the associated <see cref="CancelationToken"/> not yet canceled, false otherwise</returns>
         public bool TryUnregister()
         {
-            if (_ref == null)
-            {
-                return false;
-            }
-            return _ref.TryUnregister(_id, _order);
+            return _ref != null && _ref.TryUnregister(_id, _order);
         }
 
         public bool Equals(CancelationRegistration other)
@@ -98,7 +94,7 @@ namespace Proto.Promises
 
         public static bool operator ==(CancelationRegistration lhs, CancelationRegistration rhs)
         {
-            return lhs._ref == rhs._ref & lhs._order == rhs._order & lhs._id == rhs._id;
+            return lhs._ref == rhs._ref & lhs._id == rhs._id & lhs._order == rhs._order;
         }
 
         public static bool operator !=(CancelationRegistration lhs, CancelationRegistration rhs)

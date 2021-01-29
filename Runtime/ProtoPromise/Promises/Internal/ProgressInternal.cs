@@ -154,15 +154,21 @@ namespace Proto.Promises
             private static void SubscribeProgress(Promise promise, Action<float> onProgress, CancelationToken cancelationToken)
             {
                 var _ref = promise._ref;
-                ThrowIfInPool(_ref);
-                if (_ref == null || _ref._state == Promise.State.Resolved)
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    return;
+                }
+                if (_ref == null)
                 {
                     AddToHandleQueueBack(ProgressDelegate.GetOrCreate(onProgress, _ref));
                     return;
                 }
-
                 _ref.IncrementId(promise._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
-                if (_ref._state == Promise.State.Pending)
+                if (_ref._state == Promise.State.Resolved)
+                {
+                    AddToHandleQueueBack(ProgressDelegate.GetOrCreate(onProgress, _ref));
+                }
+                else if (_ref._state == Promise.State.Pending)
                 {
                     SubscribeListenerToTree(_ref, ProgressDelegate.GetOrCreate(onProgress, _ref, cancelationToken));
                 }
@@ -173,15 +179,21 @@ namespace Proto.Promises
             private static void SubscribeProgress<TCapture>(Promise promise, TCapture capturedValue, Action<TCapture, float> onProgress, CancelationToken cancelationToken)
             {
                 var _ref = promise._ref;
-                ThrowIfInPool(_ref);
-                if (_ref == null || _ref._state == Promise.State.Resolved)
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    return;
+                }
+                if (_ref == null)
                 {
                     AddToHandleQueueBack(ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, _ref));
                     return;
                 }
-
                 _ref.IncrementId(promise._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
-                if (_ref._state == Promise.State.Pending)
+                if (_ref._state == Promise.State.Resolved)
+                {
+                    AddToHandleQueueBack(ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, _ref));
+                }
+                else if (_ref._state == Promise.State.Pending)
                 {
                     SubscribeListenerToTree(_ref, ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, _ref, cancelationToken));
                 }
@@ -595,7 +607,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<ProgressDelegate>
                 {
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public ProgressDelegate Create()
                     {
                         return new ProgressDelegate();
@@ -634,7 +646,7 @@ namespace Proto.Promises
             {
                 private struct Creator : ICreator<ProgressDelegateCapture<TCapture>>
                 {
-                    [MethodImpl((MethodImplOptions) 256)]
+                    [MethodImpl(InlineOption)]
                     public ProgressDelegateCapture<TCapture> Create()
                     {
                         return new ProgressDelegateCapture<TCapture>();
