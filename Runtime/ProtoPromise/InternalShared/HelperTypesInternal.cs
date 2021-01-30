@@ -242,8 +242,8 @@ namespace Proto.Promises
             private readonly List<RegisteredDelegate> _registeredCallbacks = new List<RegisteredDelegate>();
             private ValueLinkedStackZeroGC<CancelationRegistration> _links;
             private ICancelValueContainer _valueContainer;
+            private long _retainCounter;
             private int _registeredCount;
-            private int _retainCounter;
             private int _sourceId;
             volatile private int _tokenId;
 
@@ -268,8 +268,8 @@ namespace Proto.Promises
             internal static CancelationRef GetOrCreate()
             {
                 var cancelRef = ObjectPool<CancelationRef>.GetOrCreate<CancelationRef, Creator>(new Creator());
-                // Leftmost bit is for dispose.
-                cancelRef._retainCounter = 1 << 31;
+                // Left 32 bits are for internal retains.
+                cancelRef._retainCounter = 1L << 32;
                 cancelRef._valueContainer = null;
                 SetCreatedStacktrace(cancelRef, 2);
                 return cancelRef;
@@ -290,35 +290,41 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void MaybeAddLinkedCancelation(CancelationRef listener)
+            internal void MaybeAddLinkedCancelation(CancelationRef listener, int tokenId)
             {
-                // No need to invoke since this is only called from CancelationSource.New.
-                Register(listener, false);
-                Thread.MemoryBarrier(); // Make sure we get a fresh read of _valueContainer.
-                var temp = _valueContainer;
-                if (temp == null | temp == DisposedRef.instance)
+                // Retain for thread safety.
+                if (!TryRetainInternal(tokenId))
                 {
                     return;
                 }
-                temp.Retain();
-                if (Interlocked.CompareExchange(ref listener._valueContainer, temp, null) == null)
+                try
                 {
-                    Unlink();
+                    // No need to invoke since this is only called from CancelationSource.New.
+                    Register(listener, false);
+                    Thread.MemoryBarrier(); // Make sure we get a fresh read of _valueContainer.
+                    var temp = _valueContainer;
+                    if (temp == null | temp == DisposedRef.instance)
+                    {
+                        return;
+                    }
+                    temp.Retain();
+                    if (Interlocked.CompareExchange(ref listener._valueContainer, temp, null) != null)
+                    {
+                        temp.Release();
+                    }
                 }
-                else
+                finally
                 {
-                    temp.Release();
+                    ReleaseAfterRetain();
                 }
             }
 
             [MethodImpl(InlineOption)]
             private void RetainFromLink(CancelationRegistration registration)
             {
-                int _;
-                if (!InterlockedTryRetain(out _))
-                {
-                    throw new OverflowException();
-                }
+                // Left 32 bits are for internal retains.
+                // No need to use interlocked since this is only called from CancelationSource.New.
+                _retainCounter += 1L << 32;
                 _links.Push(registration);
             }
 
@@ -358,37 +364,67 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal CancelationRegistration Register(Promise.CanceledAction callback)
+            internal bool TryRegister(Promise.CanceledAction callback, int tokenId, out CancelationRegistration registration)
             {
-                var temp = _valueContainer;
-                if (temp != null)
+                // Retain for thread safety.
+                if (!TryRetainInternal(tokenId))
                 {
-                    if (temp != DisposedRef.instance)
-                    {
-                        callback.Invoke(new ReasonContainer(temp));
-                    }
-                    return default(CancelationRegistration);
+                    registration = default(CancelationRegistration);
+                    return false;
                 }
-                var cancelDelegate = CancelDelegate<CancelDelegateToken>.GetOrCreate();
-                cancelDelegate.canceler = new CancelDelegateToken(callback);
-                return Register(cancelDelegate, true);
+                try
+                {
+                    var temp = _valueContainer;
+                    if (temp != null)
+                    {
+                        if (temp != DisposedRef.instance)
+                        {
+                            callback.Invoke(new ReasonContainer(temp));
+                        }
+                        registration = default(CancelationRegistration);
+                        return true;
+                    }
+                    var cancelDelegate = CancelDelegate<CancelDelegateToken>.GetOrCreate();
+                    cancelDelegate.canceler = new CancelDelegateToken(callback);
+                    registration = Register(cancelDelegate, true);
+                    return true;
+                }
+                finally
+                {
+                    ReleaseAfterRetain();
+                }
             }
 
             [MethodImpl(InlineOption)]
-            internal CancelationRegistration Register<TCapture>(ref TCapture capturedValue, Promise.CanceledAction<TCapture> callback)
+            internal bool TryRegister<TCapture>(ref TCapture capturedValue, Promise.CanceledAction<TCapture> callback, int tokenId, out CancelationRegistration registration)
             {
-                var temp = _valueContainer;
-                if (temp != null)
+                // Retain for thread safety.
+                if (!TryRetainInternal(tokenId))
                 {
-                    if (temp == DisposedRef.instance)
-                    {
-                        callback.Invoke(capturedValue, new ReasonContainer(temp));
-                    }
-                    return default(CancelationRegistration);
+                    registration = default(CancelationRegistration);
+                    return false;
                 }
-                var cancelDelegate = CancelDelegate<CancelDelegateToken<TCapture>>.GetOrCreate();
-                cancelDelegate.canceler = new CancelDelegateToken<TCapture>(ref capturedValue, callback);
-                return Register(cancelDelegate, true);
+                try
+                {
+                    var temp = _valueContainer;
+                    if (temp != null)
+                    {
+                        if (temp == DisposedRef.instance)
+                        {
+                            callback.Invoke(capturedValue, new ReasonContainer(temp));
+                        }
+                        registration = default(CancelationRegistration);
+                        return true;
+                    }
+                    var cancelDelegate = CancelDelegate<CancelDelegateToken<TCapture>>.GetOrCreate();
+                    cancelDelegate.canceler = new CancelDelegateToken<TCapture>(ref capturedValue, callback);
+                    registration = Register(cancelDelegate, true);
+                    return true;
+                }
+                finally
+                {
+                    ReleaseAfterRetain();
+                }
             }
 
             [MethodImpl(InlineOption)]
@@ -448,40 +484,64 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal bool TrySetCanceled(int sourceId)
+            internal bool TrySetCanceled(int sourceId, int tokenId)
             {
-                if (sourceId == _sourceId)
+                // Retain for thread safety and recursive calls.
+                if (!TryRetainInternal(tokenId))
                 {
-                    ThrowIfInPool(this);
-                    var container = CancelContainerVoid.GetOrCreate();
-                    if (Interlocked.CompareExchange(ref _valueContainer, container, null) == null)
-                    {
-                        InvokeCallbacks(container);
-                        return true;
-                    }
+                    return false;
                 }
-                return false;
+                try
+                {
+                    if (sourceId == _sourceId)
+                    {
+                        ThrowIfInPool(this);
+                        var container = CancelContainerVoid.GetOrCreate();
+                        if (Interlocked.CompareExchange(ref _valueContainer, container, null) == null)
+                        {
+                            InvokeCallbacks(container);
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                finally
+                {
+                    ReleaseAfterRetain();
+                }
             }
 
             [MethodImpl(InlineOption)]
-            internal bool TrySetCanceled<T>(ref T cancelValue, int sourceId)
+            internal bool TrySetCanceled<T>(ref T cancelValue, int sourceId, int tokenId)
             {
-                if (sourceId == _sourceId)
+                // Retain for thread safety and recursive calls.
+                if (!TryRetainInternal(tokenId))
                 {
-                    ThrowIfInPool(this);
-                    var container = CreateCancelContainer(ref cancelValue);
-                    container.Retain();
-                    if (Interlocked.CompareExchange(ref _valueContainer, container, null) == null)
-                    {
-                        InvokeCallbacks(container);
-                        return true;
-                    }
-                    else
-                    {
-                        container.Release();
-                    }
+                    return false;
                 }
-                return false;
+                try
+                {
+                    if (sourceId == _sourceId)
+                    {
+                        ThrowIfInPool(this);
+                        var container = CreateCancelContainer(ref cancelValue);
+                        container.Retain();
+                        if (Interlocked.CompareExchange(ref _valueContainer, container, null) == null)
+                        {
+                            InvokeCallbacks(container);
+                            return true;
+                        }
+                        else
+                        {
+                            container.Release();
+                        }
+                    }
+                    return false;
+                }
+                finally
+                {
+                    ReleaseAfterRetain();
+                }
             }
 
             private void InvokeCallbacks(ICancelValueContainer valueContainer)
@@ -520,7 +580,7 @@ namespace Proto.Promises
                 {
                     return false;
                 }
-                int oldRetain;
+                long oldRetain;
                 if (InterlockedTryRetain(out oldRetain))
                 {
                     ThrowIfInPool(this);
@@ -541,18 +601,49 @@ namespace Proto.Promises
                     return false;
                 }
                 ThrowIfInPool(this);
-                int newRetainValue;
-                bool didRelease = InterlockedTryRelease(out newRetainValue);
-                if (didRelease & newRetainValue == 0)
+                long newRetain;
+                bool didRelease = InterlockedTryRelease(out newRetain);
+                if (didRelease & newRetain == 0)
                 {
                     ResetAndRepool();
                 }
                 return didRelease;
             }
 
-            internal void ReleaseAfterRetain()
+            [MethodImpl(InlineOption)]
+            internal bool TryRetainInternal(int tokenId)
             {
-                if (Interlocked.Decrement(ref _retainCounter) == 0)
+                if (tokenId != _tokenId)
+                {
+                    return false;
+                }
+                if (InterlockedTryRetainInternal())
+                {
+                    ThrowIfInPool(this);
+                    return true;
+                }
+                return false;
+            }
+
+            [MethodImpl(InlineOption)]
+            private bool InterlockedTryRetainInternal()
+            {
+                // Left 32 bits are for internal retains.
+                long initialValue, newValue;
+                do
+                {
+                    initialValue = _retainCounter;
+                    newValue = initialValue + (1L << 32);
+                    // Checking for zero handles the case if this is called concurrently with TryDispose and/or Release.
+                    if (initialValue == 0) return false;
+                }
+                while (Interlocked.CompareExchange(ref _retainCounter, newValue, initialValue) != initialValue);
+                return true;
+            }
+
+            private void ReleaseAfterRetain()
+            {
+                if (InterlockedReleaseInternal() == 0)
                 {
                     ResetAndRepool();
                 }
@@ -579,10 +670,7 @@ namespace Proto.Promises
                     _registeredCallbacks.Clear();
                 }
                 _registeredCount = 0;
-                if (InterlockedReleaseInternal() == 0)
-                {
-                    ResetAndRepool();
-                }
+                ReleaseAfterRetain();
                 return true;
             }
 
@@ -639,49 +727,54 @@ namespace Proto.Promises
             }
 
             // These helpers provide a thread-safe mechanism for checking if the user called Release too many times.
-            // Leftmost bit is for dispose, right 31 bits are for user retains, leftmost bit is for dispose retain.
+            // Left 32 bits are for internal retains, right 32 bits are for user retains.
             [MethodImpl(InlineOption)]
-            private bool InterlockedTryRetain(out int initialValue)
+            private bool InterlockedTryRetain(out long initialValue)
             {
-                // Right 31 bits are for user retains.
-                int newValue;
+                // Right 32 bits are for user retains.
+                long newValue;
                 do
                 {
                     initialValue = _retainCounter;
                     newValue = initialValue + 1;
-                    uint max = (1u << 31) - 1u;
-                    uint oldCount = (uint) initialValue & max;
+                    ulong oldCount = (ulong) initialValue & uint.MaxValue;
                     // Make sure user retain doesn't encroach on dispose retain.
                     // Checking for zero also handles the case if this is called concurrently with TryDispose and/or InvokeCallbacks.
-                    if (oldCount >= max | initialValue == 0) return false;
+                    if (oldCount >= uint.MaxValue | initialValue == 0) return false;
                 }
                 while (Interlocked.CompareExchange(ref _retainCounter, newValue, initialValue) != initialValue);
                 return true;
             }
 
             [MethodImpl(InlineOption)]
-            private bool InterlockedTryRelease(out int newValue)
+            private bool InterlockedTryRelease(out long newValue)
             {
-                // Right 31 bits are for user retains.
-                int initialValue;
+                // Right 32 bits are for user retains.
+                long initialValue;
                 do
                 {
                     initialValue = _retainCounter;
                     newValue = initialValue - 1;
-                    uint min = 0;
-                    uint max = (1u << 31) - 1u;
-                    uint oldCount = (uint) initialValue & max;
-                    if (oldCount <= min) return false;
+                    ulong oldCount = (ulong) initialValue & uint.MaxValue;
+                    if (oldCount <= 0) return false;
                 }
                 while (Interlocked.CompareExchange(ref _retainCounter, newValue, initialValue) != initialValue);
                 return true;
             }
 
             [MethodImpl(InlineOption)]
-            private int InterlockedReleaseInternal()
+            private long InterlockedRetainInternal()
             {
-                // Leftmost bit is for dispose.
-                int addValue = 1 << 31;
+                // Left 32 bits are for internal retains.
+                long addValue = 1L << 32;
+                return Interlocked.Add(ref _retainCounter, addValue);
+            }
+
+            [MethodImpl(InlineOption)]
+            private long InterlockedReleaseInternal()
+            {
+                // Left 32 bits are for internal retains.
+                long addValue = 1L << 32;
                 return Interlocked.Add(ref _retainCounter, -addValue);
             }
         }

@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
@@ -40,16 +41,9 @@ namespace Proto.Promises
         /// </summary>
         internal void MaybeLinkSourceInternal(Internal.CancelationRef cancelationRef)
         {
-            if (TryRetain()) // Retain for thread safety.
+            if (_ref != null)
             {
-                try
-                {
-                    _ref.MaybeAddLinkedCancelation(cancelationRef);
-                }
-                finally
-                {
-                    _ref.ReleaseAfterRetain();
-                }
+                _ref.MaybeAddLinkedCancelation(cancelationRef, _id);
             }
         }
 
@@ -154,18 +148,12 @@ namespace Proto.Promises
         public CancelationRegistration Register(Promise.CanceledAction callback)
         {
             ValidateArgument(callback, "callback", 1);
-            if (!TryRetain()) // Retain for thread safety.
+            CancelationRegistration registration;
+            if (_ref == null || !_ref.TryRegister(callback, _id, out registration))
             {
                 throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
             }
-            try
-            {
-                return _ref.Register(callback);
-            }
-            finally
-            {
-                _ref.ReleaseAfterRetain();
-            }
+            return registration;
         }
 
         /// <summary>
@@ -178,18 +166,12 @@ namespace Proto.Promises
         public CancelationRegistration Register<TCapture>(TCapture captureValue, Promise.CanceledAction<TCapture> callback)
         {
             ValidateArgument(callback, "callback", 1);
-            if (!TryRetain()) // Retain for thread safety.
+            CancelationRegistration registration;
+            if (_ref == null || !_ref.TryRegister(ref captureValue, callback, _id, out registration))
             {
                 throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
             }
-            try
-            {
-                return _ref.Register(ref captureValue, callback);
-            }
-            finally
-            {
-                _ref.ReleaseAfterRetain();
-            }
+            return registration;
         }
 
         /// <summary>

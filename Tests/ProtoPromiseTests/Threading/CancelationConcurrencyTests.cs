@@ -610,7 +610,7 @@ namespace Proto.Promises.Tests.Threading
                 // Parallel actions
                 () => cancelationSource1.Cancel(),
                 () => cancelationSource2.Cancel(),
-                () => cancelationSource3.Cancel()
+                () => cancelationSource3.TryCancel()
             );
         }
 
@@ -640,7 +640,7 @@ namespace Proto.Promises.Tests.Threading
                 // Parallel actions
                 () => cancelationSource1.Cancel(),
                 () => cancelationSource2.Cancel(1),
-                () => cancelationSource3.Cancel("Cancel")
+                () => cancelationSource3.TryCancel("Cancel")
             );
         }
 
@@ -666,7 +666,7 @@ namespace Proto.Promises.Tests.Threading
                 },
                 // Parallel actions
                 () => cancelationSource1.Cancel(),
-                () => cancelationSource2.Cancel()
+                () => cancelationSource2.TryCancel()
             );
         }
 
@@ -692,7 +692,7 @@ namespace Proto.Promises.Tests.Threading
                 },
                 // Parallel actions
                 () => cancelationSource1.Cancel(),
-                () => cancelationSource2.Cancel(1)
+                () => cancelationSource2.TryCancel(1)
             );
         }
 
@@ -866,7 +866,7 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource3.Dispose();
                 },
                 // Parallel actions
-                () => cancelationSource1.TryCancel(),
+                () => cancelationSource1.Cancel(),
                 () => cancelationSource2 = CancelationSource.New(cancelationSource1.Token),
                 () => cancelationSource3 = CancelationSource.New(cancelationSource1.Token)
             );
@@ -921,8 +921,8 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource4.Dispose();
                 },
                 // Parallel actions
-                () => cancelationSource1.TryCancel(),
-                () => cancelationSource2.TryCancel(),
+                () => cancelationSource1.Cancel(),
+                () => cancelationSource2.Cancel(),
                 () => cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token),
                 () => cancelationSource4 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token)
             );

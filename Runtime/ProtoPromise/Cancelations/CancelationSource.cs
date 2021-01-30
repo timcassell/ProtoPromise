@@ -120,18 +120,7 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel()
         {
-            if (_ref == null || !_ref.TryRetain(_tokenId)) // Retain for thread safety.
-            {
-                return false;
-            }
-            try
-            {
-                return _ref.TrySetCanceled(_sourceId);
-            }
-            finally
-            {
-                _ref.ReleaseAfterRetain();
-            }
+            return _ref != null && _ref.TrySetCanceled(_sourceId, _tokenId);
         }
 
         /// <summary>
@@ -140,18 +129,7 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel<TCancel>(TCancel reason)
         {
-            if (_ref == null || !_ref.TryRetain(_tokenId)) // Retain for thread safety.
-            {
-                return false;
-            }
-            try
-            {
-                return _ref.TrySetCanceled(ref reason, _sourceId);
-            }
-            finally
-            {
-                _ref.ReleaseAfterRetain();
-            }
+            return _ref != null && _ref.TrySetCanceled(ref reason, _sourceId, _tokenId);
         }
 
         /// <summary>
