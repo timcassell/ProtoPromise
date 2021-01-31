@@ -239,15 +239,14 @@ namespace Proto.Promises
 
             CancelationRef ILinked<CancelationRef>.Next { get; set; }
 
+            // TODO: replace lock(_registeredCallbacks) with a custom AbortableLock type.
             private readonly List<RegisteredDelegate> _registeredCallbacks = new List<RegisteredDelegate>();
             private ValueLinkedStackZeroGC<CancelationRegistration> _links;
             private ICancelValueContainer _valueContainer;
-            private long _retainCounter;
-            private int _registeredCount;
+            private int _retainCounter;
+            private uint _registeredCount;
             private int _sourceId;
             volatile private int _tokenId;
-
-            private int _callbacksLockCount;
 
             internal ICancelValueContainer ValueContainer
             {
@@ -268,8 +267,8 @@ namespace Proto.Promises
             internal static CancelationRef GetOrCreate()
             {
                 var cancelRef = ObjectPool<CancelationRef>.GetOrCreate<CancelationRef, Creator>(new Creator());
-                // Left 32 bits are for internal retains.
-                cancelRef._retainCounter = 1L << 32;
+                // Left 16 bits are for internal retains.
+                cancelRef._retainCounter = 1 << 16;
                 cancelRef._valueContainer = null;
                 SetCreatedStacktrace(cancelRef, 2);
                 return cancelRef;
@@ -297,70 +296,76 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                try
-                {
-                    // No need to invoke since this is only called from CancelationSource.New.
-                    Register(listener, false);
-                    Thread.MemoryBarrier(); // Make sure we get a fresh read of _valueContainer.
-                    var temp = _valueContainer;
-                    if (temp == null | temp == DisposedRef.instance)
-                    {
-                        return;
-                    }
-                    temp.Retain();
-                    if (Interlocked.CompareExchange(ref listener._valueContainer, temp, null) != null)
-                    {
-                        temp.Release();
-                    }
-                }
-                finally
-                {
-                    ReleaseAfterRetain();
-                }
-            }
-
-            [MethodImpl(InlineOption)]
-            private void RetainFromLink(CancelationRegistration registration)
-            {
-                // Left 32 bits are for internal retains.
-                // No need to use interlocked since this is only called from CancelationSource.New.
-                _retainCounter += 1L << 32;
-                _links.Push(registration);
-            }
-
-            internal CancelationRegistration Register(ICancelDelegate callback, bool invoke)
-            {
-                Interlocked.Increment(ref _callbacksLockCount);
                 ThrowIfInPool(this);
-                int sourceId = _sourceId;
-                int newOrder;
-                if (!InterlockedAddIfNotEqual(ref _registeredCount, 1, -1, out newOrder))
-                {
-                    throw new OverflowException();
-                }
-                uint order = (uint) newOrder;
-                Thread.MemoryBarrier(); // Make sure we get a fresh read of _valueContainer.
                 var temp = _valueContainer;
                 if (temp != null)
                 {
-                    Interlocked.Decrement(ref _callbacksLockCount);
-                    if (invoke & temp != DisposedRef.instance)
-                    {
-                        callback.Invoke(temp);
-                    }
-                    return default(CancelationRegistration);
+                    goto MaybeInvokeAndReturn;
                 }
-                var registration = new CancelationRegistration(this, sourceId, order);
-                if (!invoke) // callback is a linked CancelationRef
+                lock (listener._registeredCallbacks)
                 {
-                    ((CancelationRef) callback).RetainFromLink(registration);
+                    if (listener._valueContainer != null) // Make sure listener wasn't canceled from another token on another thread.
+                    {
+                        goto Return;
+                    }
+                    uint order;
+                    lock (_registeredCallbacks)
+                    {
+                        temp = _valueContainer;
+                        if (temp != null) // Double-checked locking! In this case it works because we're not writing back to the field.
+                        {
+                            goto MaybeInvokeAndReturn;
+                        }
+                        checked
+                        {
+                            order = ++_registeredCount;
+                        }
+                        _registeredCallbacks.Add(new RegisteredDelegate(order, listener));
+                    }
+                    listener.InterlockedRetainInternal();
+                    listener._links.Push(new CancelationRegistration(this, _sourceId, order));
                 }
+                goto Return;
+
+            MaybeInvokeAndReturn:
+                if (temp != DisposedRef.instance)
+                {
+                    listener.TryInvokeCallbacks(temp);
+                }
+            Return:
+                ReleaseAfterRetainInternal();
+            }
+
+            internal bool TryRegister(ICancelDelegate callback, out CancelationRegistration registration)
+            {
+                ThrowIfInPool(this);
+                int sourceId = _sourceId;
+                uint order;
+                ICancelValueContainer temp;
                 lock (_registeredCallbacks)
                 {
+                    temp = _valueContainer;
+                    if (temp != null)
+                    {
+                        goto MaybeInvoke;
+                    }
+                    checked
+                    {
+                        order = ++_registeredCount;
+                    }
                     _registeredCallbacks.Add(new RegisteredDelegate(order, callback));
-                    Interlocked.Decrement(ref _callbacksLockCount);
                 }
-                return registration;
+                registration = new CancelationRegistration(this, sourceId, order);
+                return true;
+
+            MaybeInvoke:
+                registration = default(CancelationRegistration);
+                if (temp == DisposedRef.instance)
+                {
+                    return false;
+                }
+                callback.Invoke(temp);
+                return true;
             }
 
             [MethodImpl(InlineOption)]
@@ -386,12 +391,11 @@ namespace Proto.Promises
                     }
                     var cancelDelegate = CancelDelegate<CancelDelegateToken>.GetOrCreate();
                     cancelDelegate.canceler = new CancelDelegateToken(callback);
-                    registration = Register(cancelDelegate, true);
-                    return true;
+                    return TryRegister(cancelDelegate, out registration);
                 }
                 finally
                 {
-                    ReleaseAfterRetain();
+                    ReleaseAfterRetainInternal();
                 }
             }
 
@@ -418,63 +422,52 @@ namespace Proto.Promises
                     }
                     var cancelDelegate = CancelDelegate<CancelDelegateToken<TCapture>>.GetOrCreate();
                     cancelDelegate.canceler = new CancelDelegateToken<TCapture>(ref capturedValue, callback);
-                    registration = Register(cancelDelegate, true);
-                    return true;
+                    return TryRegister(cancelDelegate, out registration);
                 }
                 finally
                 {
-                    ReleaseAfterRetain();
+                    ReleaseAfterRetainInternal();
                 }
             }
 
             [MethodImpl(InlineOption)]
             internal bool IsRegistered(int registrationId, uint order)
             {
-                Interlocked.Increment(ref _callbacksLockCount);
                 if (registrationId != _sourceId | _valueContainer != null)
                 {
-                    Interlocked.Decrement(ref _callbacksLockCount);
                     return false;
                 }
                 lock (_registeredCallbacks)
                 {
-                    bool isRegistered = IndexOf(order) >= 0;
-                    Interlocked.Decrement(ref _callbacksLockCount);
-                    return isRegistered;
+                    return _valueContainer == null && IndexOf(order) >= 0; // Double-checked locking! In this case it works because we're not writing back to the field.
                 }
             }
 
             [MethodImpl(InlineOption)]
             internal bool TryUnregister(int registrationId, uint order)
             {
-                Interlocked.Increment(ref _callbacksLockCount);
                 if (registrationId != _sourceId | _valueContainer != null)
                 {
-                    Interlocked.Decrement(ref _callbacksLockCount);
                     return false;
                 }
                 ICancelDelegate del;
                 lock (_registeredCallbacks)
                 {
+                    if (_valueContainer != null) // Double-checked locking! In this case it works because we're not writing back to the field.
+                    {
+                        return false;
+                    }
                     int index = IndexOf(order);
-                    if (index >= 0)
+                    if (index < 0)
                     {
-                        ThrowIfInPool(this);
-                        del = _registeredCallbacks[index].callback;
-                        _registeredCallbacks.RemoveAt(index);
+                        return false;
                     }
-                    else
-                    {
-                        del = null;
-                    }
-                    Interlocked.Decrement(ref _callbacksLockCount);
+                    ThrowIfInPool(this);
+                    del = _registeredCallbacks[index].callback;
+                    _registeredCallbacks.RemoveAt(index);
                 }
-                bool notNull = del != null;
-                if (notNull)
-                {
-                    del.Dispose();
-                }
-                return notNull;
+                del.Dispose();
+                return true;
             }
 
             [MethodImpl(InlineOption)]
@@ -493,21 +486,11 @@ namespace Proto.Promises
                 }
                 try
                 {
-                    if (sourceId == _sourceId)
-                    {
-                        ThrowIfInPool(this);
-                        var container = CancelContainerVoid.GetOrCreate();
-                        if (Interlocked.CompareExchange(ref _valueContainer, container, null) == null)
-                        {
-                            InvokeCallbacks(container);
-                            return true;
-                        }
-                    }
-                    return false;
+                    return sourceId == _sourceId && TryInvokeCallbacks(CancelContainerVoid.GetOrCreate());
                 }
                 finally
                 {
-                    ReleaseAfterRetain();
+                    ReleaseAfterRetainInternal();
                 }
             }
 
@@ -523,33 +506,30 @@ namespace Proto.Promises
                 {
                     if (sourceId == _sourceId)
                     {
-                        ThrowIfInPool(this);
-                        var container = CreateCancelContainer(ref cancelValue);
-                        container.Retain();
-                        if (Interlocked.CompareExchange(ref _valueContainer, container, null) == null)
-                        {
-                            InvokeCallbacks(container);
-                            return true;
-                        }
-                        else
-                        {
-                            container.Release();
-                        }
+                        return TryInvokeCallbacks(CreateCancelContainer(ref cancelValue));
                     }
                     return false;
                 }
                 finally
                 {
-                    ReleaseAfterRetain();
+                    ReleaseAfterRetainInternal();
                 }
             }
 
-            private void InvokeCallbacks(ICancelValueContainer valueContainer)
+            private bool TryInvokeCallbacks(ICancelValueContainer valueContainer)
             {
-                List<Exception> exceptions = null;
-                WaitForCallbacks();
+                ThrowIfInPool(this);
+                valueContainer.Retain();
+                if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) != null)
+                {
+                    valueContainer.Release();
+                    return false;
+                }
+                // Wait for a callback currently being added/removed in another thread.
+                // When other threads enter the lock, they will see the _valueContainer was already set, so we don't need any further callback synchronization.
+                lock (_registeredCallbacks) { }
                 Unlink();
-                // No need to lock on _registeredCallbacks since it won't be modified after WaitForCallbacks().
+                List<Exception> exceptions = null;
                 for (int i = 0, max = _registeredCallbacks.Count; i < max; ++i)
                 {
                     try
@@ -571,6 +551,7 @@ namespace Proto.Promises
                     // Propagate exceptions to caller as aggregate.
                     throw new AggregateException(exceptions);
                 }
+                return true;
             }
 
             [MethodImpl(InlineOption)]
@@ -580,7 +561,7 @@ namespace Proto.Promises
                 {
                     return false;
                 }
-                long oldRetain;
+                int oldRetain;
                 if (InterlockedTryRetain(out oldRetain))
                 {
                     ThrowIfInPool(this);
@@ -601,7 +582,7 @@ namespace Proto.Promises
                     return false;
                 }
                 ThrowIfInPool(this);
-                long newRetain;
+                int newRetain;
                 bool didRelease = InterlockedTryRelease(out newRetain);
                 if (didRelease & newRetain == 0)
                 {
@@ -625,23 +606,7 @@ namespace Proto.Promises
                 return false;
             }
 
-            [MethodImpl(InlineOption)]
-            private bool InterlockedTryRetainInternal()
-            {
-                // Left 32 bits are for internal retains.
-                long initialValue, newValue;
-                do
-                {
-                    initialValue = _retainCounter;
-                    newValue = initialValue + (1L << 32);
-                    // Checking for zero handles the case if this is called concurrently with TryDispose and/or Release.
-                    if (initialValue == 0) return false;
-                }
-                while (Interlocked.CompareExchange(ref _retainCounter, newValue, initialValue) != initialValue);
-                return true;
-            }
-
-            private void ReleaseAfterRetain()
+            private void ReleaseAfterRetainInternal()
             {
                 if (InterlockedReleaseInternal() == 0)
                 {
@@ -660,7 +625,9 @@ namespace Proto.Promises
                 // In case Dispose is called concurrently with Cancel.
                 if (Interlocked.CompareExchange(ref _valueContainer, DisposedRef.instance, null) == null)
                 {
-                    WaitForCallbacks();
+                    // Wait for a callback currently being added/removed in another thread.
+                    // When other threads enter the lock, they will see the _valueContainer was already set, so we don't need any further callback synchronization.
+                    lock (_registeredCallbacks) { }
                     Unlink();
                     // No need to lock on _registeredCallbacks since it won't be modified after WaitForCallbacks().
                     for (int i = 0, max = _registeredCallbacks.Count; i < max; ++i)
@@ -670,20 +637,8 @@ namespace Proto.Promises
                     _registeredCallbacks.Clear();
                 }
                 _registeredCount = 0;
-                ReleaseAfterRetain();
+                ReleaseAfterRetainInternal();
                 return true;
-            }
-
-            private void WaitForCallbacks()
-            {
-                // Wait for callbacks being added/removed in other threads.
-                var spinner = new SpinWait();
-                while (_callbacksLockCount > 0)
-                {
-                    spinner.SpinOnce();
-                    // Make sure it's a fresh read on every iteration.
-                    Thread.MemoryBarrier();
-                }
             }
 
             private void ResetAndRepool()
@@ -708,36 +663,33 @@ namespace Proto.Promises
 
             void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
-                ThrowIfInPool(this);
-                valueContainer.Retain();
-                if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
+                try
                 {
-                    InvokeCallbacks(valueContainer);
+                    TryInvokeCallbacks(valueContainer);
                 }
-                else
+                finally
                 {
-                    valueContainer.Release();
+                    ReleaseAfterRetainInternal();
                 }
-                ReleaseAfterRetain();
             }
 
             void ICancelDelegate.Dispose()
             {
-                ReleaseAfterRetain();
+                ReleaseAfterRetainInternal();
             }
 
             // These helpers provide a thread-safe mechanism for checking if the user called Release too many times.
-            // Left 32 bits are for internal retains, right 32 bits are for user retains.
+            // Left 16 bits are for internal retains, right 16 bits are for user retains.
             [MethodImpl(InlineOption)]
-            private bool InterlockedTryRetain(out long initialValue)
+            private bool InterlockedTryRetain(out int initialValue)
             {
-                // Right 32 bits are for user retains.
-                long newValue;
+                // Right 16 bits are for user retains.
+                int newValue;
                 do
                 {
                     initialValue = _retainCounter;
                     newValue = initialValue + 1;
-                    ulong oldCount = (ulong) initialValue & uint.MaxValue;
+                    uint oldCount = (uint) initialValue & ushort.MaxValue;
                     // Make sure user retain doesn't encroach on dispose retain.
                     // Checking for zero also handles the case if this is called concurrently with TryDispose and/or InvokeCallbacks.
                     if (oldCount >= uint.MaxValue | initialValue == 0) return false;
@@ -747,15 +699,15 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private bool InterlockedTryRelease(out long newValue)
+            private bool InterlockedTryRelease(out int newValue)
             {
-                // Right 32 bits are for user retains.
-                long initialValue;
+                // Right 16 bits are for user retains.
+                int initialValue;
                 do
                 {
                     initialValue = _retainCounter;
                     newValue = initialValue - 1;
-                    ulong oldCount = (ulong) initialValue & uint.MaxValue;
+                    uint oldCount = (uint) initialValue & ushort.MaxValue;
                     if (oldCount <= 0) return false;
                 }
                 while (Interlocked.CompareExchange(ref _retainCounter, newValue, initialValue) != initialValue);
@@ -763,18 +715,34 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private long InterlockedRetainInternal()
+            private bool InterlockedTryRetainInternal()
             {
-                // Left 32 bits are for internal retains.
-                long addValue = 1L << 32;
-                return Interlocked.Add(ref _retainCounter, addValue);
+                // Left 16 bits are for internal retains.
+                int initialValue, newValue;
+                do
+                {
+                    initialValue = _retainCounter;
+                    newValue = initialValue + (1 << 16);
+                    // Checking for zero handles the case if this is called concurrently with TryDispose and/or Release.
+                    if (initialValue == 0) return false;
+                }
+                while (Interlocked.CompareExchange(ref _retainCounter, newValue, initialValue) != initialValue);
+                return true;
             }
 
             [MethodImpl(InlineOption)]
-            private long InterlockedReleaseInternal()
+            private void InterlockedRetainInternal()
             {
-                // Left 32 bits are for internal retains.
-                long addValue = 1L << 32;
+                // Left 16 bits are for internal retains.
+                int addValue = 1 << 16;
+                Interlocked.Add(ref _retainCounter, addValue);
+            }
+
+            [MethodImpl(InlineOption)]
+            private int InterlockedReleaseInternal()
+            {
+                // Left 16 bits are for internal retains.
+                int addValue = 1 << 16;
                 return Interlocked.Add(ref _retainCounter, -addValue);
             }
         }

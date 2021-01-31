@@ -84,7 +84,7 @@ namespace Proto.Promises
 #if !CSHARP_7_3_OR_NEWER
                 _id != Internal.InvokeId |
 #endif
-                ReferenceEquals(_valueContainer, null))
+                _valueContainer == null)
             {
                 throw new InvalidOperationException("An instance of ReasonContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
             }
@@ -206,7 +206,7 @@ namespace Proto.Promises
 #if !CSHARP_7_3_OR_NEWER
                     _id != Internal.InvokeId |
 #endif
-                    ReferenceEquals(_valueContainer, null))
+                    _valueContainer == null)
                 {
                     throw new InvalidOperationException("An instance of ResultContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
                 }
@@ -359,7 +359,7 @@ namespace Proto.Promises
 #if !CSHARP_7_3_OR_NEWER
                     _id != Internal.InvokeId |
 #endif
-                    ReferenceEquals(_valueContainer, null))
+                    _valueContainer == null)
                 {
                     throw new InvalidOperationException("An instance of ResultContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
                 }

@@ -182,6 +182,7 @@ namespace Proto.Promises
 #endif
         public sealed class CancelExceptionInternal<T> : CancelException, ICancelationToContainer
         {
+            // TODO: don't reuse same object because of threads.
             // We can reuse the same object.
             private static readonly CancelExceptionInternal<T> _instance = new CancelExceptionInternal<T>();
 

@@ -323,7 +323,7 @@ namespace Proto.Promises
             Exception IThrowable.GetException()
             {
                 ThrowIfInPool(this);
-                bool valueIsNull = ReferenceEquals(Value, null);
+                bool valueIsNull = Value == null;
                 Type type = valueIsNull ? typeof(T) : Value.GetType();
                 string message = "Operation was canceled with a reason, type: " + type + ", value: " + (valueIsNull ? "NULL" : Value.ToString());
 
@@ -418,7 +418,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     Type type = typeof(T);
-                    if (type.IsValueType || ReferenceEquals(value, null))
+                    if (type.IsValueType || value == null)
                     {
                         return type;
                     }

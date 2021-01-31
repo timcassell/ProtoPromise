@@ -52,7 +52,9 @@ namespace Proto.Promises
         /// </summary>
         internal CancelationRegistration RegisterInternal(Internal.ICancelDelegate listener)
         {
-            return _ref.Register(listener, true);
+            CancelationRegistration registration;
+            _ref.TryRegister(listener, out registration);
+            return registration;
         }
 
         /// <summary>
@@ -84,8 +86,10 @@ namespace Proto.Promises
         /// <exception cref="CancelException"/>
         public void ThrowIfCancelationRequested()
         {
+            // TODO
             if (IsCancelationRequested)
             {
+                // TODO: valueContainer.ToException()
                 throw Internal.CancelExceptionInternal<object>.GetOrCreate(_ref.ValueContainer);
             }
         }
@@ -99,6 +103,7 @@ namespace Proto.Promises
         {
             get
             {
+                // TODO
                 if (!IsCancelationRequested)
                 {
                     throw new InvalidOperationException("CancelationToken.CancelationValueType: token has not been canceled.", Internal.GetFormattedStacktrace(1));
@@ -116,6 +121,7 @@ namespace Proto.Promises
         {
             get
             {
+                // TODO
                 if (!IsCancelationRequested)
                 {
                     throw new InvalidOperationException("CancelationToken.CancelationValue: token has not been canceled.", Internal.GetFormattedStacktrace(1));
@@ -131,6 +137,7 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public bool TryGetCancelationValueAs<T>(out T value)
         {
+            // TODO
             if (!IsCancelationRequested)
             {
                 throw new InvalidOperationException("CancelationToken.CancelationValue: token has not been canceled.", Internal.GetFormattedStacktrace(1));

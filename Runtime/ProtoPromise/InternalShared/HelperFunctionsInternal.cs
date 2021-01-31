@@ -174,7 +174,7 @@ namespace Proto.Promises
             return null;
         }
 
-        internal static string GetFormattedStacktrace(Internal.ITraceable traceable)
+        internal static string GetFormattedStacktrace(ITraceable traceable)
         {
             return null;
         }
@@ -257,7 +257,7 @@ namespace Proto.Promises
                     // reason is an internal cancelation object, get its container instead of wrapping it.
                     cancelValue = internalCancelation.ToContainer();
                 }
-                else if (ReferenceEquals(reason, null) || reason is OperationCanceledException)
+                else if (reason == null || reason is OperationCanceledException)
                 {
                     // Use void container instead of wrapping OperationCanceledException, or if reason is null.
                     cancelValue = CancelContainerVoid.GetOrCreate();
@@ -311,22 +311,17 @@ namespace Proto.Promises
                 return;
             }
 
-            if (ReferenceEquals(unhandledValue, null))
+            if (unhandledValue == null)
             {
                 // unhandledValue is null, behave the same way .Net behaves if you throw null.
                 unhandledValue = new NullReferenceException();
             }
 
-#if PROMISE_DEBUG
-            string stackTrace = GetFormattedStacktrace(traceable);
-#else
-            string stackTrace = null;
-#endif
             Type type = unhandledValue.GetType();
             Exception innerException = unhandledValue as Exception;
             string message = innerException != null ? "An exception was not handled." : "A rejected value was not handled, type: " + type + ", value: " + unhandledValue.ToString();
 
-            AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, type, message + CausalityTraceMessage, stackTrace, innerException));
+            AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, type, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
         }
 
         internal static void HandleEvents()
