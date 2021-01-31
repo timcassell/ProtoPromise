@@ -16,6 +16,12 @@ namespace Proto.Promises.Tests
     {
         public class Source
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -569,6 +575,12 @@ namespace Proto.Promises.Tests
 
         public class Token
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -894,6 +906,12 @@ namespace Proto.Promises.Tests
 
         public class Registration
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {

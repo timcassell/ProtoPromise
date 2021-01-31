@@ -16,6 +16,12 @@ namespace Proto.Promises.Tests
 {
     public class CaptureTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.Setup();
+        }
+
         [TearDown]
         public void Teardown()
         {

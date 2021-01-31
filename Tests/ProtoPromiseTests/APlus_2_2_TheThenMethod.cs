@@ -13,6 +13,12 @@ namespace Proto.Promises.Tests
 {
     public class APlus_2_2_TheThenMethod
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.Setup();
+        }
+
         [TearDown]
         public void Teardown()
         {
@@ -23,6 +29,12 @@ namespace Proto.Promises.Tests
         // These will only pass in DEBUG mode.
         public class _2_2_1_BothOnResolveAndOnRejectedAreOptionalArgument
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -443,6 +455,12 @@ namespace Proto.Promises.Tests
 
         public class IfOnFulfilledIsAFunction_2_2_2
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -598,6 +616,12 @@ namespace Proto.Promises.Tests
 
         public class _2_2_3_IfOnRejectedIsAFunction
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -849,6 +873,12 @@ namespace Proto.Promises.Tests
 
         public class _2_2_6_ThenMayBeCalledMultipleTimesOnTheSamePromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -1020,6 +1050,12 @@ namespace Proto.Promises.Tests
 
         public class ThenMustReturnAPromise_2_2_7
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {

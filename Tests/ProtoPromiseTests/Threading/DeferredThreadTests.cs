@@ -12,6 +12,12 @@ namespace Proto.Promises.Tests.Threading
 {
     public class DeferredThreadTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.Setup();
+        }
+
         [TearDown]
         public void Teardown()
         {

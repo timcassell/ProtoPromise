@@ -12,6 +12,12 @@ namespace Proto.Promises.Tests
 {
     public class SequenceTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.Setup();
+        }
+
         [TearDown]
         public void Teardown()
         {

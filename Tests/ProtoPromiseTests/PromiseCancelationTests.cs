@@ -11,6 +11,12 @@ namespace Proto.Promises.Tests
 {
     public class PromiseCancelationTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.Setup();
+        }
+
         [TearDown]
         public void Teardown()
         {
@@ -19,6 +25,12 @@ namespace Proto.Promises.Tests
 
         public class WhenPendingAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -172,6 +184,12 @@ namespace Proto.Promises.Tests
 
         public class WhenFulfilledAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -239,6 +257,12 @@ namespace Proto.Promises.Tests
 
         public class WhenRejectedAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -306,6 +330,12 @@ namespace Proto.Promises.Tests
 
         public class WhenCanceledAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -491,6 +521,12 @@ namespace Proto.Promises.Tests
 
         public class IfOnCanceledIsAFunction
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -589,6 +625,12 @@ namespace Proto.Promises.Tests
 
         public class CatchCancelationMayBeCalledMultipleTimesOnTheSamePromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -778,6 +820,12 @@ namespace Proto.Promises.Tests
 
         public class CancelationToken
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {

@@ -15,6 +15,12 @@ namespace Proto.Promises.Tests
 {
     public class AsyncTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.Setup();
+        }
+
         [TearDown]
         public void Teardown()
         {

@@ -13,6 +13,12 @@ namespace Proto.Promises.Tests.Threading
 {
     public class AllConcurrencyTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.Setup();
+        }
+
         [TearDown]
         public void Teardown()
         {

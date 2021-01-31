@@ -11,6 +11,12 @@ namespace Proto.Promises.Tests.Threading
 {
     public class CancelationConcurrencyTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.Setup();
+        }
+
         [TearDown]
         public void Teardown()
         {
@@ -866,7 +872,12 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource3.Dispose();
                 },
                 // Parallel actions
-                () => cancelationSource1.Cancel(),
+                () =>
+                {
+                    var s = CancelationSource.New(); // Increases the contention between cancel and linking the token.
+                    cancelationSource1.Cancel();
+                    s.Dispose();
+                },
                 () => cancelationSource2 = CancelationSource.New(cancelationSource1.Token),
                 () => cancelationSource3 = CancelationSource.New(cancelationSource1.Token)
             );
@@ -890,7 +901,12 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource3.Dispose();
                 },
                 // Parallel actions
-                () => cancelationSource1.Dispose(),
+                () =>
+                {
+                    var s = CancelationSource.New(); // Increases the contention between dispose and linking the token.
+                    cancelationSource1.Dispose();
+                    s.Dispose();
+                },
                 () => cancelationSource2 = CancelationSource.New(cancelationSource1.Token),
                 () => cancelationSource3 = CancelationSource.New(cancelationSource1.Token)
             );
@@ -921,8 +937,18 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource4.Dispose();
                 },
                 // Parallel actions
-                () => cancelationSource1.Cancel(),
-                () => cancelationSource2.Cancel(),
+                () =>
+                {
+                    var s = CancelationSource.New(); // Increases the contention between cancel and linking the tokens.
+                    cancelationSource1.Cancel();
+                    s.Dispose();
+                },
+                () =>
+                {
+                    var s = CancelationSource.New(); // Increases the contention between cancel and linking the tokens.
+                    cancelationSource2.Cancel();
+                    s.Dispose();
+                },
                 () => cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token),
                 () => cancelationSource4 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token)
             );
@@ -951,8 +977,18 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource4.Dispose();
                 },
                 // Parallel actions
-                () => cancelationSource1.Dispose(),
-                () => cancelationSource2.Dispose(),
+                () =>
+                {
+                    var s = CancelationSource.New(); // Increases the contention between dispose and linking the tokens.
+                    cancelationSource1.Dispose();
+                    s.Dispose();
+                },
+                () =>
+                {
+                    var s = CancelationSource.New(); // Increases the contention between dispose and linking the tokens.
+                    cancelationSource2.Dispose();
+                    s.Dispose();
+                },
                 () => cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token),
                 () => cancelationSource4 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token)
             );

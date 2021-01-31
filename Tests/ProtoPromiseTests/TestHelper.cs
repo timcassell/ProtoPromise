@@ -7,6 +7,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises.Tests
@@ -22,7 +23,12 @@ namespace Proto.Promises.Tests
             // Only throw one exception instead of aggregate to try to avoid overloading the test error output.
             Promise.Config.UncaughtRejectionHandler = e => Interlocked.CompareExchange(ref exception, e, null);
             Promise.Config.ObjectPoolingEnabled = true; // Make sure to test object pool.
+            //Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All; // For easier debugging.
         }
+
+        // Just to make sure static constructor is ran.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void Setup() { }
 
         public static void Cleanup()
         {

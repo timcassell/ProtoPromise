@@ -8,6 +8,12 @@ namespace Proto.Promises.Tests
     {
         public class _2_1_1_WhenPendingAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -89,6 +95,12 @@ namespace Proto.Promises.Tests
 
         public class _2_1_2_WhenFulfilledAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {
@@ -196,6 +208,12 @@ namespace Proto.Promises.Tests
 
         public class _2_1_3_WhenRejectedAPromise
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {

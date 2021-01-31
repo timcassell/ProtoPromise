@@ -13,6 +13,12 @@ namespace Proto.Promises.Tests
 {
     public class APlus_2_3_ThePromiseResolutionProcedure
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.Setup();
+        }
+
         [TearDown]
         public void Teardown()
         {
@@ -143,6 +149,12 @@ namespace Proto.Promises.Tests
 
         public class _2_3_2_IfXIsAPromiseAdoptItsState
         {
+            [SetUp]
+            public void Setup()
+            {
+                TestHelper.Setup();
+            }
+
             [TearDown]
             public void Teardown()
             {

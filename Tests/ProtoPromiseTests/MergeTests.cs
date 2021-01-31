@@ -10,6 +10,12 @@ namespace Proto.Promises.Tests
 {
     public class MergeTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.Setup();
+        }
+
         [TearDown]
         public void Teardown()
         {
