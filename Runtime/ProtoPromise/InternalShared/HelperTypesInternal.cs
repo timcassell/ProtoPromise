@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
@@ -242,7 +243,7 @@ namespace Proto.Promises
             // TODO: replace lock(_registeredCallbacks) with a custom AbortableLock type.
             private readonly List<RegisteredDelegate> _registeredCallbacks = new List<RegisteredDelegate>();
             private ValueLinkedStackZeroGC<CancelationRegistration> _links;
-            private ICancelValueContainer _valueContainer;
+            volatile private ICancelValueContainer _valueContainer;
             private int _retainCounter;
             private uint _registeredCount;
             private int _sourceId;
@@ -286,6 +287,60 @@ namespace Proto.Promises
             {
                 var temp = _valueContainer;
                 return tokenId == _tokenId & temp != null & temp != DisposedRef.instance;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void ThrowIfCanceled(int tokenId)
+            {
+                if (!TryRetainInternal(tokenId))
+                {
+                    return;
+                }
+                try
+                {
+                    var temp = _valueContainer;
+                    if (tokenId == _tokenId & temp != null & temp != DisposedRef.instance)
+                    {
+                        // TODO: valueContainer.ToException()
+                        throw CancelExceptionInternal<object>.GetOrCreate(temp);
+                    }
+                }
+                finally
+                {
+                    ReleaseAfterRetainInternal();
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal bool TryGetCanceledType(int tokenId, out Type type)
+            {
+                var temp = _valueContainer;
+                type = temp != null ? temp.ValueType : null;
+                bool isCanceled = tokenId == _tokenId & temp != null & temp != DisposedRef.instance;
+                return isCanceled;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal bool TryGetCanceledValue(int tokenId, out object value)
+            {
+                var temp = _valueContainer;
+                value = temp != null ? temp.Value : null;
+                bool isCanceled = tokenId == _tokenId & temp != null & temp != DisposedRef.instance;
+                return isCanceled;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal bool TryGetCanceledValueAs<T>(int tokenId, out bool didConvert, out T value)
+            {
+                var temp = _valueContainer;
+                if (temp == null | temp == DisposedRef.instance)
+                {
+                    value = default(T);
+                    return didConvert = false;
+                }
+                didConvert = TryConvert(ValueContainer, out value);
+                Thread.MemoryBarrier();
+                return tokenId == _tokenId & _retainCounter > 0; // Check retain counter in addition to tokenId since it gets set to 0 before tokenId is updated.
             }
 
             [MethodImpl(InlineOption)]
@@ -519,12 +574,11 @@ namespace Proto.Promises
             private bool TryInvokeCallbacks(ICancelValueContainer valueContainer)
             {
                 ThrowIfInPool(this);
-                valueContainer.Retain();
                 if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) != null)
                 {
-                    valueContainer.Release();
                     return false;
                 }
+                valueContainer.Retain();
                 // Wait for a callback currently being added/removed in another thread.
                 // When other threads enter the lock, they will see the _valueContainer was already set, so we don't need any further callback synchronization.
                 lock (_registeredCallbacks) { }
@@ -645,11 +699,11 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
                 _tokenId = _sourceId;
-                if (_valueContainer != null)
+                var oldContainer = Interlocked.Exchange(ref _valueContainer, DisposedRef.instance);
+                if (oldContainer != null)
                 {
-                    _valueContainer.Release();
+                    oldContainer.Release();
                 }
-                _valueContainer = DisposedRef.instance;
                 ObjectPool<CancelationRef>.MaybeRepool(this);
             }
 

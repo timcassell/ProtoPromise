@@ -104,6 +104,7 @@ namespace Proto.Promises
 #endif
         public Promise Progress(Action<float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
+            // TODO: return a duplicate promise.
             Internal.PromiseRef.PromiseImplVoid.Progress(this, onProgress, cancelationToken);
             return this;
         }
@@ -116,6 +117,7 @@ namespace Proto.Promises
         /// </summary>
         public Promise CatchCancelation(CanceledAction onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
+            // TODO: return a duplicate promise.
             Internal.PromiseRef.PromiseImplVoid.CatchCancelation(this, onCanceled, cancelationToken);
             return this;
         }

@@ -86,11 +86,9 @@ namespace Proto.Promises
         /// <exception cref="CancelException"/>
         public void ThrowIfCancelationRequested()
         {
-            // TODO
-            if (IsCancelationRequested)
+            if (_ref != null)
             {
-                // TODO: valueContainer.ToException()
-                throw Internal.CancelExceptionInternal<object>.GetOrCreate(_ref.ValueContainer);
+                _ref.ThrowIfCanceled(_id);
             }
         }
 
@@ -103,12 +101,12 @@ namespace Proto.Promises
         {
             get
             {
-                // TODO
-                if (!IsCancelationRequested)
+                Type type;
+                if (_ref == null || !_ref.TryGetCanceledType(_id, out type))
                 {
                     throw new InvalidOperationException("CancelationToken.CancelationValueType: token has not been canceled.", Internal.GetFormattedStacktrace(1));
                 }
-                return _ref.ValueContainer.ValueType;
+                return type;
             }
         }
 
@@ -121,12 +119,12 @@ namespace Proto.Promises
         {
             get
             {
-                // TODO
-                if (!IsCancelationRequested)
+                object value;
+                if (_ref == null || !_ref.TryGetCanceledValue(_id, out value))
                 {
                     throw new InvalidOperationException("CancelationToken.CancelationValue: token has not been canceled.", Internal.GetFormattedStacktrace(1));
                 }
-                return _ref.ValueContainer.Value;
+                return value;
             }
         }
 
@@ -137,12 +135,12 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public bool TryGetCancelationValueAs<T>(out T value)
         {
-            // TODO
-            if (!IsCancelationRequested)
+            bool didConvert;
+            if (_ref == null || !_ref.TryGetCanceledValueAs(_id, out didConvert, out value))
             {
-                throw new InvalidOperationException("CancelationToken.CancelationValue: token has not been canceled.", Internal.GetFormattedStacktrace(1));
+                throw new InvalidOperationException("CancelationToken.TryGetCancelationValueAs: token has not been canceled.", Internal.GetFormattedStacktrace(1));
             }
-            return Internal.TryConvert(_ref.ValueContainer, out value);
+            return didConvert;
         }
 
         /// <summary>

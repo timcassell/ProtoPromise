@@ -292,14 +292,14 @@ namespace Proto.Promises.Tests.Threading
             var cancelationSource = default(CancelationSource);
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            threadHelper.ExecuteParallelActionsWithOffsets(true,
                 // Setup
                 () => cancelationSource = CancelationSource.New(),
                 // Teardown
                 () => { },
                 // Parallel actions
                 () => cancelationSource.TryCancel(),
-                () => cancelationSource.Dispose()
+                () => cancelationSource.TryDispose()
             );
         }
 
@@ -309,14 +309,14 @@ namespace Proto.Promises.Tests.Threading
             var cancelationSource = default(CancelationSource);
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            threadHelper.ExecuteParallelActionsWithOffsets(true,
                 // Setup
                 () => cancelationSource = CancelationSource.New(),
                 // Teardown
                 () => { },
                 // Parallel actions
                 () => cancelationSource.TryCancel("Cancel"),
-                () => cancelationSource.Dispose()
+                () => cancelationSource.TryDispose()
             );
         }
 
@@ -326,7 +326,7 @@ namespace Proto.Promises.Tests.Threading
             var cancelationSource = default(CancelationSource);
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            threadHelper.ExecuteParallelActionsWithOffsets(true,
                 // Setup
                 () =>
                 {
@@ -337,7 +337,7 @@ namespace Proto.Promises.Tests.Threading
                 () => { },
                 // Parallel actions
                 () => cancelationSource.TryCancel(),
-                () => cancelationSource.Dispose()
+                () => cancelationSource.TryDispose()
             );
         }
 
@@ -347,7 +347,7 @@ namespace Proto.Promises.Tests.Threading
             var cancelationSource = default(CancelationSource);
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            threadHelper.ExecuteParallelActionsWithOffsets(true,
                 // Setup
                 () =>
                 {
@@ -358,7 +358,7 @@ namespace Proto.Promises.Tests.Threading
                 () => { },
                 // Parallel actions
                 () => cancelationSource.TryCancel("Cancel"),
-                () => cancelationSource.Dispose()
+                () => cancelationSource.TryDispose()
             );
         }
 
@@ -991,6 +991,109 @@ namespace Proto.Promises.Tests.Threading
                 },
                 () => cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token),
                 () => cancelationSource4 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token)
+            );
+        }
+
+        [Test]
+        public void CanceledTokenMayThrowIfCancelationRequestedConcurrently()
+        {
+            int invoked = 0;
+            var cancelationSource = CancelationSource.New();
+            var cancelationToken = cancelationSource.Token;
+            cancelationSource.Cancel();
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteMultiActionParallel(() =>
+            {
+                try
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                }
+                catch (CancelException)
+                {
+                    Interlocked.Increment(ref invoked);
+                }
+            });
+            cancelationSource.Dispose();
+            Assert.AreEqual(ThreadHelper.multiExecutionCount, invoked);
+        }
+
+        [Test]
+        public void DisposedTokenMayThrowIfCancelationRequestedConcurrently()
+        {
+            int invoked = 0;
+            var cancelationSource = CancelationSource.New();
+            var cancelationToken = cancelationSource.Token;
+            cancelationSource.Dispose();
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteMultiActionParallel(() =>
+            {
+                cancelationToken.ThrowIfCancelationRequested();
+                Interlocked.Increment(ref invoked);
+            });
+            Assert.AreEqual(ThreadHelper.multiExecutionCount, invoked);
+        }
+
+        [Test]
+        public void CancelationSourceMayBeCanceledAndItsTokenMayThrowIfCancelationRequestedConcurrently()
+        {
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource = CancelationSource.New();
+                    cancelationToken = cancelationSource.Token;
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource.Dispose();
+                },
+                // Parallel actions
+                () =>
+                {
+                    try { cancelationToken.ThrowIfCancelationRequested(); } catch { }
+                },
+                () =>
+                {
+                    try { cancelationToken.ThrowIfCancelationRequested(); } catch { }
+                },
+                () => cancelationSource.TryCancel(),
+                () => cancelationSource.TryCancel(1)
+            );
+        }
+
+        [Test]
+        public void CancelationSourceMayBeDisposedAndItsTokenMayThrowIfCancelationRequestedConcurrently()
+        {
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource = CancelationSource.New();
+                    cancelationToken = cancelationSource.Token;
+                },
+                // Teardown
+                () => { },
+                // Parallel actions
+                () =>
+                {
+                    try { cancelationToken.ThrowIfCancelationRequested(); } catch { }
+                },
+                () =>
+                {
+                    try { cancelationToken.ThrowIfCancelationRequested(); } catch { }
+                },
+                () => cancelationSource.Dispose()
             );
         }
     }
