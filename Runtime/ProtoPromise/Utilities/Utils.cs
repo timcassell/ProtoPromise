@@ -24,6 +24,7 @@ namespace Proto.Utils
     {
         private T _current;
 
+        [MethodImpl(Promises.Internal.InlineOption)]
         public Enumerator(T first)
         {
             _current = first;
@@ -33,6 +34,7 @@ namespace Proto.Utils
         /// Doesn't actually move next, just returns if Current is valid.
         /// This allows the function to be branch-less. Useful for foreach loops.
         /// </summary>
+        [MethodImpl(Promises.Internal.InlineOption)]
         public bool MoveNext()
         {
             return _current != null;
@@ -43,6 +45,7 @@ namespace Proto.Utils
         /// </summary>
         public T Current
         {
+            [MethodImpl(Promises.Internal.InlineOption)]
             get
             {
                 T temp = _current;
@@ -74,47 +77,44 @@ namespace Proto.Utils
     {
         private T _first;
 
-        public bool IsEmpty { get { return _first == null; } }
-        public bool IsNotEmpty { get { return _first != null; } }
+        public bool IsEmpty
+        {
+            [MethodImpl(Promises.Internal.InlineOption)]
+            get { return _first == null; }
+        }
+        public bool IsNotEmpty
+        {
+            [MethodImpl(Promises.Internal.InlineOption)]
+            get { return _first != null; }
+        }
 
+        [MethodImpl(Promises.Internal.InlineOption)]
         public ValueLinkedStack(T item)
         {
             item.Next = null;
             _first = item;
         }
 
-        public void PushAndClear(ref ValueLinkedQueue<T> queue)
-        {
-            if (queue.IsNotEmpty)
-            {
-                queue.PeekLast().Next = _first;
-                _first = queue.Peek();
-                queue.Clear();
-            }
-        }
-
+        [MethodImpl(Promises.Internal.InlineOption)]
         public void Clear()
         {
             _first = null;
         }
 
+        [MethodImpl(Promises.Internal.InlineOption)]
         public void Push(T item)
         {
             item.Next = _first;
             _first = item;
         }
 
+        [MethodImpl(Promises.Internal.InlineOption)]
         public T Pop()
         {
             T temp = _first;
             _first = _first.Next;
             temp.Next = null;
             return temp;
-        }
-
-        public T Peek()
-        {
-            return _first;
         }
 
         public void Remove(T item)
@@ -140,6 +140,7 @@ namespace Proto.Utils
             }
         }
 
+        [MethodImpl(Promises.Internal.InlineOption)]
         public Enumerator<T> GetEnumerator()
         {
             return new Enumerator<T>(_first);
@@ -167,21 +168,32 @@ namespace Proto.Utils
         private T _first;
         private T _last;
 
-        public bool IsEmpty { get { return _first == null; } }
-        public bool IsNotEmpty { get { return _first != null; } }
+        public bool IsEmpty
+        {
+            [MethodImpl(Promises.Internal.InlineOption)]
+            get { return _first == null; }
+        }
+        public bool IsNotEmpty
+        {
+            [MethodImpl(Promises.Internal.InlineOption)]
+            get { return _first != null; }
+        }
 
+        [MethodImpl(Promises.Internal.InlineOption)]
         public ValueLinkedQueue(T item)
         {
             item.Next = null;
             _first = _last = item;
         }
 
+        [MethodImpl(Promises.Internal.InlineOption)]
         public void Clear()
         {
             _first = null;
             _last = null;
         }
 
+        [MethodImpl(Promises.Internal.InlineOption)]
         public void ClearLast()
         {
             _last = null;
@@ -204,6 +216,7 @@ namespace Proto.Utils
         /// <summary>
         /// Only use this if you know the queue is not empty.
         /// </summary>
+        [MethodImpl(Promises.Internal.InlineOption)]
         public void EnqueueRisky(T item)
         {
             item.Next = null;
@@ -228,6 +241,7 @@ namespace Proto.Utils
         /// <summary>
         /// Only use this if you know the queue is not empty.
         /// </summary>
+        [MethodImpl(Promises.Internal.InlineOption)]
         public void PushRisky(T item)
         {
             item.Next = null;
@@ -250,21 +264,6 @@ namespace Proto.Utils
             }
         }
 
-        public void EnqueueAndClear(ref ValueLinkedQueue<T> other)
-        {
-            if (IsEmpty)
-            {
-                this = other;
-                other.Clear();
-            }
-            else if (other.IsNotEmpty)
-            {
-                _last.Next = other._first;
-                _last = other._last;
-                other.Clear();
-            }
-        }
-
         public T Dequeue()
         {
             T temp = _first;
@@ -281,6 +280,7 @@ namespace Proto.Utils
         /// This doesn't clear _last when the last item is taken.
         /// Only use this if you know this has 2 or more items, or if you will call ClearLast when you know this is empty.
         /// </summary>
+        [MethodImpl(Promises.Internal.InlineOption)]
         public T DequeueRisky()
         {
             T temp = _first;
@@ -289,16 +289,7 @@ namespace Proto.Utils
             return temp;
         }
 
-        public T Peek()
-        {
-            return _first;
-        }
-
-        public T PeekLast()
-        {
-            return _last;
-        }
-
+        [MethodImpl(Promises.Internal.InlineOption)]
         public Enumerator<T> GetEnumerator()
         {
             return new Enumerator<T>(_first);
@@ -434,11 +425,6 @@ namespace Proto.Utils
             T item = node.Value;
             node.Dispose();
             return item;
-        }
-
-        public T Peek()
-        {
-            return _stack.Peek().Value;
         }
 
         // TODO: This creates new allocations if T is a struct. It's also just horribly inefficient (scans the linked list twice).
@@ -579,11 +565,6 @@ namespace Proto.Utils
             T item = node.Value;
             node.Dispose();
             return item;
-        }
-
-        public T Peek()
-        {
-            return _queue.Peek().Value;
         }
 
         public Enumerator GetEnumerator()

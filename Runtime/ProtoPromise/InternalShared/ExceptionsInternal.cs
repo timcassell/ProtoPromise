@@ -4,6 +4,10 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0019 // Use pattern matching
+#pragma warning disable IDE0034 // Simplify 'default' expression
+
 using System;
 using System.Diagnostics;
 
@@ -29,26 +33,35 @@ namespace Proto.Promises
 
             void IValueContainer.Retain()
             {
-                checked
+                int _;
+                // Don't let counter wrap around past 0.
+                if (!InterlockedAddIfNotEqual(ref _retainCounter, 1, -1, out _))
                 {
-                    ++_retainCounter;
+                    throw new OverflowException();
                 }
             }
+
             void IValueContainer.Release()
             {
-                checked
+                int _;
+                // Don't let counter go below 0.
+                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out _))
                 {
-                    --_retainCounter;
+                    throw new OverflowException(); // This should never happen, but checking just in case.
                 }
             }
+
             void IValueContainer.ReleaseAndMaybeAddToUnhandledStack()
             {
-                checked
+                int newValue;
+                // Don't let counter go below 0.
+                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
                 {
-                    if (--_retainCounter == 0)
-                    {
-                        AddUnhandledException(this);
-                    }
+                    throw new OverflowException(); // This should never happen, but checking just in case.
+                }
+                if (newValue == 0)
+                {
+                    AddUnhandledException(this);
                 }
             }
 
@@ -80,11 +93,86 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        public sealed class CanceledExceptionInternal : CanceledException, ICancelValueContainer, ICancelationToContainer
+        public sealed class CanceledExceptionInternal<T> : CanceledException, ICancelValueContainer, ICancelationToContainer
         {
-            public CanceledExceptionInternal(object value, Type valueType, string message) :
-                base(value, valueType, message)
-            { }
+            private readonly T _value;
+
+            public CanceledExceptionInternal(T value, string message) : base(message)
+            {
+                _value = value;
+            }
+
+            public override Type ValueType { get { return typeof(T).IsValueType ? typeof(T) : _value.GetType(); } }
+
+            public override object Value { get { return _value; } }
+
+            public override bool TryGetValueAs<TConvert>(out TConvert value)
+            {
+                CanceledExceptionInternal<TConvert> casted = this as CanceledExceptionInternal<TConvert>;
+                if (casted != null)
+                {
+                    value = casted._value;
+                    return true;
+                }
+                if (!typeof(T).IsValueType && typeof(TConvert).IsAssignableFrom(_value.GetType()))
+                {
+                    value = (TConvert) (object) _value;
+                    return true;
+                }
+                value = default(TConvert);
+                return false;
+            }
+
+            Promise.State IValueContainer.GetState()
+            {
+                return Promise.State.Canceled;
+            }
+
+            void IValueContainer.Retain() { }
+            void IValueContainer.Release() { }
+            void IValueContainer.ReleaseAndMaybeAddToUnhandledStack() { }
+            void IValueContainer.ReleaseAndAddToUnhandledStack() { }
+
+            Exception IThrowable.GetException()
+            {
+                return this;
+            }
+
+            ICancelValueContainer ICancelationToContainer.ToContainer()
+            {
+                return this;
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        public sealed class CanceledExceptionInternalVoid : CanceledException, ICancelValueContainer, ICancelationToContainer
+        {
+#if !PROMISE_DEBUG
+            private static readonly CanceledExceptionInternalVoid _instance = new CanceledExceptionInternalVoid("Operation was canceled without a reason.");
+#endif
+
+            public static CanceledExceptionInternalVoid GetOrCreate()
+            {
+#if PROMISE_DEBUG
+                return new CanceledExceptionInternalVoid("Operation was canceled without a reason."); // Don't re-use instance in DEBUG mode so users can read its stacktrace on any thread.
+#else
+                return _instance;
+#endif
+            }
+
+            public CanceledExceptionInternalVoid(string message) : base(message) { }
+
+            public override Type ValueType { get { return null; } }
+
+            public override object Value { get { return null; } }
+
+            public override bool TryGetValueAs<TConvert>(out TConvert value)
+            {
+                value = default(TConvert);
+                return false;
+            }
 
             Promise.State IValueContainer.GetState()
             {
@@ -127,18 +215,12 @@ namespace Proto.Promises
 #endif
         public sealed class RejectExceptionInternal<T> : RejectException, IRejectionToContainer, ICantHandleException
         {
-            // We can reuse the same object.
-            private static readonly RejectExceptionInternal<T> _instance = new RejectExceptionInternal<T>();
-
             public T Value { get; private set; }
 
-            public static RejectExceptionInternal<T> GetOrCreate(T value)
+            public RejectExceptionInternal(T value)
             {
-                _instance.Value = value;
-                return _instance;
+                Value = value;
             }
-
-            private RejectExceptionInternal() { }
 
             public IRejectValueContainer ToContainer(ITraceable traceable)
             {
@@ -153,53 +235,6 @@ namespace Proto.Promises
             public void AddToUnhandledStack(ITraceable traceable)
             {
                 AddRejectionToUnhandledStack(Value, traceable);
-            }
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-        public sealed class CancelExceptionVoidInternal : CancelException, ICancelationToContainer
-        {
-            // We can reuse the same object.
-            private static readonly CancelExceptionVoidInternal _instance = new CancelExceptionVoidInternal();
-
-            public static CancelExceptionVoidInternal GetOrCreate()
-            {
-                return _instance;
-            }
-
-            private CancelExceptionVoidInternal() { }
-
-            public ICancelValueContainer ToContainer()
-            {
-                return CancelContainerVoid.GetOrCreate();
-            }
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-        public sealed class CancelExceptionInternal<T> : CancelException, ICancelationToContainer
-        {
-            // TODO: don't reuse same object because of threads.
-            // We can reuse the same object.
-            private static readonly CancelExceptionInternal<T> _instance = new CancelExceptionInternal<T>();
-
-            public T Value { get; private set; }
-
-            public static CancelExceptionInternal<T> GetOrCreate(T value)
-            {
-                _instance.Value = value;
-                return _instance;
-            }
-
-            private CancelExceptionInternal() { }
-
-            public ICancelValueContainer ToContainer()
-            {
-                T value = Value;
-                return CreateCancelContainer(ref value);
             }
         }
 

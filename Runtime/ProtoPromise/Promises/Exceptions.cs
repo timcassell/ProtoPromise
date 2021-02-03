@@ -171,36 +171,20 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// Exception that is thrown if an awaited promise is canceled.
+    /// Exception that is used to propagate cancelation of an operation.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
 #endif
     public abstract class CanceledException : OperationCanceledException
     {
-        private readonly object _value;
-        private readonly Type _type;
+        internal CanceledException(string message) : base(message) { }
 
-        internal CanceledException(object value, Type valueType, string message) : base(message)
-        {
-            _value = value;
-            _type = valueType;
-        }
+        public abstract Type ValueType { get; }
 
-        public Type ValueType { get { return _type; } }
+        public abstract object Value { get; }
 
-        public object Value { get { return _value; } }
-
-        public bool TryGetValueAs<T>(out T value)
-        {
-            if (typeof(T).IsAssignableFrom(_type))
-            {
-                value = (T) _value;
-                return true;
-            }
-            value = default(T);
-            return false;
-        }
+        public abstract bool TryGetValueAs<T>(out T value);
     }
 
 
@@ -243,25 +227,6 @@ namespace Proto.Promises
             get
             {
                 return "This is used to reject a Promise from an onResolved or onRejected handler.";
-            }
-        }
-    }
-
-    /// <summary>
-    /// Special Exception that is used to cancel a Promise from an onResolved or onRejected callback.
-    /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
-#endif
-    public abstract class CancelException : OperationCanceledException
-    {
-        internal CancelException() { }
-
-        public override string Message
-        {
-            get
-            {
-                return "This is used to cancel a Promise from an onResolved or onRejected handler.";
             }
         }
     }

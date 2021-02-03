@@ -1447,18 +1447,20 @@ namespace Proto.Promises
         /// Get a <see cref="CancelException"/> that can be thrown to cancel the promise without a reason from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.CancelException();"
         /// </summary>
-        public static CancelException CancelException()
+        public static CanceledException CancelException()
         {
-            return Internal.CancelExceptionVoidInternal.GetOrCreate();
+            return Internal.CanceledExceptionInternalVoid.GetOrCreate();
         }
 
         /// <summary>
         /// Get a <see cref="Promises.CancelException"/> that can be thrown to cancel the promise with the provided reason from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.CancelException(value);"
         /// </summary>
-        public static CancelException CancelException<T>(T value)
+        public static CanceledException CancelException<T>(T value)
         {
-            return Internal.CancelExceptionInternal<T>.GetOrCreate(value);
+            Type type = typeof(T).IsValueType ? typeof(T) : value.GetType();
+            string message = "Operation was canceled with a reason, type: " + type + ", value: " + value.ToString();
+            return new Internal.CanceledExceptionInternal<T>(value, message);
         }
 
         /// <summary>
@@ -1467,7 +1469,7 @@ namespace Proto.Promises
         /// </summary>
         public static RejectException RejectException<T>(T value)
         {
-            return Internal.RejectExceptionInternal<T>.GetOrCreate(value);
+            return new Internal.RejectExceptionInternal<T>(value);
         }
     }
 }

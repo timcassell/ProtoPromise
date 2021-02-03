@@ -101,6 +101,30 @@ namespace Proto.Promises.Tests.Threading
         }
 
         /// <summary>
+        /// Run each action in parallel.
+        /// </summary>
+        /// <para/>Example: 2 actions with 6 processors, runs each action 3 times in parallel.</param>
+        /// <param name="setup">The action to run before each parallel run.</param>
+        /// <param name="teardown">The action to run after each parallel run.</param>
+        /// <param name="actions">The actions to run in parallel.</param>
+        public void ExecuteParallelActions(int repeatCount, Action setup, Action teardown, params Action[] actions)
+        {
+            setup += () => { };
+            teardown += () => { };
+            int actionCount = actions.Length;
+            for (int k = 0; k < repeatCount; ++k)
+            {
+                setup.Invoke();
+                for (int i = 0; i < actionCount; ++i)
+                {
+                    AddParallelAction(actions[i]);
+                }
+                ExecutePendingParallelActions();
+                teardown.Invoke();
+            }
+        }
+
+        /// <summary>
         /// Run each action in parallel multiple times with differing offsets for each run.
         /// <para/>The number of runs is 4^actions.Length, so be careful if you don't want the test to run too long.
         /// </summary>

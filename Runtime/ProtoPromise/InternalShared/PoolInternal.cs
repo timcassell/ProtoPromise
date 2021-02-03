@@ -91,7 +91,7 @@ namespace Proto.Promises
                 {
                     if (!_pooledObjects.Add(obj))
                     {
-                        throw new InvalidOperationException("Same object was added to the pool twice");
+                        throw new Exception("Same object was added to the pool twice");
                     }
                 }
             }
@@ -127,7 +127,7 @@ namespace Proto.Promises
             {
                 if (_pooledObjects.Contains(obj))
                 {
-                    throw new InvalidOperationException("Object is in pool.");
+                    throw new Exception("Object is in pool.");
                 }
             }
         }

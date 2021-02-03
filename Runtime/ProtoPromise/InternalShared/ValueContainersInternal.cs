@@ -6,7 +6,6 @@
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0041 // Use 'is null' check
 
 using System;
 using System.Runtime.CompilerServices;
@@ -57,11 +56,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     Type type = typeof(T);
                     // Value is never null.
-                    if (type.IsValueType)
-                    {
-                        return type;
-                    }
-                    return Value.GetType();
+                    return type.IsValueType ? type : Value.GetType();
                 }
             }
 
@@ -244,7 +239,7 @@ namespace Proto.Promises
                 get
                 {
                     ThrowIfInPool(this);
-                    return Value;
+                    return _value;
                 }
             }
 
@@ -259,7 +254,7 @@ namespace Proto.Promises
                     {
                         return type;
                     }
-                    return Value.GetType();
+                    return _value.GetType();
                 }
             }
 
@@ -323,11 +318,10 @@ namespace Proto.Promises
             Exception IThrowable.GetException()
             {
                 ThrowIfInPool(this);
-                bool valueIsNull = Value == null;
-                Type type = valueIsNull ? typeof(T) : Value.GetType();
-                string message = "Operation was canceled with a reason, type: " + type + ", value: " + (valueIsNull ? "NULL" : Value.ToString());
+                Type type = typeof(T).IsValueType ? typeof(T) : _value.GetType();
+                string message = "Operation was canceled with a reason, type: " + type + ", value: " + _value.ToString();
 
-                return new CanceledExceptionInternal(Value, type, message);
+                return new CanceledExceptionInternal<T>(_value, message);
             }
 
             ICancelValueContainer ICancelationToContainer.ToContainer()
@@ -366,7 +360,7 @@ namespace Proto.Promises
 
             Exception IThrowable.GetException()
             {
-                return new CanceledExceptionInternal(null, null, "Operation was canceled without a reason.");
+                return CanceledExceptionInternalVoid.GetOrCreate();
             }
 
             ICancelValueContainer ICancelationToContainer.ToContainer()

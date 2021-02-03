@@ -591,6 +591,186 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
+        public void CancelationTokenMayBeCanceledAndRegisteredToConcurrently0()
+        {
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(true,
+                 // Setup
+                 () =>
+                 {
+                     cancelationSource = CancelationSource.New();
+                     cancelationToken = cancelationSource.Token;
+                 },
+                 // Teardown
+                 () =>
+                 {
+                     cancelationSource.Dispose();
+                 },
+                 // Parallel actions
+                 () => cancelationSource.TryCancel(),
+                 () => cancelationToken.Register(_ => { }),
+                 () => cancelationToken.Register(1, (cv, _) => { })
+             );
+        }
+
+        [Test]
+        public void CancelationTokenMayBeCanceledAndRegisteredToConcurrently1()
+        {
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(true,
+                 // Setup
+                 () =>
+                 {
+                     cancelationSource = CancelationSource.New();
+                     cancelationToken = cancelationSource.Token;
+                 },
+                 // Teardown
+                 () =>
+                 {
+                     cancelationSource.Dispose();
+                 },
+                 // Parallel actions
+                 () => cancelationSource.TryCancel(1),
+                 () => cancelationToken.Register(_ => { }),
+                 () => cancelationToken.Register(1, (cv, _) => { })
+             );
+        }
+
+        [Test]
+        public void CancelationTokenMayBeDisposedAndRegisteredToConcurrently()
+        {
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(true,
+                 // Setup
+                 () =>
+                 {
+                     cancelationSource = CancelationSource.New();
+                     cancelationToken = cancelationSource.Token;
+                 },
+                 // Teardown
+                 () => { },
+                 // Parallel actions
+                 () => cancelationSource.TryDispose(),
+                 () => { try { cancelationToken.Register(_ => { }); } catch (InvalidOperationException) { } },
+                 () => { try { cancelationToken.Register(1, (cv, _) => { }); } catch (InvalidOperationException) { } }
+             );
+        }
+
+        [Test]
+        public void CancelationTokenMayBeCanceledAndUnRegisteredFromConcurrently0()
+        {
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+            var cancelationRegistrations = default(CancelationRegistration[]);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                 // Setup
+                 () =>
+                 {
+                     cancelationSource = CancelationSource.New();
+                     cancelationToken = cancelationSource.Token;
+                     cancelationRegistrations = new CancelationRegistration[4]
+                     {
+                         cancelationToken.Register(_ => { }),
+                         cancelationToken.Register(_ => { }),
+                         cancelationToken.Register(1, (cv, _) => { }),
+                         cancelationToken.Register(1, (cv, _) => { })
+                     };
+                 },
+                 // Teardown
+                 () =>
+                 {
+                     cancelationSource.Dispose();
+                 },
+                 // Parallel actions
+                 () => cancelationSource.TryCancel(),
+                 () => cancelationRegistrations[0].TryUnregister(),
+                 () => cancelationRegistrations[1].TryUnregister(),
+                 () => cancelationRegistrations[2].TryUnregister(),
+                 () => cancelationRegistrations[3].TryUnregister()
+             );
+        }
+
+        [Test]
+        public void CancelationTokenMayBeCanceledAndUnRegisteredFromConcurrently1()
+        {
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+            var cancelationRegistrations = default(CancelationRegistration[]);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                 // Setup
+                 () =>
+                 {
+                     cancelationSource = CancelationSource.New();
+                     cancelationToken = cancelationSource.Token;
+                     cancelationRegistrations = new CancelationRegistration[4]
+                     {
+                         cancelationToken.Register(_ => { }),
+                         cancelationToken.Register(_ => { }),
+                         cancelationToken.Register(1, (cv, _) => { }),
+                         cancelationToken.Register(1, (cv, _) => { })
+                     };
+                 },
+                 // Teardown
+                 () =>
+                 {
+                     cancelationSource.Dispose();
+                 },
+                 // Parallel actions
+                 () => cancelationSource.TryCancel(1),
+                 () => cancelationRegistrations[0].TryUnregister(),
+                 () => cancelationRegistrations[1].TryUnregister(),
+                 () => cancelationRegistrations[2].TryUnregister(),
+                 () => cancelationRegistrations[3].TryUnregister()
+             );
+        }
+
+        [Test]
+        public void CancelationTokenMayBeDisposedAndUnRegisteredFromConcurrently()
+        {
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+            var cancelationRegistrations = default(CancelationRegistration[]);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                 // Setup
+                 () =>
+                 {
+                     cancelationSource = CancelationSource.New();
+                     cancelationToken = cancelationSource.Token;
+                     cancelationRegistrations = new CancelationRegistration[4]
+                     {
+                         cancelationToken.Register(_ => { }),
+                         cancelationToken.Register(_ => { }),
+                         cancelationToken.Register(1, (cv, _) => { }),
+                         cancelationToken.Register(1, (cv, _) => { })
+                     };
+                 },
+                 // Teardown
+                 () => { },
+                 // Parallel actions
+                 () => cancelationSource.TryDispose(),
+                 () => cancelationRegistrations[0].TryUnregister(),
+                 () => cancelationRegistrations[1].TryUnregister(),
+                 () => cancelationRegistrations[2].TryUnregister(),
+                 () => cancelationRegistrations[3].TryUnregister()
+             );
+        }
+
+        [Test]
         public void LinkedCancelationSourcesMayBeCanceledConcurrently0()
         {
             var cancelationSource1 = default(CancelationSource);
@@ -1009,7 +1189,7 @@ namespace Proto.Promises.Tests.Threading
                 {
                     cancelationToken.ThrowIfCancelationRequested();
                 }
-                catch (CancelException)
+                catch (CanceledException)
                 {
                     Interlocked.Increment(ref invoked);
                 }

@@ -229,6 +229,7 @@ namespace Proto.Promises.Tests.Threading
             );
         }
 
+#if PROMISE_PROGRESS
         [Test]
         public void PromiseMayReportProgressAndCallbackCanceledConcurrently_void()
         {
@@ -290,6 +291,7 @@ namespace Proto.Promises.Tests.Threading
                 () => deferred.ReportProgress(0.5f)
             );
         }
+#endif
     }
 }
 

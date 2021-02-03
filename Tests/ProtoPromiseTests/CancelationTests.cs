@@ -876,7 +876,7 @@ namespace Proto.Promises.Tests
                 {
                     cancelationToken.ThrowIfCancelationRequested();
                 }
-                catch (CancelException)
+                catch (CanceledException)
                 {
                     caughtException = true;
                 }
@@ -895,7 +895,7 @@ namespace Proto.Promises.Tests
                 {
                     cancelationToken.ThrowIfCancelationRequested();
                 }
-                catch (CancelException)
+                catch (CanceledException)
                 {
                     caughtException = true;
                 }
@@ -1182,6 +1182,19 @@ namespace Proto.Promises.Tests
                 catch (Exception) { }
                 cancelationSource.Dispose();
                 Assert.AreEqual(3, callbackCount);
+            }
+
+            [Test]
+            public void RetainedCancelationTokenMayBeRegisteredToAfterCancelationSourceIsCanceledAndDisposed()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationToken.Retain();
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
+                cancelationToken.Register(_ => { });
+                cancelationToken.Register(1, (cv, _) => { });
+                cancelationToken.Release();
             }
         }
     }
