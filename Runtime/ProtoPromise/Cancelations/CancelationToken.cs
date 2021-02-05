@@ -47,6 +47,7 @@ namespace Proto.Promises
             }
         }
 
+        // TODO: TryRegisterInternal
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
@@ -102,11 +103,11 @@ namespace Proto.Promises
             get
             {
                 Type type;
-                if (_ref == null || !_ref.TryGetCanceledType(_id, out type))
+                if (_ref != null && _ref.TryGetCanceledType(_id, out type))
                 {
-                    throw new InvalidOperationException("CancelationToken.CancelationValueType: token has not been canceled.", Internal.GetFormattedStacktrace(1));
+                    return type;
                 }
-                return type;
+                throw new InvalidOperationException("CancelationToken.CancelationValueType: token has not been canceled.", Internal.GetFormattedStacktrace(1));
             }
         }
 
@@ -120,11 +121,11 @@ namespace Proto.Promises
             get
             {
                 object value;
-                if (_ref == null || !_ref.TryGetCanceledValue(_id, out value))
+                if (_ref != null && _ref.TryGetCanceledValue(_id, out value))
                 {
-                    throw new InvalidOperationException("CancelationToken.CancelationValue: token has not been canceled.", Internal.GetFormattedStacktrace(1));
+                    return value;
                 }
-                return value;
+                throw new InvalidOperationException("CancelationToken.CancelationValue: token has not been canceled.", Internal.GetFormattedStacktrace(1));
             }
         }
 
@@ -136,11 +137,48 @@ namespace Proto.Promises
         public bool TryGetCancelationValueAs<T>(out T value)
         {
             bool didConvert;
-            if (_ref == null || !_ref.TryGetCanceledValueAs(_id, out didConvert, out value))
+            if (_ref != null && _ref.TryGetCanceledValueAs(_id, out didConvert, out value))
             {
-                throw new InvalidOperationException("CancelationToken.TryGetCancelationValueAs: token has not been canceled.", Internal.GetFormattedStacktrace(1));
+                return didConvert;
             }
-            return didConvert;
+            throw new InvalidOperationException("CancelationToken.TryGetCancelationValueAs: token has not been canceled.", Internal.GetFormattedStacktrace(1));
+        }
+
+        /// <summary>
+        /// Try to register a delegate that will be invoked with the cancelation reason when this <see cref="CancelationToken"/> is canceled.
+        /// If this is already canceled, the callback will be invoked immediately. If the associated <see cref="CancelationSource"/> was disposed (and this was not retained and canceled), the delegate will not be registered.
+        /// </summary>
+        /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
+        /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</param>
+        /// <returns>true if <paramref name="callback"/> was registered successfully, false otherwise.</returns>
+        public bool TryRegister(Promise.CanceledAction callback, out CancelationRegistration cancelationRegistration)
+        {
+            ValidateArgument(callback, "callback", 1);
+            if (_ref == null)
+            {
+                cancelationRegistration = default(CancelationRegistration);
+                return false;
+            }
+            return _ref.TryRegister(callback, _id, out cancelationRegistration);
+        }
+
+        /// <summary>
+        /// Try to capture a value and register a delegate that will be invoked with the captured value and the cancelation reason when this <see cref="CancelationToken"/> is canceled.
+        /// If this is already canceled, the callback will be invoked immediately. If the associated <see cref="CancelationSource"/> was disposed (and this was not retained and canceled), the delegate will not be registered.
+        /// </summary>
+        /// <param name="captureValue">The value to pass into <paramref name="callback"/>.</param>
+        /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
+        /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</param>
+        /// <returns>true if <paramref name="callback"/> was registered successfully, false otherwise.</returns>
+        public bool TryRegister<TCapture>(TCapture captureValue, Promise.CanceledAction<TCapture> callback, out CancelationRegistration cancelationRegistration)
+        {
+            ValidateArgument(callback, "callback", 1);
+            if (_ref == null)
+            {
+                cancelationRegistration = default(CancelationRegistration);
+                return false;
+            }
+            return _ref.TryRegister(ref captureValue, callback, _id, out cancelationRegistration);
         }
 
         /// <summary>
@@ -154,11 +192,11 @@ namespace Proto.Promises
         {
             ValidateArgument(callback, "callback", 1);
             CancelationRegistration registration;
-            if (_ref == null || !_ref.TryRegister(callback, _id, out registration))
+            if (TryRegister(callback, out registration))
             {
-                throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
+                return registration;
             }
-            return registration;
+            throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
         }
 
         /// <summary>
@@ -172,11 +210,11 @@ namespace Proto.Promises
         {
             ValidateArgument(callback, "callback", 1);
             CancelationRegistration registration;
-            if (_ref == null || !_ref.TryRegister(ref captureValue, callback, _id, out registration))
+            if (TryRegister(captureValue, callback, out registration))
             {
-                throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
+                return registration;
             }
-            return registration;
+            throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
         }
 
         /// <summary>

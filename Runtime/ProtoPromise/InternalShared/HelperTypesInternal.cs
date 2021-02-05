@@ -5,7 +5,6 @@
 #endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
@@ -241,7 +240,7 @@ namespace Proto.Promises
             CancelationRef ILinked<CancelationRef>.Next { get; set; }
 
             // TODO: replace lock(_registeredCallbacks) with Monitor.TryEnter() in abortable loop.
-            // TODO: use SortedDictionary instead.
+            // TODO: create a custom SortedDictionary with pooled nodes instead.
             private readonly List<RegisteredDelegate> _registeredCallbacks = new List<RegisteredDelegate>();
             private ValueLinkedStackZeroGC<CancelationRegistration> _links;
             volatile private ICancelValueContainer _valueContainer;
@@ -377,7 +376,6 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                ThrowIfInPool(this);
                 var temp = _valueContainer;
                 if (temp != null)
                 {
@@ -402,9 +400,9 @@ namespace Proto.Promises
                             order = ++_registeredCount;
                         }
                         listener.InterlockedRetainInternal();
-                        listener._links.Push(new CancelationRegistration(this, _sourceId, order));
                         _registeredCallbacks.Add(new RegisteredDelegate(order, listener));
                     }
+                    listener._links.Push(new CancelationRegistration(this, _tokenId, order));
                 }
                 goto Return;
 
@@ -419,8 +417,6 @@ namespace Proto.Promises
 
             internal bool TryRegister(ICancelDelegate callback, out CancelationRegistration registration)
             {
-                ThrowIfInPool(this);
-                int sourceId = _sourceId;
                 uint order;
                 ICancelValueContainer temp;
                 lock (_registeredCallbacks)
@@ -436,16 +432,17 @@ namespace Proto.Promises
                     }
                     _registeredCallbacks.Add(new RegisteredDelegate(order, callback));
                 }
-                registration = new CancelationRegistration(this, sourceId, order);
+                registration = new CancelationRegistration(this, _tokenId, order);
                 return true;
 
             MaybeInvoke:
-                registration = default(CancelationRegistration);
                 if (temp != DisposedRef.instance)
                 {
+                    registration = new CancelationRegistration(this, _tokenId, 0);
                     callback.Invoke(temp);
                     return true;
                 }
+                registration = default(CancelationRegistration);
                 return false;
             }
 
@@ -463,12 +460,13 @@ namespace Proto.Promises
                     var temp = _valueContainer;
                     if (temp != null)
                     {
-                        registration = default(CancelationRegistration);
                         if (temp != DisposedRef.instance)
                         {
+                            registration = new CancelationRegistration(this, _tokenId, 0);
                             callback.Invoke(new ReasonContainer(temp));
                             return true;
                         }
+                        registration = default(CancelationRegistration);
                         return false;
                     }
                     var cancelDelegate = CancelDelegate<CancelDelegateToken>.GetOrCreate();
@@ -495,12 +493,13 @@ namespace Proto.Promises
                     var temp = _valueContainer;
                     if (temp != null)
                     {
-                        registration = default(CancelationRegistration);
                         if (temp != DisposedRef.instance)
                         {
+                            registration = new CancelationRegistration(this, _tokenId, 0);
                             callback.Invoke(capturedValue, new ReasonContainer(temp));
                             return true;
                         }
+                        registration = default(CancelationRegistration);
                         return false;
                     }
                     var cancelDelegate = CancelDelegate<CancelDelegateToken<TCapture>>.GetOrCreate();
@@ -514,43 +513,58 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal bool IsRegistered(int registrationId, uint order)
+            internal bool IsRegistered(int tokenId, uint order, out bool isCanceled)
             {
-                if (registrationId != _sourceId | _valueContainer != null)
+                // Retain for thread safety.
+                if (!TryRetainInternal(tokenId))
                 {
-                    return false;
+                    return isCanceled = false;
                 }
+                bool validOrder;
                 lock (_registeredCallbacks)
                 {
-                    return _valueContainer == null && IndexOf(order) >= 0; // Double-checked locking! In this case it works because we're not writing back to the field.
+                    validOrder = IndexOf(order) >= 0;
                 }
+                var temp = _valueContainer;
+                isCanceled = temp != null;
+                validOrder &= !isCanceled;
+                isCanceled &= temp != DisposedRef.instance;
+                ReleaseAfterRetainInternal();
+                return validOrder;
             }
 
             [MethodImpl(InlineOption)]
-            internal bool TryUnregister(int registrationId, uint order)
+            internal bool TryUnregister(int tokenId, uint order, out bool isCanceled)
             {
-                if (registrationId != _sourceId | _valueContainer != null)
+                // Retain for thread safety.
+                if (!TryRetainInternal(tokenId))
                 {
-                    return false;
+                    return isCanceled = false;
                 }
+                bool unregistered = false;
                 ICancelDelegate del;
                 lock (_registeredCallbacks)
                 {
-                    if (_valueContainer != null) // Double-checked locking! In this case it works because we're not writing back to the field.
+                    var temp = _valueContainer;
+                    if (temp != null)
                     {
-                        return false;
+                        isCanceled = temp != DisposedRef.instance;
+                        goto ReleaseAndReturn;
                     }
+                    isCanceled = false;
                     int index = IndexOf(order);
                     if (index < 0)
                     {
-                        return false;
+                        goto ReleaseAndReturn;
                     }
-                    ThrowIfInPool(this);
                     del = _registeredCallbacks[index].callback;
                     _registeredCallbacks.RemoveAt(index);
                 }
                 del.Dispose();
-                return true;
+                unregistered = true;
+            ReleaseAndReturn:
+                ReleaseAfterRetainInternal();
+                return unregistered;
             }
 
             [MethodImpl(InlineOption)]
@@ -601,7 +615,6 @@ namespace Proto.Promises
 
             private bool TryInvokeCallbacks(ICancelValueContainer valueContainer)
             {
-                ThrowIfInPool(this);
                 if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) != null)
                 {
                     return false;
@@ -643,11 +656,7 @@ namespace Proto.Promises
                 {
                     return false;
                 }
-                try
-                {
-                    ThrowIfInPool(this);
-                }
-                catch { return false; }
+                ThrowIfInPool(this);
                 // In case Dispose is called concurrently with Cancel.
                 if (Interlocked.CompareExchange(ref _valueContainer, DisposedRef.instance, null) == null)
                 {
@@ -737,7 +746,6 @@ namespace Proto.Promises
 
             private void ResetAndRepool()
             {
-                ThrowIfInPool(this);
                 _tokenId = _sourceId;
                 var oldContainer = Interlocked.Exchange(ref _valueContainer, DisposedRef.instance);
                 if (oldContainer != null)
@@ -749,6 +757,7 @@ namespace Proto.Promises
 
             void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
             {
+                ThrowIfInPool(this);
                 try
                 {
                     TryInvokeCallbacks(valueContainer);
@@ -761,6 +770,7 @@ namespace Proto.Promises
 
             void ICancelDelegate.Dispose()
             {
+                ThrowIfInPool(this);
                 ReleaseAfterRetainInternal();
             }
 

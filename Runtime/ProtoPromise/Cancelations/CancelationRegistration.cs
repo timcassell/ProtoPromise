@@ -23,22 +23,37 @@ namespace Proto.Promises
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal CancelationRegistration(Internal.CancelationRef cancelationRef, int registrationId, uint registrationPosition)
+        internal CancelationRegistration(Internal.CancelationRef cancelationRef, int tokenId, uint registrationPosition)
         {
             _ref = cancelationRef;
-            _id = registrationId;
+            _id = tokenId;
             _order = registrationPosition;
         }
 
         /// <summary>
-        /// Get whether the callback is registered and the associated <see cref="CancelationToken"/> has not been canceled.
+        /// Get whether the callback is registered and the associated <see cref="CancelationToken"/> has not been canceled and the associated <see cref="CancelationSource"/> has not been disposed.
         /// </summary>
         public bool IsRegistered
         {
             get
             {
-                return _ref != null && _ref.IsRegistered(_id, _order);
+                bool _;
+                return _ref != null && _ref.IsRegistered(_id, _order, out _);
             }
+        }
+
+        /// <summary>
+        /// Get whether this is registered and whether the associated <see cref="CancelationToken"/> is requesting cancelation.
+        /// </summary>
+        /// <param name="isTokenCancelationRequested">true if the associated <see cref="CancelationToken"/> is requesting cancelation, false otherwise</param>
+        /// <returns>true if this is registered, false otherwise</returns>
+        public bool GetIsRegisteredAndIsCancelationRequested(out bool isTokenCancelationRequested)
+        {
+            if (_ref == null)
+            {
+                return isTokenCancelationRequested = false;
+            }
+            return _ref.IsRegistered(_id, _order, out isTokenCancelationRequested);
         }
 
         /// <summary>
@@ -56,10 +71,26 @@ namespace Proto.Promises
         /// <summary>
         /// Try to unregister the callback from the associated <see cref="CancelationToken"/>. Returns true if the callback was successfully unregistered, false otherwise.
         /// </summary>
-        /// <returns>true if the callback was previously registered and the associated <see cref="CancelationToken"/> not yet canceled, false otherwise</returns>
+        /// <returns>true if the callback was previously registered and the associated <see cref="CancelationToken"/> not yet canceled and the associated <see cref="CancelationSource"/> not yet disposed, false otherwise</returns>
         public bool TryUnregister()
         {
-            return _ref != null && _ref.TryUnregister(_id, _order);
+            bool _;
+            return _ref != null && _ref.TryUnregister(_id, _order, out _);
+        }
+
+        /// <summary>
+        /// Try to unregister the callback from the associated <see cref="CancelationToken"/>. Returns true if the callback was successfully unregistered, false otherwise.
+        /// <paramref name="isTokenCancelationRequested"/> will be true if the associated <see cref="CancelationToken"/> is requesting cancelation, false otherwise.
+        /// </summary>
+        /// <param name="isTokenCancelationRequested">true if the associated <see cref="CancelationToken"/> is requesting cancelation, false otherwise</param>
+        /// <returns>true if the callback was previously registered and the associated <see cref="CancelationSource"/> not yet canceled or disposed, false otherwise</returns>
+        public bool TryUnregister(out bool isTokenCancelationRequested)
+        {
+            if (_ref == null)
+            {
+                return isTokenCancelationRequested = false;
+            }
+            return _ref.TryUnregister(_id, _order, out isTokenCancelationRequested);
         }
 
         public bool Equals(CancelationRegistration other)

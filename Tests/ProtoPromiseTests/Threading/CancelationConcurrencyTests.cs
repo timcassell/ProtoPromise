@@ -643,7 +643,7 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void CancelationTokenMayBeDisposedAndRegisteredToConcurrently()
+        public void CancelationTokenMayBeDisposedAndRegisteredToConcurrently0()
         {
             var cancelationSource = default(CancelationSource);
             var cancelationToken = default(CancelationToken);
@@ -662,6 +662,37 @@ namespace Proto.Promises.Tests.Threading
                  () => cancelationSource.TryDispose(),
                  () => { try { cancelationToken.Register(_ => { }); } catch (InvalidOperationException) { } },
                  () => { try { cancelationToken.Register(1, (cv, _) => { }); } catch (InvalidOperationException) { } }
+             );
+        }
+
+       [Test]
+        public void CancelationTokenMayBeDisposedAndRegisteredToConcurrently1()
+        {
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                 // Setup
+                 () =>
+                 {
+                     cancelationSource = CancelationSource.New();
+                     cancelationToken = cancelationSource.Token;
+                 },
+                 // Teardown
+                 () => { },
+                 // Parallel actions
+                 () => cancelationSource.TryDispose(),
+                 () =>
+                 {
+                     CancelationRegistration cancelationRegistration;
+                     cancelationToken.TryRegister(_ => { }, out cancelationRegistration);
+                 },
+                 () =>
+                 {
+                     CancelationRegistration cancelationRegistration;
+                     cancelationToken.TryRegister(1, (cv, _) => { }, out cancelationRegistration);
+                 }
              );
         }
 
@@ -1275,6 +1306,119 @@ namespace Proto.Promises.Tests.Threading
                 },
                 () => cancelationSource.Dispose()
             );
+        }
+
+        [Test]
+        public void CancelationMegaConcurrencyTest()
+        {
+            // Hammer every public API at the same time to test the stability of the thread-safety.
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+            var cancelationRegistration1 = default(CancelationRegistration);
+            var cancelationRegistration2 = default(CancelationRegistration);
+
+            var threadHelper = new ThreadHelper();
+            // Can't use ExecuteParallelActionsWithOffsets since 4^20 would take forever.
+            threadHelper.ExecuteParallelActions(100,
+                 // Setup
+                 () =>
+                 {
+                     cancelationSource = CancelationSource.New();
+                     cancelationToken = cancelationSource.Token;
+                 },
+                 // Teardown
+                 () => { },
+                 // Parallel actions
+                 () => cancelationSource.TryCancel(),
+                 () => cancelationSource.TryCancel(1),
+                 () => cancelationSource.TryCancel("Cancel"),
+                 () => cancelationSource.Dispose(),
+                 () => { bool _ = cancelationSource.IsCancelationRequested; },
+                 () => { bool _ = cancelationSource.IsValid; },
+                 () => { CancelationToken _ = cancelationSource.Token; },
+                 () =>
+                 {
+                     try
+                     {
+                         bool _ = cancelationToken.IsCancelationRequested;
+                     }
+                     catch (InvalidOperationException) { }
+                 },
+                 () =>
+                 {
+                     try
+                     {
+                         bool _ = cancelationToken.CanBeCanceled;
+                     }
+                     catch (InvalidOperationException) { }
+                 },
+                 () =>
+                 {
+                     try
+                     {
+                         object _ = cancelationToken.CancelationValue;
+                     }
+                     catch (InvalidOperationException) { }
+                 },
+                 () =>
+                 {
+                     try
+                     {
+                         Type _ = cancelationToken.CancelationValueType;
+                     }
+                     catch (InvalidOperationException) { }
+                 },
+                 () =>
+                 {
+                     try
+                     {
+                         int _;
+                         cancelationToken.TryGetCancelationValueAs(out _);
+                     }
+                     catch (InvalidOperationException) { }
+                 },
+                 () =>
+                 {
+                     try
+                     {
+                         cancelationToken.ThrowIfCancelationRequested();
+                     }
+                     catch (CanceledException) { }
+                     catch (InvalidOperationException) { }
+                 },
+                 () =>
+                 {
+                     cancelationToken.TryRegister(_ => { }, out cancelationRegistration1);
+                 },
+                 () =>
+                 {
+                     cancelationToken.TryRegister(1, (cv, _) => { }, out cancelationRegistration2);
+                 },
+                 () =>
+                 {
+                     try
+                     {
+                         cancelationToken.Register(_ => { });
+                     }
+                     catch (InvalidOperationException) { }
+                 },
+                 () =>
+                 {
+                     try
+                     {
+                         cancelationToken.Register(1, (cv, _) => { });
+                     }
+                     catch (InvalidOperationException) { }
+                 },
+                 () => { bool _ = cancelationRegistration1.IsRegistered; },
+                 () => { bool _1;  bool _2 = cancelationRegistration1.GetIsRegisteredAndIsCancelationRequested(out _1); },
+                 () => cancelationRegistration1.TryUnregister(),
+                 () => { bool _; cancelationRegistration1.TryUnregister(out _); },
+                 () => { bool _ = cancelationRegistration2.IsRegistered; },
+                 () => { bool _1;  bool _2 = cancelationRegistration2.GetIsRegisteredAndIsCancelationRequested(out _1); },
+                 () => cancelationRegistration2.TryUnregister(),
+                 () => { bool _; cancelationRegistration2.TryUnregister(out _); }
+             );
         }
     }
 }

@@ -1194,7 +1194,89 @@ namespace Proto.Promises.Tests
                 cancelationSource.Dispose();
                 cancelationToken.Register(_ => { });
                 cancelationToken.Register(1, (cv, _) => { });
+                CancelationRegistration cancelationRegistration;
+                Assert.IsTrue(cancelationToken.TryRegister(_ => { }, out cancelationRegistration));
+                Assert.IsTrue(cancelationToken.TryRegister(1, (cv, _) => { }, out cancelationRegistration));
                 cancelationToken.Release();
+            }
+
+            [Test]
+            public void RetainedCancelationTokenMayNotBeRegisteredToAfterCancelationSourceIsDisposedWithoutCancel()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationToken.Retain();
+                cancelationSource.Dispose();
+                CancelationRegistration cancelationRegistration;
+                Assert.Throws<InvalidOperationException>(() => cancelationToken.Register(_ => { }));
+                Assert.Throws<InvalidOperationException>(() => cancelationToken.Register(1, (cv, _) => { }));
+                Assert.IsFalse(cancelationToken.TryRegister(_ => { }, out cancelationRegistration));
+                Assert.IsFalse(cancelationToken.TryRegister(1, (cv, _) => { }, out cancelationRegistration));
+                cancelationToken.Release();
+            }
+
+            [Test]
+            public void CancelationRegistrationCancelationIsRequestedDuringInvocation0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                CancelationRegistration cancelationRegistration = default(CancelationRegistration);
+                cancelationRegistration = cancelationToken.Register(_ =>
+                {
+                    bool isCancelationRequested;
+                    Assert.IsFalse(cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out isCancelationRequested));
+                    Assert.IsTrue(isCancelationRequested);
+                });
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationRegistrationCancelationIsRequestedDuringInvocation1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                CancelationRegistration cancelationRegistration = default(CancelationRegistration);
+                cancelationRegistration = cancelationToken.Register(1, (cv, _) =>
+                {
+                    bool isCancelationRequested;
+                    Assert.IsFalse(cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out isCancelationRequested));
+                    Assert.IsTrue(isCancelationRequested);
+                });
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationRegistrationCancelationIsRequestedDuringInvocation2()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                CancelationRegistration cancelationRegistration = default(CancelationRegistration);
+                cancelationRegistration = cancelationToken.Register(_ =>
+                {
+                    bool isCancelationRequested;
+                    Assert.IsFalse(cancelationRegistration.TryUnregister(out isCancelationRequested));
+                    Assert.IsTrue(isCancelationRequested);
+                });
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationRegistrationCancelationIsRequestedDuringInvocation3()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                CancelationRegistration cancelationRegistration = default(CancelationRegistration);
+                cancelationRegistration = cancelationToken.Register(1, (cv, _) =>
+                {
+                    bool isCancelationRequested;
+                    Assert.IsFalse(cancelationRegistration.TryUnregister(out isCancelationRequested));
+                    Assert.IsTrue(isCancelationRequested);
+                });
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
             }
         }
     }
