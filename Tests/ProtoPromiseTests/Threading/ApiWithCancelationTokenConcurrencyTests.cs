@@ -53,6 +53,7 @@ namespace Proto.Promises.Tests.Threading
                     // Teardown
                     () =>
                     {
+                        cancelationSource.Dispose();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -90,6 +91,7 @@ namespace Proto.Promises.Tests.Threading
                     // Teardown
                     () =>
                     {
+                        cancelationSource.Dispose();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -127,6 +129,7 @@ namespace Proto.Promises.Tests.Threading
                     // Teardown
                     () =>
                     {
+                        cancelationSource.Dispose();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -164,6 +167,7 @@ namespace Proto.Promises.Tests.Threading
                     // Teardown
                     () =>
                     {
+                        cancelationSource.Dispose();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -194,7 +198,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred.Cancel(1);
                 },
                 // Teardown
-                () => { },
+                () => cancelationSource.Dispose(),
                 // Parallel actions
                 () => cancelationSource.Cancel(),
                 () => Promise.Manager.HandleCompletes()
@@ -222,7 +226,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred.Cancel(1);
                 },
                 // Teardown
-                () => { },
+                () => cancelationSource.Dispose(),
                 // Parallel actions
                 () => cancelationSource.Cancel(),
                 () => Promise.Manager.HandleCompletes()
@@ -252,6 +256,7 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
+                    cancelationSource.Dispose();
                     deferred.Resolve();
                     Promise.Manager.HandleCompletesAndProgress();
                 },
@@ -283,6 +288,7 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
+                    cancelationSource.Dispose();
                     deferred.Resolve(1);
                     Promise.Manager.HandleCompletesAndProgress();
                 },

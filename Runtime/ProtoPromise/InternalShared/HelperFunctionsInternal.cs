@@ -4,8 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0041 // Use 'is null' check
 
 using System;
 using System.Collections.Generic;
@@ -15,6 +15,7 @@ using Proto.Utils;
 
 #if PROMISE_DEBUG
 using System.Linq;
+using System.Runtime.CompilerServices;
 #endif
 
 namespace Proto.Promises
@@ -218,6 +219,7 @@ namespace Proto.Promises
             }
             else
             {
+                // TODO: transform RethrowException to InvalidOperationException.
 #if CSHARP_7_OR_LATER
                 if (((object) reason) is IRejectionToContainer internalRejection)
 #else
@@ -390,6 +392,14 @@ namespace Proto.Promises
             }
             while (Interlocked.CompareExchange(ref location, newValue, initialValue) != initialValue);
             return true;
+        }
+
+        [MethodImpl(InlineOption)]
+        internal static bool TryUnregisterAndIsNotCanceling(ref CancelationRegistration cancelationRegistration)
+        {
+            bool isCanceling;
+            bool unregistered = cancelationRegistration.TryUnregister(out isCanceling);
+            return unregistered | !isCanceling;
         }
     }
 }

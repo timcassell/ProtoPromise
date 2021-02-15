@@ -14,7 +14,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
 #endif
-    public struct CancelationRegistration : IEquatable<CancelationRegistration>
+    public
+#if CSHARP_7_3_OR_NEWER
+        readonly
+#endif
+        struct CancelationRegistration : IEquatable<CancelationRegistration>
     {
         private readonly Internal.CancelationRef _ref;
         private readonly int _id;
@@ -45,15 +49,18 @@ namespace Proto.Promises
         /// <summary>
         /// Get whether this is registered and whether the associated <see cref="CancelationToken"/> is requesting cancelation.
         /// </summary>
+        /// <param name="isRegistered">true if this is registered, false otherwise</param>
         /// <param name="isTokenCancelationRequested">true if the associated <see cref="CancelationToken"/> is requesting cancelation, false otherwise</param>
-        /// <returns>true if this is registered, false otherwise</returns>
-        public bool GetIsRegisteredAndIsCancelationRequested(out bool isTokenCancelationRequested)
+        public void GetIsRegisteredAndIsCancelationRequested(out bool isRegistered, out bool isTokenCancelationRequested)
         {
             if (_ref == null)
             {
-                return isTokenCancelationRequested = false;
+                isRegistered = isTokenCancelationRequested = false;
             }
-            return _ref.IsRegistered(_id, _order, out isTokenCancelationRequested);
+            else
+            {
+                isRegistered = _ref.IsRegistered(_id, _order, out isTokenCancelationRequested);
+            }
         }
 
         /// <summary>

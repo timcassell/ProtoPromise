@@ -1336,22 +1336,8 @@ namespace Proto.Promises.Tests.Threading
                  () => { bool _ = cancelationSource.IsCancelationRequested; },
                  () => { bool _ = cancelationSource.IsValid; },
                  () => { CancelationToken _ = cancelationSource.Token; },
-                 () =>
-                 {
-                     try
-                     {
-                         bool _ = cancelationToken.IsCancelationRequested;
-                     }
-                     catch (InvalidOperationException) { }
-                 },
-                 () =>
-                 {
-                     try
-                     {
-                         bool _ = cancelationToken.CanBeCanceled;
-                     }
-                     catch (InvalidOperationException) { }
-                 },
+                 () => { bool _ = cancelationToken.IsCancelationRequested; },
+                 () => { bool _ = cancelationToken.CanBeCanceled; },
                  () =>
                  {
                      try
@@ -1384,16 +1370,9 @@ namespace Proto.Promises.Tests.Threading
                          cancelationToken.ThrowIfCancelationRequested();
                      }
                      catch (CanceledException) { }
-                     catch (InvalidOperationException) { }
                  },
-                 () =>
-                 {
-                     cancelationToken.TryRegister(_ => { }, out cancelationRegistration1);
-                 },
-                 () =>
-                 {
-                     cancelationToken.TryRegister(1, (cv, _) => { }, out cancelationRegistration2);
-                 },
+                 () => cancelationToken.TryRegister(_ => { }, out cancelationRegistration1),
+                 () => cancelationToken.TryRegister(1, (cv, _) => { }, out cancelationRegistration2),
                  () =>
                  {
                      try
@@ -1411,11 +1390,11 @@ namespace Proto.Promises.Tests.Threading
                      catch (InvalidOperationException) { }
                  },
                  () => { bool _ = cancelationRegistration1.IsRegistered; },
-                 () => { bool _1;  bool _2 = cancelationRegistration1.GetIsRegisteredAndIsCancelationRequested(out _1); },
+                 () => { bool _1, _2; cancelationRegistration1.GetIsRegisteredAndIsCancelationRequested(out _1, out _2); },
                  () => cancelationRegistration1.TryUnregister(),
                  () => { bool _; cancelationRegistration1.TryUnregister(out _); },
                  () => { bool _ = cancelationRegistration2.IsRegistered; },
-                 () => { bool _1;  bool _2 = cancelationRegistration2.GetIsRegisteredAndIsCancelationRequested(out _1); },
+                 () => { bool _1, _2; cancelationRegistration2.GetIsRegisteredAndIsCancelationRequested(out _1, out _2); },
                  () => cancelationRegistration2.TryUnregister(),
                  () => { bool _; cancelationRegistration2.TryUnregister(out _); }
              );

@@ -227,12 +227,12 @@ namespace Proto.Promises
                 if (promise._ref == null)
                 {
                     _ref = null;
-                    _id = Internal.ValidPromiseIdFromApi;
+                    _id = Internal.ValidIdFromApi;
                 }
                 else if (promise._ref.State == Promise.State.Resolved) // No need to allocate a new object if the promise is resolved.
                 {
                     _ref = null;
-                    _id = Internal.ValidPromiseIdFromApi;
+                    _id = Internal.ValidIdFromApi;
                     promise._ref.MarkAwaitedAndMaybeDispose(promise._id, true);
                 }
                 else
@@ -289,7 +289,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             partial void ValidateOperation(int skipFrames)
             {
-                bool isValid = _id == Internal.ValidPromiseIdFromApi | (_ref != null && _id == _ref.Id);
+                bool isValid = _id == Internal.ValidIdFromApi | (_ref != null && _id == _ref.Id);
                 if (!isValid)
                 {
                     throw new InvalidOperationException("PromiseAwaiter is not valid. Use the 'await' keyword on a Promise instead of using PromiseAwaiter.", Internal.GetFormattedStacktrace(skipFrames + 1));
@@ -323,13 +323,13 @@ namespace Proto.Promises
                 if (promise._ref == null)
                 {
                     _ref = null;
-                    _id = Internal.ValidPromiseIdFromApi;
+                    _id = Internal.ValidIdFromApi;
                     _result = promise._result;
                 }
                 else if (promise._ref.State == Promise.State.Resolved) // No need to allocate a new object if the promise is resolved.
                 {
                     _ref = null;
-                    _id = Internal.ValidPromiseIdFromApi;
+                    _id = Internal.ValidIdFromApi;
                     _result = promise._ref.MarkAwaitedAndGetResultAndMaybeDispose<T>(promise._id);
                 }
                 else
@@ -388,7 +388,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             partial void ValidateOperation(int skipFrames)
             {
-                bool isValid = _id == Internal.ValidPromiseIdFromApi | (_ref != null && _id == _ref.Id);
+                bool isValid = _id == Internal.ValidIdFromApi | (_ref != null && _id == _ref.Id);
                 if (!isValid)
                 {
                     throw new InvalidOperationException("PromiseAwaiter is not valid. Use the 'await' keyword on a Promise instead of using PromiseAwaiter.", Internal.GetFormattedStacktrace(skipFrames + 1));

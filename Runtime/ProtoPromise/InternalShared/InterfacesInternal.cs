@@ -27,7 +27,7 @@ namespace Proto.Promises
             object Value { get; }
 
             void ReleaseAndAddToUnhandledStack();
-            void ReleaseAndMaybeAddToUnhandledStack();
+            void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd);
         }
 
         public interface ITreeHandleable : ILinked<ITreeHandleable>
@@ -38,11 +38,6 @@ namespace Proto.Promises
         }
 
         public interface IDisposableTreeHandleable : ITreeHandleable, IDisposable { }
-
-        public interface ITreeHandleableCollection
-        {
-            void Remove(ITreeHandleable treeHandleable);
-        }
 
         public interface IRejectionToContainer
         {

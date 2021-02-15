@@ -93,7 +93,7 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
                 {
                     HandleSelf(valueContainer);
                 }
@@ -102,7 +102,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     // TODO: remove all passthroughs from their owners when this is completed early.
-                    _passThroughs.Remove(passThrough);
+                    _passThroughs.TryRemove(passThrough);
                     PromiseRef owner = passThrough.Owner;
                     bool done = --_waitCount == 0;
                     bool handle = false;

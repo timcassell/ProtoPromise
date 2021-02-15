@@ -117,13 +117,17 @@ namespace Proto.Utils
             return temp;
         }
 
-        public void Remove(T item)
+        public bool TryRemove(T item)
         {
+            if (IsEmpty)
+            {
+                return false;
+            }
             if (item == _first)
             {
                 _first = _first.Next;
                 item.Next = null;
-                return;
+                return true;
             }
             T node = _first;
             T next = node.Next;
@@ -133,11 +137,12 @@ namespace Proto.Utils
                 {
                     node.Next = next.Next;
                     item.Next = null;
-                    return;
+                    return true;
                 }
                 node = next;
                 next = node.Next;
             }
+            return false;
         }
 
         [MethodImpl(Promises.Internal.InlineOption)]
@@ -435,7 +440,7 @@ namespace Proto.Utils
             {
                 if (node.Value.Equals(item))
                 {
-                    _stack.Remove(node);
+                    _stack.TryRemove(node);
                     return;
                 }
             }

@@ -1,8 +1,8 @@
-﻿#pragma warning disable IDE0017 // Simplify object initialization
-#pragma warning disable IDE0034 // Simplify 'default' expression
+﻿#pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -20,22 +20,11 @@ namespace Proto.Promises
                 }
 
                 // Invoke funcs async and normalize the progress.
-                PromiseRef rootPromise;
-                if (cancelationToken.CanBeCanceled)
-                {
-                    rootPromise = RefCreator.CreateResolveWait(DelegateWrapper.CreateCancelable(promiseFuncs.Current), cancelationToken);
-                    if (rootPromise._valueOrPrevious != null)
-                    {
-                        // Cancelation token was already canceled, return the canceled promise.
-                        return new Promise(rootPromise, rootPromise.Id);
-                    }
-                }
-                else
-                {
-                    rootPromise = RefCreator.CreateResolveWait(DelegateWrapper.Create(promiseFuncs.Current));
-                }
-                rootPromise._valueOrPrevious = ResolveContainerVoid.GetOrCreate();
+                PromiseRef rootPromise = cancelationToken.CanBeCanceled
+                    ? CancelablePromiseResolvePromise<DelegateVoidPromise>.GetOrCreate(DelegateWrapper.Create(promiseFuncs.Current), cancelationToken)
+                    : (PromiseRef) PromiseResolvePromise<DelegateVoidPromise>.GetOrCreate(DelegateWrapper.Create(promiseFuncs.Current));
                 rootPromise.ResetDepth();
+                Interlocked.CompareExchange(ref rootPromise._valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null);
 
                 Promise promise = new Promise(rootPromise, rootPromise.Id);
                 while (promiseFuncs.MoveNext())

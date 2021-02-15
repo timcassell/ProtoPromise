@@ -14,7 +14,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
 #endif
-    public struct CancelationSource : ICancelableAny, IDisposable, IEquatable<CancelationSource>
+    public
+#if CSHARP_7_3_OR_NEWER
+        readonly
+#endif
+        struct CancelationSource : ICancelableAny, IDisposable, IEquatable<CancelationSource>
     {
         private readonly Internal.CancelationRef _ref;
         private readonly int _sourceId;

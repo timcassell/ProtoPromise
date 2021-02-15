@@ -1,6 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-
-namespace Proto.Promises
+﻿namespace Proto.Promises
 {
     partial class Internal
     {
@@ -12,45 +10,41 @@ namespace Proto.Promises
                 void ReAdd(PromisePassThrough passThrough);
             }
 
-            internal interface ICancelableDelegate
-            {
-                void SetCancelationRegistration(CancelationRegistration cancelationRegistration);
-            }
-
             internal interface IDelegateResolve
             {
                 void InvokeResolver(IValueContainer valueContainer, PromiseRef owner);
-                void MaybeUnregisterCancelation();
+                void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
             }
 
             internal interface IDelegateResolvePromise
             {
                 void InvokeResolver(IValueContainer valueContainer, PromiseRef owner);
-                void MaybeUnregisterCancelation();
+                void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
                 bool IsNull { get; }
             }
 
             internal interface IDelegateReject
             {
                 void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
             }
 
             internal interface IDelegateRejectPromise
             {
                 void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner);
-                bool IsNull { get; }
+                void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
             }
 
             internal interface IDelegateContinue
             {
                 void Invoke(IValueContainer valueContainer, PromiseRef owner);
-                void CancelCallback();
+                void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
             }
 
             internal interface IDelegateContinuePromise
             {
                 void Invoke(IValueContainer valueContainer, PromiseRef owner);
-                void CancelCallback();
+                void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
                 bool IsNull { get; }
             }
         }

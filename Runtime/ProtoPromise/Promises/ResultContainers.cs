@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 # endif
 
-#pragma warning disable IDE0041 // Use 'is null' check
-
 using System;
 
 namespace Proto.Promises

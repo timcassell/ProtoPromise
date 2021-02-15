@@ -103,7 +103,7 @@ namespace Proto.Promises.Tests.Threading
         /// <summary>
         /// Run each action in parallel.
         /// </summary>
-        /// <para/>Example: 2 actions with 6 processors, runs each action 3 times in parallel.</param>
+        /// <param name="repeatCount">How many times to run the actions in parallel.</param>
         /// <param name="setup">The action to run before each parallel run.</param>
         /// <param name="teardown">The action to run after each parallel run.</param>
         /// <param name="actions">The actions to run in parallel.</param>

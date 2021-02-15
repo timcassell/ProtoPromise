@@ -17,7 +17,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
 #endif
-    public partial struct CancelationToken : IRetainable, IEquatable<CancelationToken>
+    public
+#if CSHARP_7_3_OR_NEWER
+        readonly
+#endif
+        partial struct CancelationToken : IRetainable, IEquatable<CancelationToken>
     {
         private readonly Internal.CancelationRef _ref;
         private readonly int _id;
@@ -47,15 +51,21 @@ namespace Proto.Promises
             }
         }
 
-        // TODO: TryRegisterInternal
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal CancelationRegistration RegisterInternal(Internal.ICancelDelegate listener)
+        [System.Runtime.CompilerServices.MethodImpl(Internal.InlineOption)]
+        internal bool TryRegisterInternal(Internal.ICancelDelegate listener, out CancelationRegistration cancelationRegistration)
         {
-            CancelationRegistration registration;
-            _ref.TryRegister(listener, out registration);
-            return registration;
+            // Retain for thread safety.
+            if (_ref == null || !_ref.TryRetainInternal(_id))
+            {
+                cancelationRegistration = default(CancelationRegistration);
+                return false;
+            }
+            bool success = _ref.TryRegister(listener, out cancelationRegistration);
+            _ref.ReleaseAfterRetainInternal();
+            return success;
         }
 
         /// <summary>

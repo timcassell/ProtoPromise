@@ -12,6 +12,7 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
@@ -34,7 +35,7 @@ namespace Proto.Promises
         {
             get
             {
-                return _id == Internal.ValidPromiseIdFromApi | (_ref != null && _id == _ref.Id);
+                return _id == Internal.ValidIdFromApi | (_ref != null && _id == _ref.Id);
             }
         }
 
@@ -144,7 +145,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then(Action onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolve(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -158,7 +164,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult>(Func<TResult> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolve(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -172,7 +183,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then(Func<Promise> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -186,7 +202,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken, out newPromise);
+            return newPromise;
         }
         #endregion
 
@@ -202,7 +223,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch(Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Catch(this, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this, Internal.PromiseRef.DelegateWrapper.CreatePassthrough(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -217,7 +243,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch<TReject>(Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Catch(this, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this, Internal.PromiseRef.DelegateWrapper.CreatePassthrough(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -231,7 +262,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch(Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Catch(this, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.CreatePassthrough(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -246,7 +282,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch<TReject>(Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Catch(this, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.CreatePassthrough(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
         #endregion
 
@@ -263,7 +304,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then(Action onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -279,7 +326,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TReject>(Action onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -294,7 +347,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -310,7 +369,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -325,7 +390,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then(Func<Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -341,7 +412,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TReject>(Func<Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -356,7 +433,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -372,7 +455,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -387,7 +476,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then(Action onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -403,7 +498,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TReject>(Action onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -418,7 +519,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -434,7 +541,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -449,7 +562,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then(Func<Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -465,7 +584,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TReject>(Func<Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -480,7 +605,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -496,7 +627,13 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
+            return newPromise;
         }
         #endregion
 
@@ -510,7 +647,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise ContinueWith(ContinueAction onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, onContinue, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onContinue, "onContinue", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddContinue(this, new Internal.PromiseRef.DelegateContinueVoidVoid(onContinue), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -522,7 +664,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> ContinueWith<TResult>(ContinueFunc<TResult> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, onContinue, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onContinue, "onContinue", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddContinue(this, new Internal.PromiseRef.DelegateContinueVoidResult<TResult>(onContinue), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -534,7 +681,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise ContinueWith(ContinueFunc<Promise> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, onContinue, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onContinue, "onContinue", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddContinueWait(this, new Internal.PromiseRef.DelegateContinueVoidPromise(onContinue), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -546,7 +698,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> ContinueWith<TResult>(ContinueFunc<Promise<TResult>> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, onContinue, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onContinue, "onContinue", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddContinueWait(this, new Internal.PromiseRef.DelegateContinueVoidPromiseT<TResult>(onContinue), cancelationToken, out newPromise);
+            return newPromise;
         }
         #endregion
 
@@ -601,7 +758,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolve(this, Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -615,7 +777,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolve(this, Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -629,7 +796,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveWait(this, Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -643,7 +815,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveWait(this, Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved), cancelationToken, out newPromise);
+            return newPromise;
         }
         #endregion
 
@@ -659,7 +836,15 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Catch(this, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.CreatePassthrough(),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -674,7 +859,15 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Catch(this, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.CreatePassthrough(),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -688,7 +881,15 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Catch(this, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.CreatePassthrough(),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -703,7 +904,15 @@ namespace Proto.Promises
         /// </summary>
         public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Catch(this, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.CreatePassthrough(),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
         #endregion
 
@@ -720,7 +929,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -735,7 +953,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -750,7 +977,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -766,7 +1002,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -782,7 +1027,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -798,7 +1052,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -813,7 +1076,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -828,7 +1100,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -843,7 +1124,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -859,7 +1149,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -875,7 +1174,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -891,7 +1199,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -906,7 +1223,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -921,7 +1247,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -936,7 +1271,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -952,7 +1296,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -968,7 +1321,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -984,7 +1346,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -999,7 +1370,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1014,7 +1394,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1029,7 +1418,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1045,7 +1443,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1061,7 +1468,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1077,7 +1493,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1092,7 +1517,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1107,7 +1541,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1122,7 +1565,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1138,7 +1590,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1154,7 +1615,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1170,7 +1640,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1185,7 +1664,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1200,7 +1688,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1215,7 +1712,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1231,7 +1737,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1247,7 +1762,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1263,7 +1787,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1278,7 +1811,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1293,7 +1835,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1308,7 +1859,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1324,7 +1884,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1340,7 +1909,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1356,7 +1934,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1371,7 +1958,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1386,7 +1982,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1401,7 +2006,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1417,7 +2031,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1433,7 +2056,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1449,7 +2081,16 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.Then(this, ref resolveCaptureValue, onResolved, ref rejectCaptureValue, onRejected, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onRejected, "onRejected", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+                Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
+                Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
+                cancelationToken, out newPromise);
+            return newPromise;
         }
         #endregion
 
@@ -1463,7 +2104,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, ContinueAction<TCapture> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, ref continueCaptureValue, onContinue, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onContinue, "onContinue", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddContinue(this, new Internal.PromiseRef.DelegateContinueCaptureVoidVoid<TCapture>(ref continueCaptureValue, onContinue), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1475,7 +2121,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, ContinueFunc<TCapture, TResult> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, ref continueCaptureValue, onContinue, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onContinue, "onContinue", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddContinue(this, new Internal.PromiseRef.DelegateContinueCaptureVoidResult<TCapture, TResult>(ref continueCaptureValue, onContinue), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1487,7 +2138,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, ContinueFunc<TCapture, Promise> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, ref continueCaptureValue, onContinue, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onContinue, "onContinue", 1);
+
+            Promise newPromise;
+            Internal.PromiseRef.CallbackHelper.AddContinueWait(this, new Internal.PromiseRef.DelegateContinueCaptureVoidPromise<TCapture>(ref continueCaptureValue, onContinue), cancelationToken, out newPromise);
+            return newPromise;
         }
 
         /// <summary>
@@ -1499,7 +2155,12 @@ namespace Proto.Promises
         /// </summary>
         public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, ContinueFunc<TCapture, Promise<TResult>> onContinue, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Internal.PromiseRef.PromiseImplVoid.ContinueWith(this, ref continueCaptureValue, onContinue, cancelationToken);
+            ValidateOperation(1);
+            ValidateArgument(onContinue, "onContinue", 1);
+
+            Promise<TResult> newPromise;
+            Internal.PromiseRef.CallbackHelper.AddContinueWait(this, new Internal.PromiseRef.DelegateContinueCaptureVoidPromiseT<TCapture, TResult>(ref continueCaptureValue, onContinue), cancelationToken, out newPromise);
+            return newPromise;
         }
         #endregion
 

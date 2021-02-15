@@ -51,7 +51,7 @@ namespace Proto.Promises
                 }
             }
 
-            void IValueContainer.ReleaseAndMaybeAddToUnhandledStack()
+            void IValueContainer.ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
                 int newValue;
                 // Don't let counter go below 0.
@@ -59,7 +59,7 @@ namespace Proto.Promises
                 {
                     throw new OverflowException(); // This should never happen, but checking just in case.
                 }
-                if (newValue == 0)
+                if (newValue == 0 & shouldAdd)
                 {
                     AddUnhandledException(this);
                 }
@@ -130,7 +130,7 @@ namespace Proto.Promises
 
             void IValueContainer.Retain() { }
             void IValueContainer.Release() { }
-            void IValueContainer.ReleaseAndMaybeAddToUnhandledStack() { }
+            void IValueContainer.ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
             void IValueContainer.ReleaseAndAddToUnhandledStack() { }
 
             Exception IThrowable.GetException()
@@ -181,7 +181,7 @@ namespace Proto.Promises
 
             void IValueContainer.Retain() { }
             void IValueContainer.Release() { }
-            void IValueContainer.ReleaseAndMaybeAddToUnhandledStack() { }
+            void IValueContainer.ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
             void IValueContainer.ReleaseAndAddToUnhandledStack() { }
 
             Exception IThrowable.GetException()
@@ -243,13 +243,19 @@ namespace Proto.Promises
 #endif
         internal sealed class ForcedRethrowException : RethrowException
         {
+#if !PROMISE_DEBUG
             private static readonly ForcedRethrowException _instance = new ForcedRethrowException();
+#endif
 
             private ForcedRethrowException() { }
 
             new internal static ForcedRethrowException GetOrCreate()
             {
+#if PROMISE_DEBUG
+                return new ForcedRethrowException(); // Don't re-use instance in DEBUG mode so that we can read its stacktrace on any thread.
+#else
                 return _instance;
+#endif
             }
         }
     }

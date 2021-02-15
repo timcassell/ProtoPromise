@@ -103,24 +103,21 @@ namespace Proto.Promises
             public void Release()
             {
                 ThrowIfInPool(this);
-                int newValue;
-                // Don't let counter go below 0.
-                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
-                {
-                    throw new OverflowException(); // This should never happen, but checking just in case.
-                }
-                if (newValue == 0)
+                if (ReleaseInternal())
                 {
                     Dispose();
                 }
             }
 
-            public void ReleaseAndMaybeAddToUnhandledStack()
+            public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
                 ThrowIfInPool(this);
                 if (ReleaseInternal())
                 {
-                    AddUnhandledException(ToException());
+                    if (shouldAdd)
+                    {
+                        AddUnhandledException(ToException());
+                    }
                     Dispose();
                 }
             }
@@ -129,20 +126,18 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
                 AddUnhandledException(ToException());
-                if (ReleaseInternal())
-                {
-                    Dispose();
-                }
+                Release();
             }
 
             private bool ReleaseInternal()
             {
-#if PROMISE_DEBUG
-                checked
-#endif
+                int newValue;
+                // Don't let counter go below 0.
+                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
                 {
-                    return --_retainCounter == 0;
+                    throw new OverflowException(); // This should never happen, but checking just in case.
                 }
+                return newValue == 0;
             }
 
             private void Dispose()
@@ -286,26 +281,28 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
                 int newValue;
+#if PROMISE_DEBUG
                 // Don't let counter go below 0.
                 if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
                 {
                     throw new OverflowException(); // This should never happen, but checking just in case.
                 }
+#else
+                newValue = System.Threading.Interlocked.Decrement(ref _retainCounter);
+#endif
                 if (newValue == 0)
                 {
                     Dispose();
                 }
             }
 
-            public void ReleaseAndMaybeAddToUnhandledStack()
+            public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
-                ThrowIfInPool(this);
                 Release();
             }
 
             public void ReleaseAndAddToUnhandledStack()
             {
-                ThrowIfInPool(this);
                 Release();
             }
 
@@ -355,7 +352,7 @@ namespace Proto.Promises
 
             public void Retain() { }
             public void Release() { }
-            public void ReleaseAndMaybeAddToUnhandledStack() { }
+            public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
             public void ReleaseAndAddToUnhandledStack() { }
 
             Exception IThrowable.GetException()
@@ -427,6 +424,11 @@ namespace Proto.Promises
                 return container;
             }
 
+            public static ResolveContainer<T> GetOrCreate(T value)
+            {
+                return GetOrCreate(ref value);
+            }
+
             public Promise.State GetState()
             {
                 ThrowIfInPool(this);
@@ -448,26 +450,28 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
                 int newValue;
+#if PROMISE_DEBUG
                 // Don't let counter go below 0.
                 if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
                 {
                     throw new OverflowException(); // This should never happen, but checking just in case.
                 }
+#else
+                newValue = System.Threading.Interlocked.Decrement(ref _retainCounter);
+#endif
                 if (newValue == 0)
                 {
                     Dispose();
                 }
             }
 
-            public void ReleaseAndMaybeAddToUnhandledStack()
+            public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
-                ThrowIfInPool(this);
                 Release();
             }
 
             public void ReleaseAndAddToUnhandledStack()
             {
-                ThrowIfInPool(this);
                 Release();
             }
 
@@ -502,7 +506,7 @@ namespace Proto.Promises
 
             public void Retain() { }
             public void Release() { }
-            public void ReleaseAndMaybeAddToUnhandledStack() { }
+            public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
             public void ReleaseAndAddToUnhandledStack() { }
         }
     }

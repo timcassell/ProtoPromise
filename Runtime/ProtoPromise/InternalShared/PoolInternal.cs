@@ -80,6 +80,7 @@ namespace Proto.Promises
                         Type<T>.pool.Push(obj);
                     }
                 }
+                // else TODO: GC.SuppressFinalize
             }
 
             static partial void AddToTrackedObjects(object obj);

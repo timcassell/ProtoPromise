@@ -9,48 +9,705 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0034 // Simplify 'default' expression
+
+using Proto.Utils;
+using System.Runtime.CompilerServices;
+using System.Threading;
+
 namespace Proto.Promises
 {
     partial class Internal
     {
-        partial class PromiseRef : ICancelDelegate
+        partial class PromiseRef
         {
-            protected virtual void CancelCallbacks() { ThrowIfInPool(this); }
-
-            void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal sealed class DeferredPromiseVoidCancel : DeferredPromiseVoid, ICancelDelegate
             {
-                ThrowIfInPool(this);
-                CancelCallbacks();
-                object currentValue = _valueOrPrevious;
-                CancelProgressListeners(currentValue);
-
-                // TODO: don't set _valueOrPrevious, send it into ExecuteCancelation method.
-                _valueOrPrevious = valueContainer;
-                valueContainer.Retain();
-
-                // This might be called synchronously when it's registered to an already canceled token. In that case, _valueOrPrevious will be null.
-                if (currentValue == null)
+                private struct Creator : ICreator<DeferredPromiseVoidCancel>
                 {
-                    return;
+                    [MethodImpl(InlineOption)]
+                    public DeferredPromiseVoidCancel Create()
+                    {
+                        return new DeferredPromiseVoidCancel();
+                    }
                 }
 
-                // Otherwise, the promise is either waiting for its previous, or it's in the handle queue.
-                if (currentValue is PromiseRef)
+                private CancelationRegistration _cancelationRegistration;
+
+                private DeferredPromiseVoidCancel() { }
+
+                protected override void Dispose()
                 {
-                    // Remove this from previous' next branches.
-                    ((ITreeHandleableCollection) currentValue).Remove(this);
-                    // TODO: don't add to handle queue, call a separate ExecuteCancelation method.
-                    AddToHandleQueueBack(this);
+                    SuperDispose();
+                    _cancelationRegistration = default(CancelationRegistration);
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
-                else
+
+                internal static DeferredPromiseVoidCancel GetOrCreate(CancelationToken cancelationToken)
                 {
-                    // Rejection maybe wasn't caught.
-                    ((IValueContainer) currentValue).ReleaseAndMaybeAddToUnhandledStack();
-                    // Don't add to handle queue since it's already in it.
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseVoidCancel, Creator>(new Creator());
+                    promise.Reset();
+                    promise.ResetDepth();
+                    cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
+                    return promise;
+                }
+
+                protected override bool TryUnregisterCancelation()
+                {
+                    ThrowIfInPool(this);
+                    return TryUnregisterAndIsNotCanceling(ref _cancelationRegistration);
+                }
+
+                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                {
+                    CancelFromToken(valueContainer);
+                }
+
+                void ICancelDelegate.Dispose() { }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal sealed class DeferredPromiseCancel<T> : DeferredPromise<T>, ICancelDelegate
+            {
+                private struct Creator : ICreator<DeferredPromiseCancel<T>>
+                {
+                    [MethodImpl(InlineOption)]
+                    public DeferredPromiseCancel<T> Create()
+                    {
+                        return new DeferredPromiseCancel<T>();
+                    }
+                }
+
+                private CancelationRegistration _cancelationRegistration;
+
+                private DeferredPromiseCancel() { }
+
+                protected override void Dispose()
+                {
+                    SuperDispose();
+                    _cancelationRegistration = default(CancelationRegistration);
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                internal static DeferredPromiseCancel<T> GetOrCreate(CancelationToken cancelationToken)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseCancel<T>, Creator>(new Creator());
+                    promise.Reset();
+                    promise.ResetDepth();
+                    cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
+                    return promise;
+                }
+
+                protected override bool TryUnregisterCancelation()
+                {
+                    ThrowIfInPool(this);
+                    return TryUnregisterAndIsNotCanceling(ref _cancelationRegistration);
+                }
+
+                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                {
+                    CancelFromToken(valueContainer);
+                }
+
+                void ICancelDelegate.Dispose() { }
+            }
+
+            internal struct CancelationHelper
+            {
+                private CancelationRegistration _cancelationRegistration;
+                private int _retainCounter;
+                volatile private bool _isCanceled;
+
+                [MethodImpl(InlineOption)]
+                internal void Register(CancelationToken cancelationToken, ICancelDelegate cancelable)
+                {
+                    _retainCounter = 1;
+                    _isCanceled = false;
+                    cancelationToken.TryRegisterInternal(cancelable, out _cancelationRegistration);
+                }
+
+                [MethodImpl(InlineOption)]
+                private bool Release()
+                {
+                    return Interlocked.Decrement(ref _retainCounter) == 0;
+                }
+
+                internal void SetCanceled(PromiseRef owner, IValueContainer valueContainer)
+                {
+                    ThrowIfInPool(owner);
+                    Interlocked.Increment(ref _retainCounter);
+                    _isCanceled = true;
+                    object currentValue = Interlocked.Exchange(ref owner._valueOrPrevious, valueContainer);
+                    valueContainer.Retain();
+                    owner._state = Promise.State.Canceled;
+
+#if CSHARP_7_OR_LATER
+                    if (currentValue is PromiseRef previous)
+#else
+                    PromiseRef previous = currentValue as PromiseRef;
+                    if (_ref != null)
+#endif
+                    {
+                        // Try to remove owner from previous' next branches.
+                        if (previous.TryRemoveWaiter(owner))
+                        {
+                            Release();
+                        }
+                    }
+                    else if (currentValue != null)
+                    {
+                        // Rejection maybe wasn't caught.
+                        ((IValueContainer) currentValue).ReleaseAndMaybeAddToUnhandledStack(true);
+                    }
+
+                    owner.HandleBranches(valueContainer);
+                    owner.CancelProgressListeners(currentValue);
+                    if (Release())
+                    {
+                        owner.MaybeDispose();
+                    }
+                }
+
+                internal bool TryMakeReady(PromiseRef owner, IValueContainer valueContainer)
+                {
+                    ThrowIfInPool(owner);
+                    Thread.MemoryBarrier();
+                    object oldContainer = owner._valueOrPrevious;
+                    bool _, isCancelationRequested;
+                    _cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out _, out isCancelationRequested);
+                    if (!isCancelationRequested & !_isCanceled) // Was the token canceled or in the process of canceling?
+                    {
+                        valueContainer.Retain();
+                        if (Interlocked.CompareExchange(ref owner._valueOrPrevious, valueContainer, oldContainer) == oldContainer) // Are we able to set the value container before the token?
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            valueContainer.Release();
+                        }
+                    }
+                    if (Release() && _isCanceled)
+                    {
+                        owner.MaybeDispose();
+                    }
+                    return false;
+                }
+
+                internal bool TryUnregister(PromiseRef owner)
+                {
+                    bool unregistered = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !_isCanceled;
+                    if (!unregistered)
+                    {
+                        if (Release() && _isCanceled)
+                        {
+                            owner.MaybeDispose();
+                        }
+                    }
+                    return unregistered;
                 }
             }
 
-            void ICancelDelegate.Dispose() { }
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            private sealed class CancelablePromiseResolve<TResolver> : PromiseRef, ITreeHandleable, ICancelDelegate
+                where TResolver : IDelegateResolve
+            {
+                private struct Creator : ICreator<CancelablePromiseResolve<TResolver>>
+                {
+                    [MethodImpl(InlineOption)]
+                    public CancelablePromiseResolve<TResolver> Create()
+                    {
+                        return new CancelablePromiseResolve<TResolver>();
+                    }
+                }
+
+                private CancelationHelper _cancelationHelper;
+                private TResolver _resolver;
+
+                private CancelablePromiseResolve() { }
+
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseResolve<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolve<TResolver>, Creator>(new Creator());
+                    promise.Reset();
+                    promise._resolver = resolver;
+                    promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    _cancelationHelper = default(CancelationHelper);
+                    _resolver = default(TResolver);
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        handleQueue.Push(this);
+                    }
+                }
+
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        AddToHandleQueueBack(this);
+                    }
+                }
+
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                {
+                    var resolveCallback = _resolver;
+                    if (valueContainer.GetState() == Promise.State.Resolved)
+                    {
+                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper);
+                    }
+                    else if (_cancelationHelper.TryUnregister(this))
+                    {
+                        RejectOrCancelInternal(valueContainer);
+                    }
+                }
+
+                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                {
+                    _cancelationHelper.SetCanceled(this, valueContainer);
+                }
+
+                void ICancelDelegate.Dispose() { }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            private sealed class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
+                where TResolver : IDelegateResolvePromise
+            {
+                private struct Creator : ICreator<CancelablePromiseResolvePromise<TResolver>>
+                {
+                    [MethodImpl(InlineOption)]
+                    public CancelablePromiseResolvePromise<TResolver> Create()
+                    {
+                        return new CancelablePromiseResolvePromise<TResolver>();
+                    }
+                }
+
+                private CancelationHelper _cancelationHelper;
+                private TResolver _resolver;
+
+                private CancelablePromiseResolvePromise() { }
+
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolvePromise<TResolver>, Creator>(new Creator());
+                    promise.Reset();
+                    promise._resolver = resolver;
+                    promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    _cancelationHelper = default(CancelationHelper);
+                    _resolver = default(TResolver);
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        handleQueue.Push(this);
+                    }
+                }
+
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        AddToHandleQueueBack(this);
+                    }
+                }
+
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                {
+                    if (_resolver.IsNull)
+                    {
+                        // The returned promise is handling this.
+                        HandleSelf(valueContainer);
+                        return;
+                    }
+
+                    var resolveCallback = _resolver;
+                    _resolver = default(TResolver);
+                    if (valueContainer.GetState() == Promise.State.Resolved)
+                    {
+                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper);
+                    }
+                    else if (_cancelationHelper.TryUnregister(this))
+                    {
+                        RejectOrCancelInternal(valueContainer);
+                    }
+                }
+
+                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                {
+                    _cancelationHelper.SetCanceled(this, valueContainer);
+                }
+
+                void ICancelDelegate.Dispose() { }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            private sealed class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseRef, ITreeHandleable, ICancelDelegate
+                where TResolver : IDelegateResolve
+                where TRejecter : IDelegateReject
+            {
+                private struct Creator : ICreator<CancelablePromiseResolveReject<TResolver, TRejecter>>
+                {
+                    [MethodImpl(InlineOption)]
+                    public CancelablePromiseResolveReject<TResolver, TRejecter> Create()
+                    {
+                        return new CancelablePromiseResolveReject<TResolver, TRejecter>();
+                    }
+                }
+
+                private CancelationHelper _cancelationHelper;
+                private TResolver _resolver;
+                private TRejecter _rejecter;
+
+                private CancelablePromiseResolveReject() { }
+
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolveReject<TResolver, TRejecter>, Creator>(new Creator());
+                    promise.Reset();
+                    promise._resolver = resolver;
+                    promise._rejecter = rejecter;
+                    promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    _cancelationHelper = default(CancelationHelper);
+                    _resolver = default(TResolver);
+                    _rejecter = default(TRejecter);
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        handleQueue.Push(this);
+                    }
+                }
+
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        AddToHandleQueueBack(this);
+                    }
+                }
+
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                {
+                    var resolveCallback = _resolver;
+                    var rejectCallback = _rejecter;
+                    Promise.State state = valueContainer.GetState();
+                    if (state == Promise.State.Resolved)
+                    {
+                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper);
+                    }
+                    else if (state == Promise.State.Rejected)
+                    {
+                        invokingRejected = true;
+                        rejectCallback.InvokeRejecter(valueContainer, this, ref _cancelationHelper);
+                    }
+                    else if (_cancelationHelper.TryUnregister(this))
+                    {
+                        RejectOrCancelInternal(valueContainer);
+                    }
+                }
+
+                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                {
+                    _cancelationHelper.SetCanceled(this, valueContainer);
+                }
+
+                void ICancelDelegate.Dispose() { }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            private sealed class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
+                where TResolver : IDelegateResolvePromise
+                where TRejecter : IDelegateRejectPromise
+            {
+                private struct Creator : ICreator<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>>
+                {
+                    [MethodImpl(InlineOption)]
+                    public CancelablePromiseResolveRejectPromise<TResolver, TRejecter> Create()
+                    {
+                        return new CancelablePromiseResolveRejectPromise<TResolver, TRejecter>();
+                    }
+                }
+
+                private CancelationHelper _cancelationHelper;
+                private TResolver _resolver;
+                private TRejecter _rejecter;
+
+                private CancelablePromiseResolveRejectPromise() { }
+
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>, Creator>(new Creator());
+                    promise.Reset();
+                    promise._resolver = resolver;
+                    promise._rejecter = rejecter;
+                    promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    _cancelationHelper = default(CancelationHelper);
+                    _resolver = default(TResolver);
+                    _rejecter = default(TRejecter);
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        handleQueue.Push(this);
+                    }
+                }
+
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        AddToHandleQueueBack(this);
+                    }
+                }
+
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                {
+                    if (_resolver.IsNull)
+                    {
+                        // The returned promise is handling this.
+                        HandleSelf(valueContainer);
+                        return;
+                    }
+
+                    var resolveCallback = _resolver;
+                    _resolver = default(TResolver);
+                    var rejectCallback = _rejecter;
+                    Promise.State state = valueContainer.GetState();
+                    if (state == Promise.State.Resolved)
+                    {
+                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper);
+                    }
+                    else if (state == Promise.State.Rejected)
+                    {
+                        invokingRejected = true;
+                        rejectCallback.InvokeRejecter(valueContainer, this, ref _cancelationHelper);
+                    }
+                    else if (_cancelationHelper.TryUnregister(this))
+                    {
+                        RejectOrCancelInternal(valueContainer);
+                    }
+                }
+
+                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                {
+                    _cancelationHelper.SetCanceled(this, valueContainer);
+                }
+
+                void ICancelDelegate.Dispose() { }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            private sealed class CancelablePromiseContinue<TContinuer> : PromiseRef, ITreeHandleable, ICancelDelegate
+                where TContinuer : IDelegateContinue
+            {
+                private struct Creator : ICreator<CancelablePromiseContinue<TContinuer>>
+                {
+                    [MethodImpl(InlineOption)]
+                    public CancelablePromiseContinue<TContinuer> Create()
+                    {
+                        return new CancelablePromiseContinue<TContinuer>();
+                    }
+                }
+
+                private CancelationHelper _cancelationHelper;
+                private TContinuer _continuer;
+
+                private CancelablePromiseContinue() { }
+
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseContinue<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseContinue<TContinuer>, Creator>(new Creator());
+                    promise.Reset();
+                    promise._continuer = continuer;
+                    promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    _cancelationHelper = default(CancelationHelper);
+                    _continuer = default(TContinuer);
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        handleQueue.Push(this);
+                    }
+                }
+
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        AddToHandleQueueBack(this);
+                    }
+                }
+
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                {
+                    invokingContinue = true;
+                    _continuer.Invoke(valueContainer, this, ref _cancelationHelper);
+                }
+
+                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                {
+                    _cancelationHelper.SetCanceled(this, valueContainer);
+                }
+
+                void ICancelDelegate.Dispose() { }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            private sealed class CancelablePromiseContinuePromise<TContinuer> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
+                where TContinuer : IDelegateContinuePromise
+            {
+                private struct Creator : ICreator<CancelablePromiseContinuePromise<TContinuer>>
+                {
+                    [MethodImpl(InlineOption)]
+                    public CancelablePromiseContinuePromise<TContinuer> Create()
+                    {
+                        return new CancelablePromiseContinuePromise<TContinuer>();
+                    }
+                }
+
+                private CancelationHelper _cancelationHelper;
+                private TContinuer _continuer;
+
+                private CancelablePromiseContinuePromise() { }
+
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseContinuePromise<TContinuer>, Creator>(new Creator());
+                    promise.Reset();
+                    promise._continuer = continuer;
+                    promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    _cancelationHelper = default(CancelationHelper);
+                    _continuer = default(TContinuer);
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        handleQueue.Push(this);
+                    }
+                }
+
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        AddToHandleQueueBack(this);
+                    }
+                }
+
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                {
+                    if (_continuer.IsNull)
+                    {
+                        // The returned promise is handling this.
+                        HandleSelf(valueContainer);
+                        return;
+                    }
+
+                    var callback = _continuer;
+                    _continuer = default(TContinuer);
+                    invokingContinue = true;
+                    callback.Invoke(valueContainer, this, ref _cancelationHelper);
+                }
+
+                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                {
+                    _cancelationHelper.SetCanceled(this, valueContainer);
+                }
+
+                void ICancelDelegate.Dispose() { }
+            }
         }
     }
 }

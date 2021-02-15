@@ -18,7 +18,7 @@ namespace Proto.Promises
 {
     internal static partial class Internal
     {
-#if PROTO_PROMISE_DEVELOPER_MODE
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
         internal const MethodImplOptions InlineOption = MethodImplOptions.NoInlining;
 #else
         internal const MethodImplOptions InlineOption = (MethodImplOptions) 256; // AggressiveInlining
@@ -210,7 +210,7 @@ namespace Proto.Promises
                 Exception IThrowable.GetException() { throw new System.InvalidOperationException(); }
                 Promise.State IValueContainer.GetState() { throw new System.InvalidOperationException(); }
                 void IValueContainer.ReleaseAndAddToUnhandledStack() { throw new System.InvalidOperationException(); }
-                void IValueContainer.ReleaseAndMaybeAddToUnhandledStack() { throw new System.InvalidOperationException(); }
+                void IValueContainer.ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { throw new System.InvalidOperationException(); }
 
             }
 
@@ -736,7 +736,7 @@ namespace Proto.Promises
                 return false;
             }
 
-            private void ReleaseAfterRetainInternal()
+            internal void ReleaseAfterRetainInternal()
             {
                 if (InterlockedReleaseInternal() == 0)
                 {

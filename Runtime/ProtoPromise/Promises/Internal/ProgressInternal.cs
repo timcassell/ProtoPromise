@@ -461,10 +461,7 @@ namespace Proto.Promises
                     _canceled = false;
                     _current = default(UnsignedFixed32);
                     SetCreatedStacktrace(this, 4);
-                    if (cancelationToken.CanBeCanceled)
-                    {
-                        _cancelationRegistration = cancelationToken.RegisterInternal(this);
-                    }
+                    cancelationToken.TryRegisterInternal(this, out _cancelationRegistration);
                 }
 
                 protected abstract void Invoke(float progress);
@@ -575,6 +572,8 @@ namespace Proto.Promises
                 void ITreeHandleable.Handle()
                 {
                     ThrowIfInPool(this);
+                    // TODO
+                    //if (TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !_canceled)
                     _cancelationRegistration.TryUnregister();
                     InvokeAndCatch(1f);
                     _canceled = true;

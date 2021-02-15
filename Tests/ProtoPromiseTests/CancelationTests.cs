@@ -1223,8 +1223,9 @@ namespace Proto.Promises.Tests
                 CancelationRegistration cancelationRegistration = default(CancelationRegistration);
                 cancelationRegistration = cancelationToken.Register(_ =>
                 {
-                    bool isCancelationRequested;
-                    Assert.IsFalse(cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out isCancelationRequested));
+                    bool isRegistered, isCancelationRequested;
+                    cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out isRegistered, out isCancelationRequested);
+                    Assert.IsFalse(isRegistered);
                     Assert.IsTrue(isCancelationRequested);
                 });
                 cancelationSource.Cancel();
@@ -1239,8 +1240,9 @@ namespace Proto.Promises.Tests
                 CancelationRegistration cancelationRegistration = default(CancelationRegistration);
                 cancelationRegistration = cancelationToken.Register(1, (cv, _) =>
                 {
-                    bool isCancelationRequested;
-                    Assert.IsFalse(cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out isCancelationRequested));
+                    bool isRegistered, isCancelationRequested;
+                    cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out isRegistered, out isCancelationRequested);
+                    Assert.IsFalse(isRegistered);
                     Assert.IsTrue(isCancelationRequested);
                 });
                 cancelationSource.Cancel();

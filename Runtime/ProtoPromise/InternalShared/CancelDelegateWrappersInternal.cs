@@ -118,7 +118,7 @@ namespace Proto.Promises
             public CancelationRegistration cancelationRegistration;
 
             private readonly Promise.CanceledAction _callback;
-            private readonly ITreeHandleableCollection _previous;
+            private readonly PromiseRef _previous;
             volatile private IValueContainer _valueContainer;
             private int _cancelFlag;
 
@@ -141,9 +141,10 @@ namespace Proto.Promises
                     // TryMakeReady was already called without InvokeFromPromise.
                     return;
                 }
+                // TODO: This is unsafe, we should only dispose when we are sure nothing more will be invoked.
                 if (oldFlag != 3) // If InvokeFromPromise was called before this, just dispose without removing.
                 {
-                    _previous.Remove(owner);
+                    _previous.TryRemoveWaiter(owner);
                 }
                 owner.Dispose();
             }
@@ -151,6 +152,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public bool TryMakeReady(IValueContainer valueContainer, IDisposable owner)
             {
+                // TODO: This is unsafe, we should only dispose when we are sure nothing more will be invoked.
                 if (Interlocked.Exchange(ref _cancelFlag, 2) == 0)
                 {
                     // InvokeFromToken was already called.
@@ -174,7 +176,7 @@ namespace Proto.Promises
                     owner.Dispose();
                     return;
                 }
-                if (!cancelationRegistration.TryUnregister())
+                if (!TryUnregisterAndIsNotCanceling(ref cancelationRegistration))
                 {
                     // If we couldn't unregister the cancelation, it means the token was already canceled, and InvokeFromToken maybe hasn't been called yet (or was called after the flag exchange).
                     tempValueContainer.Release();
@@ -208,7 +210,7 @@ namespace Proto.Promises
 
             private readonly TCapture _capturedValue;
             private readonly Promise.CanceledAction<TCapture> _callback;
-            private readonly ITreeHandleableCollection _previous;
+            private readonly PromiseRef _previous;
             volatile private IValueContainer _valueContainer;
             private int _cancelFlag;
 
@@ -234,7 +236,7 @@ namespace Proto.Promises
                 }
                 if (oldFlag != 3) // If InvokeFromPromise was called before this, just dispose without removing.
                 {
-                    _previous.Remove(owner);
+                    _previous.TryRemoveWaiter(owner);
                 }
                 owner.Dispose();
             }
@@ -265,7 +267,7 @@ namespace Proto.Promises
                     owner.Dispose();
                     return;
                 }
-                if (!cancelationRegistration.TryUnregister())
+                if (!TryUnregisterAndIsNotCanceling(ref cancelationRegistration))
                 {
                     // If we couldn't unregister the cancelation, it means the token was already canceled, and InvokeFromToken maybe hasn't been called yet (or was called after the flag exchange).
                     tempValueContainer.Release();
