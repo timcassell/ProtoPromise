@@ -133,7 +133,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private bool Release()
+                public bool Release()
                 {
                     return Interlocked.Decrement(ref _retainCounter) == 0;
                 }
@@ -244,6 +244,14 @@ namespace Proto.Promises
                     return promise;
                 }
 
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseResolve<TResolver> GetOrCreateAndHookup(TResolver resolver, CancelationToken cancelationToken, PromiseRef previous)
+                {
+                    var promise = GetOrCreate(resolver, cancelationToken);
+                    previous.HookupNewCancelablePromise(promise, ref promise._cancelationHelper);
+                    return promise;
+                }
+
                 protected override void Dispose()
                 {
                     base.Dispose();
@@ -270,7 +278,7 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     var resolveCallback = _resolver;
                     if (valueContainer.GetState() == Promise.State.Resolved)
@@ -321,6 +329,14 @@ namespace Proto.Promises
                     return promise;
                 }
 
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseResolvePromise<TResolver> GetOrCreateAndHookup(TResolver resolver, CancelationToken cancelationToken, PromiseRef previous)
+                {
+                    var promise = GetOrCreate(resolver, cancelationToken);
+                    previous.HookupNewCancelablePromise(promise, ref promise._cancelationHelper);
+                    return promise;
+                }
+
                 protected override void Dispose()
                 {
                     base.Dispose();
@@ -347,7 +363,7 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     if (_resolver.IsNull)
                     {
@@ -409,6 +425,14 @@ namespace Proto.Promises
                     return promise;
                 }
 
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseResolveReject<TResolver, TRejecter> GetOrCreateAndHookup(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken, PromiseRef previous)
+                {
+                    var promise = GetOrCreate(resolver, rejecter, cancelationToken);
+                    previous.HookupNewCancelablePromise(promise, ref promise._cancelationHelper);
+                    return promise;
+                }
+
                 protected override void Dispose()
                 {
                     base.Dispose();
@@ -436,7 +460,7 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     var resolveCallback = _resolver;
                     var rejectCallback = _rejecter;
@@ -497,6 +521,14 @@ namespace Proto.Promises
                     return promise;
                 }
 
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreateAndHookup(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken, PromiseRef previous)
+                {
+                    var promise = GetOrCreate(resolver, rejecter, cancelationToken);
+                    previous.HookupNewCancelablePromise(promise, ref promise._cancelationHelper);
+                    return promise;
+                }
+
                 protected override void Dispose()
                 {
                     base.Dispose();
@@ -524,7 +556,7 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     if (_resolver.IsNull)
                     {
@@ -590,6 +622,14 @@ namespace Proto.Promises
                     return promise;
                 }
 
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseContinue<TContinuer> GetOrCreateAndHookup(TContinuer continuer, CancelationToken cancelationToken, PromiseRef previous)
+                {
+                    var promise = GetOrCreate(continuer, cancelationToken);
+                    previous.HookupNewCancelablePromise(promise, ref promise._cancelationHelper);
+                    return promise;
+                }
+
                 protected override void Dispose()
                 {
                     base.Dispose();
@@ -616,9 +656,8 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
-                    invokingContinue = true;
                     _continuer.Invoke(valueContainer, this, ref _cancelationHelper);
                 }
 
@@ -660,6 +699,14 @@ namespace Proto.Promises
                     return promise;
                 }
 
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseContinuePromise<TContinuer> GetOrCreateAndHookup(TContinuer continuer, CancelationToken cancelationToken, PromiseRef previous)
+                {
+                    var promise = GetOrCreate(continuer, cancelationToken);
+                    previous.HookupNewCancelablePromise(promise, ref promise._cancelationHelper);
+                    return promise;
+                }
+
                 protected override void Dispose()
                 {
                     base.Dispose();
@@ -686,7 +733,7 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     if (_continuer.IsNull)
                     {
@@ -697,7 +744,6 @@ namespace Proto.Promises
 
                     var callback = _continuer;
                     _continuer = default(TContinuer);
-                    invokingContinue = true;
                     callback.Invoke(valueContainer, this, ref _cancelationHelper);
                 }
 

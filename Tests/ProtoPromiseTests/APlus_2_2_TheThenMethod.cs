@@ -1073,29 +1073,26 @@ namespace Proto.Promises.Tests
                 int exceptionCount = 0;
                 Exception expected = new Exception("Fail value");
 
-                Action<Promise> callback = p =>
-                {
+                Action<Promise> catchCallback = p =>
                     p.Catch((Exception e) =>
                     {
                         Assert.AreEqual(expected, e);
                         ++exceptionCount;
                     }).Forget();
-                    throw expected;
-                };
 
                 TestHelper.AddResolveCallbacks<bool, string>(promise,
-                    promiseToVoid: p => callback(p),
-                    promiseToConvert: p => { callback(p); return false; },
-                    promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                    promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(false); }
+                    onResolve: () => { throw expected; },
+                    onResolveCapture: _ => { throw expected; },
+                    onCallbackAdded: (ref Promise p) => catchCallback(p),
+                    onCallbackAddedConvert: (ref Promise<bool> p) => catchCallback(p)
                 );
                 TestHelper.AddCallbacks<bool, object, string>(promise,
                     onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
                     onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved."),
-                    promiseToVoid: p => callback(p),
-                    promiseToConvert: p => { callback(p); return false; },
-                    promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                    promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(false); }
+                    onResolve: () => { throw expected; },
+                    onResolveCapture: _ => { throw expected; },
+                    onCallbackAdded: (ref Promise p) => catchCallback(p),
+                    onCallbackAddedConvert: (ref Promise<bool> p) => catchCallback(p)
                 );
 
                 deferred.Resolve();
@@ -1119,29 +1116,27 @@ namespace Proto.Promises.Tests
                 int exceptionCount = 0;
                 Exception expected = new Exception("Fail value");
 
-                Action<Promise> callback = p =>
-                {
+                Action<Promise> catchCallback = p =>
                     p.Catch((Exception e) =>
                     {
                         Assert.AreEqual(expected, e);
                         ++exceptionCount;
                     }).Forget();
-                    throw expected;
-                };
 
                 TestHelper.AddResolveCallbacks<int, bool, string>(promise,
-                    promiseToVoid: p => callback(p),
-                    promiseToConvert: p => { callback(p); return false; },
-                    promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                    promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(false); }
+                    onResolve: v => { throw expected; },
+                    onResolveCapture: _ => { throw expected; },
+                    onCallbackAdded: (ref Promise p) => catchCallback(p),
+                    onCallbackAddedConvert: (ref Promise<bool> p) => catchCallback(p)
                 );
                 TestHelper.AddCallbacks<int, bool, object, string>(promise,
                     onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
                     onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved."),
-                    promiseToVoid: p => callback(p),
-                    promiseToConvert: p => { callback(p); return false; },
-                    promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                    promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(false); }
+                    onResolve: v => { throw expected; },
+                    onResolveCapture: _ => { throw expected; },
+                    onCallbackAdded: (ref Promise p) => catchCallback(p),
+                    onCallbackAddedConvert: (ref Promise<bool> p) => catchCallback(p),
+                    onCallbackAddedT: (ref Promise<int> p) => catchCallback(p)
                 );
 
                 deferred.Resolve(100);
@@ -1165,22 +1160,21 @@ namespace Proto.Promises.Tests
                 int exceptionCount = 0;
                 Exception expected = new Exception("Fail value");
 
-                Action<Promise> callback = p =>
-                {
+                Action<Promise> catchCallback = p =>
                     p.Catch((Exception e) =>
                     {
                         Assert.AreEqual(expected, e);
                         ++exceptionCount;
                     }).Forget();
-                    throw expected;
-                };
 
                 TestHelper.AddCallbacks<bool, object, string>(promise,
                     onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
-                    promiseToVoid: p => callback(p),
-                    promiseToConvert: p => { callback(p); return false; },
-                    promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                    promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(false); }
+                    onReject: _ => { throw expected; },
+                    onRejectCapture: _ => { throw expected; },
+                    onUnknownRejection: () => { throw expected; },
+                    onUnknownRejectionCapture: _ => { throw expected; },
+                    onCallbackAdded: (ref Promise p) => catchCallback(p),
+                    onCallbackAddedConvert: (ref Promise<bool> p) => catchCallback(p)
                 );
 
                 deferred.Reject("Fail value");
@@ -1204,24 +1198,22 @@ namespace Proto.Promises.Tests
                 int exceptionCount = 0;
                 Exception expected = new Exception("Fail value");
 
-                Action<Promise> callback = p =>
-                {
+                Action<Promise> catchCallback = p =>
                     p.Catch((Exception e) =>
                     {
                         Assert.AreEqual(expected, e);
                         ++exceptionCount;
                     }).Forget();
-                    throw expected;
-                };
 
                 TestHelper.AddCallbacks<int, bool, object, string>(promise,
                     onResolve: _ => Assert.Fail("Promise was resolved when it should have been rejected."),
-                    promiseToVoid: p => callback(p),
-                    promiseToConvert: p => { callback(p); return false; },
-                    promiseToT: p => { callback(p); return 0; },
-                    promiseToPromise: p => { callback(p); return Promise.Resolved(); },
-                    promiseToPromiseConvert: p => { callback(p); return Promise.Resolved(false); },
-                    promiseToPromiseT: p => { callback(p); return Promise.Resolved(0); }
+                    onReject: _ => { throw expected; },
+                    onRejectCapture: _ => { throw expected; },
+                    onUnknownRejection: () => { throw expected; },
+                    onUnknownRejectionCapture: _ => { throw expected; },
+                    onCallbackAdded: (ref Promise p) => catchCallback(p),
+                    onCallbackAddedConvert: (ref Promise<bool> p) => catchCallback(p),
+                    onCallbackAddedT: (ref Promise<int> p) => catchCallback(p)
                 );
 
                 deferred.Reject("Fail value");
@@ -1600,8 +1592,8 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCallbacks<bool, string, string>(promise1,
                     () => Assert.Fail("Promise was resolved when it should have been rejected."),
                     e => { ++counter; Assert.Fail("OnRejected was invoked with a string when the promise was rejected with an integer."); },
-                    onCallbackAdded: p => p.Catch((int _) => { }).Forget(),
-                    onCallbackAddedConvert: p => p.Catch((int _) => { }).Forget()
+                    onCallbackAdded: (ref Promise p) => p.Catch((int _) => { }).Forget(),
+                    onCallbackAddedConvert: (ref Promise<bool> p) => p.Catch((int _) => { }).Forget()
                 );
 
                 deferred.Reject(100);
@@ -1622,9 +1614,9 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCallbacks<int, bool, string, string>(promise1,
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     e => { ++counter; Assert.Fail("OnRejected was invoked with a string when the promise was rejected with an integer."); },
-                    onCallbackAdded: p => p.Catch((int _) => { }).Forget(),
-                    onCallbackAddedConvert: p => p.Catch((int _) => { }).Forget(),
-                    onCallbackAddedT: p => p.Catch((int _) => { }).Forget()
+                    onCallbackAdded: (ref Promise p) => p.Catch((int _) => { }).Forget(),
+                    onCallbackAddedConvert: (ref Promise<bool> p) => p.Catch((int _) => { }).Forget(),
+                    onCallbackAddedT: (ref Promise<int> p) => p.Catch((int _) => { }).Forget()
                 );
 
                 deferred.Reject(100);
@@ -1644,11 +1636,18 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred();
                 var promise1 = deferred.Promise.Preserve();
 
+                Action<Promise> catchCallback = p =>
+                    p.Catch((int i) =>
+                    {
+                        Assert.AreEqual(expected, i);
+                        ++counter;
+                    }).Forget();
+
                 TestHelper.AddCallbacks<int, string, string>(promise1,
                     onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
                     onReject: (string cancelString) => Assert.Fail("OnRejected was invoked with a string when the promise was rejected with an integer."),
-                    onCallbackAdded: p => p.Catch((int cancelInt) => { Assert.AreEqual(expected, cancelInt); ++counter; }).Forget(),
-                    onCallbackAddedConvert: p => p.Catch((int cancelInt) => { Assert.AreEqual(expected, cancelInt); ++counter; }).Forget()
+                    onCallbackAdded: (ref Promise p) => catchCallback(p),
+                    onCallbackAddedConvert: (ref Promise<int> p) => catchCallback(p)
                 );
 
                 deferred.Reject(expected);
@@ -1673,12 +1672,19 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred<int>();
                 var promise1 = deferred.Promise.Preserve();
 
+                Action<Promise> catchCallback = p =>
+                    p.Catch((int i) =>
+                    {
+                        Assert.AreEqual(expected, i);
+                        ++counter;
+                    }).Forget();
+
                 TestHelper.AddCallbacks<int, int, string, string>(promise1,
                     onResolve: _ => Assert.Fail("Promise was resolved when it should have been rejected."),
                     onReject: (string cancelString) => Assert.Fail("OnRejected was invoked with a string when the promise was rejected with an integer."),
-                    onCallbackAdded: p => p.Catch((int cancelInt) => { Assert.AreEqual(expected, cancelInt); ++counter; }).Forget(),
-                    onCallbackAddedConvert: p => p.Catch((int cancelInt) => { Assert.AreEqual(expected, cancelInt); ++counter; }).Forget(),
-                    onCallbackAddedT: p => p.Catch((int cancelInt) => { Assert.AreEqual(expected, cancelInt); ++counter; }).Forget()
+                    onCallbackAdded: (ref Promise p) => catchCallback(p),
+                    onCallbackAddedConvert: (ref Promise<int> p) => catchCallback(p),
+                    onCallbackAddedT: (ref Promise<int> p) => catchCallback(p)
                 );
 
                 deferred.Reject(expected);

@@ -159,86 +159,6 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class FinallyDelegate : ITreeHandleable, ITraceable
-            {
-                internal struct Creator : ICreator<FinallyDelegate>
-                {
-                    [MethodImpl(InlineOption)]
-                    public FinallyDelegate Create()
-                    {
-                        return new FinallyDelegate();
-                    }
-                }
-
-#if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
-#endif
-                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
-
-                private Action _onFinally;
-
-                private FinallyDelegate() { }
-
-                [MethodImpl(InlineOption)]
-                public static FinallyDelegate GetOrCreate(Action onFinally)
-                {
-                    var del = ObjectPool<ITreeHandleable>.GetOrCreate<FinallyDelegate, Creator>(new Creator());
-                    del._onFinally = onFinally;
-                    SetCreatedStacktrace(del, 2);
-                    return del;
-                }
-
-                [MethodImpl(InlineOption)]
-                void Dispose()
-                {
-                    _onFinally = null;
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
-                }
-
-                void ITreeHandleable.Handle()
-                {
-                    ThrowIfInPool(this);
-                    var callback = _onFinally;
-                    SetCurrentInvoker(this);
-#if PROMISE_DEBUG
-                    var traceContainer = new CausalityTraceContainer(this); // Store the causality trace so that this can be disposed before the callback is invoked.
-#endif
-                    Dispose();
-                    try
-                    {
-                        callback.Invoke();
-                    }
-                    catch (Exception e)
-                    {
-#if PROMISE_DEBUG
-                        AddRejectionToUnhandledStack(e, traceContainer);
-#else
-                        AddRejectionToUnhandledStack(e, null);
-#endif
-                    }
-                    finally
-                    {
-                        ClearCurrentInvoker();
-                    }
-                }
-
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
-                {
-                    ThrowIfInPool(this);
-                    handleQueue.Push(this);
-                }
-
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
-                {
-                    ThrowIfInPool(this);
-                    AddToHandleQueueBack(this);
-                }
-            }
-
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
             internal struct DelegateVoidVoid : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
             {
                 private readonly Action _callback;
@@ -255,7 +175,8 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
-                private void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                [MethodImpl(InlineOption)]
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke();
                     valueContainer.Release();
@@ -310,6 +231,7 @@ namespace Proto.Promises
                     _callback = callback;
                 }
 
+                [MethodImpl(InlineOption)]
                 private void Invoke(TArg arg, IValueContainer valueContainer, PromiseRef owner)
                 {
                     _callback.Invoke(arg);
@@ -1036,90 +958,30 @@ namespace Proto.Promises
                     }
                 }
             }
-            #endregion
 
-            #region Delegates with capture value
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            public sealed class FinallyDelegateCapture<TCapture> : ITreeHandleable, ITraceable
+            internal struct DelegateFinally : IDelegateFinally
             {
-                internal struct Creator : ICreator<FinallyDelegateCapture<TCapture>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public FinallyDelegateCapture<TCapture> Create()
-                    {
-                        return new FinallyDelegateCapture<TCapture>();
-                    }
-                }
-
-#if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
-#endif
-                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
-
-                private TCapture _capturedValue;
-                private Action<TCapture> _onFinally;
-
-                private FinallyDelegateCapture() { }
+                private readonly Action _callback;
 
                 [MethodImpl(InlineOption)]
-                public static FinallyDelegateCapture<TCapture> GetOrCreate(ref TCapture capturedValue, Action<TCapture> onFinally)
+                public DelegateFinally(Action callback)
                 {
-                    var del = ObjectPool<ITreeHandleable>.GetOrCreate<FinallyDelegateCapture<TCapture>, Creator>(new Creator());
-                    del._capturedValue = capturedValue;
-                    del._onFinally = onFinally;
-                    SetCreatedStacktrace(del, 2);
-                    return del;
+                    _callback = callback;
                 }
 
                 [MethodImpl(InlineOption)]
-                void Dispose()
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
                 {
-                    _capturedValue = default(TCapture);
-                    _onFinally = null;
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
-                }
-
-                void ITreeHandleable.Handle()
-                {
-                    ThrowIfInPool(this);
-                    var value = _capturedValue;
-                    var callback = _onFinally;
-                    SetCurrentInvoker(this);
-#if PROMISE_DEBUG
-                    var traceContainer = new CausalityTraceContainer(this); // Store the causality trace so that this can be disposed before the callback is invoked.
-#endif
-                    Dispose();
-                    try
-                    {
-                        callback.Invoke(value);
-                    }
-                    catch (Exception e)
-                    {
-#if PROMISE_DEBUG
-                        AddRejectionToUnhandledStack(e, traceContainer);
-#else
-                        AddRejectionToUnhandledStack(e, null);
-#endif
-                    }
-                    ClearCurrentInvoker();
-                }
-
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
-                {
-                    ThrowIfInPool(this);
-                    handleQueue.Push(this);
-                }
-
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
-                {
-                    ThrowIfInPool(this);
-                    AddToHandleQueueBack(this);
+                    _callback.Invoke();
+                    owner.HandleSelf(valueContainer);
                 }
             }
+            #endregion
 
-
+            #region Delegates with capture value
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
@@ -1952,6 +1814,29 @@ namespace Proto.Promises
                     {
                         Invoke(valueContainer, owner);
                     }
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal struct DelegateCaptureFinally<TCapture> : IDelegateFinally
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Action<TCapture> _callback;
+
+                [MethodImpl(InlineOption)]
+                public DelegateCaptureFinally(ref TCapture capturedValue, Action<TCapture> callback)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                }
+
+                [MethodImpl(InlineOption)]
+                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                {
+                    _callback.Invoke(_capturedValue);
+                    owner.HandleSelf(valueContainer);
                 }
             }
             #endregion

@@ -249,8 +249,8 @@ namespace Proto.Promises.Tests
 
             TestHelper.AddContinueCallbacks<int, string>(promise,
                 onContinue: r => r.RethrowIfRejected(),
-                onCallbackAdded: p => p.Catch((object e) => { Assert.AreEqual(rejection, e); ++rejections; }).Forget(),
-                onCallbackAddedConvert: p => p.Catch((object e) => { Assert.AreEqual(rejection, e); ++rejections; }).Forget()
+                onCallbackAdded: (ref Promise p) => p.Catch((object e) => { Assert.AreEqual(rejection, e); ++rejections; }).Forget(),
+                onCallbackAddedConvert: (ref Promise<int> p) => p.Catch((object e) => { Assert.AreEqual(rejection, e); ++rejections; }).Forget()
             );
 
             deferred.Reject(rejection);
@@ -276,8 +276,8 @@ namespace Proto.Promises.Tests
 
             TestHelper.AddContinueCallbacks<int, int, string>(promise,
                 onContinue: r => r.RethrowIfRejected(),
-                onCallbackAdded: p => p.Catch((object e) => { Assert.AreEqual(rejection, e); ++rejections; }).Forget(),
-                onCallbackAddedConvert: p => p.Catch((object e) => { Assert.AreEqual(rejection, e); ++rejections; }).Forget()
+                onCallbackAdded: (ref Promise p) => p.Catch((object e) => { Assert.AreEqual(rejection, e); ++rejections; }).Forget(),
+                onCallbackAddedConvert: (ref Promise<int> p) => p.Catch((object e) => { Assert.AreEqual(rejection, e); ++rejections; }).Forget()
             );
 
             deferred.Reject(rejection);
@@ -467,8 +467,7 @@ namespace Proto.Promises.Tests
 
             TestHelper.AddContinueCallbacks<int, string>(promise,
                 onContinue: r => r.RethrowIfCanceled(),
-                onCallbackAdded: p => p.CatchCancelation(e => { Assert.IsNull(e.ValueType); ++cancelCount; }),
-                onCallbackAddedConvert: p => p.CatchCancelation(e => { Assert.IsNull(e.ValueType); ++cancelCount; })
+                onCancel: e => { Assert.IsNull(e.ValueType); ++cancelCount; }
             );
 
             cancelationSource.Cancel();
@@ -495,8 +494,7 @@ namespace Proto.Promises.Tests
 
             TestHelper.AddContinueCallbacks<int, string>(promise,
                 onContinue: r => r.RethrowIfCanceled(),
-                onCallbackAdded: p => p.CatchCancelation(e => { Assert.AreEqual(cancelation, e.Value); ++cancelCount; }),
-                onCallbackAddedConvert: p => p.CatchCancelation(e => { Assert.AreEqual(cancelation, e.Value); ++cancelCount; })
+                onCancel: e => { Assert.AreEqual(cancelation, e.Value); ++cancelCount; }
             );
 
             cancelationSource.Cancel(cancelation);
@@ -522,8 +520,7 @@ namespace Proto.Promises.Tests
 
             TestHelper.AddContinueCallbacks<int, int, string>(promise,
                 onContinue: r => r.RethrowIfCanceled(),
-                onCallbackAdded: p => p.CatchCancelation(e => { Assert.IsNull(e.ValueType); ++cancelCount; }),
-                onCallbackAddedConvert: p => p.CatchCancelation(e => { Assert.IsNull(e.ValueType); ++cancelCount; })
+                onCancel: e => { Assert.IsNull(e.ValueType); ++cancelCount; }
             );
 
             cancelationSource.Cancel();
@@ -550,8 +547,7 @@ namespace Proto.Promises.Tests
 
             TestHelper.AddContinueCallbacks<int, int, string>(promise,
                 onContinue: r => r.RethrowIfCanceled(),
-                onCallbackAdded: p => p.CatchCancelation(e => { Assert.AreEqual(cancelation, e.Value); ++cancelCount; }),
-                onCallbackAddedConvert: p => p.CatchCancelation(e => { Assert.AreEqual(cancelation, e.Value); ++cancelCount; })
+                onCancel: e => { Assert.AreEqual(cancelation, e.Value); ++cancelCount; }
             );
 
             cancelationSource.Cancel(cancelation);

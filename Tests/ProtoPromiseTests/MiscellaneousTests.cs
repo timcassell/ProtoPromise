@@ -295,7 +295,13 @@ namespace Proto.Promises.Tests
             int rejectCount = 0;
             string expected = "Reject!";
 
-            Action<Promise> callback = p =>
+            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
+                p.Catch((string e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    ++rejectCount;
+                }).Forget();
+            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
             {
                 p.Catch((string e) =>
                 {
@@ -306,18 +312,18 @@ namespace Proto.Promises.Tests
 
             TestHelper.AddResolveCallbacks<int, string>(promise,
                 onResolve: () => { throw Promise.RejectException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
             TestHelper.AddCallbacks<int, object, string>(promise,
                 onResolve: () => { throw Promise.RejectException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
             TestHelper.AddContinueCallbacks<int, string>(promise,
                 onContinue: _ => { throw Promise.RejectException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
 
             Promise.Manager.HandleCompletes();
@@ -338,29 +344,33 @@ namespace Proto.Promises.Tests
             int rejectCount = 0;
             string expected = "Reject!";
 
-            Action<Promise> callback = p =>
-            {
+            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
                 p.Catch((string e) =>
                 {
                     Assert.AreEqual(expected, e);
                     ++rejectCount;
                 }).Forget();
-            };
+            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                p.Catch((string e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    ++rejectCount;
+                }).Forget();
 
-            TestHelper.AddResolveCallbacks<int, bool, string>(promise,
+            TestHelper.AddResolveCallbacks<int, int, string>(promise,
                 onResolve: v => { throw Promise.RejectException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
-            TestHelper.AddCallbacks<int, bool, object, string>(promise,
+            TestHelper.AddCallbacks<int, int, object, string>(promise,
                 onResolve: v => { throw Promise.RejectException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
-            TestHelper.AddContinueCallbacks<int, bool, string>(promise,
+            TestHelper.AddContinueCallbacks<int, int, string>(promise,
                 onContinue: _ => { throw Promise.RejectException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
 
             Promise.Manager.HandleCompletes();
@@ -381,25 +391,29 @@ namespace Proto.Promises.Tests
             int rejectCount = 0;
             string expected = "Reject!";
 
-            Action<Promise> callback = p =>
-            {
+            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
                 p.Catch((string e) =>
                 {
                     Assert.AreEqual(expected, e);
                     ++rejectCount;
                 }).Forget();
-            };
+            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                p.Catch((string e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    ++rejectCount;
+                }).Forget();
 
             TestHelper.AddCallbacks<int, object, string>(promise,
                 onReject: v => { throw Promise.RejectException(expected); },
                 onUnknownRejection: () => { throw Promise.RejectException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
             TestHelper.AddContinueCallbacks<int, string>(promise,
                 onContinue: _ => { throw Promise.RejectException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
 
             Promise.Manager.HandleCompletes();
@@ -420,26 +434,30 @@ namespace Proto.Promises.Tests
             int rejectCount = 0;
             string expected = "Reject!";
 
-            Action<Promise> callback = p =>
-            {
+            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
                 p.Catch((string e) =>
                 {
                     Assert.AreEqual(expected, e);
                     ++rejectCount;
                 }).Forget();
-            };
+            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                p.Catch((string e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    ++rejectCount;
+                }).Forget();
 
-            TestHelper.AddCallbacks<int, bool, object, string>(promise,
+            TestHelper.AddCallbacks<int, int, object, string>(promise,
                 onReject: v => { throw Promise.RejectException(expected); },
                 onUnknownRejection: () => { throw Promise.RejectException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p),
-                onCallbackAddedT: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert,
+                onCallbackAddedT: onCallbackAddedConvert
             );
-            TestHelper.AddContinueCallbacks<int, bool, string>(promise,
+            TestHelper.AddContinueCallbacks<int, int, string>(promise,
                 onContinue: _ => { throw Promise.RejectException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
 
             Promise.Manager.HandleCompletes();
@@ -460,29 +478,23 @@ namespace Proto.Promises.Tests
             int cancelCount = 0;
             string expected = "Cancel!";
 
-            Action<Promise> callback = p =>
+            Promise.CanceledAction onCancel = reason =>
             {
-                p.CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    ++cancelCount;
-                });
+                Assert.AreEqual(expected, reason.Value);
+                ++cancelCount;
             };
 
             TestHelper.AddResolveCallbacks<int, string>(promise,
                 onResolve: () => { throw Promise.CancelException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCancel: onCancel
             );
             TestHelper.AddCallbacks<int, object, string>(promise,
                 onResolve: () => { throw Promise.CancelException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCancel: onCancel
             );
             TestHelper.AddContinueCallbacks<int, string>(promise,
                 onContinue: _ => { throw Promise.CancelException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCancel: onCancel
             );
 
             Promise.Manager.HandleCompletes();
@@ -503,29 +515,23 @@ namespace Proto.Promises.Tests
             int cancelCount = 0;
             string expected = "Cancel!";
 
-            Action<Promise> callback = p =>
+            Promise.CanceledAction onCancel = reason =>
             {
-                p.CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    ++cancelCount;
-                });
+                Assert.AreEqual(expected, reason.Value);
+                ++cancelCount;
             };
 
             TestHelper.AddResolveCallbacks<int, bool, string>(promise,
                 onResolve: v => { throw Promise.CancelException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCancel: onCancel
             );
             TestHelper.AddCallbacks<int, bool, object, string>(promise,
                 onResolve: v => { throw Promise.CancelException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCancel: onCancel
             );
             TestHelper.AddContinueCallbacks<int, bool, string>(promise,
                 onContinue: _ => { throw Promise.CancelException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCancel: onCancel
             );
 
             Promise.Manager.HandleCompletes();
@@ -546,25 +552,20 @@ namespace Proto.Promises.Tests
             int cancelCount = 0;
             string expected = "Cancel!";
 
-            Action<Promise> callback = p =>
+            Promise.CanceledAction onCancel = reason =>
             {
-                p.CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    ++cancelCount;
-                });
+                Assert.AreEqual(expected, reason.Value);
+                ++cancelCount;
             };
 
             TestHelper.AddCallbacks<int, object, string>(promise,
                 onReject: v => { throw Promise.CancelException(expected); },
                 onUnknownRejection: () => { throw Promise.CancelException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCancel: onCancel
             );
             TestHelper.AddContinueCallbacks<int, string>(promise,
                 onContinue: _ => { throw Promise.CancelException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCancel: onCancel
             );
 
             Promise.Manager.HandleCompletes();
@@ -585,26 +586,20 @@ namespace Proto.Promises.Tests
             int cancelCount = 0;
             string expected = "Cancel!";
 
-            Action<Promise> callback = p =>
+            Promise.CanceledAction onCancel = reason =>
             {
-                p.CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    ++cancelCount;
-                });
+                Assert.AreEqual(expected, reason.Value);
+                ++cancelCount;
             };
 
             TestHelper.AddCallbacks<int, bool, object, string>(promise,
                 onReject: v => { throw Promise.CancelException(expected); },
                 onUnknownRejection: () => { throw Promise.CancelException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p),
-                onCallbackAddedT: p => callback(p)
+                onCancel: onCancel
             );
             TestHelper.AddContinueCallbacks<int, int, string>(promise,
                 onContinue: _ => { throw Promise.CancelException(expected); },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCancel: onCancel
             );
 
             Promise.Manager.HandleCompletes();
@@ -624,29 +619,33 @@ namespace Proto.Promises.Tests
 
             int errorCount = 0;
 
-            Action<Promise> callback = p =>
-            {
+            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
                 p.Catch((object e) =>
                 {
                     Assert.IsInstanceOf(typeof(InvalidOperationException), e);
                     ++errorCount;
                 }).Forget();
-            };
+            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                p.Catch((object e) =>
+                {
+                    Assert.IsInstanceOf(typeof(InvalidOperationException), e);
+                    ++errorCount;
+                }).Forget();
 
             TestHelper.AddResolveCallbacks<int, string>(promise,
                 onResolve: () => { throw Promise.Rethrow; },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
             TestHelper.AddCallbacks<int, object, string>(promise,
                 onResolve: () => { throw Promise.Rethrow; },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
             TestHelper.AddContinueCallbacks<int, string>(promise,
                 onContinue: _ => { throw Promise.Rethrow; },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
 
             Promise.Manager.HandleCompletes();
@@ -666,29 +665,33 @@ namespace Proto.Promises.Tests
 
             int errorCount = 0;
 
-            Action<Promise> callback = p =>
-            {
+            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
                 p.Catch((object e) =>
                 {
                     Assert.IsInstanceOf(typeof(InvalidOperationException), e);
                     ++errorCount;
                 }).Forget();
-            };
+            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                p.Catch((object e) =>
+                {
+                    Assert.IsInstanceOf(typeof(InvalidOperationException), e);
+                    ++errorCount;
+                }).Forget();
 
-            TestHelper.AddResolveCallbacks<int, bool, string>(promise,
+            TestHelper.AddResolveCallbacks<int, int, string>(promise,
                 onResolve: v => { throw Promise.Rethrow; },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
-            TestHelper.AddCallbacks<int, bool, object, string>(promise,
+            TestHelper.AddCallbacks<int, int, object, string>(promise,
                 onResolve: v => { throw Promise.Rethrow; },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
-            TestHelper.AddContinueCallbacks<int, bool, string>(promise,
+            TestHelper.AddContinueCallbacks<int, int, string>(promise,
                 onContinue: _ => { throw Promise.Rethrow; },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
 
             Promise.Manager.HandleCompletes();
@@ -710,20 +713,24 @@ namespace Proto.Promises.Tests
 
             int rejectCount = 0;
 
-            Action<Promise> callback = p =>
-            {
+            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
                 p.Catch((string e) =>
                 {
                     Assert.AreEqual(expected, e);
                     ++rejectCount;
                 }).Forget();
-            };
+            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                p.Catch((string e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    ++rejectCount;
+                }).Forget();
 
             TestHelper.AddCallbacks<int, object, string>(promise,
                 onReject: _ => { throw Promise.Rethrow; },
                 onUnknownRejection: () => { throw Promise.Rethrow; },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert
             );
 
             Promise.Manager.HandleCompletes();
@@ -745,21 +752,25 @@ namespace Proto.Promises.Tests
 
             int rejectCount = 0;
 
-            Action<Promise> callback = p =>
-            {
+            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
                 p.Catch((string e) =>
                 {
                     Assert.AreEqual(expected, e);
                     ++rejectCount;
                 }).Forget();
-            };
+            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                p.Catch((string e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    ++rejectCount;
+                }).Forget();
 
-            TestHelper.AddCallbacks<int, bool, object, string>(promise,
+            TestHelper.AddCallbacks<int, int, object, string>(promise,
                 onReject: _ => { throw Promise.Rethrow; },
                 onUnknownRejection: () => { throw Promise.Rethrow; },
-                onCallbackAdded: p => callback(p),
-                onCallbackAddedConvert: p => callback(p),
-                onCallbackAddedT: p => callback(p)
+                onCallbackAdded: onCallbackAdded,
+                onCallbackAddedConvert: onCallbackAddedConvert,
+                onCallbackAddedT: onCallbackAddedConvert
             );
 
             Promise.Manager.HandleCompletes();

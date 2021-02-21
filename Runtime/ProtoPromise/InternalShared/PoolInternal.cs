@@ -28,8 +28,14 @@ namespace Proto.Promises
         }
 
         // Using static generic classes to hold the pools allows direct pool access at runtime without doing a dictionary lookup.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
         internal static partial class ObjectPool<TLinked> where TLinked : class, ILinked<TLinked>
         {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
             private static class Type<T> where T : TLinked
             {
                 // Using ValueLinkedStack<> makes object pooling free.

@@ -489,16 +489,15 @@ namespace Proto.Promises.Tests
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                promise.CatchCancelation(default(Promise.CanceledAction));
+                deferred.Promise.CatchCancelation(default(Promise.CanceledAction));
             });
 
             cancelationSource.Cancel();
             cancelationSource.Dispose();
-            promise.Forget();
+            deferred.Promise.Forget();
         }
 
         [Test]
@@ -506,16 +505,15 @@ namespace Proto.Promises.Tests
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
 
             Assert.Throws<ArgumentNullException>(() =>
             {
-                promise.CatchCancelation(default(Promise.CanceledAction));
+                deferred.Promise.CatchCancelation(default(Promise.CanceledAction));
             });
 
             cancelationSource.Cancel();
+            deferred.Promise.Forget();
             cancelationSource.Dispose();
-            promise.Forget();
         }
 #endif
 
@@ -665,11 +663,10 @@ namespace Proto.Promises.Tests
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
 
             Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been canceled.");
 
-            TestHelper.AddCallbacks<int, object, string>(promise,
+            TestHelper.AddCallbacks<int, object, string>(deferred.Promise,
                 onResolve: () => Assert.Fail("Promise was resolved when it should have been canceled."),
                 onReject: _ => rejectAssert(),
                 onUnknownRejection: rejectAssert);
@@ -678,7 +675,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
 
             cancelationSource.Dispose();
-            promise.Forget();
         }
 
         [Test]
@@ -686,11 +682,10 @@ namespace Proto.Promises.Tests
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
 
             Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been canceled.");
 
-            TestHelper.AddCallbacks<int, bool, object, string>(promise,
+            TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
                 onResolve: v => Assert.Fail("Promise was resolved when it should have been canceled."),
                 onReject: _ => rejectAssert(),
                 onUnknownRejection: rejectAssert);
@@ -699,7 +694,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletes();
 
             cancelationSource.Dispose();
-            promise.Forget();
         }
 
         [Test]
@@ -861,17 +855,16 @@ namespace Proto.Promises.Tests
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred(cancelationSource.Token);
-                var promise = deferred.Promise.Preserve();
 
-                promise
+                deferred.Promise
                     .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .Forget();
 
                 cancelationSource.Cancel();
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -879,17 +872,16 @@ namespace Proto.Promises.Tests
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-                var promise = deferred.Promise.Preserve();
 
-                promise
+                deferred.Promise
                     .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .Forget();
 
                 cancelationSource.Cancel();
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -898,11 +890,11 @@ namespace Proto.Promises.Tests
                 CancelationSource deferredCancelationSource = CancelationSource.New();
                 CancelationSource catchCancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred(deferredCancelationSource.Token);
-                var promise = deferred.Promise.Preserve();
 
-                promise
+                deferred.Promise
                     .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
-                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token);
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
+                    .Forget();
 
                 catchCancelationSource.Cancel();
                 deferredCancelationSource.Cancel();
@@ -910,7 +902,6 @@ namespace Proto.Promises.Tests
 
                 catchCancelationSource.Dispose();
                 deferredCancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -919,11 +910,11 @@ namespace Proto.Promises.Tests
                 CancelationSource deferredCancelationSource = CancelationSource.New();
                 CancelationSource catchCancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred<int>(deferredCancelationSource.Token);
-                var promise = deferred.Promise.Preserve();
 
-                promise
+                deferred.Promise
                     .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
-                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token);
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
+                    .Forget();
 
                 catchCancelationSource.Cancel();
                 deferredCancelationSource.Cancel();
@@ -931,7 +922,6 @@ namespace Proto.Promises.Tests
 
                 catchCancelationSource.Dispose();
                 deferredCancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -959,18 +949,17 @@ namespace Proto.Promises.Tests
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
 
-                promise
+                deferred.Promise
                     .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .Forget();
 
                 deferred.Resolve();
                 cancelationSource.Cancel();
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -978,18 +967,17 @@ namespace Proto.Promises.Tests
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
 
-                promise
+                deferred.Promise
                     .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .Forget();
 
                 deferred.Resolve(1);
                 cancelationSource.Cancel();
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -997,17 +985,16 @@ namespace Proto.Promises.Tests
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
 
-                promise
+                deferred.Promise
                     .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .Forget();
 
                 deferred.Resolve();
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -1015,17 +1002,16 @@ namespace Proto.Promises.Tests
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
 
-                promise
+                deferred.Promise
                     .CatchCancelation(_ => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token);
+                    .CatchCancelation(1, (cv, _) => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .Forget();
 
                 deferred.Resolve(1);
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -1148,10 +1134,9 @@ namespace Proto.Promises.Tests
                 CancelationSource cancelationSource = CancelationSource.New();
 
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
 
                 TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    promise,
+                    deferred.Promise,
                     onReject: _ => Assert.Fail("OnRejected was invoked."),
                     onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
                     onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
@@ -1164,7 +1149,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -1173,10 +1157,9 @@ namespace Proto.Promises.Tests
                 CancelationSource cancelationSource = CancelationSource.New();
 
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
 
                 TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    promise,
+                    deferred.Promise,
                     onReject: _ => Assert.Fail("OnRejected was invoked."),
                     onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
                     onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
@@ -1189,7 +1172,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -1199,10 +1181,9 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel();
 
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
 
                 TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    promise,
+                    deferred.Promise,
                     onReject: _ => Assert.Fail("OnRejected was invoked."),
                     onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
                     onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
@@ -1214,7 +1195,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -1224,10 +1204,9 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel();
 
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
 
                 TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    promise,
+                    deferred.Promise,
                     onReject: _ => Assert.Fail("OnRejected was invoked."),
                     onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
                     onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
@@ -1239,7 +1218,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -1248,10 +1226,9 @@ namespace Proto.Promises.Tests
                 CancelationSource cancelationSource = CancelationSource.New();
 
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
 
                 TestHelper.AddContinueCallbacksWithCancelation<float, string>(
-                    promise,
+                    deferred.Promise,
                     onContinue: _ => Assert.Fail("OnContinue was invoked."),
                     onContinueCapture: (_, __) => Assert.Fail("OnContinue was invoked."),
                     cancelationToken: cancelationSource.Token
@@ -1262,7 +1239,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -1271,10 +1247,9 @@ namespace Proto.Promises.Tests
                 CancelationSource cancelationSource = CancelationSource.New();
 
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
 
                 TestHelper.AddContinueCallbacksWithCancelation<int, float, string>(
-                    promise,
+                    deferred.Promise,
                     onContinue: _ => Assert.Fail("OnContinue was invoked."),
                     onContinueCapture: (_, __) => Assert.Fail("OnContinue was invoked."),
                     cancelationToken: cancelationSource.Token
@@ -1285,7 +1260,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -1295,10 +1269,9 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel();
 
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
 
                 TestHelper.AddContinueCallbacksWithCancelation<float, string>(
-                    promise,
+                    deferred.Promise,
                     onContinue: _ => Assert.Fail("OnContinue was invoked."),
                     onContinueCapture: (_, __) => Assert.Fail("OnContinue was invoked."),
                     cancelationToken: cancelationSource.Token
@@ -1308,7 +1281,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
@@ -1318,10 +1290,9 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel();
 
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
 
                 TestHelper.AddContinueCallbacksWithCancelation<int, float, string>(
-                    promise,
+                    deferred.Promise,
                     onContinue: _ => Assert.Fail("OnContinue was invoked."),
                     onContinueCapture: (_, __) => Assert.Fail("OnContinue was invoked."),
                     cancelationToken: cancelationSource.Token
@@ -1331,7 +1302,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]

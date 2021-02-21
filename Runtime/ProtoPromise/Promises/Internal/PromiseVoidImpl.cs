@@ -67,23 +67,6 @@ namespace Proto.Promises
                     }
                 }
 
-                internal static void Finally(Promise _this, Action onFinally)
-                {
-                    ValidateOperation(_this, 2);
-                    ValidateArgument(onFinally, "onFinally", 2);
-
-                    var del = FinallyDelegate.GetOrCreate(onFinally);
-                    if (_this._ref != null)
-                    {
-                        _this._ref.IncrementId(_this._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
-                        _this._ref.AddWaiter(del);
-                    }
-                    else
-                    {
-                        AddToHandleQueueBack(del);
-                    }
-                }
-
                 // Capture values below.
 
                 internal static void Progress<TCaptureProgress>(Promise _this, ref TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress, CancelationToken cancelationToken)
@@ -128,23 +111,6 @@ namespace Proto.Promises
                             cancelDelegate.canceler = new CancelDelegatePromise<TCaptureCancel>(ref cancelCaptureValue, onCanceled);
                             _ref.AddWaiter(cancelDelegate);
                         }
-                    }
-                }
-
-                internal static void Finally<TCaptureFinally>(Promise _this, ref TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
-                {
-                    ValidateOperation(_this, 2);
-                    ValidateArgument(onFinally, "onFinally", 2);
-
-                    var del = FinallyDelegateCapture<TCaptureFinally>.GetOrCreate(ref finallyCaptureValue, onFinally);
-                    if (_this._ref != null)
-                    {
-                        _this._ref.IncrementId(_this._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
-                        _this._ref.AddWaiter(del);
-                    }
-                    else
-                    {
-                        AddToHandleQueueBack(del);
                     }
                 }
             }

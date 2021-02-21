@@ -136,13 +136,17 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a finally callback. Returns <see cref="this"/>.
+        /// Add a finally callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onFinally"/> will be invoked.
+        /// <para/>If <paramref name="onFinally"/> throws an exception, the new <see cref="Promise{T}"/> will be rejected with that exception,
+        /// otherwise it will be resolved, rejected, or canceled with the same value or reason as this.
         /// </summary>
         public Promise<T> Finally(Action onFinally)
         {
-            Internal.PromiseRef.PromiseImplVoid.Finally(this, onFinally);
-            return this;
+            ValidateOperation(1);
+            ValidateArgument(onFinally, "onFinally", 1);
+
+            return Internal.PromiseRef.CallbackHelper.AddFinally(this, new Internal.PromiseRef.DelegateFinally(onFinally));
         }
 
         #region Resolve Callbacks
@@ -749,13 +753,17 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a finally callback. Returns <see cref="this"/>.
+        /// Capture a value and add a finally callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onFinally"/> will be invoked with <paramref name="finallyCaptureValue"/>.
+        /// <para/>If <paramref name="onFinally"/> throws an exception, the new <see cref="Promise{T}"/> will be rejected with that exception,
+        /// otherwise it will be resolved, rejected, or canceled with the same value or reason as this.
         /// </summary>
         public Promise<T> Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
         {
-            Internal.PromiseRef.PromiseImplVoid.Finally(this, ref finallyCaptureValue, onFinally);
-            return this;
+            ValidateOperation(1);
+            ValidateArgument(onFinally, "onFinally", 1);
+
+            return Internal.PromiseRef.CallbackHelper.AddFinally(this, new Internal.PromiseRef.DelegateCaptureFinally<TCaptureFinally>(ref finallyCaptureValue, onFinally));
         }
 
         #region Resolve Callbacks

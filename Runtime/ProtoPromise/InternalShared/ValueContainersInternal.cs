@@ -35,7 +35,6 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ThrowIfInPool(this);
                     return _value;
                 }
             }
@@ -44,8 +43,7 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ThrowIfInPool(this);
-                    return Value;
+                    return _value;
                 }
             }
 
@@ -53,10 +51,13 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ThrowIfInPool(this);
                     Type type = typeof(T);
-                    // Value is never null.
-                    return type.IsValueType ? type : Value.GetType();
+                    if (type.IsValueType)
+                    {
+                        return type;
+                    }
+                    object temp = _value;
+                    return temp == null ? type : temp.GetType();
                 }
             }
 
@@ -85,7 +86,6 @@ namespace Proto.Promises
 
             public Promise.State GetState()
             {
-                ThrowIfInPool(this);
                 return Promise.State.Rejected;
             }
 
@@ -224,7 +224,6 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ThrowIfInPool(this);
                     return _value;
                 }
             }
@@ -233,7 +232,6 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ThrowIfInPool(this);
                     return _value;
                 }
             }
@@ -242,14 +240,13 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ThrowIfInPool(this);
                     Type type = typeof(T);
-                    // Value is never null.
                     if (type.IsValueType)
                     {
                         return type;
                     }
-                    return _value.GetType();
+                    object temp = _value;
+                    return temp == null ? type : temp.GetType();
                 }
             }
 
@@ -262,7 +259,6 @@ namespace Proto.Promises
 
             public Promise.State GetState()
             {
-                ThrowIfInPool(this);
                 return Promise.State.Canceled;
             }
 
@@ -389,7 +385,6 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ThrowIfInPool(this);
                     return value;
                 }
             }
@@ -398,7 +393,6 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ThrowIfInPool(this);
                     return value;
                 }
             }
@@ -407,13 +401,13 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ThrowIfInPool(this);
                     Type type = typeof(T);
-                    if (type.IsValueType || value == null)
+                    if (type.IsValueType)
                     {
                         return type;
                     }
-                    return value.GetType();
+                    object temp = value;
+                    return temp == null ? type : temp.GetType();
                 }
             }
 
@@ -431,7 +425,6 @@ namespace Proto.Promises
 
             public Promise.State GetState()
             {
-                ThrowIfInPool(this);
                 return Promise.State.Resolved;
             }
 

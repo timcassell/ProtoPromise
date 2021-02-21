@@ -97,13 +97,14 @@ namespace Proto.Promises.Tests
             var deferred = Promise.NewDeferred();
 
             bool invoked = false;
+            string rejection = "Reject";
 
             deferred.Promise
                 .Finally(() => invoked = true)
-                .Catch(() => { })
+                .Catch((string e) => Assert.AreEqual(rejection, e))
                 .Forget();
 
-            deferred.Reject("Reject");
+            deferred.Reject(rejection);
 
             Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
@@ -115,13 +116,14 @@ namespace Proto.Promises.Tests
             var deferred = Promise.NewDeferred<int>();
 
             bool invoked = false;
+            string rejection = "Reject";
 
             deferred.Promise
                 .Finally(() => invoked = true)
-                .Catch(() => { })
+                .Catch((string e) => Assert.AreEqual(rejection, e))
                 .Forget();
 
-            deferred.Reject("Reject");
+            deferred.Reject(rejection);
 
             Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
@@ -139,6 +141,241 @@ namespace Proto.Promises.Tests
 
             deferred.Promise
                 .Finally(() => invoked = true)
+                .Forget();
+
+            if (repeat)
+            {
+                cancelationSource.Cancel();
+            }
+            else
+            {
+                cancelationSource.Cancel("Cancel");
+            }
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+
+            cancelationSource.Dispose();
+
+            if (repeat)
+            {
+                repeat = false;
+                goto Repeat;
+            }
+        }
+
+        [Test]
+        public void OnFinallyIsInvokedWhenPromiseIsCanceled_T()
+        {
+            bool repeat = true;
+        Repeat:
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+
+            bool invoked = false;
+
+            deferred.Promise
+                .Finally(() => invoked = true)
+                .Forget();
+
+            if (repeat)
+            {
+                cancelationSource.Cancel();
+            }
+            else
+            {
+                cancelationSource.Cancel("Cancel");
+            }
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+
+            cancelationSource.Dispose();
+
+            if (repeat)
+            {
+                repeat = false;
+                goto Repeat;
+            }
+        }
+
+        [Test]
+        public void PromiseIsRejectedWithThrownExceptionWhenOnFinallyThrows_resolved_void()
+        {
+            var deferred = Promise.NewDeferred();
+
+            bool invoked = false;
+            Exception expected = new Exception();
+
+            deferred.Promise
+                .Finally(() => { throw expected; })
+                .Catch((Exception e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    invoked = true;
+                })
+                .Forget();
+
+            deferred.Resolve();
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+        }
+
+        [Test]
+        public void PromiseIsRejectedWithThrownExceptionWhenOnFinallyThrows_resolved_T()
+        {
+            var deferred = Promise.NewDeferred<int>();
+
+            bool invoked = false;
+            Exception expected = new Exception();
+
+            deferred.Promise
+                .Finally(() => { throw expected; })
+                .Catch((Exception e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    invoked = true;
+                })
+                .Forget();
+
+            deferred.Resolve(1);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+        }
+
+        [Test]
+        public void PromiseIsRejectedWithThrownExceptionWhenOnFinallyThrows_rejected_void()
+        {
+            var deferred = Promise.NewDeferred();
+
+            bool invoked = false;
+            string rejectValue = "Reject";
+            Exception expected = new Exception();
+
+            deferred.Promise
+                .Finally(() => { throw expected; })
+                .Catch((Exception e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    invoked = true;
+                })
+                .Forget();
+
+            // When the exception thrown in onFinally overwrites the current rejection, the current rejection gets sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it actually gets sent to it.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            bool uncaughtHandled = false;
+            Promise.Config.UncaughtRejectionHandler = e =>
+            {
+                Assert.AreEqual(rejectValue, e.Value);
+                uncaughtHandled = true;
+            };
+
+            deferred.Reject(rejectValue);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+            Assert.IsTrue(uncaughtHandled);
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
+        }
+
+        [Test]
+        public void PromiseIsRejectedWithThrownExceptionWhenOnFinallyThrows_rejected_T()
+        {
+            var deferred = Promise.NewDeferred<int>();
+
+            bool invoked = false;
+            string rejectValue = "Reject";
+            Exception expected = new Exception();
+
+            deferred.Promise
+                .Finally(() => { throw expected; })
+                .Catch((Exception e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    invoked = true;
+                })
+                .Forget();
+
+            // When the exception thrown in onFinally overwrites the current rejection, the current rejection gets sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it actually gets sent to it.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            bool uncaughtHandled = false;
+            Promise.Config.UncaughtRejectionHandler = e =>
+            {
+                Assert.AreEqual(rejectValue, e.Value);
+                uncaughtHandled = true;
+            };
+
+            deferred.Reject(rejectValue);
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+            Assert.IsTrue(uncaughtHandled);
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
+        }
+
+        [Test]
+        public void PromiseIsRejectedWithThrownExceptionWhenOnFinallyThrows_canceled_void()
+        {
+            bool repeat = true;
+            Exception expected = new Exception();
+        Repeat:
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
+
+            bool invoked = false;
+
+            deferred.Promise
+                .Finally(() => { throw expected; })
+                .Catch((Exception e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    invoked = true;
+                })
+                .Forget();
+
+            if (repeat)
+            {
+                cancelationSource.Cancel();
+            }
+            else
+            {
+                cancelationSource.Cancel("Cancel");
+            }
+
+            Promise.Manager.HandleCompletes();
+            Assert.IsTrue(invoked);
+
+            cancelationSource.Dispose();
+
+            if (repeat)
+            {
+                repeat = false;
+                goto Repeat;
+            }
+        }
+
+        [Test]
+        public void PromiseIsRejectedWithThrownExceptionWhenOnFinallyThrows_canceled_T()
+        {
+            bool repeat = true;
+            Exception expected = new Exception();
+        Repeat:
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+
+            bool invoked = false;
+
+            deferred.Promise
+                .Finally(() => { throw expected; })
+                .Catch((Exception e) =>
+                {
+                    Assert.AreEqual(expected, e);
+                    invoked = true;
+                })
                 .Forget();
 
             if (repeat)

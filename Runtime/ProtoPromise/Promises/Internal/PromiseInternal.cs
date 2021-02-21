@@ -90,8 +90,12 @@ namespace Proto.Promises
         // Just a random number that's not zero. Using this in Promise(<T>) instead of a bool prevents extra memory padding.
         internal const int ValidIdFromApi = 41265;
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
         internal abstract partial class PromiseRef : ITreeHandleable, ITraceable
         {
+            private readonly object _locker = new object();
             private ValueLinkedStack<ITreeHandleable> _nextBranches;
             private object _valueOrPrevious;
             private int _id = 1; // Only using int because Interlocked does not support ushort.
@@ -186,7 +190,6 @@ namespace Proto.Promises
 
             private int IncrementId(int promiseId, int increment)
             {
-                ThrowIfInPool(this);
                 int newId;
                 unchecked // We want the id to wrap around.
                 {
@@ -199,6 +202,7 @@ namespace Proto.Promises
                     throw new InvalidOperationException("Attempted to use an invalid Promise. This may be because you are attempting to use a promise simultaneously on multiple threads that you have not preserved.",
                         GetFormattedStacktrace(3));
                 }
+                ThrowIfInPool(this);
                 return newId;
             }
 
@@ -233,7 +237,10 @@ namespace Proto.Promises
             {
                 // TODO: thread synchronization
                 ThrowIfInPool(this);
-                return _nextBranches.TryRemove(treeHandleable);
+                lock (_locker)
+                {
+                    return _nextBranches.TryRemove(treeHandleable);
+                }
             }
 
             protected void Reset()
@@ -271,11 +278,18 @@ namespace Proto.Promises
                 }
             }
 
-            private void HookupNewCancelablePromise(PromiseRef newPromise)
+            private void HookupNewCancelablePromise(PromiseRef newPromise, ref CancelationHelper cancelationHelper)
             {
                 newPromise.SetDepth(this);
-                Interlocked.CompareExchange(ref newPromise._valueOrPrevious, this, null);
-                AddWaiter(newPromise);
+                if (Interlocked.CompareExchange(ref newPromise._valueOrPrevious, this, null) == null)
+                {
+                    AddWaiter(newPromise);
+                }
+                else
+                {
+                    cancelationHelper.Release();
+                    MaybeDispose();
+                }
             }
 
             private void HookupNewPromise(PromiseRef newPromise)
@@ -291,7 +305,10 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
                 if (_state == Promise.State.Pending)
                 {
-                    _nextBranches.Push(waiter);
+                    lock (_locker)
+                    {
+                        _nextBranches.Push(waiter);
+                    }
                 }
                 else
                 {
@@ -304,24 +321,24 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
                 IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
-                bool invokingRejected = false, invokingContinue = false;
+                bool invokingRejected = false;
                 SetCurrentInvoker(this);
                 try
                 {
                     // valueContainer is released deeper in the call stack, so we only release it in this method if an exception is thrown.
                     // (This is in case it is canceled, the valueContainer will be released from the cancelation.)
-                    Execute(valueContainer, ref invokingRejected, ref invokingContinue);
+                    Execute(valueContainer, ref invokingRejected);
                 }
                 catch (RethrowException e)
                 {
-                    if (invokingRejected || (e is ForcedRethrowException && invokingContinue && valueContainer.GetState() != Promise.State.Resolved))
+                    if (invokingRejected || (e is ForcedRethrowException && valueContainer.GetState() != Promise.State.Resolved))
                     {
                         RejectOrCancelInternal(valueContainer);
                         valueContainer.Release(); // Must release since RejectOrCancelInternal adds an extra retain.
                     }
                     else
                     {
-                        valueContainer.ReleaseAndMaybeAddToUnhandledStack(!invokingRejected);
+                        valueContainer.ReleaseAndMaybeAddToUnhandledStack(true);
 #if PROMISE_DEBUG
                         string stacktrace = FormatStackTrace(new System.Diagnostics.StackTrace[1] { new System.Diagnostics.StackTrace(e, true) });
 #else
@@ -389,13 +406,19 @@ namespace Proto.Promises
                 MaybeDispose();
             }
 
-            protected virtual void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue) { }
+            protected virtual void Execute(IValueContainer valueContainer, ref bool invokingRejected) { }
 
             private void HandleBranches(IValueContainer valueContainer)
             {
-                while (_nextBranches.IsNotEmpty)
+                ValueLinkedStack<ITreeHandleable> branches;
+                lock (_locker)
                 {
-                    _nextBranches.Pop().MakeReady(this, valueContainer, ref _handleQueue);
+                    branches = _nextBranches;
+                    _nextBranches.Clear();
+                }
+                while (branches.IsNotEmpty)
+                {
+                    branches.Pop().MakeReady(this, valueContainer, ref _handleQueue);
                 }
 
                 //// TODO: keeping this code around for when background threaded tasks are implemented.
@@ -437,7 +460,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     HandleSelf(valueContainer);
                 }
@@ -738,7 +761,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     var resolveCallback = _resolver;
                     _resolver = default(TResolver);
@@ -786,7 +809,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     if (_resolver.IsNull)
                     {
@@ -845,7 +868,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     var resolveCallback = _resolver;
                     _resolver = default(TResolver);
@@ -905,7 +928,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     if (_resolver.IsNull)
                     {
@@ -969,11 +992,10 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     var callback = _continuer;
                     _continuer = default(TContinuer);
-                    invokingContinue = true;
                     callback.Invoke(valueContainer, this);
                 }
             }
@@ -1012,7 +1034,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected, ref bool invokingContinue)
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     if (_continuer.IsNull)
                     {
@@ -1023,7 +1045,48 @@ namespace Proto.Promises
 
                     var callback = _continuer;
                     _continuer = default(TContinuer);
-                    invokingContinue = true;
+                    callback.Invoke(valueContainer, this);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            private sealed class PromiseFinally<TFinalizer> : PromiseRef
+                where TFinalizer : IDelegateFinally
+            {
+                private struct Creator : ICreator<PromiseFinally<TFinalizer>>
+                {
+                    [MethodImpl(InlineOption)]
+                    public PromiseFinally<TFinalizer> Create()
+                    {
+                        return new PromiseFinally<TFinalizer>();
+                    }
+                }
+
+                private TFinalizer _finalizer;
+
+                private PromiseFinally() { }
+
+                [MethodImpl(InlineOption)]
+                public static PromiseFinally<TFinalizer> GetOrCreate(TFinalizer finalizer)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseFinally<TFinalizer>, Creator>(new Creator());
+                    promise.Reset();
+                    promise._finalizer = finalizer;
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                {
+                    var callback = _finalizer;
+                    _finalizer = default(TFinalizer);
                     callback.Invoke(valueContainer, this);
                 }
             }
