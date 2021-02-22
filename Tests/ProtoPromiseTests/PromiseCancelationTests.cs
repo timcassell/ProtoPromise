@@ -417,7 +417,9 @@ namespace Proto.Promises.Tests
                     onResolve: resolveAssert,
                     onReject: failValue => rejectAssert(),
                     onUnknownRejection: rejectAssert);
-                promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
+                promise
+                    .CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value))
+                    .Forget();
                 cancelationSource.Cancel(expected);
                 Promise.Manager.HandleCompletes();
 
@@ -427,7 +429,9 @@ namespace Proto.Promises.Tests
                     onResolve: resolveAssert,
                     onReject: failValue => rejectAssert(),
                     onUnknownRejection: rejectAssert);
-                promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
+                promise
+                    .CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value))
+                    .Forget();
 
                 Assert.Throws<InvalidOperationException>(() =>
                     cancelationSource.Cancel("Different Cancel Value")
@@ -458,7 +462,9 @@ namespace Proto.Promises.Tests
                     onResolve: _ => resolveAssert(),
                     onReject: _ => rejectAssert(),
                     onUnknownRejection: rejectAssert);
-                promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
+                promise
+                    .CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value))
+                    .Forget();
                 cancelationSource.Cancel(expected);
                 Promise.Manager.HandleCompletes();
 
@@ -468,7 +474,9 @@ namespace Proto.Promises.Tests
                     onResolve: _ => resolveAssert(),
                     onReject: _ => rejectAssert(),
                     onUnknownRejection: rejectAssert);
-                promise.CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value));
+                promise
+                    .CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value))
+                    .Forget();
 
                 Assert.Throws<InvalidOperationException>(() =>
                     cancelationSource.Cancel("Different Cancel Value")
@@ -644,9 +652,9 @@ namespace Proto.Promises.Tests
 
                 int counter = 0;
 
-                promise.CatchCancelation(e => Assert.AreEqual(0, counter++));
-                promise.CatchCancelation(e => Assert.AreEqual(1, counter++));
-                promise.CatchCancelation(e => Assert.AreEqual(2, counter++));
+                promise.CatchCancelation(e => Assert.AreEqual(0, counter++)).Forget();
+                promise.CatchCancelation(e => Assert.AreEqual(1, counter++)).Forget();
+                promise.CatchCancelation(e => Assert.AreEqual(2, counter++)).Forget();
 
                 cancelationSource.Cancel();
                 Promise.Manager.HandleCompletes();

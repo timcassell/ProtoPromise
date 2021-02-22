@@ -649,15 +649,15 @@ namespace Proto.Promises.Tests
 
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
 
-            promise
+            deferred.Promise
                 .CatchCancelation(expected, (cv, reason) =>
                 {
                     Assert.AreEqual(expected, cv);
                     Assert.IsNull(reason.ValueType);
                     invoked = true;
-                });
+                })
+                .Forget();
 
             cancelationSource.Cancel();
             Promise.Manager.HandleCompletes();
@@ -665,7 +665,6 @@ namespace Proto.Promises.Tests
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-            promise.Forget();
         }
 
         [Test]
@@ -677,15 +676,15 @@ namespace Proto.Promises.Tests
 
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
 
-            promise
+            deferred.Promise
                 .CatchCancelation(expected, (cv, reason) =>
                 {
                     Assert.AreEqual(expected, cv);
                     Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
-                });
+                })
+                .Forget();
 
             cancelationSource.Cancel(cancelValue);
             Promise.Manager.HandleCompletes();
@@ -693,7 +692,6 @@ namespace Proto.Promises.Tests
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-            promise.Forget();
         }
 
         [Test]
@@ -704,15 +702,15 @@ namespace Proto.Promises.Tests
 
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
 
-            promise
+            deferred.Promise
                 .CatchCancelation(expected, (cv, reason) =>
                 {
                     Assert.AreEqual(expected, cv);
                     Assert.IsNull(reason.ValueType);
                     invoked = true;
-                });
+                })
+                .Forget();
 
             cancelationSource.Cancel();
             Promise.Manager.HandleCompletes();
@@ -720,7 +718,6 @@ namespace Proto.Promises.Tests
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-            promise.Forget();
         }
 
         [Test]
@@ -732,15 +729,15 @@ namespace Proto.Promises.Tests
 
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
 
-            promise
+            deferred.Promise
                 .CatchCancelation(expected, (cv, reason) =>
                 {
                     Assert.AreEqual(expected, cv);
                     Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
-                });
+                })
+                .Forget();
 
             cancelationSource.Cancel(cancelValue);
             Promise.Manager.HandleCompletes();
@@ -748,7 +745,6 @@ namespace Proto.Promises.Tests
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-            promise.Forget();
         }
 
         [Test]

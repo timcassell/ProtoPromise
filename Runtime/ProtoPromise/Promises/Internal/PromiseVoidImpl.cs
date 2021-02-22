@@ -34,39 +34,6 @@ namespace Proto.Promises
 #endif
                 }
 
-                internal static void CatchCancelation(Promise _this, Promise.CanceledAction onCanceled, CancelationToken cancelationToken)
-                {
-                    ValidateOperation(_this, 2);
-                    ValidateArgument(onCanceled, "onCanceled", 2);
-
-                    var _ref = _this._ref;
-                    if (_ref == null) return;
-
-                    _ref.IncrementId(_this._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
-                    var state = _ref._state;
-                    if (state == Promise.State.Pending | state == Promise.State.Canceled)
-                    {
-                        if (cancelationToken.CanBeCanceled)
-                        {
-                            if (cancelationToken.IsCancelationRequested)
-                            {
-                                // Don't hook up callback if token is already canceled.
-                                return;
-                            }
-                            var cancelDelegate = CancelDelegate<CancelDelegatePromiseCancel>.GetOrCreate();
-                            cancelDelegate.canceler = new CancelDelegatePromiseCancel(onCanceled, _ref);
-                            cancelationToken.TryRegisterInternal(cancelDelegate, out cancelDelegate.canceler.cancelationRegistration);
-                            _ref.AddWaiter(cancelDelegate);
-                        }
-                        else
-                        {
-                            var cancelDelegate = CancelDelegate<CancelDelegatePromise>.GetOrCreate();
-                            cancelDelegate.canceler = new CancelDelegatePromise(onCanceled);
-                            _ref.AddWaiter(cancelDelegate);
-                        }
-                    }
-                }
-
                 // Capture values below.
 
                 internal static void Progress<TCaptureProgress>(Promise _this, ref TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress, CancelationToken cancelationToken)
@@ -79,39 +46,6 @@ namespace Proto.Promises
 
                     SubscribeProgress(_this, progressCaptureValue, onProgress, cancelationToken);
 #endif
-                }
-
-                internal static void CatchCancelation<TCaptureCancel>(Promise _this, ref TCaptureCancel cancelCaptureValue, Promise.CanceledAction<TCaptureCancel> onCanceled, CancelationToken cancelationToken)
-                {
-                    ValidateOperation(_this, 2);
-                    ValidateArgument(onCanceled, "onCanceled", 2);
-
-                    var _ref = _this._ref;
-                    if (_ref == null) return;
-
-                    _ref.IncrementId(_this._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
-                    var state = _ref._state;
-                    if (state == Promise.State.Pending | state == Promise.State.Canceled)
-                    {
-                        if (cancelationToken.CanBeCanceled)
-                        {
-                            if (cancelationToken.IsCancelationRequested)
-                            {
-                                // Don't hook up callback if token is already canceled.
-                                return;
-                            }
-                            var cancelDelegate = CancelDelegate<CancelDelegatePromiseCancel<TCaptureCancel>>.GetOrCreate();
-                            cancelDelegate.canceler = new CancelDelegatePromiseCancel<TCaptureCancel>(ref cancelCaptureValue, onCanceled, _ref);
-                            cancelationToken.TryRegisterInternal(cancelDelegate, out cancelDelegate.canceler.cancelationRegistration);
-                            _ref.AddWaiter(cancelDelegate);
-                        }
-                        else
-                        {
-                            var cancelDelegate = CancelDelegate<CancelDelegatePromise<TCaptureCancel>>.GetOrCreate();
-                            cancelDelegate.canceler = new CancelDelegatePromise<TCaptureCancel>(ref cancelCaptureValue, onCanceled);
-                            _ref.AddWaiter(cancelDelegate);
-                        }
-                    }
                 }
             }
         }

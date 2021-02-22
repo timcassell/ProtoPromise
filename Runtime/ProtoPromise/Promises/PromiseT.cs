@@ -109,7 +109,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a progress listener. Returns <see cref="this"/>.
+        /// Add a progress listener. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/> that inherits the state of <see cref="this"/> and can be awaited once.
         /// <para/><paramref name="onProgress"/> will be invoked with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
@@ -124,15 +124,17 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a cancel callback. Returns <see cref="this"/>.
+        /// Add a cancel callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/> that inherits the state of <see cref="this"/> and can be awaited once.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with the cancelation reason.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
         public Promise<T> CatchCancelation(Promise.CanceledAction onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
-            Internal.PromiseRef.PromiseImplVoid.CatchCancelation(this, onCanceled, cancelationToken);
-            return this;
+            ValidateOperation(1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
+
+            return Internal.PromiseRef.CallbackHelper.AddCancel(this, new Internal.PromiseRef.DelegateCancel(onCanceled), cancelationToken);
         }
 
         /// <summary>
@@ -741,15 +743,17 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a cancel callback. Returns <see cref="this"/>.
+        /// Capture a value and add a cancel callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/> that inherits the state of <see cref="this"/> and can be awaited once.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and the cancelation reason.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
         public Promise<T> CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Promise.CanceledAction<TCaptureCancel> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
-            Internal.PromiseRef.PromiseImplVoid.CatchCancelation(this, ref cancelCaptureValue, onCanceled, cancelationToken);
-            return this;
+            ValidateOperation(1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
+
+            return Internal.PromiseRef.CallbackHelper.AddCancel(this, new Internal.PromiseRef.DelegateCaptureCancel<TCaptureCancel>(ref cancelCaptureValue, onCanceled), cancelationToken);
         }
 
         /// <summary>

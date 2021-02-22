@@ -111,16 +111,17 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a cancel callback. Returns <see cref="this"/>.
+        /// Add a cancel callback. Returns a new <see cref="Promise"/> that inherits the state of <see cref="this"/> and can be awaited once.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with the cancelation reason.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
         public Promise CatchCancelation(CanceledAction onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
-            // TODO: return a duplicate promise.
-            Internal.PromiseRef.PromiseImplVoid.CatchCancelation(this, onCanceled, cancelationToken);
-            return this;
+            ValidateOperation(1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
+
+            return Internal.PromiseRef.CallbackHelper.AddCancel(this, new Internal.PromiseRef.DelegateCancel(onCanceled), cancelationToken);
         }
 
         /// <summary>
@@ -729,15 +730,17 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a cancel callback. Returns <see cref="this"/>.
+        /// Capture a value and add a cancel callback. Returns a new <see cref="Promise"/> that inherits the state of <see cref="this"/> and can be awaited once.
         /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/> and the cancelation reason.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
         public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, CanceledAction<TCaptureCancel> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
-            Internal.PromiseRef.PromiseImplVoid.CatchCancelation(this, ref cancelCaptureValue, onCanceled, cancelationToken);
-            return this;
+            ValidateOperation(1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
+
+            return Internal.PromiseRef.CallbackHelper.AddCancel(this, new Internal.PromiseRef.DelegateCaptureCancel<TCaptureCancel>(ref cancelCaptureValue, onCanceled), cancelationToken);
         }
 
         /// <summary>

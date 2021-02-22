@@ -370,7 +370,7 @@ namespace Proto.Promises
             unhandledExceptions.Clear();
             throw ex;
 #else
-            // .Net 3.5 dumb compiler can't convert IEnumerable<UnhandledExceptionInternal> to IEnumerable<Exception>
+            // .Net 3.5 and earlier can't convert IEnumerable<UnhandledExceptionInternal> to IEnumerable<Exception>
             var exceptions = new List<Exception>();
             foreach (var ex in unhandledExceptions)
             {

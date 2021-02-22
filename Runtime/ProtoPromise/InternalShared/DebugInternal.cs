@@ -10,11 +10,23 @@
 #endif
 
 using Proto.Utils;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
     partial class Internal
     {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+        internal const MethodImplOptions InlineOption = MethodImplOptions.NoInlining;
+#else
+        internal const MethodImplOptions InlineOption = (MethodImplOptions) 256; // AggressiveInlining
+#endif
+
+#if PROMISE_DEBUG
+#endif
+
 #if !PROMISE_PROGRESS
         internal static void ThrowProgressException(int skipFrames)
         {
@@ -31,6 +43,39 @@ namespace Proto.Promises
         }
 
 #if PROMISE_DEBUG
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        internal class CausalityTrace
+        {
+            private readonly StackTrace _stackTrace;
+            private readonly CausalityTrace _next;
+
+            public CausalityTrace(StackTrace stackTrace, CausalityTrace higherStacktrace)
+            {
+                _stackTrace = stackTrace;
+                _next = higherStacktrace;
+            }
+
+            public override string ToString()
+            {
+                if (_stackTrace == null)
+                {
+                    return null;
+                }
+                List<StackTrace> stackTraces = new List<StackTrace>();
+                for (CausalityTrace current = this; current != null; current = current._next)
+                {
+                    if (current._stackTrace == null)
+                    {
+                        break;
+                    }
+                    stackTraces.Add(current._stackTrace);
+                }
+                return FormatStackTrace(stackTraces);
+            }
+        }
+
         internal static void ValidateProgressValue(float value, int skipFrames)
         {
             const string argName = "progress";

@@ -37,8 +37,6 @@ namespace Proto.Promises
             void MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer);
         }
 
-        public interface IDisposableTreeHandleable : ITreeHandleable, IDisposable { }
-
         public interface IRejectionToContainer
         {
             IRejectValueContainer ToContainer(ITraceable traceable);
@@ -74,12 +72,9 @@ namespace Proto.Promises
             void Dispose();
         }
 
-        internal interface IDelegateCancel
+        internal interface IDelegateSimple
         {
-            void InvokeFromToken(IValueContainer valueContainer, IDisposableTreeHandleable owner);
-            bool TryMakeReady(IValueContainer valueContainer, IDisposable owner);
-            void InvokeFromPromise(IDisposable owner);
-            void MaybeDispose(IDisposable owner);
+            void Invoke(IValueContainer valueContainer);
         }
 
         internal interface ICreator<T>

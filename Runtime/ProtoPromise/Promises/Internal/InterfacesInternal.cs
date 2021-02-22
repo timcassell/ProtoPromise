@@ -47,11 +47,6 @@
                 void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
                 bool IsNull { get; }
             }
-
-            internal interface IDelegateFinally
-            {
-                void Invoke(IValueContainer valueContainer, PromiseRef owner);
-            }
         }
     }
 }

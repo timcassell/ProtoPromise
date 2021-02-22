@@ -962,7 +962,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateFinally : IDelegateFinally
+            internal struct DelegateFinally : IDelegateSimple
             {
                 private readonly Action _callback;
 
@@ -973,10 +973,29 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer)
                 {
                     _callback.Invoke();
-                    owner.HandleSelf(valueContainer);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal struct DelegateCancel : IDelegateSimple
+            {
+                private readonly Promise.CanceledAction _callback;
+
+                [MethodImpl(InlineOption)]
+                public DelegateCancel(Promise.CanceledAction callback)
+                {
+                    _callback = callback;
+                }
+
+                [MethodImpl(InlineOption)]
+                public void Invoke(IValueContainer valueContainer)
+                {
+                    _callback.Invoke(new ReasonContainer(valueContainer));
                 }
             }
             #endregion
@@ -1820,7 +1839,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureFinally<TCapture> : IDelegateFinally
+            internal struct DelegateCaptureFinally<TCapture> : IDelegateSimple
             {
                 private readonly TCapture _capturedValue;
                 private readonly Action<TCapture> _callback;
@@ -1833,10 +1852,31 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer)
                 {
                     _callback.Invoke(_capturedValue);
-                    owner.HandleSelf(valueContainer);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal struct DelegateCaptureCancel<TCapture> : IDelegateSimple
+            {
+                private readonly TCapture _capturedValue;
+                private readonly Promise.CanceledAction<TCapture> _callback;
+
+                [MethodImpl(InlineOption)]
+                public DelegateCaptureCancel(ref TCapture capturedValue, Promise.CanceledAction<TCapture> callback)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                }
+
+                [MethodImpl(InlineOption)]
+                public void Invoke(IValueContainer valueContainer)
+                {
+                    _callback.Invoke(_capturedValue, new ReasonContainer(valueContainer));
                 }
             }
             #endregion

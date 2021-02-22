@@ -121,6 +121,8 @@ namespace Proto.Promises
                 get { return _idIncrementer == 0; }
             }
 
+            private PromiseRef() { }
+
             ~PromiseRef()
             {
                 if (IsPreserved)
@@ -200,7 +202,7 @@ namespace Proto.Promises
                     // Public APIs do a simple validation check in DEBUG mode, this is an extra thread-safe validation in case the same object is concurrently used and/or forgotten at the same time.
                     // This is left in RELEASE mode because concurrency issues can be very difficult to track down, and might not show up in DEBUG mode.
                     throw new InvalidOperationException("Attempted to use an invalid Promise. This may be because you are attempting to use a promise simultaneously on multiple threads that you have not preserved.",
-                        GetFormattedStacktrace(3));
+                        GetFormattedStacktrace(1));
                 }
                 ThrowIfInPool(this);
                 return newId;
@@ -232,11 +234,9 @@ namespace Proto.Promises
                 AddToHandleQueueBack(this);
             }
 
-            // TODO: Set back to private
-            internal bool TryRemoveWaiter(ITreeHandleable treeHandleable)
+            private bool TryRemoveWaiter(ITreeHandleable treeHandleable)
             {
                 // TODO: thread synchronization
-                ThrowIfInPool(this);
                 lock (_locker)
                 {
                     return _nextBranches.TryRemove(treeHandleable);
@@ -278,7 +278,7 @@ namespace Proto.Promises
                 }
             }
 
-            private void HookupNewCancelablePromise(PromiseRef newPromise, ref CancelationHelper cancelationHelper)
+            private void HookupNewCancelablePromise(PromiseRef newPromise)
             {
                 newPromise.SetDepth(this);
                 if (Interlocked.CompareExchange(ref newPromise._valueOrPrevious, this, null) == null)
@@ -287,7 +287,6 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    cancelationHelper.Release();
                     MaybeDispose();
                 }
             }
@@ -1053,7 +1052,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed class PromiseFinally<TFinalizer> : PromiseRef
-                where TFinalizer : IDelegateFinally
+                where TFinalizer : IDelegateSimple
             {
                 private struct Creator : ICreator<PromiseFinally<TFinalizer>>
                 {
@@ -1087,7 +1086,70 @@ namespace Proto.Promises
                 {
                     var callback = _finalizer;
                     _finalizer = default(TFinalizer);
-                    callback.Invoke(valueContainer, this);
+                    callback.Invoke(valueContainer);
+                    HandleSelf(valueContainer);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            private sealed class PromiseCancel<TCanceler> : PromiseRef, ITreeHandleable
+                where TCanceler : IDelegateSimple
+            {
+                private struct Creator : ICreator<PromiseCancel<TCanceler>>
+                {
+                    [MethodImpl(InlineOption)]
+                    public PromiseCancel<TCanceler> Create()
+                    {
+                        return new PromiseCancel<TCanceler>();
+                    }
+                }
+
+                private TCanceler _canceler;
+
+                private PromiseCancel() { }
+
+                [MethodImpl(InlineOption)]
+                public static PromiseCancel<TCanceler> GetOrCreate(TCanceler canceler)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseCancel<TCanceler>, Creator>(new Creator());
+                    promise.Reset();
+                    promise._canceler = canceler;
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                void ITreeHandleable.Handle()
+                {
+                    ThrowIfInPool(this);
+                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
+
+                    if (valueContainer.GetState() != Promise.State.Canceled)
+                    {
+                        HandleSelf(valueContainer);
+                        return;
+                    }
+
+                    var callback = _canceler;
+                    _canceler = default(TCanceler);
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        callback.Invoke(valueContainer);
+                    }
+                    catch (Exception e)
+                    {
+                        AddRejectionToUnhandledStack(e, this);
+                    }
+                    ClearCurrentInvoker();
+
+                    HandleSelf(valueContainer);
                 }
             }
 

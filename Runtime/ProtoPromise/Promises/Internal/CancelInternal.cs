@@ -13,6 +13,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using Proto.Utils;
+using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -133,7 +134,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public bool Release()
+                private bool Release()
                 {
                     return Interlocked.Decrement(ref _retainCounter) == 0;
                 }
@@ -181,7 +182,7 @@ namespace Proto.Promises
                     object oldContainer = owner._valueOrPrevious;
                     bool _, isCancelationRequested;
                     _cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out _, out isCancelationRequested);
-                    if (!isCancelationRequested & !_isCanceled) // Was the token canceled or in the process of canceling?
+                    if (!isCancelationRequested & !_isCanceled) // Was the token not in the process of canceling and not already canceled?
                     {
                         valueContainer.Retain();
                         if (Interlocked.CompareExchange(ref owner._valueOrPrevious, valueContainer, oldContainer) == oldContainer) // Are we able to set the value container before the token?
@@ -202,7 +203,7 @@ namespace Proto.Promises
 
                 internal bool TryUnregister(PromiseRef owner)
                 {
-                    bool unregistered = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !_isCanceled;
+                    bool unregistered = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) && !_isCanceled;
                     if (!unregistered)
                     {
                         if (Release() && _isCanceled)
@@ -241,14 +242,6 @@ namespace Proto.Promises
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
-                    return promise;
-                }
-
-                [MethodImpl(InlineOption)]
-                public static CancelablePromiseResolve<TResolver> GetOrCreateAndHookup(TResolver resolver, CancelationToken cancelationToken, PromiseRef previous)
-                {
-                    var promise = GetOrCreate(resolver, cancelationToken);
-                    previous.HookupNewCancelablePromise(promise, ref promise._cancelationHelper);
                     return promise;
                 }
 
@@ -326,14 +319,6 @@ namespace Proto.Promises
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
-                    return promise;
-                }
-
-                [MethodImpl(InlineOption)]
-                public static CancelablePromiseResolvePromise<TResolver> GetOrCreateAndHookup(TResolver resolver, CancelationToken cancelationToken, PromiseRef previous)
-                {
-                    var promise = GetOrCreate(resolver, cancelationToken);
-                    previous.HookupNewCancelablePromise(promise, ref promise._cancelationHelper);
                     return promise;
                 }
 
@@ -425,14 +410,6 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                [MethodImpl(InlineOption)]
-                public static CancelablePromiseResolveReject<TResolver, TRejecter> GetOrCreateAndHookup(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken, PromiseRef previous)
-                {
-                    var promise = GetOrCreate(resolver, rejecter, cancelationToken);
-                    previous.HookupNewCancelablePromise(promise, ref promise._cancelationHelper);
-                    return promise;
-                }
-
                 protected override void Dispose()
                 {
                     base.Dispose();
@@ -518,14 +495,6 @@ namespace Proto.Promises
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
-                    return promise;
-                }
-
-                [MethodImpl(InlineOption)]
-                public static CancelablePromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreateAndHookup(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken, PromiseRef previous)
-                {
-                    var promise = GetOrCreate(resolver, rejecter, cancelationToken);
-                    previous.HookupNewCancelablePromise(promise, ref promise._cancelationHelper);
                     return promise;
                 }
 
@@ -622,14 +591,6 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                [MethodImpl(InlineOption)]
-                public static CancelablePromiseContinue<TContinuer> GetOrCreateAndHookup(TContinuer continuer, CancelationToken cancelationToken, PromiseRef previous)
-                {
-                    var promise = GetOrCreate(continuer, cancelationToken);
-                    previous.HookupNewCancelablePromise(promise, ref promise._cancelationHelper);
-                    return promise;
-                }
-
                 protected override void Dispose()
                 {
                     base.Dispose();
@@ -699,14 +660,6 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                [MethodImpl(InlineOption)]
-                public static CancelablePromiseContinuePromise<TContinuer> GetOrCreateAndHookup(TContinuer continuer, CancelationToken cancelationToken, PromiseRef previous)
-                {
-                    var promise = GetOrCreate(continuer, cancelationToken);
-                    previous.HookupNewCancelablePromise(promise, ref promise._cancelationHelper);
-                    return promise;
-                }
-
                 protected override void Dispose()
                 {
                     base.Dispose();
@@ -754,6 +707,100 @@ namespace Proto.Promises
 
                 void ICancelDelegate.Dispose() { }
             }
-        }
-    }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            private sealed class CancelablePromiseCancel<TCanceler> : PromiseRef, ITreeHandleable, ICancelDelegate
+                where TCanceler : IDelegateSimple
+            {
+                private struct Creator : ICreator<CancelablePromiseCancel<TCanceler>>
+                {
+                    [MethodImpl(InlineOption)]
+                    public CancelablePromiseCancel<TCanceler> Create()
+                    {
+                        return new CancelablePromiseCancel<TCanceler>();
+                    }
+                }
+
+                private CancelationHelper _cancelationHelper;
+                private TCanceler _canceler;
+
+                private CancelablePromiseCancel() { }
+
+                [MethodImpl(InlineOption)]
+                public static CancelablePromiseCancel<TCanceler> GetOrCreate(TCanceler canceler, CancelationToken cancelationToken)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseCancel<TCanceler>, Creator>(new Creator());
+                    promise.Reset();
+                    promise._canceler = canceler;
+                    promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        handleQueue.Push(this);
+                    }
+                }
+
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                {
+                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
+                    {
+                        owner._suppressRejection = true;
+                        AddToHandleQueueBack(this);
+                    }
+                }
+
+                void ITreeHandleable.Handle()
+                {
+                    ThrowIfInPool(this);
+                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
+
+                    if (valueContainer.GetState() != Promise.State.Canceled)
+                    {
+                        HandleSelf(valueContainer);
+                        return;
+                    }
+
+                    var callback = _canceler;
+                    _canceler = default(TCanceler);
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        if (!_cancelationHelper.TryUnregister(this))
+                        {
+                            ClearCurrentInvoker();
+                            return;
+                        }
+                        callback.Invoke(valueContainer);
+                    }
+                    catch (Exception e)
+                    {
+                        AddRejectionToUnhandledStack(e, this);
+                    }
+                    ClearCurrentInvoker();
+
+                    HandleSelf(valueContainer);
+                }
+
+                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                {
+                    _cancelationHelper.SetCanceled(this, valueContainer);
+                }
+
+                void ICancelDelegate.Dispose() { }
+            }
+        } // PromiseRef
+    } // Internal
 }

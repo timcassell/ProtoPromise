@@ -54,6 +54,7 @@ namespace Proto.Promises.Tests.Threading
                     () =>
                     {
                         cancelationSource.Dispose();
+                        Promise.Manager.HandleCompletes();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -92,6 +93,7 @@ namespace Proto.Promises.Tests.Threading
                     () =>
                     {
                         cancelationSource.Dispose();
+                        Promise.Manager.HandleCompletes();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -130,6 +132,7 @@ namespace Proto.Promises.Tests.Threading
                     () =>
                     {
                         cancelationSource.Dispose();
+                        Promise.Manager.HandleCompletes();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -168,6 +171,7 @@ namespace Proto.Promises.Tests.Threading
                     () =>
                     {
                         cancelationSource.Dispose();
+                        Promise.Manager.HandleCompletes();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -182,6 +186,7 @@ namespace Proto.Promises.Tests.Threading
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
+            bool completed = false;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -194,11 +199,17 @@ namespace Proto.Promises.Tests.Threading
                     deferred.Promise
                         .CatchCancelation(_ => { }, cancelationSource.Token)
                         .CatchCancelation(1, (cv, _) => { }, cancelationSource.Token)
+                        .Finally(() => completed = true) // Make sure it completes.
                         .Forget();
                     deferred.Cancel(1);
                 },
                 // Teardown
-                () => cancelationSource.Dispose(),
+                () =>
+                {
+                    cancelationSource.Dispose();
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(completed);
+                },
                 // Parallel actions
                 () => cancelationSource.Cancel(),
                 () => Promise.Manager.HandleCompletes()
@@ -210,6 +221,7 @@ namespace Proto.Promises.Tests.Threading
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
+            bool completed = false;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -222,11 +234,17 @@ namespace Proto.Promises.Tests.Threading
                     deferred.Promise
                         .CatchCancelation(_ => { }, cancelationSource.Token)
                         .CatchCancelation(1, (cv, _) => { }, cancelationSource.Token)
+                        .Finally(() => completed = true) // Make sure it completes.
                         .Forget();
                     deferred.Cancel(1);
                 },
                 // Teardown
-                () => cancelationSource.Dispose(),
+                () =>
+                {
+                    cancelationSource.Dispose();
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(completed);
+                },
                 // Parallel actions
                 () => cancelationSource.Cancel(),
                 () => Promise.Manager.HandleCompletes()
@@ -239,6 +257,7 @@ namespace Proto.Promises.Tests.Threading
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
+            bool completed = false;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -251,6 +270,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred.Promise
                         .Progress(_ => { }, cancelationSource.Token)
                         .Progress(1, (cv, _) => { }, cancelationSource.Token)
+                        .Finally(() => completed = true) // Make sure it completes.
                         .Forget();
                 },
                 // Teardown
@@ -259,6 +279,7 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource.Dispose();
                     deferred.Resolve();
                     Promise.Manager.HandleCompletesAndProgress();
+                    Assert.IsTrue(completed);
                 },
                 // Parallel actions
                 () => cancelationSource.Cancel(),
@@ -271,6 +292,7 @@ namespace Proto.Promises.Tests.Threading
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
+            bool completed = false;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -283,6 +305,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred.Promise
                         .Progress(_ => { }, cancelationSource.Token)
                         .Progress(1, (cv, _) => { }, cancelationSource.Token)
+                        .Finally(() => completed = true) // Make sure it completes.
                         .Forget();
                 },
                 // Teardown
@@ -291,6 +314,7 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource.Dispose();
                     deferred.Resolve(1);
                     Promise.Manager.HandleCompletesAndProgress();
+                    Assert.IsTrue(completed);
                 },
                 // Parallel actions
                 () => cancelationSource.Cancel(),
