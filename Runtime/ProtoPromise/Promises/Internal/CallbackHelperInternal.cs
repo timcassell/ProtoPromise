@@ -1,4 +1,11 @@
-﻿using System.Runtime.CompilerServices;
+﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+#endif
+
+using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -514,6 +521,40 @@ namespace Proto.Promises
                     }
                     return new Promise(promise, promise.Id);
                 }
+
+#if PROMISE_PROGRESS
+                [MethodImpl(InlineOption)]
+                internal static Promise AddProgress<TProgress>(Promise _this, TProgress progress, CancelationToken cancelationToken)
+                    where TProgress : IProgress<float>
+                {
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return _this.Duplicate();
+                    }
+
+                    PromiseProgress<TProgress> promise;
+                    if (_this._ref == null)
+                    {
+                        promise = PromiseProgress<TProgress>.GetOrCreate(progress, _this._ref, cancelationToken);
+                        promise.SetDepth();
+                        promise._valueOrPrevious = ResolveContainerVoid.GetOrCreate();
+                        AddToHandleQueueBack(promise);
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                        promise = PromiseProgress<TProgress>.GetOrCreate(progress, _this._ref, cancelationToken);
+                        promise.SetDepth(_this._ref);
+                        promise._valueOrPrevious = _this._ref;
+                        if (_this._ref._state == Promise.State.Pending)
+                        {
+                            SubscribeListenerToTree(_this._ref, promise);
+                        }
+                        _this._ref.AddWaiter(promise);
+                    }
+                    return new Promise(promise, promise.Id);
+                }
+#endif
                 #endregion
 
                 #region Promise<T>
@@ -1032,6 +1073,40 @@ namespace Proto.Promises
                     }
                     return new Promise<TResult>(promise, promise.Id);
                 }
+
+#if PROMISE_PROGRESS
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddProgress<TResult, TProgress>(Promise<TResult> _this, TProgress progress, CancelationToken cancelationToken)
+                    where TProgress : IProgress<float>
+                {
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return _this.Duplicate();
+                    }
+
+                    PromiseProgress<TProgress> promise;
+                    if (_this._ref == null)
+                    {
+                        promise = PromiseProgress<TProgress>.GetOrCreate(progress, _this._ref, cancelationToken);
+                        promise.SetDepth();
+                        promise._valueOrPrevious = ResolveContainerVoid.GetOrCreate();
+                        AddToHandleQueueBack(promise);
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this._id);
+                        promise = PromiseProgress<TProgress>.GetOrCreate(progress, _this._ref, cancelationToken);
+                        promise.SetDepth(_this._ref);
+                        promise._valueOrPrevious = _this._ref;
+                        if (_this._ref._state == Promise.State.Pending)
+                        {
+                            SubscribeListenerToTree(_this._ref, promise);
+                        }
+                        _this._ref.AddWaiter(promise);
+                    }
+                    return new Promise<TResult>(promise, promise.Id);
+                }
+#endif
                 #endregion
             } // CallbackHelper
         } // PromiseRef

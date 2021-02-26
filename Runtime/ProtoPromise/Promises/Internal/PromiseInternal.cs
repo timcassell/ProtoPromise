@@ -1316,7 +1316,7 @@ namespace Proto.Promises
             return deferred.Promise;
 #else
             // Make a promise on the stack for efficiency.
-            return new Promise(null, ValidPromiseIdFromApi);
+            return new Promise(null, ValidIdFromApi);
 #endif
         }
 
@@ -1330,7 +1330,7 @@ namespace Proto.Promises
             return deferred.Promise;
 #else
             // Make a promise on the stack for efficiency.
-            return new Promise<T>(null, ValidPromiseIdFromApi, ref value);
+            return new Promise<T>(null, ValidIdFromApi, ref value);
 #endif
         }
     }

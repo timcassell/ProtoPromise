@@ -485,7 +485,7 @@ namespace Proto.Promises.Async.CompilerServices
         {
             if (_ref is null)
             {
-                _id = Internal.ValidPromiseIdFromApi;
+                _id = Internal.ValidIdFromApi;
             }
             else
             {
@@ -573,7 +573,7 @@ namespace Proto.Promises.Async.CompilerServices
             if (_ref is null)
             {
                 _result = result;
-                _id = Internal.ValidPromiseIdFromApi;
+                _id = Internal.ValidIdFromApi;
             }
             else
             {

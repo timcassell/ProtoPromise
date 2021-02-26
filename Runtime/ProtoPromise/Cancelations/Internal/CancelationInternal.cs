@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Collections.Generic;
@@ -103,9 +104,6 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     SetCurrentInvoker(this);
                     var canceler = _canceler;
-#if PROMISE_DEBUG
-                    var traceContainer = new CausalityTraceContainer(this); // Store the causality trace so that this can be disposed before the callback is invoked.
-#endif
                     Dispose();
                     try
                     {
@@ -264,7 +262,6 @@ namespace Proto.Promises
                 }
                 try
                 {
-                    Thread.MemoryBarrier();
                     var temp = _valueContainer;
                     if (temp != null & temp != DisposedRef.instance)
                     {
@@ -286,7 +283,6 @@ namespace Proto.Promises
                     type = null;
                     return false;
                 }
-                Thread.MemoryBarrier();
                 var temp = _valueContainer;
                 bool isCanceled = temp != null & temp != DisposedRef.instance;
                 type = isCanceled ? temp.ValueType : null;
@@ -303,7 +299,6 @@ namespace Proto.Promises
                     value = null;
                     return false;
                 }
-                Thread.MemoryBarrier();
                 var temp = _valueContainer;
                 bool isCanceled = temp != null & temp != DisposedRef.instance;
                 value = isCanceled ? temp.Value : null;
@@ -320,7 +315,6 @@ namespace Proto.Promises
                     value = default(T);
                     return didConvert = false;
                 }
-                Thread.MemoryBarrier();
                 var temp = _valueContainer;
                 if (temp == null | temp == DisposedRef.instance)
                 {

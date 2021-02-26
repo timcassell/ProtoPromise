@@ -151,56 +151,6 @@ namespace Proto.Promises
                 //return (previous = _valueOrPrevious as PromiseRef) != null;
             }
 
-            private static void SubscribeProgress(Promise promise, Action<float> onProgress, CancelationToken cancelationToken)
-            {
-                var _ref = promise._ref;
-                if (cancelationToken.IsCancelationRequested)
-                {
-                    return;
-                }
-                if (_ref == null)
-                {
-                    AddToHandleQueueBack(ProgressDelegate.GetOrCreate(onProgress, _ref));
-                    return;
-                }
-                _ref.IncrementId(promise._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
-                if (_ref._state == Promise.State.Resolved)
-                {
-                    AddToHandleQueueBack(ProgressDelegate.GetOrCreate(onProgress, _ref));
-                }
-                else if (_ref._state == Promise.State.Pending)
-                {
-                    SubscribeListenerToTree(_ref, ProgressDelegate.GetOrCreate(onProgress, _ref, cancelationToken));
-                }
-
-                // Don't report progress if the promise is canceled or rejected.
-            }
-
-            private static void SubscribeProgress<TCapture>(Promise promise, TCapture capturedValue, Action<TCapture, float> onProgress, CancelationToken cancelationToken)
-            {
-                var _ref = promise._ref;
-                if (cancelationToken.IsCancelationRequested)
-                {
-                    return;
-                }
-                if (_ref == null)
-                {
-                    AddToHandleQueueBack(ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, _ref));
-                    return;
-                }
-                _ref.IncrementId(promise._id, 0); // Increment 0 just as an extra thread safety validation in RELEASE mode.
-                if (_ref._state == Promise.State.Resolved)
-                {
-                    AddToHandleQueueBack(ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, _ref));
-                }
-                else if (_ref._state == Promise.State.Pending)
-                {
-                    SubscribeListenerToTree(_ref, ProgressDelegateCapture<TCapture>.GetOrCreate(capturedValue, onProgress, _ref, cancelationToken));
-                }
-
-                // Don't report progress if the promise is canceled or rejected.
-            }
-
             private static void SubscribeListenerToTree(PromiseRef _ref, IProgressListener progressListener)
             {
                 // Directly add to listeners for this promise.
@@ -314,7 +264,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            public struct UnsignedFixed32
+            internal struct UnsignedFixed32
             {
                 private const double DecimalMax = 1u << Promise.Config.ProgressDecimalBits;
                 private const uint DecimalMask = (1u << Promise.Config.ProgressDecimalBits) - 1u;
@@ -322,12 +272,12 @@ namespace Proto.Promises
 
                 private readonly uint _value;
 
-                public UnsignedFixed32(uint wholePart)
+                internal UnsignedFixed32(uint wholePart)
                 {
                     _value = wholePart << Promise.Config.ProgressDecimalBits;
                 }
 
-                public UnsignedFixed32(double value)
+                internal UnsignedFixed32(double value)
                 {
                     // Don't bother rounding, we don't want to accidentally round to 1.0.
                     _value = (uint) (value * DecimalMax);
@@ -338,27 +288,27 @@ namespace Proto.Promises
                     _value = value;
                 }
 
-                public uint WholePart { get { return _value >> Promise.Config.ProgressDecimalBits; } }
+                internal uint WholePart { get { return _value >> Promise.Config.ProgressDecimalBits; } }
                 private double DecimalPart { get { return (double) DecimalPartAsUInt32 / DecimalMax; } }
                 private uint DecimalPartAsUInt32 { get { return _value & DecimalMask; } }
 
-                public uint ToUInt32()
+                internal uint ToUInt32()
                 {
                     return _value;
                 }
 
-                public double ToDouble()
+                internal double ToDouble()
                 {
                     return (double) WholePart + DecimalPart;
                 }
 
-                public UnsignedFixed32 WithNewDecimalPart(double decimalPart)
+                internal UnsignedFixed32 WithNewDecimalPart(double decimalPart)
                 {
                     uint newDecimalPart = (uint) (decimalPart * DecimalMax);
                     return new UnsignedFixed32((_value & WholeMask) | newDecimalPart, true);
                 }
 
-                public UnsignedFixed32 GetIncrementedWholeTruncated()
+                internal UnsignedFixed32 GetIncrementedWholeTruncated()
                 {
 #if PROMISE_DEBUG
                     checked
@@ -386,41 +336,41 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            public struct UnsignedFixed64 // Simplified compared to UnsignedFixed32 to remove unused functions.
+            internal struct UnsignedFixed64 // Simplified compared to UnsignedFixed32 to remove unused functions.
             {
                 private const double DecimalMax = 1ul << Promise.Config.ProgressDecimalBits;
                 private const ulong DecimalMask = (1ul << Promise.Config.ProgressDecimalBits) - 1ul;
 
                 private ulong _value;
 
-                public UnsignedFixed64(ulong wholePart)
+                internal UnsignedFixed64(ulong wholePart)
                 {
                     _value = wholePart << Promise.Config.ProgressDecimalBits;
                 }
 
-                public ulong WholePart { get { return _value >> Promise.Config.ProgressDecimalBits; } }
+                internal ulong WholePart { get { return _value >> Promise.Config.ProgressDecimalBits; } }
                 private double DecimalPart { get { return (double) DecimalPartAsUInt32 / DecimalMax; } }
                 private ulong DecimalPartAsUInt32 { get { return _value & DecimalMask; } }
 
-                public double ToDouble()
+                internal double ToDouble()
                 {
                     // TODO: thread synchronization.
                     return (double) WholePart + DecimalPart;
                 }
 
-                public void Increment(uint increment)
+                internal void Increment(uint increment)
                 {
                     // TODO: thread synchronization.
                     _value += increment;
                 }
             }
 
-            public interface IInvokable
+            internal interface IInvokable
             {
                 void Invoke();
             }
 
-            public interface IProgressListener
+            internal interface IProgressListener
             {
                 void SetInitialProgress(UnsignedFixed32 progress);
                 void SetProgress(PromiseRef sender, UnsignedFixed32 progress);
@@ -436,42 +386,65 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            public abstract class ProgressDelegateBase : IProgressListener, ITreeHandleable, IInvokable, ITraceable, ICancelDelegate
+            internal sealed class PromiseProgress<TProgress> : PromiseRef, IProgressListener, ITreeHandleable, IInvokable, ITraceable, ICancelDelegate
+                where TProgress : IProgress<float>
             {
+                private struct Creator : ICreator<PromiseProgress<TProgress>>
+                {
+                    [MethodImpl(InlineOption)]
+                    public PromiseProgress<TProgress> Create()
+                    {
+                        return new PromiseProgress<TProgress>();
+                    }
+                }
+
 #if PROMISE_DEBUG
                 CausalityTrace ITraceable.Trace { get; set; }
 #endif
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
                 // TODO: thread synchronization.
+                private TProgress _progress;
                 private PromiseRef _owner;
                 private UnsignedFixed32 _current;
                 private bool _handling;
                 private bool _done;
                 private bool _canceled;
+                private bool _canceledFromToken;
                 private CancelationRegistration _cancelationRegistration;
 
-                protected ProgressDelegateBase() { }
+                private PromiseProgress() { }
 
-                protected void Reset(PromiseRef owner, CancelationToken cancelationToken)
+                internal static PromiseProgress<TProgress> GetOrCreate(TProgress progress, PromiseRef owner, CancelationToken cancelationToken = default(CancelationToken))
                 {
-                    _owner = owner;
-                    _handling = false;
-                    _done = false;
-                    _canceled = false;
-                    _current = default(UnsignedFixed32);
-                    SetCreatedStacktrace(this, 4);
-                    cancelationToken.TryRegisterInternal(this, out _cancelationRegistration);
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseProgress<TProgress>, Creator>(new Creator());
+                    promise.Reset();
+                    promise._progress = progress;
+                    promise._owner = owner;
+                    promise._handling = false;
+                    promise._done = false;
+                    promise._canceled = false;
+                    promise._canceledFromToken = false;
+                    promise._current = default(UnsignedFixed32);
+                    cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
+                    return promise;
                 }
 
-                protected abstract void Invoke(float progress);
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    _owner = null;
+                    _cancelationRegistration = default(CancelationRegistration);
+                    _progress = default(TProgress);
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
 
                 private void InvokeAndCatch(float progress)
                 {
                     SetCurrentInvoker(this);
                     try
                     {
-                        Invoke(progress);
+                        _progress.Report(progress);
                     }
                     catch (Exception e)
                     {
@@ -486,10 +459,10 @@ namespace Proto.Promises
                     _handling = false;
                     if (_done)
                     {
-                        Dispose();
+                        MaybeDispose();
                         return;
                     }
-                    if (_canceled)
+                    if (_canceled | _canceledFromToken)
                     {
                         return;
                     }
@@ -503,7 +476,7 @@ namespace Proto.Promises
                 private void SetProgress(UnsignedFixed32 progress)
                 {
                     _current = progress;
-                    if (!_handling & !_canceled)
+                    if (!_handling & !_canceled & !_canceledFromToken)
                     {
                         _handling = true;
                         // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
@@ -520,11 +493,10 @@ namespace Proto.Promises
                 void IProgressListener.ResolveOrSetProgress(PromiseRef sender, UnsignedFixed32 progress)
                 {
                     ThrowIfInPool(this);
-                    if (sender == _owner & !_canceled)
+                    if (sender == _owner)
                     {
-                        // Add to front of handle queue to invoke this with a value of 1.
+                        // PromiseRef will have already made ready, just set _canceled to prevent progress queue from invoking.
                         _canceled = true;
-                        AddToHandleQueueFront(this);
                     }
                     else
                     {
@@ -546,8 +518,8 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (sender == _owner)
                     {
+                        // PromiseRef will have already made ready, just set _canceled to prevent progress queue from invoking.
                         _canceled = true;
-                        MarkOrDispose();
                     }
                     else
                     {
@@ -565,119 +537,46 @@ namespace Proto.Promises
                     else
                     {
                         // Dispose only if it's not in the progress queue.
-                        Dispose();
+                        MaybeDispose();
                     }
                 }
 
                 void ITreeHandleable.Handle()
                 {
                     ThrowIfInPool(this);
-                    // TODO
-                    //if (TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !_canceled)
-                    _cancelationRegistration.TryUnregister();
-                    InvokeAndCatch(1f);
+                    // TODO: handle thread race conditions (don't dispose early)
+                    bool notCanceled = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !_canceledFromToken;
                     _canceled = true;
-                    MarkOrDispose();
-                }
 
-                protected virtual void Dispose()
-                {
-                    _owner = null;
-                    _cancelationRegistration = default(CancelationRegistration);
+                    // HandleSelf
+                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
+                    _state = valueContainer.GetState();
+                    if (_state == Promise.State.Resolved)
+                    {
+                        if (notCanceled)
+                        {
+                            InvokeAndCatch(1f);
+                        }
+                        HandleBranches(valueContainer);
+                        ResolveProgressListeners();
+                    }
+                    else
+                    {
+                        HandleBranches(valueContainer);
+                        CancelProgressListeners(null);
+                    }
+
+                    MarkOrDispose();
                 }
 
                 void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
                 {
                     ThrowIfInPool(this);
-                    // TODO: Remove this from the owner's progress listeners and dispose.
-                    _canceled = true;
+                    // TODO: Remove this from the owner's progress listeners.
+                    _canceledFromToken = true;
                 }
 
                 void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
-
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue) { throw new System.InvalidOperationException(); }
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer) { throw new System.InvalidOperationException(); }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            public sealed class ProgressDelegate : ProgressDelegateBase
-            {
-                private struct Creator : ICreator<ProgressDelegate>
-                {
-                    [MethodImpl(InlineOption)]
-                    public ProgressDelegate Create()
-                    {
-                        return new ProgressDelegate();
-                    }
-                }
-
-                private Action<float> _onProgress;
-
-                private ProgressDelegate() { }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    _onProgress = null;
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
-                }
-
-                public static ProgressDelegate GetOrCreate(Action<float> onProgress, PromiseRef owner, CancelationToken cancelationToken = default(CancelationToken))
-                {
-                    var progress = ObjectPool<ITreeHandleable>.GetOrCreate<ProgressDelegate, Creator>(new Creator());
-                    progress._onProgress = onProgress;
-                    progress.Reset(owner, cancelationToken);
-                    return progress;
-                }
-
-                protected override void Invoke(float progress)
-                {
-                    _onProgress.Invoke(progress);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            public sealed class ProgressDelegateCapture<TCapture> : ProgressDelegateBase
-            {
-                private struct Creator : ICreator<ProgressDelegateCapture<TCapture>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public ProgressDelegateCapture<TCapture> Create()
-                    {
-                        return new ProgressDelegateCapture<TCapture>();
-                    }
-                }
-
-                private TCapture _capturedValue;
-                private Action<TCapture, float> _onProgress;
-
-                private ProgressDelegateCapture() { }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    _capturedValue = default(TCapture);
-                    _onProgress = null;
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
-                }
-
-                public static ProgressDelegateCapture<TCapture> GetOrCreate(TCapture capturedValue, Action<TCapture, float> onProgress, PromiseRef owner, CancelationToken cancelationToken = default(CancelationToken))
-                {
-                    var progress = ObjectPool<ITreeHandleable>.GetOrCreate<ProgressDelegateCapture<TCapture>, Creator>(new Creator());
-                    progress._capturedValue = capturedValue;
-                    progress._onProgress = onProgress;
-                    progress.Reset(owner, cancelationToken);
-                    return progress;
-                }
-
-                protected override void Invoke(float progress)
-                {
-                    _onProgress.Invoke(_capturedValue, progress);
-                }
             }
 
             partial class PromiseWaitPromise : IProgressListener
@@ -796,10 +695,10 @@ namespace Proto.Promises
 
             partial class DeferredPromiseBase
             {
-                public bool TryReportProgress(float progress, int deferredId)
+                internal bool TryReportProgress(float progress, int deferredId)
                 {
-                    ThrowIfInPool(this);
                     if (deferredId != _deferredId) return false;
+                    ThrowIfInPool(this);
 
                     // Don't report progress 1.0, that will be reported automatically when the promise is resolved.
                     if (progress >= 1f) return true;
@@ -866,7 +765,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public uint GetProgressDifferenceToCompletion()
+                internal uint GetProgressDifferenceToCompletion()
                 {
                     ThrowIfInPool(this);
                     return Owner._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32() - _currentProgress.ToUInt32();

@@ -95,8 +95,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a progress listener. Returns <see cref="this"/>.
-        /// <para/><paramref name="onProgress"/> will be invoked with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// Add a progress listener. Returns a new <see cref="Promise"/>.
+        /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// 
+        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
@@ -105,9 +109,15 @@ namespace Proto.Promises
 #endif
         public Promise Progress(Action<float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
-            // TODO: return a duplicate promise.
-            Internal.PromiseRef.PromiseImplVoid.Progress(this, onProgress, cancelationToken);
-            return this;
+#if !PROMISE_PROGRESS
+            Internal.ThrowProgressException(1);
+            return default(Promise);
+#else
+            ValidateOperation(1);
+            ValidateArgument(onProgress, "onProgress", 1);
+
+            return Internal.PromiseRef.CallbackHelper.AddProgress(this, new Internal.PromiseRef.DelegateProgress(onProgress), cancelationToken);
+#endif
         }
 
         /// <summary>
@@ -715,8 +725,12 @@ namespace Proto.Promises
         // Capture values below.
 
         /// <summary>
-        /// Capture a value and add a progress listener. Returns <see cref="this"/>.
+        /// Capture a value and add a progress listener. Returns a new <see cref="Promise"/>.
         /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// 
+        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
@@ -725,8 +739,15 @@ namespace Proto.Promises
 #endif
         public Promise Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
-            Internal.PromiseRef.PromiseImplVoid.Progress(this, ref progressCaptureValue, onProgress, cancelationToken);
-            return this;
+#if !PROMISE_PROGRESS
+            Internal.ThrowProgressException(1);
+            return default(Promise);
+#else
+            ValidateOperation(1);
+            ValidateArgument(onProgress, "onProgress", 1);
+
+            return Internal.PromiseRef.CallbackHelper.AddProgress(this, new Internal.PromiseRef.DelegateCaptureProgress<TCaptureProgress>(ref progressCaptureValue, onProgress), cancelationToken);
+#endif
         }
 
         /// <summary>

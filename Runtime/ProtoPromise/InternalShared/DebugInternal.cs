@@ -97,16 +97,6 @@ namespace Proto.Promises
             }
         }
 
-        internal struct CausalityTraceContainer : ITraceable
-        {
-            public CausalityTrace Trace { get; set; }
-
-            public CausalityTraceContainer(ITraceable traceable)
-            {
-                Trace = traceable.Trace;
-            }
-        }
-
         partial class PromiseRef
         {
             CausalityTrace ITraceable.Trace { get; set; }

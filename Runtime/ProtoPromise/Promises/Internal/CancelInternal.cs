@@ -152,7 +152,7 @@ namespace Proto.Promises
                     if (currentValue is PromiseRef previous)
 #else
                     PromiseRef previous = currentValue as PromiseRef;
-                    if (_ref != null)
+                    if (previous != null)
 #endif
                     {
                         // Try to remove owner from previous' next branches.

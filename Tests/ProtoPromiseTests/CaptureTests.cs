@@ -595,14 +595,14 @@ namespace Proto.Promises.Tests
             bool invoked = false;
 
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
 
-            promise
+            deferred.Promise
                 .Progress(expected, (cv, progress) =>
                 {
                     Assert.AreEqual(expected, cv);
                     invoked = true;
-                });
+                })
+                .Forget();
 
             deferred.ReportProgress(0.5f);
             Promise.Manager.HandleCompletesAndProgress();
@@ -610,8 +610,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
 
             Assert.IsTrue(invoked);
-
-            promise.Forget();
         }
 
         [Test]
@@ -621,14 +619,14 @@ namespace Proto.Promises.Tests
             bool invoked = false;
 
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
 
-            promise
+            deferred.Promise
                 .Progress(expected, (cv, progress) =>
                 {
                     Assert.AreEqual(expected, cv);
                     invoked = true;
-                });
+                })
+                .Forget();
 
             deferred.ReportProgress(0.5f);
             Promise.Manager.HandleCompletesAndProgress();
@@ -636,8 +634,6 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
 
             Assert.IsTrue(invoked);
-
-            promise.Forget();
         }
 #endif
 

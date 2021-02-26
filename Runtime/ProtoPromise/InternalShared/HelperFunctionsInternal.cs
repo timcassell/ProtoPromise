@@ -10,12 +10,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Proto.Utils;
 
 #if PROMISE_DEBUG
 using System.Linq;
-using System.Runtime.CompilerServices;
 #endif
 
 namespace Proto.Promises
