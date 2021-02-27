@@ -400,6 +400,7 @@ namespace Proto.Promises.Tests
         public void DoubleAwaitAlreadyResolvedPromiseContinuesExecution()
         {
             var promise = Promise.Resolved().Preserve();
+            Promise.Manager.HandleCompletes();
             int continuedCount = 0;
 
             async void Func()
@@ -423,6 +424,7 @@ namespace Proto.Promises.Tests
         {
             int expected = 50;
             var promise = Promise.Resolved(expected).Preserve();
+            Promise.Manager.HandleCompletes();
             int continuedCount = 0;
 
             async void Func()
@@ -513,6 +515,7 @@ namespace Proto.Promises.Tests
         {
             string rejectValue = "Reject";
             var promise = Promise.Rejected(rejectValue).Preserve();
+            Promise.Manager.HandleCompletes();
             int continuedCount = 0;
 
             async void Func()
@@ -543,6 +546,7 @@ namespace Proto.Promises.Tests
         {
             string rejectValue = "Reject";
             var promise = Promise<int>.Rejected(rejectValue).Preserve();
+            Promise.Manager.HandleCompletes();
             int continuedCount = 0;
 
             async void Func()
@@ -645,6 +649,7 @@ namespace Proto.Promises.Tests
         {
             string cancelValue = "Cancel";
             var promise = Promise.Canceled(cancelValue).Preserve();
+            Promise.Manager.HandleCompletes();
             int continuedCount = 0;
 
             async void Func()
@@ -675,6 +680,7 @@ namespace Proto.Promises.Tests
         {
             string cancelValue = "Cancel";
             var promise = Promise<int>.Canceled(cancelValue).Preserve();
+            Promise.Manager.HandleCompletes();
             int continuedCount = 0;
 
             async void Func()

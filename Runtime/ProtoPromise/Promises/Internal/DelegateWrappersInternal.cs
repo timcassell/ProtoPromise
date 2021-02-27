@@ -5,11 +5,9 @@
 #endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
 using System.Runtime.CompilerServices;
-using Proto.Utils;
 
 namespace Proto.Promises
 {
@@ -138,14 +136,14 @@ namespace Proto.Promises
                 public bool IsNull { get { return !_isActive; } }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     owner.ResolveInternal(valueContainer);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -176,7 +174,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     _callback.Invoke();
                     valueContainer.Release();
@@ -184,18 +182,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -203,7 +201,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -232,7 +230,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
                 {
                     _callback.Invoke(arg);
                     valueContainer.Release();
@@ -240,13 +238,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     Invoke(arg, valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -261,7 +259,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     if (cancelationHelper.TryUnregister(owner))
@@ -270,7 +268,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -308,7 +306,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TResult result = _callback.Invoke();
                     valueContainer.Release();
@@ -316,18 +314,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -335,7 +333,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -364,7 +362,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TResult result = _callback.Invoke(arg);
                     valueContainer.Release();
@@ -372,13 +370,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     Invoke(arg, valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -393,7 +391,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     if (cancelationHelper.TryUnregister(owner))
@@ -402,7 +400,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -441,7 +439,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke();
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -449,18 +447,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -468,7 +466,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -497,7 +495,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(arg);
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -505,13 +503,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     Invoke(arg, valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -526,7 +524,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     if (cancelationHelper.TryUnregister(owner))
@@ -535,7 +533,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -573,7 +571,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke();
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -581,18 +579,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -600,7 +598,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -629,7 +627,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(arg);
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -637,13 +635,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     Invoke(arg, valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -658,7 +656,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     if (cancelationHelper.TryUnregister(owner))
@@ -667,7 +665,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -700,7 +698,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -708,7 +706,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -731,7 +729,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TResult result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -739,7 +737,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -762,7 +760,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -770,7 +768,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -793,7 +791,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TResult result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -801,7 +799,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -831,7 +829,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -839,7 +837,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -868,7 +866,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -876,7 +874,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -905,7 +903,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -913,7 +911,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -942,7 +940,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -950,7 +948,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1043,7 +1041,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     _callback.Invoke(_capturedValue);
                     valueContainer.Release();
@@ -1051,18 +1049,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1070,7 +1068,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1101,7 +1099,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
                 {
                     _callback.Invoke(_capturedValue, arg);
                     valueContainer.Release();
@@ -1109,13 +1107,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     Invoke(arg, valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -1130,7 +1128,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     if (cancelationHelper.TryUnregister(owner))
@@ -1139,7 +1137,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -1179,7 +1177,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue);
                     valueContainer.Release();
@@ -1187,18 +1185,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1206,7 +1204,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1237,7 +1235,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, arg);
                     valueContainer.Release();
@@ -1245,13 +1243,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     Invoke(arg, valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -1266,7 +1264,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     if (cancelationHelper.TryUnregister(owner))
@@ -1275,7 +1273,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -1316,7 +1314,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(_capturedValue);
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -1324,18 +1322,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1343,7 +1341,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1374,7 +1372,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(_capturedValue, arg);
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -1382,13 +1380,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     Invoke(arg, valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -1403,7 +1401,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     if (cancelationHelper.TryUnregister(owner))
@@ -1412,7 +1410,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -1452,7 +1450,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(_capturedValue);
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -1460,18 +1458,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     Invoke(valueContainer, owner);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1479,7 +1477,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1510,7 +1508,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseRef owner)
+                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(_capturedValue, arg);
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -1518,13 +1516,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     Invoke(arg, valueContainer, owner);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -1539,7 +1537,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     if (cancelationHelper.TryUnregister(owner))
@@ -1548,7 +1546,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     TArg arg;
                     if (TryConvert(valueContainer, out arg))
@@ -1583,7 +1581,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -1591,7 +1589,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1616,7 +1614,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -1624,7 +1622,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1649,7 +1647,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -1657,7 +1655,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1682,7 +1680,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -1690,7 +1688,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1722,7 +1720,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -1730,7 +1728,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1761,7 +1759,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -1769,7 +1767,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1800,7 +1798,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -1808,7 +1806,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1839,7 +1837,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
                 {
                     var result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result);
@@ -1847,7 +1845,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {

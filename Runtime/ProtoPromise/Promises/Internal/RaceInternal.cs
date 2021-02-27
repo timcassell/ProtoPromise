@@ -26,7 +26,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class RacePromise : PromiseRef, IMultiTreeHandleable
+            internal sealed partial class RacePromise : PromiseBranch, IMultiTreeHandleable
             {
                 private struct Creator : ICreator<RacePromise>
                 {

@@ -25,7 +25,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class MergePromise : PromiseRef, IMultiTreeHandleable
+            internal sealed partial class MergePromise : PromiseBranch, IMultiTreeHandleable
             {
                 private struct Creator : ICreator<MergePromise>
                 {

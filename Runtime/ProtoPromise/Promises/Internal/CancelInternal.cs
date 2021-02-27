@@ -139,7 +139,7 @@ namespace Proto.Promises
                     return Interlocked.Decrement(ref _retainCounter) == 0;
                 }
 
-                internal void SetCanceled(PromiseRef owner, IValueContainer valueContainer)
+                internal void SetCanceled(PromiseBranch owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(owner);
                     Interlocked.Increment(ref _retainCounter);
@@ -167,7 +167,7 @@ namespace Proto.Promises
                         ((IValueContainer) currentValue).ReleaseAndMaybeAddToUnhandledStack(true);
                     }
 
-                    owner.HandleBranches(valueContainer);
+                    owner.HandleWaiter(valueContainer);
                     owner.CancelProgressListeners(currentValue);
                     if (Release())
                     {
@@ -218,7 +218,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class CancelablePromiseResolve<TResolver> : PromiseRef, ITreeHandleable, ICancelDelegate
+            private sealed class CancelablePromiseResolve<TResolver> : PromiseBranch, ITreeHandleable, ICancelDelegate
                 where TResolver : IDelegateResolve
             {
                 private struct Creator : ICreator<CancelablePromiseResolve<TResolver>>
@@ -380,7 +380,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseRef, ITreeHandleable, ICancelDelegate
+            private sealed class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseBranch, ITreeHandleable, ICancelDelegate
                 where TResolver : IDelegateResolve
                 where TRejecter : IDelegateReject
             {
@@ -564,7 +564,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class CancelablePromiseContinue<TContinuer> : PromiseRef, ITreeHandleable, ICancelDelegate
+            private sealed class CancelablePromiseContinue<TContinuer> : PromiseBranch, ITreeHandleable, ICancelDelegate
                 where TContinuer : IDelegateContinue
             {
                 private struct Creator : ICreator<CancelablePromiseContinue<TContinuer>>
@@ -711,7 +711,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class CancelablePromiseCancel<TCanceler> : PromiseRef, ITreeHandleable, ICancelDelegate
+            private sealed class CancelablePromiseCancel<TCanceler> : PromiseBranch, ITreeHandleable, ICancelDelegate
                 where TCanceler : IDelegateSimple
             {
                 private struct Creator : ICreator<CancelablePromiseCancel<TCanceler>>
@@ -762,7 +762,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ITreeHandleable.Handle()
+                public override void Handle()
                 {
                     ThrowIfInPool(this);
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;

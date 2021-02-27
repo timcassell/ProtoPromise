@@ -12,39 +12,39 @@
 
             internal interface IDelegateResolve
             {
-                void InvokeResolver(IValueContainer valueContainer, PromiseRef owner);
-                void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
+                void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner);
+                void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper);
             }
 
             internal interface IDelegateResolvePromise
             {
-                void InvokeResolver(IValueContainer valueContainer, PromiseRef owner);
-                void InvokeResolver(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
+                void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner);
+                void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper);
                 bool IsNull { get; }
             }
 
             internal interface IDelegateReject
             {
-                void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner);
-                void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper);
             }
 
             internal interface IDelegateRejectPromise
             {
-                void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner);
-                void InvokeRejecter(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper);
             }
 
             internal interface IDelegateContinue
             {
-                void Invoke(IValueContainer valueContainer, PromiseRef owner);
-                void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
+                void Invoke(IValueContainer valueContainer, PromiseBranch owner);
+                void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper);
             }
 
             internal interface IDelegateContinuePromise
             {
-                void Invoke(IValueContainer valueContainer, PromiseRef owner);
-                void Invoke(IValueContainer valueContainer, PromiseRef owner, ref CancelationHelper cancelationHelper);
+                void Invoke(IValueContainer valueContainer, PromiseBranch owner);
+                void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper);
                 bool IsNull { get; }
             }
         }

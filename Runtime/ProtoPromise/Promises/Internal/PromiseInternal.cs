@@ -95,16 +95,21 @@ namespace Proto.Promises
 #endif
         internal abstract partial class PromiseRef : ITreeHandleable, ITraceable
         {
-            private readonly object _locker = new object();
-            private ValueLinkedStack<ITreeHandleable> _nextBranches;
+            private ITreeHandleable _next;
             private object _valueOrPrevious;
-            private int _id = 1; // Only using int because Interlocked does not support ushort.
+            volatile private int _id = 1; // Only using int because Interlocked does not support ushort.
             volatile private Promise.State _state;
             private bool _suppressRejection;
             private bool _wasAwaited;
-            private byte _idIncrementer = 1; // Used to increment _id only if not preserved. 0 = preserved, 1 = not preserved.
 
-            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+            ITreeHandleable ILinked<ITreeHandleable>.Next
+            {
+                [MethodImpl(InlineOption)]
+                get { return _next; }
+                [MethodImpl(InlineOption)]
+                set { _next = value; }
+            }
+
             internal int Id
             {
                 [MethodImpl(InlineOption)]
@@ -115,23 +120,12 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 get { return _state; }
             }
-            private bool IsPreserved
-            {
-                [MethodImpl(InlineOption)]
-                get { return _idIncrementer == 0; }
-            }
 
             private PromiseRef() { }
 
             ~PromiseRef()
             {
-                if (IsPreserved)
-                {
-                    // Promise was preserved without being forgotten.
-                    string message = "A preserved Promise's resources were garbage collected without it being forgotten. You must call Forget() on each preserved promise when you are finished with it.";
-                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
-                }
-                else if (!_wasAwaited)
+                if (!_wasAwaited)
                 {
                     // Promise was not awaited or forgotten.
                     string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise.";
@@ -151,51 +145,18 @@ namespace Proto.Promises
                 }
             }
 
-            internal PromiseRef GetPreserved(int promiseId)
+            protected virtual void MarkAwaited(int promiseId)
             {
-                var duplicate = GetDuplicate(promiseId);
-                duplicate._idIncrementer = 0; // Mark preserved.
-                return duplicate;
-            }
-
-            internal void Forget(int promiseId)
-            {
-                IncrementId(promiseId, 1); // Always increment, whether preserved or not.
-                _wasAwaited = true;
-                _idIncrementer = 1; // Mark not preserved.
-                MaybeDispose();
-            }
-
-            internal PromiseRef GetDuplicate(int promiseId)
-            {
-                // If new id is same as old, this is preserved and we must create a new object.
-                // Otherwise, the simple increment is enough and we can reuse this object.
-                var newId = IncrementId(promiseId, _idIncrementer);
-                if (newId != promiseId)
-                {
-                    // Reset stack trace.
-                    SetCreatedStacktrace(this, 2);
-                    return this;
-                }
-                _wasAwaited = true;
-                _suppressRejection = true;
-                var newPromise = PromiseDuplicate.GetOrCreate();
-                HookupNewPromise(newPromise);
-                return newPromise;
-            }
-
-            private void MarkAwaited(int promiseId)
-            {
-                IncrementId(promiseId, _idIncrementer);
+                IncrementId(promiseId);
                 _wasAwaited = true;
             }
 
-            private int IncrementId(int promiseId, int increment)
+            private int IncrementId(int promiseId)
             {
                 int newId;
                 unchecked // We want the id to wrap around.
                 {
-                    newId = promiseId + increment;
+                    newId = promiseId + 1;
                 }
                 if (Interlocked.CompareExchange(ref _id, newId, promiseId) != promiseId)
                 {
@@ -234,15 +195,6 @@ namespace Proto.Promises
                 AddToHandleQueueBack(this);
             }
 
-            private bool TryRemoveWaiter(ITreeHandleable treeHandleable)
-            {
-                // TODO: thread synchronization
-                lock (_locker)
-                {
-                    return _nextBranches.TryRemove(treeHandleable);
-                }
-            }
-
             protected void Reset()
             {
                 _state = Promise.State.Pending;
@@ -251,11 +203,10 @@ namespace Proto.Promises
                 SetCreatedStacktrace(this, 3);
             }
 
-            private void MaybeDispose()
+            protected virtual void MaybeDispose()
             {
                 ThrowIfInPool(this);
-                // TODO: thread synchronization
-                if (_wasAwaited & !IsPreserved & _state != Promise.State.Pending)
+                if (_wasAwaited & _state != Promise.State.Pending)
                 {
                     Dispose();
                 }
@@ -298,141 +249,331 @@ namespace Proto.Promises
                 AddWaiter(newPromise);
             }
 
-            internal void AddWaiter(ITreeHandleable waiter)
+            internal PromiseRef GetPreserved(int promiseId)
             {
-                // TODO: thread synchronization
-                ThrowIfInPool(this);
-                if (_state == Promise.State.Pending)
-                {
-                    lock (_locker)
-                    {
-                        _nextBranches.Push(waiter);
-                    }
-                }
-                else
-                {
-                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
-                }
-                MaybeDispose();
+                MarkAwaited(promiseId);
+                _suppressRejection = true;
+                var newPromise = PromiseMultiAwait.GetOrCreate();
+                HookupNewPromise(newPromise);
+                return newPromise;
             }
 
-            void ITreeHandleable.Handle()
-            {
-                ThrowIfInPool(this);
-                IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
-                bool invokingRejected = false;
-                SetCurrentInvoker(this);
-                try
-                {
-                    // valueContainer is released deeper in the call stack, so we only release it in this method if an exception is thrown.
-                    // (This is in case it is canceled, the valueContainer will be released from the cancelation.)
-                    Execute(valueContainer, ref invokingRejected);
-                }
-                catch (RethrowException e)
-                {
-                    if (invokingRejected || (e is ForcedRethrowException && valueContainer.GetState() != Promise.State.Resolved))
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                        valueContainer.Release(); // Must release since RejectOrCancelInternal adds an extra retain.
-                    }
-                    else
-                    {
-                        valueContainer.ReleaseAndMaybeAddToUnhandledStack(true);
-#if PROMISE_DEBUG
-                        string stacktrace = FormatStackTrace(new System.Diagnostics.StackTrace[1] { new System.Diagnostics.StackTrace(e, true) });
-#else
-                        string stacktrace = new System.Diagnostics.StackTrace(e, true).ToString();
+            public abstract void Handle(); // ITreeHandleable.Handle()
+
+            internal abstract void Forget(int promiseId);
+
+            internal abstract PromiseRef GetDuplicate(int promiseId);
+
+            protected abstract bool TryRemoveWaiter(ITreeHandleable treeHandleable);
+
+            protected abstract void AddWaiter(ITreeHandleable waiter);
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
 #endif
-                        object exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-                        RejectOrCancelInternal(RejectionContainer<object>.GetOrCreate(ref exception));
-                    }
-                }
-                catch (OperationCanceledException e)
-                {
-                    valueContainer.ReleaseAndMaybeAddToUnhandledStack(!invokingRejected);
-                    RejectOrCancelInternal(CreateCancelContainer(ref e));
-                }
-                catch (Exception e)
-                {
-                    valueContainer.ReleaseAndMaybeAddToUnhandledStack(!invokingRejected);
-                    RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this));
-                }
-                ClearCurrentInvoker();
-            }
-
-            private void ResolveInternal(IValueContainer valueContainer)
+            internal abstract class PromiseSingleAwait : PromiseRef
             {
-                // TODO: thread synchronization
-                valueContainer.Retain();
-                _valueOrPrevious = valueContainer;
-                _state = Promise.State.Resolved;
-                HandleBranches(valueContainer);
-                ResolveProgressListeners();
-
-                MaybeDispose();
-            }
-
-            private void RejectOrCancelInternal(IValueContainer valueContainer)
-            {
-                // TODO: thread synchronization
-                valueContainer.Retain();
-                var previous = _valueOrPrevious;
-                _valueOrPrevious = valueContainer;
-                _state = valueContainer.GetState();
-                HandleBranches(valueContainer);
-                CancelProgressListeners(previous);
-
-                MaybeDispose();
-            }
-
-            private void HandleSelf(IValueContainer valueContainer)
-            {
-                // TODO: thread synchronization
-                var previous = _valueOrPrevious;
-                _valueOrPrevious = valueContainer;
-                _state = valueContainer.GetState();
-
-                HandleBranches(valueContainer);
-                if (_state == Promise.State.Resolved)
+                internal sealed override void Forget(int promiseId)
                 {
-                    ResolveProgressListeners();
-                }
-                else
-                {
-                    CancelProgressListeners(previous);
+                    MarkAwaited(promiseId);
+                    MaybeDispose();
                 }
 
-                MaybeDispose();
-            }
-
-            protected virtual void Execute(IValueContainer valueContainer, ref bool invokingRejected) { }
-
-            private void HandleBranches(IValueContainer valueContainer)
-            {
-                ValueLinkedStack<ITreeHandleable> branches;
-                lock (_locker)
+                internal sealed override PromiseRef GetDuplicate(int promiseId)
                 {
-                    branches = _nextBranches;
-                    _nextBranches.Clear();
+                    IncrementId(promiseId);
+                    return this;
                 }
-                while (branches.IsNotEmpty)
-                {
-                    branches.Pop().MakeReady(this, valueContainer, ref _handleQueue);
-                }
-
-                //// TODO: keeping this code around for when background threaded tasks are implemented.
-                //ValueLinkedQueue<ITreeHandleable> handleQueue = new ValueLinkedQueue<ITreeHandleable>();
-                //while (_nextBranches.IsNotEmpty)
-                //{
-                //    _nextBranches.Pop().MakeReady(this, valueContainer, ref handleQueue);
-                //}
-                //AddToHandleQueueFront(ref handleQueue);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed class PromiseDuplicate : PromiseRef
+            internal sealed class PromiseMultiAwait : PromiseRef
+            {
+                private struct Creator : ICreator<PromiseMultiAwait>
+                {
+                    [MethodImpl(InlineOption)]
+                    public PromiseMultiAwait Create()
+                    {
+                        return new PromiseMultiAwait();
+                    }
+                }
+
+                private readonly object _locker = new object();
+                private ValueLinkedStack<ITreeHandleable> _nextBranches;
+                private int _retainCounter;
+
+                private PromiseMultiAwait() { }
+
+                ~PromiseMultiAwait()
+                {
+                    if (_retainCounter > 0)
+                    {
+                        string message = "A preserved Promise's resources were garbage collected without it being forgotten. You must call Forget() on each preserved promise when you are finished with it.";
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                    }
+                    _wasAwaited = true; // Stop base finalizer from adding an extra exception.
+                }
+
+                [MethodImpl(InlineOption)]
+                public static PromiseMultiAwait GetOrCreate()
+                {
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseMultiAwait, Creator>(new Creator());
+                    promise.Reset();
+                    promise._retainCounter = 1;
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                protected override void MaybeDispose()
+                {
+                    ThrowIfInPool(this);
+                    if (Interlocked.Decrement(ref _retainCounter) == 0 & _wasAwaited & _state != Promise.State.Pending)
+                    {
+                        Dispose();
+                    }
+                }
+
+                protected override void MarkAwaited(int promiseId)
+                {
+                    if (promiseId != _id)
+                    {
+                        goto Throw;
+                    }
+
+                    Interlocked.Increment(ref _retainCounter);
+                    if (promiseId == _id) // double check the id in case this was forgotten on another thread during the increment.
+                    {
+                        return;
+                    }
+
+                    MaybeDispose();
+                Throw:
+                    throw new InvalidOperationException("Attempted to use an invalid Promise. This may be because you are attempting to use a promise simultaneously on multiple threads.",
+                        GetFormattedStacktrace(1));
+                }
+
+                internal override void Forget(int promiseId)
+                {
+                    base.MarkAwaited(promiseId);
+                    MaybeDispose();
+                }
+
+                internal override PromiseRef GetDuplicate(int promiseId)
+                {
+                    MarkAwaited(promiseId);
+                    var newPromise = PromiseDuplicate.GetOrCreate();
+                    HookupNewPromise(newPromise);
+                    MaybeDispose();
+                    return newPromise;
+                }
+
+                protected override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
+                {
+                    lock (_locker)
+                    {
+                        return _nextBranches.TryRemove(treeHandleable);
+                    }
+                }
+
+                protected override void AddWaiter(ITreeHandleable waiter)
+                {
+                    // TODO: thread synchronization
+                    ThrowIfInPool(this);
+                    if (_state == Promise.State.Pending)
+                    {
+                        lock (_locker)
+                        {
+                            _nextBranches.Push(waiter);
+                        }
+                    }
+                    else
+                    {
+                        waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
+                    }
+                    MaybeDispose();
+                }
+
+                public override void Handle()
+                {
+                    // TODO: thread synchronization
+                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
+                    _state = valueContainer.GetState();
+
+                    HandleBranches(valueContainer);
+                    if (_state == Promise.State.Resolved)
+                    {
+                        ResolveProgressListeners();
+                    }
+                    else
+                    {
+                        CancelProgressListeners(null);
+                    }
+
+                    MaybeDispose();
+                }
+
+                private void HandleBranches(IValueContainer valueContainer)
+                {
+                    ValueLinkedStack<ITreeHandleable> branches;
+                    lock (_locker)
+                    {
+                        branches = _nextBranches;
+                        _nextBranches.Clear();
+                    }
+                    while (branches.IsNotEmpty)
+                    {
+                        branches.Pop().MakeReady(this, valueContainer, ref _handleQueue);
+                    }
+
+                    //// TODO: keeping this code around for when background threaded tasks are implemented.
+                    //ValueLinkedQueue<ITreeHandleable> handleQueue = new ValueLinkedQueue<ITreeHandleable>();
+                    //while (_nextBranches.IsNotEmpty)
+                    //{
+                    //    _nextBranches.Pop().MakeReady(this, valueContainer, ref handleQueue);
+                    //}
+                    //AddToHandleQueueFront(ref handleQueue);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal abstract class PromiseBranch : PromiseSingleAwait
+            {
+                private ITreeHandleable _waiter;
+
+                protected sealed override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
+                {
+                    return Interlocked.CompareExchange(ref _waiter, null, treeHandleable) == treeHandleable;
+                }
+
+                protected sealed override void AddWaiter(ITreeHandleable waiter)
+                {
+                    // TODO: thread synchronization
+                    ThrowIfInPool(this);
+                    if (_state == Promise.State.Pending)
+                    {
+                        _waiter = waiter;
+                    }
+                    else
+                    {
+                        waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
+                    }
+                    MaybeDispose();
+                }
+
+                public override void Handle()
+                {
+                    ThrowIfInPool(this);
+                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
+                    bool invokingRejected = false;
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        // valueContainer is released deeper in the call stack, so we only release it in this method if an exception is thrown.
+                        // (This is in case it is canceled, the valueContainer will be released from the cancelation.)
+                        Execute(valueContainer, ref invokingRejected);
+                    }
+                    catch (RethrowException e)
+                    {
+                        if (invokingRejected || (e is ForcedRethrowException && valueContainer.GetState() != Promise.State.Resolved))
+                        {
+                            RejectOrCancelInternal(valueContainer);
+                            valueContainer.Release(); // Must release since RejectOrCancelInternal adds an extra retain.
+                        }
+                        else
+                        {
+                            valueContainer.ReleaseAndMaybeAddToUnhandledStack(true);
+#if PROMISE_DEBUG
+                            string stacktrace = FormatStackTrace(new System.Diagnostics.StackTrace[1] { new System.Diagnostics.StackTrace(e, true) });
+#else
+                            string stacktrace = new System.Diagnostics.StackTrace(e, true).ToString();
+#endif
+                            object exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+                            RejectOrCancelInternal(RejectionContainer<object>.GetOrCreate(ref exception));
+                        }
+                    }
+                    catch (OperationCanceledException e)
+                    {
+                        valueContainer.ReleaseAndMaybeAddToUnhandledStack(!invokingRejected);
+                        RejectOrCancelInternal(CreateCancelContainer(ref e));
+                    }
+                    catch (Exception e)
+                    {
+                        valueContainer.ReleaseAndMaybeAddToUnhandledStack(!invokingRejected);
+                        RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this));
+                    }
+                    ClearCurrentInvoker();
+                }
+
+                protected virtual void Execute(IValueContainer valueContainer, ref bool invokingRejected) { }
+
+                internal void ResolveInternal(IValueContainer valueContainer)
+                {
+                    // TODO: thread synchronization
+                    valueContainer.Retain();
+                    _valueOrPrevious = valueContainer;
+                    _state = Promise.State.Resolved;
+                    HandleWaiter(valueContainer);
+                    ResolveProgressListeners();
+
+                    MaybeDispose();
+                }
+
+                internal void RejectOrCancelInternal(IValueContainer valueContainer)
+                {
+                    // TODO: thread synchronization
+                    valueContainer.Retain();
+                    var previous = _valueOrPrevious;
+                    _valueOrPrevious = valueContainer;
+                    _state = valueContainer.GetState();
+                    HandleWaiter(valueContainer);
+                    CancelProgressListeners(previous);
+
+                    MaybeDispose();
+                }
+
+                internal void HandleSelf(IValueContainer valueContainer)
+                {
+                    // TODO: thread synchronization
+                    var previous = _valueOrPrevious;
+                    _valueOrPrevious = valueContainer;
+                    _state = valueContainer.GetState();
+
+                    HandleWaiter(valueContainer);
+                    if (_state == Promise.State.Resolved)
+                    {
+                        ResolveProgressListeners();
+                    }
+                    else
+                    {
+                        CancelProgressListeners(previous);
+                    }
+
+                    MaybeDispose();
+                }
+
+                internal void HandleWaiter(IValueContainer valueContainer)
+                {
+                    ITreeHandleable waiter = Interlocked.Exchange(ref _waiter, null);
+                    if (waiter != null)
+                    {
+                        waiter.MakeReady(this, valueContainer, ref _handleQueue);
+                    }
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal sealed class PromiseDuplicate : PromiseBranch
             {
                 private struct Creator : ICreator<PromiseDuplicate>
                 {
@@ -459,16 +600,16 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                public override void Handle()
                 {
-                    HandleSelf(valueContainer);
+                    HandleSelf((IValueContainer) _valueOrPrevious);
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal abstract partial class PromiseWaitPromise : PromiseRef
+            internal abstract partial class PromiseWaitPromise : PromiseBranch
             {
                 internal void WaitFor(Promise other)
                 {
@@ -512,8 +653,62 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal abstract partial class AsyncPromiseBase : PromiseRef
+            internal abstract partial class AsyncPromiseBase : PromiseSingleAwait
             {
+                protected sealed override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
+                {
+                    return Interlocked.CompareExchange(ref _next, null, treeHandleable) == treeHandleable;
+                }
+
+                protected sealed override void AddWaiter(ITreeHandleable waiter)
+                {
+                    // TODO: thread synchronization
+                    ThrowIfInPool(this);
+                    if (_state == Promise.State.Pending)
+                    {
+                        _next = waiter;
+                    }
+                    else
+                    {
+                        waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
+                    }
+                    MaybeDispose();
+                }
+
+                internal void ResolveInternal(IValueContainer valueContainer)
+                {
+                    // TODO: thread synchronization
+                    valueContainer.Retain();
+                    _valueOrPrevious = valueContainer;
+                    _state = Promise.State.Resolved;
+                    HandleWaiter(valueContainer);
+                    ResolveProgressListeners();
+
+                    MaybeDispose();
+                }
+
+                internal void RejectOrCancelInternal(IValueContainer valueContainer)
+                {
+                    // TODO: thread synchronization
+                    valueContainer.Retain();
+                    var previous = _valueOrPrevious;
+                    _valueOrPrevious = valueContainer;
+                    _state = valueContainer.GetState();
+                    HandleWaiter(valueContainer);
+                    CancelProgressListeners(previous);
+
+                    MaybeDispose();
+                }
+
+                internal void HandleWaiter(IValueContainer valueContainer)
+                {
+                    ITreeHandleable waiter = Interlocked.Exchange(ref _next, null);
+                    if (waiter != null)
+                    {
+                        waiter.MakeReady(this, valueContainer, ref _handleQueue);
+                    }
+                }
+
                 protected void ResolveDirect()
                 {
                     ThrowIfInPool(this);
@@ -543,6 +738,8 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     RejectOrCancelInternal(CreateCancelContainer(ref reason));
                 }
+
+                public sealed override void Handle() { throw new System.InvalidOperationException(); }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -730,7 +927,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseResolve<TResolver> : PromiseRef where TResolver : IDelegateResolve
+            private sealed class PromiseResolve<TResolver> : PromiseBranch where TResolver : IDelegateResolve
             {
                 private struct Creator : ICreator<PromiseResolve<TResolver>>
                 {
@@ -833,7 +1030,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseResolveReject<TResolver, TRejecter> : PromiseRef
+            private sealed class PromiseResolveReject<TResolver, TRejecter> : PromiseBranch
                 where TResolver : IDelegateResolve
                 where TRejecter : IDelegateReject
             {
@@ -960,7 +1157,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseContinue<TContinuer> : PromiseRef
+            private sealed class PromiseContinue<TContinuer> : PromiseBranch
                 where TContinuer : IDelegateContinue
             {
                 private struct Creator : ICreator<PromiseContinue<TContinuer>>
@@ -1051,7 +1248,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseFinally<TFinalizer> : PromiseRef
+            private sealed class PromiseFinally<TFinalizer> : PromiseBranch
                 where TFinalizer : IDelegateSimple
             {
                 private struct Creator : ICreator<PromiseFinally<TFinalizer>>
@@ -1094,7 +1291,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseCancel<TCanceler> : PromiseRef, ITreeHandleable
+            private sealed class PromiseCancel<TCanceler> : PromiseBranch, ITreeHandleable
                 where TCanceler : IDelegateSimple
             {
                 private struct Creator : ICreator<PromiseCancel<TCanceler>>
@@ -1125,7 +1322,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.Handle()
+                public override void Handle()
                 {
                     ThrowIfInPool(this);
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;

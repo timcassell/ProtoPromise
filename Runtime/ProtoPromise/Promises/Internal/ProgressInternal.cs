@@ -386,7 +386,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed class PromiseProgress<TProgress> : PromiseRef, IProgressListener, ITreeHandleable, IInvokable, ITraceable, ICancelDelegate
+            internal sealed class PromiseProgress<TProgress> : PromiseBranch, IProgressListener, IInvokable, ITraceable, ICancelDelegate
                 where TProgress : IProgress<float>
             {
                 private struct Creator : ICreator<PromiseProgress<TProgress>>
@@ -401,7 +401,6 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                 CausalityTrace ITraceable.Trace { get; set; }
 #endif
-                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
                 // TODO: thread synchronization.
                 private TProgress _progress;
@@ -541,7 +540,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ITreeHandleable.Handle()
+                public override void Handle()
                 {
                     ThrowIfInPool(this);
                     // TODO: handle thread race conditions (don't dispose early)
@@ -557,12 +556,12 @@ namespace Proto.Promises
                         {
                             InvokeAndCatch(1f);
                         }
-                        HandleBranches(valueContainer);
+                        HandleWaiter(valueContainer);
                         ResolveProgressListeners();
                     }
                     else
                     {
-                        HandleBranches(valueContainer);
+                        HandleWaiter(valueContainer);
                         CancelProgressListeners(null);
                     }
 
