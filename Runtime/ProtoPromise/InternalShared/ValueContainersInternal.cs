@@ -77,10 +77,22 @@ namespace Proto.Promises
             }
 #endif
 
-            public static RejectionContainer<T> GetOrCreate(ref T value)
+            private RejectionContainer() { }
+
+            ~RejectionContainer()
+            {
+                if (_retainCounter != 0)
+                {
+                    string message = "A RejectionContainer was garbage collected without it being released.";
+                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), null);
+                }
+            }
+
+            public static RejectionContainer<T> GetOrCreate(ref T value, int retainCount)
             {
                 var container = ObjectPool<RejectionContainer<T>>.GetOrCreate<RejectionContainer<T>, Creator>(new Creator());
                 container._value = value;
+                container._retainCounter = retainCount;
                 return container;
             }
 
@@ -250,10 +262,24 @@ namespace Proto.Promises
                 }
             }
 
-            public static CancelContainer<T> GetOrCreate(ref T value)
+            private CancelContainer() { }
+
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            ~CancelContainer()
+            {
+                if (_retainCounter != 0)
+                {
+                    string message = "A CancelContainer was garbage collected without it being released.";
+                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), null);
+                }
+            }
+#endif
+
+            public static CancelContainer<T> GetOrCreate(ref T value, int retainCount)
             {
                 var container = ObjectPool<CancelContainer<T>>.GetOrCreate<CancelContainer<T>, Creator>(new Creator());
                 container._value = value;
+                container._retainCounter = retainCount;
                 return container;
             }
 
@@ -277,7 +303,7 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
                 int newValue;
-#if PROMISE_DEBUG
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 // Don't let counter go below 0.
                 if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
                 {
@@ -411,16 +437,31 @@ namespace Proto.Promises
                 }
             }
 
-            public static ResolveContainer<T> GetOrCreate(ref T value)
+            private ResolveContainer() { }
+
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            ~ResolveContainer()
+            {
+                if (_retainCounter != 0)
+                {
+                    string message = "A ResolveContainer was garbage collected without it being released.";
+                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), null);
+                }
+            }
+#endif
+
+            public static ResolveContainer<T> GetOrCreate(ref T value, int retainCount)
             {
                 var container = ObjectPool<ResolveContainer<T>>.GetOrCreate<ResolveContainer<T>, Creator>(new Creator());
                 container.value = value;
+                container._retainCounter = retainCount;
                 return container;
             }
 
-            public static ResolveContainer<T> GetOrCreate(T value)
+            [MethodImpl(InlineOption)]
+            public static ResolveContainer<T> GetOrCreate(T value, int retainCount)
             {
-                return GetOrCreate(ref value);
+                return GetOrCreate(ref value, retainCount);
             }
 
             public Promise.State GetState()
@@ -443,7 +484,7 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
                 int newValue;
-#if PROMISE_DEBUG
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 // Don't let counter go below 0.
                 if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
                 {

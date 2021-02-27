@@ -281,6 +281,7 @@ namespace Proto.Promises
                     else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer);
+                        valueContainer.Release();
                     }
                 }
 
@@ -366,6 +367,7 @@ namespace Proto.Promises
                     else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer);
+                        valueContainer.Release();
                     }
                 }
 
@@ -454,6 +456,7 @@ namespace Proto.Promises
                     else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer);
+                        valueContainer.Release();
                     }
                 }
 
@@ -550,6 +553,7 @@ namespace Proto.Promises
                     else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer);
+                        valueContainer.Release();
                     }
                 }
 

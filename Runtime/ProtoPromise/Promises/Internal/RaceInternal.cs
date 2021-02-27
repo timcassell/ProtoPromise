@@ -79,6 +79,7 @@ namespace Proto.Promises
                     // TODO: remove all passthroughs from their owners when this is completed early.
                     _passThroughs.TryRemove(passThrough);
                     PromiseRef owner = passThrough.Owner;
+                    --_waitCount;
                     bool handle = _valueOrPrevious == null;
                     if (handle)
                     {
@@ -86,7 +87,10 @@ namespace Proto.Promises
                         valueContainer.Retain();
                         _valueOrPrevious = valueContainer;
                     }
-                    --_waitCount;
+                    else if (_waitCount == 0) // Quick fix until TODO is done.
+                    {
+                        MaybeDispose();
+                    }
                     return handle;
                 }
 

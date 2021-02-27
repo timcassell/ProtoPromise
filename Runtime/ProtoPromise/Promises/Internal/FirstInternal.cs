@@ -87,6 +87,10 @@ namespace Proto.Promises
                         valueContainer.Retain();
                         _valueOrPrevious = valueContainer;
                     }
+                    else if (done) // Quick fix until TODO is done.
+                    {
+                        MaybeDispose();
+                    }
                     return handle;
                 }
 

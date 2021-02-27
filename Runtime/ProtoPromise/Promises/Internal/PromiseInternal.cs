@@ -416,7 +416,7 @@ namespace Proto.Promises
                         CancelProgressListeners(null);
                     }
 
-                    MaybeDispose();
+                    base.MaybeDispose();
                 }
 
                 private void HandleBranches(IValueContainer valueContainer)
@@ -497,7 +497,7 @@ namespace Proto.Promises
                             string stacktrace = new System.Diagnostics.StackTrace(e, true).ToString();
 #endif
                             object exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-                            RejectOrCancelInternal(RejectionContainer<object>.GetOrCreate(ref exception));
+                            RejectOrCancelInternal(RejectionContainer<object>.GetOrCreate(ref exception, 0));
                         }
                     }
                     catch (OperationCanceledException e)
@@ -636,7 +636,7 @@ namespace Proto.Promises
                     var _ref = other._ref;
                     if (_ref == null)
                     {
-                        ResolveInternal(ResolveContainer<T>.GetOrCreate(other._result));
+                        ResolveInternal(ResolveContainer<T>.GetOrCreate(other._result, 0));
                     }
                     else
                     {
@@ -718,7 +718,7 @@ namespace Proto.Promises
                 protected void ResolveDirect<T>(ref T value)
                 {
                     ThrowIfInPool(this);
-                    ResolveInternal(ResolveContainer<T>.GetOrCreate(ref value));
+                    ResolveInternal(ResolveContainer<T>.GetOrCreate(ref value, 0));
                 }
 
                 protected void RejectDirect<TReject>(ref TReject reason, int rejectSkipFrames)
@@ -968,6 +968,7 @@ namespace Proto.Promises
                     else
                     {
                         RejectOrCancelInternal(valueContainer);
+                        valueContainer.Release();
                     }
                 }
             }
@@ -1023,6 +1024,7 @@ namespace Proto.Promises
                     else
                     {
                         RejectOrCancelInternal(valueContainer);
+                        valueContainer.Release();
                     }
                 }
             }
@@ -1083,6 +1085,7 @@ namespace Proto.Promises
                     else
                     {
                         RejectOrCancelInternal(valueContainer);
+                        valueContainer.Release();
                     }
                 }
             }
@@ -1150,6 +1153,7 @@ namespace Proto.Promises
                     else
                     {
                         RejectOrCancelInternal(valueContainer);
+                        valueContainer.Release();
                     }
                 }
             }

@@ -565,17 +565,18 @@ namespace Proto.Promises
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
+                        object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolve<TResolver>.GetOrCreate(resolver, cancelationToken);
                             promise.SetDepth();
-                            Interlocked.CompareExchange(ref promise._valueOrPrevious, ResolveContainer<T>.GetOrCreate(_this._result), null);
+                            Interlocked.CompareExchange(ref promise._valueOrPrevious, container, null);
                         }
                         else
                         {
                             promise = PromiseResolve<TResolver>.GetOrCreate(resolver);
                             promise.SetDepth();
-                            promise._valueOrPrevious = ResolveContainer<T>.GetOrCreate(_this._result);
+                            promise._valueOrPrevious = container;
                         }
                         AddToHandleQueueBack(promise);
                     }
@@ -603,7 +604,7 @@ namespace Proto.Promises
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
-                        object container = ResolveContainer<T>.GetOrCreate(_this._result);
+                        object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolve<TResolver>.GetOrCreate(resolver, cancelationToken);
@@ -642,7 +643,7 @@ namespace Proto.Promises
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
-                        object container = ResolveContainer<T>.GetOrCreate(_this._result);
+                        object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<TResolver>.GetOrCreate(resolver, cancelationToken);
@@ -681,7 +682,7 @@ namespace Proto.Promises
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
-                        object container = ResolveContainer<T>.GetOrCreate(_this._result);
+                        object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<TResolver>.GetOrCreate(resolver, cancelationToken);
@@ -721,7 +722,7 @@ namespace Proto.Promises
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
-                        object container = ResolveContainer<T>.GetOrCreate(_this._result);
+                        object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveReject<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
@@ -761,7 +762,7 @@ namespace Proto.Promises
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
-                        object container = ResolveContainer<T>.GetOrCreate(_this._result);
+                        object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveReject<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
@@ -801,7 +802,7 @@ namespace Proto.Promises
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
-                        object container = ResolveContainer<T>.GetOrCreate(_this._result);
+                        object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
@@ -841,7 +842,7 @@ namespace Proto.Promises
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
-                        object container = ResolveContainer<T>.GetOrCreate(_this._result);
+                        object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
@@ -880,7 +881,7 @@ namespace Proto.Promises
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
-                        object container = ResolveContainer<T>.GetOrCreate(_this._result);
+                        object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinue<TContinuer>.GetOrCreate(resolver, cancelationToken);
@@ -919,7 +920,7 @@ namespace Proto.Promises
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
-                        object container = ResolveContainer<T>.GetOrCreate(_this._result);
+                        object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinue<TContinuer>.GetOrCreate(resolver, cancelationToken);
@@ -958,7 +959,7 @@ namespace Proto.Promises
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
-                        object container = ResolveContainer<T>.GetOrCreate(_this._result);
+                        object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
@@ -997,7 +998,7 @@ namespace Proto.Promises
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
-                        object container = ResolveContainer<T>.GetOrCreate(_this._result);
+                        object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
@@ -1038,7 +1039,7 @@ namespace Proto.Promises
                     {
                         promise = PromiseFinally<TFinally>.GetOrCreate(finalizer);
                         promise.SetDepth();
-                        promise._valueOrPrevious = ResolveContainer<TResult>.GetOrCreate(_this._result);
+                        promise._valueOrPrevious = ResolveContainer<TResult>.GetOrCreate(_this._result, 1);
                         AddToHandleQueueBack(promise);
                     }
                     else

@@ -63,8 +63,7 @@ namespace Proto.Promises
                 {
                     var promise = Create();
                     promise._onPromiseResolved = onPromiseResolved;
-                    var container = ResolveContainer<T>.GetOrCreate(ref value);
-                    container.Retain();
+                    var container = ResolveContainer<T>.GetOrCreate(ref value, 1);
                     promise._valueOrPrevious = container;
                     promise.Setup(promisePassThroughs, pendingAwaits, totalAwaits, completedProgress);
                     return promise;
@@ -130,6 +129,10 @@ namespace Proto.Promises
                                 IncrementProgress(passThrough);
                             }
                         }
+                    }
+                    else if (done) // Quick fix until TODO is done.
+                    {
+                        MaybeDispose();
                     }
                     return handle;
                 }

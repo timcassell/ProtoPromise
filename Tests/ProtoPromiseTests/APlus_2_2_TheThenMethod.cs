@@ -634,9 +634,8 @@ namespace Proto.Promises.Tests
                 var rejectReason = "Fail value";
                 var errored = false;
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddCallbacks<int, bool, string, string>(promise,
+                TestHelper.AddCallbacks<int, bool, string, string>(deferred.Promise,
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     reason =>
                     {
@@ -648,8 +647,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 Assert.True(errored);
-
-                promise.Forget();
             }
 
             [Test]
@@ -658,9 +655,8 @@ namespace Proto.Promises.Tests
                 var rejectReason = "Fail value";
                 var errored = false;
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddCallbacks<bool, string, string>(promise,
+                TestHelper.AddCallbacks<bool, string, string>(deferred.Promise,
                     () => Assert.Fail("Promise was resolved when it should have been rejected."),
                     reason =>
                     {
@@ -672,8 +668,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 Assert.True(errored);
-
-                promise.Forget();
             }
 
             [Test]
@@ -681,9 +675,8 @@ namespace Proto.Promises.Tests
             {
                 var errored = false;
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddCallbacks<int, bool, string, string>(promise,
+                TestHelper.AddCallbacks<int, bool, string, string>(deferred.Promise,
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     reason => errored = true
                 );
@@ -695,8 +688,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 Assert.True(errored);
-
-                promise.Forget();
             }
 
             [Test]
@@ -704,9 +695,8 @@ namespace Proto.Promises.Tests
             {
                 var errored = false;
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddCallbacks<bool, string, string>(promise,
+                TestHelper.AddCallbacks<bool, string, string>(deferred.Promise,
                     () => Assert.Fail("Promise was resolved when it should have been rejected."),
                     reason => errored = true
                 );
@@ -718,8 +708,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 Assert.True(errored);
-
-                promise.Forget();
             }
 
             [Test]
@@ -727,9 +715,8 @@ namespace Proto.Promises.Tests
             {
                 var errorCount = 0;
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddCallbacks<bool, object, string>(promise,
+                TestHelper.AddCallbacks<bool, object, string>(deferred.Promise,
                     () => Assert.Fail("Promise was resolved when it should have been rejected."),
                     x => ++errorCount,
                     () => ++errorCount
@@ -746,8 +733,6 @@ namespace Proto.Promises.Tests
                     TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks) * 2,
                     errorCount
                 );
-
-                promise.Forget();
             }
 
             [Test]
@@ -755,9 +740,8 @@ namespace Proto.Promises.Tests
             {
                 var errorCount = 0;
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
 
-                TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     x => ++errorCount,
                     () => ++errorCount
@@ -774,8 +758,6 @@ namespace Proto.Promises.Tests
                     TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks) * 2,
                     errorCount
                 );
-
-                promise.Forget();
             }
         }
 
@@ -833,9 +815,8 @@ namespace Proto.Promises.Tests
         {
             bool errored = false;
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
 
-            TestHelper.AddCallbacks<bool, object, string>(promise,
+            TestHelper.AddCallbacks<bool, object, string>(deferred.Promise,
                 () => Assert.Fail("Promise was resolved when it should have been rejected."),
                 s => errored = true
             );
@@ -844,8 +825,6 @@ namespace Proto.Promises.Tests
 
             Promise.Manager.HandleCompletes();
             Assert.True(errored);
-
-            promise.Forget();
         }
 
         [Test]
@@ -853,9 +832,8 @@ namespace Proto.Promises.Tests
         {
             bool errored = false;
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
 
-            TestHelper.AddCallbacks<int, bool, object, string>(promise,
+            TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
                 v => Assert.Fail("Promise was resolved when it should have been rejected."),
                 s => errored = true
             );
@@ -864,8 +842,6 @@ namespace Proto.Promises.Tests
 
             Promise.Manager.HandleCompletes();
             Assert.True(errored);
-
-            promise.Forget();
         }
 
         // Not relevant for C#
@@ -1155,7 +1131,6 @@ namespace Proto.Promises.Tests
             public void _2_2_7_2_IfOnRejectedThrowsAnExceptionE_Promise2MustBeRejectedWithEAsTheReason_void()
             {
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
 
                 int exceptionCount = 0;
                 Exception expected = new Exception("Fail value");
@@ -1167,7 +1142,7 @@ namespace Proto.Promises.Tests
                         ++exceptionCount;
                     }).Forget();
 
-                TestHelper.AddCallbacks<bool, object, string>(promise,
+                TestHelper.AddCallbacks<bool, object, string>(deferred.Promise,
                     onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
                     onReject: _ => { throw expected; },
                     onRejectCapture: _ => { throw expected; },
@@ -1185,15 +1160,12 @@ namespace Proto.Promises.Tests
                     TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks) * 2,
                     exceptionCount
                 );
-
-                promise.Forget();
             }
 
             [Test]
             public void _2_2_7_2_IfOnRejectedThrowsAnExceptionE_Promise2MustBeRejectedWithEAsTheReason_T()
             {
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
 
                 int exceptionCount = 0;
                 Exception expected = new Exception("Fail value");
@@ -1205,7 +1177,7 @@ namespace Proto.Promises.Tests
                         ++exceptionCount;
                     }).Forget();
 
-                TestHelper.AddCallbacks<int, bool, object, string>(promise,
+                TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
                     onResolve: _ => Assert.Fail("Promise was resolved when it should have been rejected."),
                     onReject: _ => { throw expected; },
                     onRejectCapture: _ => { throw expected; },
@@ -1224,8 +1196,6 @@ namespace Proto.Promises.Tests
                     TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks) * 2,
                     exceptionCount
                 );
-
-                promise.Forget();
             }
 
             [Test]
@@ -1359,8 +1329,7 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred();
                 var promise1 = deferred.Promise;
                 var promise2 = promise1
-                    .Then(() => { Assert.Fail("Promise was resolved when it should have been rejected."); return; })
-                    .Preserve();
+                    .Then(() => { Assert.Fail("Promise was resolved when it should have been rejected."); return; });
 
                 TestHelper.AddCallbacks<bool, object, string>(promise2,
                     () => Assert.Fail("Promise was resolved when it should have been rejected."),
@@ -1375,8 +1344,6 @@ namespace Proto.Promises.Tests
                     TestHelper.rejectVoidCallbacks * 2,
                     counter
                 );
-
-                promise2.Forget();
             }
 
             [Test]
@@ -1388,8 +1355,7 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred();
                 var promise1 = deferred.Promise;
                 var promise2 = promise1
-                    .Then(() => { Assert.Fail("Promise was resolved when it should have been rejected."); return Promise.Resolved(); })
-                    .Preserve();
+                    .Then(() => { Assert.Fail("Promise was resolved when it should have been rejected."); return Promise.Resolved(); });
 
                 TestHelper.AddCallbacks<bool, object, string>(promise2,
                     () => Assert.Fail("Promise was resolved when it should have been rejected."),
@@ -1404,8 +1370,6 @@ namespace Proto.Promises.Tests
                     TestHelper.rejectVoidCallbacks * 2,
                     counter
                 );
-
-                promise2.Forget();
             }
 
             [Test]
@@ -1417,8 +1381,7 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred();
                 var promise1 = deferred.Promise;
                 var promise2 = promise1
-                    .Then(() => { Assert.Fail("Promise was resolved when it should have been rejected."); return 50; })
-                    .Preserve();
+                    .Then(() => { Assert.Fail("Promise was resolved when it should have been rejected."); return 50; });
 
                 TestHelper.AddCallbacks<int, bool, object, string>(promise2,
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
@@ -1433,8 +1396,6 @@ namespace Proto.Promises.Tests
                     TestHelper.rejectVoidCallbacks * 2,
                     counter
                 );
-
-                promise2.Forget();
             }
 
             [Test]
@@ -1446,8 +1407,7 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred();
                 var promise1 = deferred.Promise;
                 var promise2 = promise1
-                    .Then(() => { Assert.Fail("Promise was resolved when it should have been rejected."); return Promise.Resolved(50); })
-                    .Preserve();
+                    .Then(() => { Assert.Fail("Promise was resolved when it should have been rejected."); return Promise.Resolved(50); });
 
                 TestHelper.AddCallbacks<int, bool, object, string>(promise2,
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
@@ -1462,8 +1422,6 @@ namespace Proto.Promises.Tests
                     TestHelper.rejectVoidCallbacks * 2,
                     counter
                 );
-
-                promise2.Forget();
             }
 
             [Test]
@@ -1475,8 +1433,7 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred<int>();
                 var promise1 = deferred.Promise;
                 var promise2 = promise1
-                    .Then(v => { Assert.Fail("Promise was resolved when it should have been rejected."); return 50; })
-                    .Preserve();
+                    .Then(v => { Assert.Fail("Promise was resolved when it should have been rejected."); return 50; });
 
                 TestHelper.AddCallbacks<int, bool, object, string>(promise2,
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
@@ -1491,8 +1448,6 @@ namespace Proto.Promises.Tests
                     TestHelper.rejectTCallbacks * 2,
                     counter
                 );
-
-                promise2.Forget();
             }
 
             [Test]
@@ -1504,8 +1459,7 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred<int>();
                 var promise1 = deferred.Promise;
                 var promise2 = promise1
-                    .Then(v => { Assert.Fail("Promise was resolved when it should have been rejected."); return Promise.Resolved(50); })
-                    .Preserve();
+                    .Then(v => { Assert.Fail("Promise was resolved when it should have been rejected."); return Promise.Resolved(50); });
 
                 TestHelper.AddCallbacks<int, bool, object, string>(promise2,
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
@@ -1520,8 +1474,6 @@ namespace Proto.Promises.Tests
                     TestHelper.rejectTCallbacks * 2,
                     counter
                 );
-
-                promise2.Forget();
             }
 
             [Test]
@@ -1533,8 +1485,7 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred<int>();
                 var promise1 = deferred.Promise;
                 var promise2 = promise1
-                    .Then(v => { Assert.Fail("Promise was resolved when it should have been rejected."); return; })
-                    .Preserve();
+                    .Then(v => { Assert.Fail("Promise was resolved when it should have been rejected."); return; });
 
                 TestHelper.AddCallbacks<bool, object, string>(promise2,
                     () => Assert.Fail("Promise was resolved when it should have been rejected."),
@@ -1549,8 +1500,6 @@ namespace Proto.Promises.Tests
                     TestHelper.rejectTCallbacks * 2,
                     counter
                 );
-
-                promise2.Forget();
             }
 
             [Test]
@@ -1562,8 +1511,7 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred<int>();
                 var promise1 = deferred.Promise;
                 var promise2 = promise1
-                    .Then(v => { Assert.Fail("Promise was resolved when it should have been rejected."); return Promise.Resolved(); })
-                    .Preserve();
+                    .Then(v => { Assert.Fail("Promise was resolved when it should have been rejected."); return Promise.Resolved(); });
 
                 TestHelper.AddCallbacks<bool, object, string>(promise2,
                     () => Assert.Fail("Promise was resolved when it should have been rejected."),
@@ -1578,8 +1526,6 @@ namespace Proto.Promises.Tests
                     TestHelper.rejectTCallbacks * 2,
                     counter
                 );
-
-                promise2.Forget();
             }
 
             [Test]
@@ -1587,7 +1533,7 @@ namespace Proto.Promises.Tests
             {
                 int counter = 0;
                 var deferred = Promise.NewDeferred();
-                var promise1 = deferred.Promise.Preserve();
+                var promise1 = deferred.Promise;
 
                 TestHelper.AddCallbacks<bool, string, string>(promise1,
                     () => Assert.Fail("Promise was resolved when it should have been rejected."),
@@ -1600,8 +1546,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(0, counter);
-
-                promise1.Forget();
             }
 
             [Test]
@@ -1609,7 +1553,7 @@ namespace Proto.Promises.Tests
             {
                 int counter = 0;
                 var deferred = Promise.NewDeferred<int>();
-                var promise1 = deferred.Promise.Preserve();
+                var promise1 = deferred.Promise;
 
                 TestHelper.AddCallbacks<int, bool, string, string>(promise1,
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
@@ -1623,8 +1567,6 @@ namespace Proto.Promises.Tests
                 Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(0, counter);
-
-                promise1.Forget();
             }
 
             [Test]
@@ -1634,7 +1576,7 @@ namespace Proto.Promises.Tests
                 int counter = 0;
 
                 var deferred = Promise.NewDeferred();
-                var promise1 = deferred.Promise.Preserve();
+                var promise1 = deferred.Promise;
 
                 Action<Promise> catchCallback = p =>
                     p.Catch((int i) =>
@@ -1659,8 +1601,6 @@ namespace Proto.Promises.Tests
                     - TestHelper.rejectVoidKnownCallbacks) * 2,
                     counter
                 );
-
-                promise1.Forget();
             }
 
             [Test]
@@ -1670,7 +1610,7 @@ namespace Proto.Promises.Tests
                 int counter = 0;
 
                 var deferred = Promise.NewDeferred<int>();
-                var promise1 = deferred.Promise.Preserve();
+                var promise1 = deferred.Promise;
 
                 Action<Promise> catchCallback = p =>
                     p.Catch((int i) =>
@@ -1696,8 +1636,6 @@ namespace Proto.Promises.Tests
                     - TestHelper.rejectTKnownCallbacks) * 2,
                     counter
                 );
-
-                promise1.Forget();
             }
         }
     }

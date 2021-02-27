@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
@@ -100,7 +101,7 @@ namespace Proto.Promises
 
         internal static string GetFormattedStacktrace(ITraceable traceable)
         {
-            return traceable.Trace.ToString();
+            return traceable != null ? traceable.Trace.ToString() : null;
         }
 
         internal static string GetFormattedStacktrace(int skipFrames)
@@ -215,7 +216,7 @@ namespace Proto.Promises
             Type type = typeof(TReject);
             if (type.IsValueType)
             {
-                valueContainer = RejectionContainer<TReject>.GetOrCreate(ref reason);
+                valueContainer = RejectionContainer<TReject>.GetOrCreate(ref reason, 0);
             }
             else
             {
@@ -234,7 +235,7 @@ namespace Proto.Promises
                 // If reason is null, behave the same way .Net behaves if you throw null.
                 object o = reason == null ? new NullReferenceException() : (object) reason;
                 // Only need to create one object pool for reference types.
-                valueContainer = RejectionContainer<object>.GetOrCreate(ref o);
+                valueContainer = RejectionContainer<object>.GetOrCreate(ref o, 0);
             }
             SetCreatedAndRejectedStacktrace(valueContainer, rejectSkipFrames + 1, traceable);
             return valueContainer;
@@ -245,7 +246,7 @@ namespace Proto.Promises
             ICancelValueContainer cancelValue;
             if (typeof(TCancel).IsValueType)
             {
-                cancelValue = CancelContainer<TCancel>.GetOrCreate(ref reason);
+                cancelValue = CancelContainer<TCancel>.GetOrCreate(ref reason, 0);
             }
             else
             {
@@ -268,7 +269,7 @@ namespace Proto.Promises
                 {
                     // Only need to create one object pool for reference types.
                     object o = reason;
-                    cancelValue = CancelContainer<object>.GetOrCreate(ref o);
+                    cancelValue = CancelContainer<object>.GetOrCreate(ref o, 0);
                 }
             }
             return cancelValue;

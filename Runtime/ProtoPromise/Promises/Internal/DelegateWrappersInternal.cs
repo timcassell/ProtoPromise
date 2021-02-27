@@ -310,7 +310,7 @@ namespace Proto.Promises
                 {
                     TResult result = _callback.Invoke();
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -366,7 +366,7 @@ namespace Proto.Promises
                 {
                     TResult result = _callback.Invoke(arg);
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -733,7 +733,7 @@ namespace Proto.Promises
                 {
                     TResult result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -795,7 +795,7 @@ namespace Proto.Promises
                 {
                     TResult result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1181,7 +1181,7 @@ namespace Proto.Promises
                 {
                     TResult result = _callback.Invoke(_capturedValue);
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1239,7 +1239,7 @@ namespace Proto.Promises
                 {
                     TResult result = _callback.Invoke(_capturedValue, arg);
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1618,7 +1618,7 @@ namespace Proto.Promises
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1684,7 +1684,7 @@ namespace Proto.Promises
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result));
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
                 }
 
                 [MethodImpl(InlineOption)]
