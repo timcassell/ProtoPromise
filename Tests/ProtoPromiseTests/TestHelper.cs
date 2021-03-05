@@ -793,7 +793,6 @@ namespace Proto.Promises.Tests
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null, TestAction<Promise<T>> onCallbackAddedT = null,
             Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null)
         {
-            // TODO: onCallbackAdded use custom delegate to pass "ref Promise".
             promise = promise.Preserve();
             promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
 

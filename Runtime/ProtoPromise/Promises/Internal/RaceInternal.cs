@@ -14,7 +14,9 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Proto.Utils;
 
 namespace Proto.Promises
@@ -37,6 +39,7 @@ namespace Proto.Promises
                     }
                 }
 
+                private readonly object _locker = new object();
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
                 private uint _waitCount;
 
@@ -48,6 +51,10 @@ namespace Proto.Promises
                     {
                         base.Dispose();
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    }
+                    else
+                    {
+                        Interlocked.Increment(ref _idAndRetainCounter);
                     }
                 }
 
@@ -68,9 +75,9 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                public override void Handle()
                 {
-                    HandleSelf(valueContainer);
+                    HandleSelf((IValueContainer) _valueOrPrevious);
                 }
 
                 bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index)
@@ -87,16 +94,11 @@ namespace Proto.Promises
                         valueContainer.Retain();
                         _valueOrPrevious = valueContainer;
                     }
-                    else if (_waitCount == 0) // Quick fix until TODO is done.
+                    else if (_waitCount == 0 & _state != Promise.State.Pending) // Quick fix until TODO is done.
                     {
                         MaybeDispose();
                     }
                     return handle;
-                }
-
-                void IMultiTreeHandleable.ReAdd(PromisePassThrough passThrough)
-                {
-                    _passThroughs.Push(passThrough);
                 }
 
                 partial void SetupProgress();
@@ -133,14 +135,14 @@ namespace Proto.Promises
                     return true;
                 }
 
-                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, Stack<PromisePassThrough> passThroughs)
                 {
                     ThrowIfInPool(this);
                     bool firstSubscribe = _progressListeners.IsEmpty;
                     _progressListeners.Push(progressListener);
                     if (firstSubscribe & _state == Promise.State.Pending)
                     {
-                        BorrowPassthroughs(ref passThroughs);
+                        BorrowPassthroughs(passThroughs);
                     }
 
                     previous = null;

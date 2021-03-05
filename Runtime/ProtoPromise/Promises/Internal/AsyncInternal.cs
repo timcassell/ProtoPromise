@@ -4,7 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-#if CSHARP_7_OR_LATER // async not available in old runtime.
+#if CSHARP_7_3_OR_NEWER // Custom async builders only available after C# 7.2.
 
 #pragma warning disable IDE0060 // Remove unused parameter
 
@@ -456,7 +456,7 @@ namespace Proto.Promises.Async.CompilerServices
     public struct PromiseMethodBuilder
     {
         private Internal.AsyncPromiseRef _ref;
-        private int _id;
+        private ushort _id;
 
         public Promise Task
         {
@@ -542,7 +542,7 @@ namespace Proto.Promises.Async.CompilerServices
     public struct PromiseMethodBuilder<T>
     {
         private Internal.AsyncPromiseRef _ref;
-        private int _id;
+        private ushort _id;
         private T _result;
 
         public Promise<T> Task

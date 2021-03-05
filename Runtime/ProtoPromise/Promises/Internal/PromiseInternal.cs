@@ -3,14 +3,11 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
+#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using Proto.Utils;
 using System;
@@ -33,12 +30,12 @@ namespace Proto.Promises
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal readonly int _id; // Only using int because Interlocked does not support ushort.
+        internal readonly ushort _id;
 
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal Promise(Internal.PromiseRef promiseRef, int id)
+        internal Promise(Internal.PromiseRef promiseRef, ushort id)
         {
             _ref = promiseRef;
             _id = id;
@@ -58,7 +55,7 @@ namespace Proto.Promises
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal readonly int _id; // Only using int because Interlocked does not support ushort.
+        internal readonly ushort _id;
         /// <summary>
         /// Internal use.
         /// </summary>
@@ -67,7 +64,7 @@ namespace Proto.Promises
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal Promise(Internal.PromiseRef promiseRef, int id)
+        internal Promise(Internal.PromiseRef promiseRef, ushort id)
         {
             _ref = promiseRef;
             _id = id;
@@ -77,7 +74,7 @@ namespace Proto.Promises
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal Promise(Internal.PromiseRef promiseRef, int id, ref T value)
+        internal Promise(Internal.PromiseRef promiseRef, ushort id, ref T value)
         {
             _ref = promiseRef;
             _id = id;
@@ -88,7 +85,7 @@ namespace Proto.Promises
     partial class Internal
     {
         // Just a random number that's not zero. Using this in Promise(<T>) instead of a bool prevents extra memory padding.
-        internal const int ValidIdFromApi = 41265;
+        internal const ushort ValidIdFromApi = 41265;
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
@@ -96,11 +93,12 @@ namespace Proto.Promises
         internal abstract partial class PromiseRef : ITreeHandleable, ITraceable
         {
             private ITreeHandleable _next;
-            private object _valueOrPrevious;
-            volatile private int _id = 1; // Only using int because Interlocked does not support ushort.
+            volatile private object _valueOrPrevious;
+            // Left 16 bits are for Id, right 16 bits are for retains. (Retains are just for thread safety to prevent an object from being disposed while a callback is being added.)
+            volatile private int _idAndRetainCounter = 1 << 16;
             volatile private Promise.State _state;
+            volatile private bool _wasAwaited;
             private bool _suppressRejection;
-            private bool _wasAwaited;
 
             ITreeHandleable ILinked<ITreeHandleable>.Next
             {
@@ -110,10 +108,16 @@ namespace Proto.Promises
                 set { _next = value; }
             }
 
-            internal int Id
+            internal ushort Id
             {
                 [MethodImpl(InlineOption)]
-                get { return _id; }
+                get
+                {
+                    unchecked
+                    {
+                        return (ushort) (_idAndRetainCounter >> 16);
+                    }
+                }
             }
             internal Promise.State State
             {
@@ -145,20 +149,16 @@ namespace Proto.Promises
                 }
             }
 
-            protected virtual void MarkAwaited(int promiseId)
+            protected virtual void MarkAwaited(ushort promiseId)
             {
-                IncrementId(promiseId);
+                IncrementIdAndRetain(promiseId, 1);
                 _wasAwaited = true;
             }
 
-            private int IncrementId(int promiseId)
+            private int IncrementIdAndRetain(ushort promiseId, int retainCount)
             {
-                int newId;
-                unchecked // We want the id to wrap around.
-                {
-                    newId = promiseId + 1;
-                }
-                if (Interlocked.CompareExchange(ref _id, newId, promiseId) != promiseId)
+                int newValue;
+                if (!InterlockedTryAddIdAndRetain(promiseId, (1 << 16) + retainCount, out newValue)) // Left 16 bits are for Id, right 16 bits are for retains.
                 {
                     // Public APIs do a simple validation check in DEBUG mode, this is an extra thread-safe validation in case the same object is concurrently used and/or forgotten at the same time.
                     // This is left in RELEASE mode because concurrency issues can be very difficult to track down, and might not show up in DEBUG mode.
@@ -166,10 +166,31 @@ namespace Proto.Promises
                         GetFormattedStacktrace(1));
                 }
                 ThrowIfInPool(this);
-                return newId;
+                return newValue;
             }
 
-            internal void MarkAwaitedAndMaybeDispose(int promiseId, bool suppressRejection)
+            [MethodImpl(InlineOption)]
+            private bool InterlockedTryAddIdAndRetain(ushort promiseId, int addValue, out int newValue)
+            {
+                int initialValue;
+                do
+                {
+                    initialValue = _idAndRetainCounter;
+                    unchecked // We want the id to wrap around.
+                    {
+                        newValue = initialValue + addValue;
+                    }
+                    uint oldId = (uint) initialValue >> 16; // Left 16 bits are for Id.
+                    if (oldId != promiseId)
+                    {
+                        return false;
+                    }
+                }
+                while (Interlocked.CompareExchange(ref _idAndRetainCounter, newValue, initialValue) != initialValue);
+                return true;
+            }
+
+            internal void MarkAwaitedAndMaybeDispose(ushort promiseId, bool suppressRejection)
             {
                 ThrowIfInPool(this);
                 MarkAwaited(promiseId);
@@ -200,15 +221,20 @@ namespace Proto.Promises
                 _state = Promise.State.Pending;
                 _suppressRejection = false;
                 _wasAwaited = false;
+                ++_idAndRetainCounter; // Set retain counter to 1 without changing the Id (Interlocked unnecessary).
                 SetCreatedStacktrace(this, 3);
             }
 
-            protected virtual void MaybeDispose()
+            protected void MaybeDispose()
             {
                 ThrowIfInPool(this);
-                if (_wasAwaited & _state != Promise.State.Pending)
+                unchecked
                 {
-                    Dispose();
+                    if ((ushort) Interlocked.Decrement(ref _idAndRetainCounter) == 0 // Right 16 bits are for retain.
+                        & _wasAwaited & _state != Promise.State.Pending)
+                    {
+                        Dispose();
+                    }
                 }
             }
 
@@ -249,7 +275,7 @@ namespace Proto.Promises
                 AddWaiter(newPromise);
             }
 
-            internal PromiseRef GetPreserved(int promiseId)
+            internal PromiseRef GetPreserved(ushort promiseId)
             {
                 MarkAwaited(promiseId);
                 _suppressRejection = true;
@@ -260,9 +286,9 @@ namespace Proto.Promises
 
             public abstract void Handle(); // ITreeHandleable.Handle()
 
-            internal abstract void Forget(int promiseId);
+            internal abstract void Forget(ushort promiseId);
 
-            internal abstract PromiseRef GetDuplicate(int promiseId);
+            internal abstract PromiseRef GetDuplicate(ushort promiseId);
 
             protected abstract bool TryRemoveWaiter(ITreeHandleable treeHandleable);
 
@@ -273,15 +299,15 @@ namespace Proto.Promises
 #endif
             internal abstract class PromiseSingleAwait : PromiseRef
             {
-                internal sealed override void Forget(int promiseId)
+                internal sealed override void Forget(ushort promiseId)
                 {
                     MarkAwaited(promiseId);
                     MaybeDispose();
                 }
 
-                internal sealed override PromiseRef GetDuplicate(int promiseId)
+                internal sealed override PromiseRef GetDuplicate(ushort promiseId)
                 {
-                    IncrementId(promiseId);
+                    IncrementIdAndRetain(promiseId, 0);
                     return this;
                 }
             }
@@ -302,18 +328,17 @@ namespace Proto.Promises
 
                 private readonly object _locker = new object();
                 private ValueLinkedStack<ITreeHandleable> _nextBranches;
-                private int _retainCounter;
 
                 private PromiseMultiAwait() { }
 
                 ~PromiseMultiAwait()
                 {
-                    if (_retainCounter > 0)
+                    _wasAwaited = true; // Stop base finalizer from adding an extra exception.
+                    if ((_idAndRetainCounter & ushort.MaxValue) != 0)
                     {
                         string message = "A preserved Promise's resources were garbage collected without it being forgotten. You must call Forget() on each preserved promise when you are finished with it.";
                         AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
                     }
-                    _wasAwaited = true; // Stop base finalizer from adding an extra exception.
                 }
 
                 [MethodImpl(InlineOption)]
@@ -321,7 +346,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseMultiAwait, Creator>(new Creator());
                     promise.Reset();
-                    promise._retainCounter = 1;
+                    ++promise._idAndRetainCounter; // Add an extra retain to be released when Forget is called.
                     return promise;
                 }
 
@@ -331,41 +356,25 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void MaybeDispose()
+                protected override void MarkAwaited(ushort promiseId)
                 {
-                    ThrowIfInPool(this);
-                    if (Interlocked.Decrement(ref _retainCounter) == 0 & _wasAwaited & _state != Promise.State.Pending)
+                    int _;
+                    if (!InterlockedTryAddIdAndRetain(promiseId, 1, out _)) // Only retain without incrementing Id.
                     {
-                        Dispose();
+                        throw new InvalidOperationException("Attempted to use an invalid Promise. This may be because you are attempting to use a promise simultaneously on multiple threads.",
+                            GetFormattedStacktrace(1));
                     }
                 }
 
-                protected override void MarkAwaited(int promiseId)
+                internal override void Forget(ushort promiseId)
                 {
-                    if (promiseId != _id)
-                    {
-                        goto Throw;
-                    }
-
-                    Interlocked.Increment(ref _retainCounter);
-                    if (promiseId == _id) // double check the id in case this was forgotten on another thread during the increment.
-                    {
-                        return;
-                    }
-
-                    MaybeDispose();
-                Throw:
-                    throw new InvalidOperationException("Attempted to use an invalid Promise. This may be because you are attempting to use a promise simultaneously on multiple threads.",
-                        GetFormattedStacktrace(1));
-                }
-
-                internal override void Forget(int promiseId)
-                {
-                    base.MarkAwaited(promiseId);
+                    IncrementIdAndRetain(promiseId, 0); // Don't retain.
+                    _wasAwaited = true;
                     MaybeDispose();
                 }
 
-                internal override PromiseRef GetDuplicate(int promiseId)
+
+                internal override PromiseRef GetDuplicate(ushort promiseId)
                 {
                     MarkAwaited(promiseId);
                     var newPromise = PromiseDuplicate.GetOrCreate();
@@ -384,7 +393,6 @@ namespace Proto.Promises
 
                 protected override void AddWaiter(ITreeHandleable waiter)
                 {
-                    // TODO: thread synchronization
                     ThrowIfInPool(this);
                     if (_state == Promise.State.Pending)
                     {
@@ -402,7 +410,7 @@ namespace Proto.Promises
 
                 public override void Handle()
                 {
-                    // TODO: thread synchronization
+                    ThrowIfInPool(this);
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     _state = valueContainer.GetState();
 
@@ -416,7 +424,7 @@ namespace Proto.Promises
                         CancelProgressListeners(null);
                     }
 
-                    base.MaybeDispose();
+                    MaybeDispose();
                 }
 
                 private void HandleBranches(IValueContainer valueContainer)
@@ -447,7 +455,7 @@ namespace Proto.Promises
 #endif
             internal abstract class PromiseBranch : PromiseSingleAwait
             {
-                private ITreeHandleable _waiter;
+                volatile private ITreeHandleable _waiter;
 
                 protected sealed override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
                 {
@@ -456,14 +464,12 @@ namespace Proto.Promises
 
                 protected sealed override void AddWaiter(ITreeHandleable waiter)
                 {
-                    // TODO: thread synchronization
                     ThrowIfInPool(this);
-                    if (_state == Promise.State.Pending)
+                    // When this is completed, _state is set then _waiter is swapped, so setting _waiter before checking _state here ensures thread safety.
+                    _waiter = waiter;
+                    if (_state != Promise.State.Pending)
                     {
-                        _waiter = waiter;
-                    }
-                    else
-                    {
+                        _waiter = null;
                         waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
                     }
                     MaybeDispose();
@@ -517,7 +523,6 @@ namespace Proto.Promises
 
                 internal void ResolveInternal(IValueContainer valueContainer)
                 {
-                    // TODO: thread synchronization
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     _state = Promise.State.Resolved;
@@ -529,24 +534,18 @@ namespace Proto.Promises
 
                 internal void RejectOrCancelInternal(IValueContainer valueContainer)
                 {
-                    // TODO: thread synchronization
                     valueContainer.Retain();
-                    var previous = _valueOrPrevious;
                     _valueOrPrevious = valueContainer;
                     _state = valueContainer.GetState();
                     HandleWaiter(valueContainer);
-                    CancelProgressListeners(previous);
+                    CancelProgressListeners(null);
 
                     MaybeDispose();
                 }
 
                 internal void HandleSelf(IValueContainer valueContainer)
                 {
-                    // TODO: thread synchronization
-                    var previous = _valueOrPrevious;
-                    _valueOrPrevious = valueContainer;
                     _state = valueContainer.GetState();
-
                     HandleWaiter(valueContainer);
                     if (_state == Promise.State.Resolved)
                     {
@@ -554,7 +553,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        CancelProgressListeners(previous);
+                        CancelProgressListeners(null);
                     }
 
                     MaybeDispose();
@@ -662,14 +661,12 @@ namespace Proto.Promises
 
                 protected sealed override void AddWaiter(ITreeHandleable waiter)
                 {
-                    // TODO: thread synchronization
                     ThrowIfInPool(this);
-                    if (_state == Promise.State.Pending)
+                    // When this is completed, _state is set then _next is swapped, so setting _waiter before checking _state here ensures thread safety.
+                    _next = waiter;
+                    if (_state != Promise.State.Pending)
                     {
-                        _next = waiter;
-                    }
-                    else
-                    {
+                        _next = null;
                         waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
                     }
                     MaybeDispose();
@@ -677,7 +674,6 @@ namespace Proto.Promises
 
                 internal void ResolveInternal(IValueContainer valueContainer)
                 {
-                    // TODO: thread synchronization
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     _state = Promise.State.Resolved;
@@ -689,13 +685,11 @@ namespace Proto.Promises
 
                 internal void RejectOrCancelInternal(IValueContainer valueContainer)
                 {
-                    // TODO: thread synchronization
                     valueContainer.Retain();
-                    var previous = _valueOrPrevious;
                     _valueOrPrevious = valueContainer;
                     _state = valueContainer.GetState();
                     HandleWaiter(valueContainer);
-                    CancelProgressListeners(previous);
+                    CancelProgressListeners(null);
 
                     MaybeDispose();
                 }
@@ -749,10 +743,16 @@ namespace Proto.Promises
             {
                 // Only using int because Interlocked does not support ushort.
                 private int _deferredId = 1;
-                internal int DeferredId
+                internal ushort DeferredId
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _deferredId; }
+                    get
+                    {
+                        unchecked
+                        {
+                            return (ushort) _deferredId;
+                        }
+                    }
                 }
 
                 protected DeferredPromiseBase() { }
@@ -1373,6 +1373,7 @@ namespace Proto.Promises
 
                 internal PromiseRef Owner
                 {
+                    [MethodImpl(InlineOption)]
                     get
                     {
                         ThrowIfInPool(this);
@@ -1381,6 +1382,7 @@ namespace Proto.Promises
                 }
                 internal IMultiTreeHandleable Target
                 {
+                    [MethodImpl(InlineOption)]
                     get
                     {
                         ThrowIfInPool(this);
@@ -1388,11 +1390,21 @@ namespace Proto.Promises
                     }
                 }
 
-                private int _index;
                 private PromiseRef _owner;
                 private IMultiTreeHandleable _target;
+                private int _index;
+                private int _retainCount;
 
                 private PromisePassThrough() { }
+
+                ~PromisePassThrough()
+                {
+                    if (_retainCount != 0)
+                    {
+                        string message = "A PromisePassThrough was garbage collected without it being released.";
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), null);
+                    }
+                }
 
                 public static PromisePassThrough GetOrCreate(Promise owner, int index)
                 {
@@ -1402,6 +1414,7 @@ namespace Proto.Promises
                     passThrough._owner = owner._ref;
                     passThrough._index = index;
                     passThrough.ResetProgress();
+                    passThrough._retainCount = 1;
                     return passThrough;
                 }
 
@@ -1436,12 +1449,17 @@ namespace Proto.Promises
                     Release();
                 }
 
+                [MethodImpl(InlineOption)]
+                internal void Retain()
+                {
+                    ThrowIfInPool(this);
+                    Interlocked.Increment(ref _retainCount);
+                }
+
                 internal void Release()
                 {
                     ThrowIfInPool(this);
-#if PROMISE_PROGRESS
-                    if (!_progressListening)
-#endif
+                    if (Interlocked.Decrement(ref _retainCount) == 0)
                     {
                         _owner = null;
                         _target = null;

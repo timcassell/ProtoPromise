@@ -33,6 +33,8 @@ namespace Proto.Promises
 #endif
         internal static partial class ObjectPool<TLinked> where TLinked : class, ILinked<TLinked>
         {
+            // TODO: This is the bottleneck across the entire library for multithreading, investigate using ConcurrentBag (not safe in Unity's WebGL).
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
@@ -41,8 +43,9 @@ namespace Proto.Promises
                 // Using ValueLinkedStack<> makes object pooling free.
                 // No array allocations or linked list node allocations are necessary (the objects have links built-in through the ILinked<> interface).
                 // Even the pool itself doesn't require a class instance (that would be necessary with a typed dictionary).
+
                 public static ValueLinkedStack<TLinked> pool; // Must not be readonly.
-                public static readonly object lockObject = new object(); // Simple lock for now.
+                public static readonly object locker = new object(); // Simple lock for now.
 
                 // The downside to static pools instead of a Type dictionary is adding each type's clear function to the OnClearPool delegate consumes memory and is potentially more expensive than clearing a dictionary.
                 // This cost could be removed if Promise.Config.ObjectPoolingEnabled is made constant and set to false, and we add a check before accessing the pool.
@@ -57,22 +60,24 @@ namespace Proto.Promises
             // Generic constraint for the creator allows using a struct to make a new object, so no extra memory is consumed.
             // If the compiler/JIT is smart, it should be able to resolve the creator statically and inline it, so no indirection or function call costs.
             [MethodImpl(InlineOption)]
-            internal static T GetOrCreate<T, TCreator>(TCreator creator) where T : TLinked where TCreator : ICreator<T>
+            internal static T GetOrCreate<T, TCreator>(TCreator creator)
+                where T : TLinked
+                where TCreator : ICreator<T>
             {
-                lock (Type<T>.lockObject)
+                TLinked obj;
+                lock (Type<T>.locker)
                 {
-                    // TODO
-                    //Monitor.Enter(Type<T>.lockObject);
-                    if (Type<T>.pool.IsEmpty)
+                    if (Type<T>.pool.IsNotEmpty)
                     {
-                        //Monitor.Exit(Type<T>.lockObject);
-                        return creator.Create();
+                        obj = Type<T>.pool.Pop();
+                        goto ReturnCasted;
                     }
-                    var obj = Type<T>.pool.Pop();
-                    //Monitor.Exit(Type<T>.lockObject);
-                    RemoveFromTrackedObjects(obj);
-                    return (T) obj;
                 }
+                // Exit lock before allocating or casting.
+                return creator.Create();
+            ReturnCasted:
+                RemoveFromTrackedObjects(obj);
+                return (T) obj;
             }
 
             [MethodImpl(InlineOption)]
@@ -81,7 +86,7 @@ namespace Proto.Promises
                 if (Promise.Config.ObjectPoolingEnabled)
                 {
                     AddToTrackedObjects(obj);
-                    lock (Type<T>.lockObject)
+                    lock (Type<T>.locker)
                     {
                         Type<T>.pool.Push(obj);
                     }
@@ -92,6 +97,7 @@ namespace Proto.Promises
             static partial void AddToTrackedObjects(object obj);
             static partial void RemoveFromTrackedObjects(object obj);
 #if PROMISE_DEBUG
+
             static partial void AddToTrackedObjects(object obj)
             {
                 lock (_pooledObjects)

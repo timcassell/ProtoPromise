@@ -19,17 +19,17 @@ namespace Proto.Promises
     {
         partial class PromiseRef
         {
-            internal void AddAwaiter(ITreeHandleable awaiter, int promiseId)
+            internal void AddAwaiter(ITreeHandleable awaiter, ushort promiseId)
             {
-                // TODO: thread synchronization
                 MarkAwaited(promiseId);
                 _suppressRejection = true;
                 AddWaiter(awaiter);
             }
 
-            internal T MarkAwaitedAndGetResultAndMaybeDispose<T>(int promiseId)
+            internal T MarkAwaitedAndGetResultAndMaybeDispose<T>(ushort promiseId)
             {
                 MarkAwaited(promiseId);
+                _suppressRejection = true;
                 T result = ((ResolveContainer<T>) _valueOrPrevious).value;
                 MaybeDispose();
                 return result;
@@ -55,12 +55,18 @@ namespace Proto.Promises
             private Action _continuation;
             private IValueContainer _valueContainer;
             private Promise.State _state;
-            private int _id;
+            private int _id = 1 << 16; // Only use left 16 bits for automatic wrapping. Only using int because Interlocked does not support ushort.
 
-            internal int Id
+            internal ushort Id
             {
                 [MethodImpl(InlineOption)]
-                get { return _id; }
+                get
+                {
+                    unchecked
+                    {
+                        return (ushort) (_id >> 16);
+                    }
+                }
             }
 
             private AwaiterRef() { }
@@ -82,11 +88,11 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private void IncrementId(int promiseId)
+            private void IncrementId(ushort promiseId)
             {
                 unchecked
                 {
-                    if (Interlocked.CompareExchange(ref _id, promiseId + 1, promiseId) != promiseId)
+                    if (Interlocked.CompareExchange(ref _id, (promiseId + 1) << 16, promiseId << 16) != promiseId << 16)
                     {
                         ThrowFromIdMismatch();
                     }
@@ -94,7 +100,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal bool GetCompleted(int awaiterId)
+            internal bool GetCompleted(ushort awaiterId)
             {
                 ValidateId(awaiterId);
                 ThrowIfInPool(this);
@@ -102,7 +108,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void OnCompleted(Action continuation, int awaiterId)
+            internal void OnCompleted(Action continuation, ushort awaiterId)
             {
                 ValidateId(awaiterId);
                 ThrowIfInPool(this);
@@ -110,7 +116,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void GetResult(int awaiterId)
+            internal void GetResult(ushort awaiterId)
             {
                 ThrowIfInPool(this);
 #if PROMISE_DEBUG
@@ -132,7 +138,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal T GetResult<T>(int awaiterId)
+            internal T GetResult<T>(ushort awaiterId)
             {
                 ThrowIfInPool(this);
 #if PROMISE_DEBUG
@@ -185,14 +191,13 @@ namespace Proto.Promises
             private void ThrowFromIdMismatch()
             {
                 throw new InvalidOperationException("PromiseAwaiter is not valid. Use the 'await' keyword on a Promise instead of using PromiseAwaiter.", GetFormattedStacktrace(3));
-
             }
 
-            partial void ValidateId(int awaiterId);
+            partial void ValidateId(ushort awaiterId);
 #if PROMISE_DEBUG
-            partial void ValidateId(int awaiterId)
+            partial void ValidateId(ushort awaiterId)
             {
-                if (Interlocked.CompareExchange(ref _id, 0, 0) != awaiterId)
+                if (Interlocked.CompareExchange(ref _id, 0, 0) != awaiterId << 16)
                 {
                     ThrowFromIdMismatch();
                 }
@@ -216,7 +221,7 @@ namespace Proto.Promises
             partial struct PromiseAwaiter : ICriticalNotifyCompletion
         {
             private readonly Internal.AwaiterRef _ref;
-            private readonly int _id;
+            private readonly ushort _id;
 
             /// <summary>
             /// Internal use.
@@ -227,7 +232,7 @@ namespace Proto.Promises
                 if (promise._ref == null)
                 {
                     _ref = null;
-                    _id = Internal.ValidIdFromApi;
+                    _id = promise._id;
                 }
                 else if (promise._ref.State == Promise.State.Resolved) // No need to allocate a new object if the promise is resolved.
                 {
@@ -311,7 +316,7 @@ namespace Proto.Promises
             partial struct PromiseAwaiter<T> : ICriticalNotifyCompletion
         {
             private readonly Internal.AwaiterRef _ref;
-            private readonly int _id;
+            private readonly ushort _id;
             private readonly T _result;
 
             /// <summary>
@@ -322,22 +327,22 @@ namespace Proto.Promises
             {
                 if (promise._ref == null)
                 {
-                    _ref = null;
-                    _id = Internal.ValidIdFromApi;
                     _result = promise._result;
+                    _ref = null;
+                    _id = promise._id;
                 }
                 else if (promise._ref.State == Promise.State.Resolved) // No need to allocate a new object if the promise is resolved.
                 {
+                    _result = promise._ref.MarkAwaitedAndGetResultAndMaybeDispose<T>(promise._id);
                     _ref = null;
                     _id = Internal.ValidIdFromApi;
-                    _result = promise._ref.MarkAwaitedAndGetResultAndMaybeDispose<T>(promise._id);
                 }
                 else
                 {
                     _ref = Internal.AwaiterRef.GetOrCreate();
-                    _id = _ref.Id;
                     promise._ref.AddAwaiter(_ref, promise._id);
-                    _result = default(T);
+                    _result = default;
+                    _id = _ref.Id;
                 }
             }
 

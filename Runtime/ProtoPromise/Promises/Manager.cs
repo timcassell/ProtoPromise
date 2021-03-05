@@ -92,7 +92,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Clears all currently pooled objects. Does not affect pending or retained promises.
+            /// Clears all currently pooled objects. Does not affect pending or preserved promises.
             /// </summary>
             public static void ClearObjectPool()
             {

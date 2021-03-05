@@ -278,20 +278,62 @@ namespace Proto.Promises
         // Handle promises in a depth-first manner.
         private static ValueLinkedQueue<ITreeHandleable> _handleQueue;
         private static bool _runningHandles;
+        private static readonly object _handleLocker = new object();
 
         internal static void AddToHandleQueueFront(ITreeHandleable handleable)
         {
-            _handleQueue.Push(handleable);
+            lock (_handleLocker)
+            {
+                _handleQueue.Push(handleable);
+            }
         }
 
         internal static void AddToHandleQueueBack(ITreeHandleable handleable)
         {
-            _handleQueue.Enqueue(handleable);
+            lock (_handleLocker)
+            {
+                _handleQueue.Enqueue(handleable);
+            }
         }
 
         internal static void AddToHandleQueueFront(ref ValueLinkedQueue<ITreeHandleable> handleables)
         {
-            _handleQueue.PushAndClear(ref handleables);
+            lock (_handleLocker)
+            {
+                _handleQueue.PushAndClear(ref handleables);
+            }
+        }
+
+        internal static void HandleEvents()
+        {
+            if (_runningHandles)
+            {
+                // HandleEvents is running higher in the program stack, so just return.
+                return;
+            }
+
+            _runningHandles = true;
+
+            while (true)
+            {
+                ValueLinkedQueue<ITreeHandleable> queue;
+                lock (_handleLocker)
+                {
+                    queue = _handleQueue;
+                    _handleQueue.Clear();
+                }
+                if (queue.IsEmpty)
+                {
+                    break;
+                }
+
+                do
+                {
+                    queue.DequeueRisky().Handle();
+                } while (queue.IsNotEmpty);
+            }
+
+            _runningHandles = false;
         }
 
         private static ValueLinkedStackZeroGC<UnhandledException> _unhandledExceptions;
@@ -325,25 +367,6 @@ namespace Proto.Promises
             string message = innerException != null ? "An exception was not handled." : "A rejected value was not handled, type: " + type + ", value: " + unhandledValue.ToString();
 
             AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, type, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
-        }
-
-        internal static void HandleEvents()
-        {
-            if (_runningHandles)
-            {
-                // HandleEvents is running higher in the program stack, so just return.
-                return;
-            }
-
-            _runningHandles = true;
-
-            while (_handleQueue.IsNotEmpty)
-            {
-                _handleQueue.DequeueRisky().Handle();
-            }
-
-            _handleQueue.ClearLast();
-            _runningHandles = false;
         }
 
         internal static void ThrowUnhandledRejections()

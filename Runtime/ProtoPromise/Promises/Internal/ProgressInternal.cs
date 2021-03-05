@@ -13,6 +13,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Proto.Utils;
 
@@ -23,47 +24,73 @@ namespace Proto.Promises
         partial class PromiseRef
         {
 #if PROMISE_DEBUG || PROMISE_PROGRESS
-            protected virtual void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower) { }
-
-            protected static void ExchangePassthroughs(ref ValueLinkedStack<PromisePassThrough> from, ref ValueLinkedStack<PromisePassThrough> to)
+            [ThreadStatic]
+            private static Stack<PromisePassThrough> _passthroughsForIterativeAlgorithm;
+            private static Stack<PromisePassThrough> PassthroughsForIterativeAlgorithm
             {
-                // TODO: always subscribe multi-promises to progress when they are created so that this won't be necessary for an iterative algorithm (this algorithm can't work with multiple threads).
-
-                // Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
-                while (from.IsNotEmpty)
+                get
                 {
-                    var passThrough = from.Pop();
-                    if (passThrough.Owner != null && passThrough.Owner._state == Promise.State.Pending)
+                    if (_passthroughsForIterativeAlgorithm == null)
                     {
-                        to.Push(passThrough);
+                        _passthroughsForIterativeAlgorithm = new Stack<PromisePassThrough>();
+                    }
+                    return _passthroughsForIterativeAlgorithm;
+                }
+            }
+
+            protected virtual void BorrowPassthroughs(Stack<PromisePassThrough> borrower) { }
+
+            private static void ExchangePassthroughs(ref ValueLinkedStack<PromisePassThrough> from, Stack<PromisePassThrough> to, object locker)
+            {
+                // TODO: always subscribe multi-promises to progress when they are created so that this won't be necessary for an iterative algorithm (for multi-threading).
+
+                lock (locker)
+                {
+                    foreach (var passthrough in from)
+                    {
+                        if (passthrough.Owner._state == Promise.State.Pending)
+                        {
+                            passthrough.Retain();
+                            to.Push(passthrough);
+                        }
                     }
                 }
+
+                //// Remove this.passThroughs before adding to passThroughs. They are re-added by the caller.
+                //while (from.IsNotEmpty)
+                //{
+                //    var passThrough = from.Pop();
+                //    if (passThrough.Owner != null && passThrough.Owner._state == Promise.State.Pending)
+                //    {
+                //        to.Push(passThrough);
+                //    }
+                //}
             }
 
             partial class MergePromise
             {
-                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
+                protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
                 {
                     ThrowIfInPool(this);
-                    ExchangePassthroughs(ref _passThroughs, ref borrower);
+                    ExchangePassthroughs(ref _passThroughs, borrower, _locker);
                 }
             }
 
             partial class RacePromise
             {
-                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
+                protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
                 {
                     ThrowIfInPool(this);
-                    ExchangePassthroughs(ref _passThroughs, ref borrower);
+                    ExchangePassthroughs(ref _passThroughs, borrower, _locker);
                 }
             }
 
             partial class FirstPromise
             {
-                protected override void BorrowPassthroughs(ref ValueLinkedStack<PromisePassThrough> borrower)
+                protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
                 {
                     ThrowIfInPool(this);
-                    ExchangePassthroughs(ref _passThroughs, ref borrower);
+                    ExchangePassthroughs(ref _passThroughs, borrower, _locker);
                 }
             }
 #endif
@@ -144,7 +171,7 @@ namespace Proto.Promises
                 return (previous = _valueOrPrevious as PromiseRef) != null;
             }
 
-            protected virtual bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+            protected virtual bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, Stack<PromisePassThrough> passThroughs)
             {
                 return SubscribeProgressAndContinueLoop(ref progressListener, out previous);
                 //ThrowIfTracked(this);
@@ -170,29 +197,27 @@ namespace Proto.Promises
             private static void SubscribeProgressToBranchesAndRoots(PromiseRef promise, IProgressListener progressListener)
             {
                 // This allows us to subscribe progress to AllPromises and RacePromises iteratively instead of recursively
-                ValueLinkedStack<PromisePassThrough> passThroughs = new ValueLinkedStack<PromisePassThrough>();
+                Stack<PromisePassThrough> passThroughs = PassthroughsForIterativeAlgorithm;
 
             Repeat:
-                SubscribeProgressToChain(promise, progressListener, ref passThroughs);
+                SubscribeProgressToChain(promise, progressListener, passThroughs);
 
-                if (passThroughs.IsNotEmpty)
+                if (passThroughs.Count > 0)
                 {
-                    // passThroughs are removed from their targets before adding to passThroughs. Add them back here.
                     var passThrough = passThroughs.Pop();
                     promise = passThrough.Owner;
                     progressListener = passThrough;
-                    passThrough.Target.ReAdd(passThrough);
                     goto Repeat;
                 }
             }
 
-            private static void SubscribeProgressToChain(PromiseRef promise, IProgressListener progressListener, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+            private static void SubscribeProgressToChain(PromiseRef promise, IProgressListener progressListener, Stack<PromisePassThrough> passThroughs)
             {
                 PromiseRef next;
                 // If the promise is not waiting on another promise (is the root), it sets next to null, does not add the listener, and returns false.
                 // If the promise is waiting on another promise that is not its previous, it adds the listener, transforms progresslistener, sets next to the one it's waiting on, and returns true.
                 // Otherwise, it sets next to its previous, adds the listener only if it is a WaitPromise, and returns true.
-                while (promise.SubscribeProgressIfWaiterAndContinueLoop(ref progressListener, out next, ref passThroughs))
+                while (promise.SubscribeProgressIfWaiterAndContinueLoop(ref progressListener, out next, passThroughs))
                 {
                     promise = next;
                 }
@@ -618,7 +643,7 @@ namespace Proto.Promises
                     return previous != null;
                 }
 
-                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
+                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, Stack<PromisePassThrough> passThroughs)
                 {
                     ThrowIfInPool(this);
                     if (_state != Promise.State.Pending)
@@ -692,6 +717,20 @@ namespace Proto.Promises
                 }
             }
 
+            partial class AsyncPromiseBase
+            {
+                protected override sealed bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, Stack<PromisePassThrough> passThroughs)
+                {
+                    ThrowIfInPool(this);
+                    if (_state != Promise.State.Pending)
+                    {
+                        previous = null;
+                        return false;
+                    }
+                    return SubscribeProgressAndContinueLoop(ref progressListener, out previous);
+                }
+            }
+
             partial class DeferredPromiseBase
             {
                 internal bool TryReportProgress(float progress, int deferredId)
@@ -710,28 +749,16 @@ namespace Proto.Promises
                     }
                     return true;
                 }
-
-                protected override sealed bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, ref ValueLinkedStack<PromisePassThrough> passThroughs)
-                {
-                    ThrowIfInPool(this);
-                    if (_state != Promise.State.Pending)
-                    {
-                        previous = null;
-                        return false;
-                    }
-                    return SubscribeProgressAndContinueLoop(ref progressListener, out previous);
-                }
             }
 
             partial class PromisePassThrough : IProgressListener
             {
                 private UnsignedFixed32 _currentProgress;
-                private bool _progressListening;
 
                 void IProgressListener.SetInitialProgress(UnsignedFixed32 progress)
                 {
                     ThrowIfInPool(this);
-                    _progressListening = true;
+                    //Retain();
                     _currentProgress = progress;
                     Target.IncrementProgress(progress.ToUInt32(), progress, Owner._waitDepthAndProgress);
                 }
@@ -749,7 +776,6 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (sender == Owner)
                     {
-                        _progressListening = false;
                         Release();
                     }
                 }
@@ -759,17 +785,18 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (sender == Owner)
                     {
-                        _progressListening = false;
                         Release();
                     }
                 }
 
+                [MethodImpl(InlineOption)]
                 internal uint GetProgressDifferenceToCompletion()
                 {
                     ThrowIfInPool(this);
                     return Owner._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32() - _currentProgress.ToUInt32();
                 }
 
+                [MethodImpl(InlineOption)]
                 partial void ResetProgress()
                 {
                     _currentProgress = default(UnsignedFixed32);

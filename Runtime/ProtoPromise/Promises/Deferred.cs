@@ -27,8 +27,8 @@ namespace Proto.Promises
         {
             private readonly Internal.PromiseRef.DeferredPromiseBase _ref;
             // Only using int because Interlocked does not support ushort.
-            private readonly int _promiseId;
-            private readonly int _deferredId;
+            private readonly ushort _promiseId;
+            private readonly ushort _deferredId;
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -64,7 +64,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use for implicit cast operator.
             /// </summary>
-            internal DeferredBase(Internal.PromiseRef.DeferredPromiseBase promise, int promiseId, int deferredId)
+            internal DeferredBase(Internal.PromiseRef.DeferredPromiseBase promise, ushort promiseId, ushort deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;
@@ -288,8 +288,8 @@ namespace Proto.Promises
         {
             private readonly Internal.PromiseRef.DeferredPromiseVoid _ref;
             // Only using int because Interlocked does not support ushort.
-            private readonly int _promiseId;
-            private readonly int _deferredId;
+            private readonly ushort _promiseId;
+            private readonly ushort _deferredId;
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -325,7 +325,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use.
             /// </summary>
-            internal Deferred(Internal.PromiseRef.DeferredPromiseVoid promise, int promiseId, int deferredId)
+            internal Deferred(Internal.PromiseRef.DeferredPromiseVoid promise, ushort promiseId, ushort deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;
@@ -559,8 +559,8 @@ namespace Proto.Promises
         {
             private readonly Internal.PromiseRef.DeferredPromise<T> _ref;
             // Only using int because Interlocked does not support ushort.
-            private readonly int _promiseId;
-            private readonly int _deferredId;
+            private readonly ushort _promiseId;
+            private readonly ushort _deferredId;
 
             /// <summary>
             /// The attached <see cref="Promise{T}"/> that this controls.
@@ -596,7 +596,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use.
             /// </summary>
-            internal Deferred(Internal.PromiseRef.DeferredPromise<T> promise, int promiseId, int deferredId)
+            internal Deferred(Internal.PromiseRef.DeferredPromise<T> promise, ushort promiseId, ushort deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;

@@ -122,28 +122,38 @@ namespace Proto.Promises
             internal struct CancelationHelper
             {
                 private CancelationRegistration _cancelationRegistration;
-                private int _retainCounter;
-                volatile private bool _isCanceled;
+                private int _retainAndCanceled; // 17th bit is canceled, lower 16 bits are retains.
 
                 [MethodImpl(InlineOption)]
                 internal void Register(CancelationToken cancelationToken, ICancelDelegate cancelable)
                 {
-                    _retainCounter = 1;
-                    _isCanceled = false;
+                    _retainAndCanceled = (1 << 16) + 1; // 17th bit set is not canceled, 1 retain until TryMakeReady or TryUnregister .
                     cancelationToken.TryRegisterInternal(cancelable, out _cancelationRegistration);
+                }
+
+                [MethodImpl(InlineOption)]
+                private bool IsCanceled()
+                {
+                    return _retainAndCanceled >> 16 == 0;
+                }
+
+                [MethodImpl(InlineOption)]
+                private void RetainAndSetCanceled()
+                {
+                    // Subtract 17th bit to set canceled and add 1 to retain. This performs both operations atomically and simultaneously.
+                    Interlocked.Add(ref _retainAndCanceled, (-(1 << 16)) + 1);
                 }
 
                 [MethodImpl(InlineOption)]
                 private bool Release()
                 {
-                    return Interlocked.Decrement(ref _retainCounter) == 0;
+                    return Interlocked.Decrement(ref _retainAndCanceled) == 0; // If all bits are 0, canceled was set and all calls are complete.
                 }
 
                 internal void SetCanceled(PromiseBranch owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(owner);
-                    Interlocked.Increment(ref _retainCounter);
-                    _isCanceled = true;
+                    RetainAndSetCanceled();
                     object currentValue = Interlocked.Exchange(ref owner._valueOrPrevious, valueContainer);
                     valueContainer.Retain();
                     owner._state = Promise.State.Canceled;
@@ -182,7 +192,7 @@ namespace Proto.Promises
                     object oldContainer = owner._valueOrPrevious;
                     bool _, isCancelationRequested;
                     _cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out _, out isCancelationRequested);
-                    if (!isCancelationRequested & !_isCanceled) // Was the token not in the process of canceling and not already canceled?
+                    if (!isCancelationRequested & !IsCanceled()) // Was the token not in the process of canceling and not already canceled?
                     {
                         valueContainer.Retain();
                         if (Interlocked.CompareExchange(ref owner._valueOrPrevious, valueContainer, oldContainer) == oldContainer) // Are we able to set the value container before the token?
@@ -194,7 +204,7 @@ namespace Proto.Promises
                             valueContainer.Release();
                         }
                     }
-                    if (Release() && _isCanceled)
+                    if (Release())
                     {
                         owner.MaybeDispose();
                     }
@@ -203,15 +213,19 @@ namespace Proto.Promises
 
                 internal bool TryUnregister(PromiseRef owner)
                 {
-                    bool unregistered = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) && !_isCanceled;
-                    if (!unregistered)
+                    ThrowIfInPool(owner);
+                    bool isCanceling;
+                    bool unregistered = _cancelationRegistration.TryUnregister(out isCanceling);
+                    if (unregistered)
                     {
-                        if (Release() && _isCanceled)
-                        {
-                            owner.MaybeDispose();
-                        }
+                        return true;
                     }
-                    return unregistered;
+                    if (Release())
+                    {
+                        owner.MaybeDispose();
+                        return false;
+                    }
+                    return !isCanceling;
                 }
             }
 
