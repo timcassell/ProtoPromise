@@ -93,7 +93,7 @@ namespace Proto.Promises.Tests.Threading
                 {
                     try
                     {
-                        promise.Duplicate();
+                        promise.Duplicate().Forget();
                         Interlocked.Increment(ref successCount);
                     }
                     catch (InvalidOperationException)
@@ -112,7 +112,7 @@ namespace Proto.Promises.Tests.Threading
         public void PromiseWithReferenceBacking_DuplicateMayOnlyBeCalledOnce_T()
         {
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
+            var promise = deferred.Promise;
 
             int successCount = 0, invalidCount = 0;
 
@@ -122,7 +122,7 @@ namespace Proto.Promises.Tests.Threading
                 {
                     try
                     {
-                        promise.Duplicate();
+                        promise.Duplicate().Forget();
                         Interlocked.Increment(ref successCount);
                     }
                     catch (InvalidOperationException)
@@ -141,7 +141,7 @@ namespace Proto.Promises.Tests.Threading
         public void PromiseWithReferenceBacking_PreserveMayOnlyBeCalledOnce_void()
         {
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
+            var promise = deferred.Promise;
 
             int successCount = 0, invalidCount = 0;
 
@@ -170,7 +170,7 @@ namespace Proto.Promises.Tests.Threading
         public void PromiseWithReferenceBacking_PreserveMayOnlyBeCalledOnce_T()
         {
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
+            var promise = deferred.Promise;
 
             int successCount = 0, invalidCount = 0;
 
@@ -198,13 +198,12 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void PromiseWithReferenceBacking_ThenMayOnlyBeCalledOnce_void()
         {
-            int successCount = 0, invalidCount = 0;
-
             var actions = new List<Action<Promise>>(TestHelper.ResolveActionsVoid(() => { }));
             actions.AddRange(TestHelper.ThenActionsVoid(() => { }, null));
             var threadHelper = new ThreadHelper();
             foreach (var action in actions)
             {
+                int successCount = 0, invalidCount = 0;
                 var deferred = Promise.NewDeferred();
                 var promise = deferred.Promise;
 
@@ -234,13 +233,12 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void PromiseWithReferenceBacking_ThenMayOnlyBeCalledOnce_T()
         {
-            int successCount = 0, invalidCount = 0;
-
             var actions = new List<Action<Promise<int>>>(TestHelper.ResolveActions<int>(v => { }));
             actions.AddRange(TestHelper.ThenActions<int>(v => { }, null));
             var threadHelper = new ThreadHelper();
             foreach (var action in actions)
             {
+                int successCount = 0, invalidCount = 0;
                 var deferred = Promise.NewDeferred<int>();
                 var promise = deferred.Promise;
 
@@ -270,12 +268,11 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void PromiseWithReferenceBacking_CatchMayOnlyBeCalledOnce_void()
         {
-            int successCount = 0, invalidCount = 0;
-
             var actions = TestHelper.CatchActionsVoid(() => { });
             var threadHelper = new ThreadHelper();
             foreach (var action in actions)
             {
+                int successCount = 0, invalidCount = 0;
                 var deferred = Promise.NewDeferred();
                 var promise = deferred.Promise;
 
@@ -305,12 +302,11 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void PromiseWithReferenceBacking_CatchMayOnlyBeCalledOnce_T()
         {
-            int successCount = 0, invalidCount = 0;
-
             var actions = TestHelper.CatchActions<int>(() => { });
             var threadHelper = new ThreadHelper();
             foreach (var action in actions)
             {
+                int successCount = 0, invalidCount = 0;
                 var deferred = Promise.NewDeferred<int>();
                 var promise = deferred.Promise;
 
@@ -340,12 +336,11 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void PromiseWithReferenceBacking_ContinueWithMayOnlyBeCalledOnce_void()
         {
-            int successCount = 0, invalidCount = 0;
-
             var actions = TestHelper.ContinueWithActionsVoid(() => { });
             var threadHelper = new ThreadHelper();
             foreach (var action in actions)
             {
+                int successCount = 0, invalidCount = 0;
                 var deferred = Promise.NewDeferred();
                 var promise = deferred.Promise;
 
@@ -375,12 +370,11 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void PromiseWithReferenceBacking_ContinueWithMayOnlyBeCalledOnce_T()
         {
-            int successCount = 0, invalidCount = 0;
-
             var actions = TestHelper.ContinueWithActions<int>(() => { });
             var threadHelper = new ThreadHelper();
             foreach (var action in actions)
             {
+                int successCount = 0, invalidCount = 0;
                 var deferred = Promise.NewDeferred<int>();
                 var promise = deferred.Promise;
 

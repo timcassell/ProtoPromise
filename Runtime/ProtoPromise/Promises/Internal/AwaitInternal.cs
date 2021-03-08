@@ -26,13 +26,12 @@ namespace Proto.Promises
                 AddWaiter(awaiter);
             }
 
-            internal T MarkAwaitedAndGetResultAndMaybeDispose<T>(ushort promiseId)
+            internal void MarkAwaitedAndGetResultAndMaybeDispose<T>(ushort promiseId, out T result)
             {
                 MarkAwaited(promiseId);
                 _suppressRejection = true;
-                T result = ((ResolveContainer<T>) _valueOrPrevious).value;
+                result = ((ResolveContainer<T>) _valueOrPrevious).value;
                 MaybeDispose();
-                return result;
             }
         }
 
@@ -55,7 +54,8 @@ namespace Proto.Promises
             private Action _continuation;
             private IValueContainer _valueContainer;
             private Promise.State _state;
-            private int _id = 1 << 16; // Only use left 16 bits for automatic wrapping. Only using int because Interlocked does not support ushort.
+            // Only using int because Interlocked does not support ushort.
+            volatile private int _id = 1 << ID_BITSHIFT; // Using left bits for Id instead of right bits so that we will get automatic wrapping without an extra operation.
 
             internal ushort Id
             {
@@ -64,7 +64,7 @@ namespace Proto.Promises
                 {
                     unchecked
                     {
-                        return (ushort) (_id >> 16);
+                        return (ushort) (_id >> ID_BITSHIFT);
                     }
                 }
             }
@@ -90,9 +90,10 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private void IncrementId(ushort promiseId)
             {
+                int intComp = promiseId << ID_BITSHIFT; // Left bits are for Id.
                 unchecked
                 {
-                    if (Interlocked.CompareExchange(ref _id, (promiseId + 1) << 16, promiseId << 16) != promiseId << 16)
+                    if (Interlocked.CompareExchange(ref _id, intComp + (1 << ID_BITSHIFT), intComp) != intComp)
                     {
                         ThrowFromIdMismatch();
                     }
@@ -197,7 +198,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             partial void ValidateId(ushort awaiterId)
             {
-                if (Interlocked.CompareExchange(ref _id, 0, 0) != awaiterId << 16)
+                if (awaiterId != Id)
                 {
                     ThrowFromIdMismatch();
                 }
@@ -333,7 +334,7 @@ namespace Proto.Promises
                 }
                 else if (promise._ref.State == Promise.State.Resolved) // No need to allocate a new object if the promise is resolved.
                 {
-                    _result = promise._ref.MarkAwaitedAndGetResultAndMaybeDispose<T>(promise._id);
+                    promise._ref.MarkAwaitedAndGetResultAndMaybeDispose(promise._id, out _result);
                     _ref = null;
                     _id = Internal.ValidIdFromApi;
                 }

@@ -156,8 +156,10 @@ namespace Proto.Promises.Tests.Threading
                 }
             );
 
-            promise.Forget();
+            deferred.Reject("Reject");
             Promise.Manager.HandleCompletesAndProgress();
+
+            promise.Forget();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -219,8 +221,10 @@ namespace Proto.Promises.Tests.Threading
                 }
             );
 
-            promise.Forget();
+            deferred.Reject("Reject");
             Promise.Manager.HandleCompletesAndProgress();
+
+            promise.Forget();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -283,9 +287,11 @@ namespace Proto.Promises.Tests.Threading
                 }
             );
 
-            promise.Forget();
             cancelationSource.Cancel();
             Promise.Manager.HandleCompletesAndProgress();
+
+            promise.Forget();
+            cancelationSource.Dispose();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -348,9 +354,11 @@ namespace Proto.Promises.Tests.Threading
                 }
             );
 
-            promise.Forget();
             cancelationSource.Cancel();
             Promise.Manager.HandleCompletesAndProgress();
+
+            promise.Forget();
+            cancelationSource.Dispose();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 

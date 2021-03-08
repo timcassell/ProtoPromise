@@ -26,7 +26,6 @@ namespace Proto.Promises
             struct DeferredBase : IEquatable<DeferredBase>
         {
             private readonly Internal.PromiseRef.DeferredPromiseBase _ref;
-            // Only using int because Interlocked does not support ushort.
             private readonly ushort _promiseId;
             private readonly ushort _deferredId;
 
@@ -287,7 +286,6 @@ namespace Proto.Promises
             struct Deferred : IEquatable<Deferred>
         {
             private readonly Internal.PromiseRef.DeferredPromiseVoid _ref;
-            // Only using int because Interlocked does not support ushort.
             private readonly ushort _promiseId;
             private readonly ushort _deferredId;
 
@@ -558,7 +556,6 @@ namespace Proto.Promises
             struct Deferred : IEquatable<Deferred>
         {
             private readonly Internal.PromiseRef.DeferredPromise<T> _ref;
-            // Only using int because Interlocked does not support ushort.
             private readonly ushort _promiseId;
             private readonly ushort _deferredId;
 

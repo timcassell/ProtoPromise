@@ -29,7 +29,7 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void PromiseWithReferenceBacking_ForgetMayOnlyBeCalledOnce_void()
+        public void PreservedPromiseWithReferenceBacking_ForgetMayOnlyBeCalledOnce_void()
         {
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
@@ -58,7 +58,7 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void PromiseWithReferenceBacking_ForgetMayOnlyBeCalledOnce_T()
+        public void PreservedPromiseWithReferenceBacking_ForgetMayOnlyBeCalledOnce_T()
         {
             var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise.Preserve();
@@ -87,7 +87,7 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void PromiseWithReferenceBacking_DuplicateCalledConcurrentlyAlwaysReturnsUnique_void()
+        public void PreservedPromiseWithReferenceBacking_DuplicateCalledConcurrentlyAlwaysReturnsUnique_void()
         {
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
@@ -115,7 +115,7 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void PromiseWithReferenceBacking_DuplicateCalledConcurrentlyAlwaysReturnsUnique_T()
+        public void PreservedPromiseWithReferenceBacking_DuplicateCalledConcurrentlyAlwaysReturnsUnique_T()
         {
             var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise.Preserve();
@@ -143,7 +143,7 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void PromiseWithReferenceBacking_PreserveCalledConcurrentlyAlwaysReturnsUnique_void()
+        public void PreservedPromiseWithReferenceBacking_PreserveCalledConcurrentlyAlwaysReturnsUnique_void()
         {
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
@@ -171,7 +171,7 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void PromiseWithReferenceBacking_PreserveCalledConcurrentlyAlwaysReturnsUnique_T()
+        public void PreservedPromiseWithReferenceBacking_PreserveCalledConcurrentlyAlwaysReturnsUnique_T()
         {
             var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise.Preserve();
@@ -429,12 +429,14 @@ namespace Proto.Promises.Tests.Threading
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             cancelationSource.Cancel();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
+
+            cancelationSource.Dispose();
         }
 
         [Test]
@@ -444,8 +446,8 @@ namespace Proto.Promises.Tests.Threading
             var promise = Promise.Canceled().Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -460,12 +462,14 @@ namespace Proto.Promises.Tests.Threading
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             cancelationSource.Cancel();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
+
+            cancelationSource.Dispose();
         }
 
         [Test]
@@ -475,8 +479,8 @@ namespace Proto.Promises.Tests.Threading
             var promise = Promise<int>.Canceled().Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -644,6 +648,8 @@ namespace Proto.Promises.Tests.Threading
             cancelationSource.Cancel();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
+
+            cancelationSource.Dispose();
         }
 
         [Test]
@@ -681,6 +687,8 @@ namespace Proto.Promises.Tests.Threading
             cancelationSource.Cancel();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
+
+            cancelationSource.Dispose();
         }
 
         [Test]
@@ -708,8 +716,8 @@ namespace Proto.Promises.Tests.Threading
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             deferred.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
@@ -723,8 +731,8 @@ namespace Proto.Promises.Tests.Threading
             var promise = Promise.Resolved().Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -738,8 +746,8 @@ namespace Proto.Promises.Tests.Threading
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             deferred.Resolve(1);
             Promise.Manager.HandleCompletesAndProgress();
@@ -753,8 +761,8 @@ namespace Proto.Promises.Tests.Threading
             var promise = Promise.Resolved(1).Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -768,8 +776,8 @@ namespace Proto.Promises.Tests.Threading
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             promise.Forget();
             deferred.Reject("Reject");
             Promise.Manager.HandleCompletesAndProgress();
@@ -783,8 +791,8 @@ namespace Proto.Promises.Tests.Threading
             var promise = Promise.Rejected("Reject").Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -798,8 +806,8 @@ namespace Proto.Promises.Tests.Threading
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             promise.Forget();
             deferred.Reject("Reject");
             Promise.Manager.HandleCompletesAndProgress();
@@ -813,8 +821,8 @@ namespace Proto.Promises.Tests.Threading
             var promise = Promise<int>.Rejected("Reject").Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -829,12 +837,14 @@ namespace Proto.Promises.Tests.Threading
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             cancelationSource.Cancel();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
+
+            cancelationSource.Dispose();
         }
 
         [Test]
@@ -844,8 +854,8 @@ namespace Proto.Promises.Tests.Threading
             var promise = Promise.Canceled().Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -860,12 +870,14 @@ namespace Proto.Promises.Tests.Threading
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             cancelationSource.Cancel();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
+
+            cancelationSource.Dispose();
         }
 
         [Test]
@@ -875,8 +887,8 @@ namespace Proto.Promises.Tests.Threading
             var promise = Promise<int>.Canceled().Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)));
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)));
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);

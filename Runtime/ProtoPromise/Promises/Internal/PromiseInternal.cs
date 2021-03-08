@@ -86,6 +86,7 @@ namespace Proto.Promises
     {
         // Just a random number that's not zero. Using this in Promise(<T>) instead of a bool prevents extra memory padding.
         internal const ushort ValidIdFromApi = 41265;
+        internal const int ID_BITSHIFT = 16;
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
@@ -94,8 +95,8 @@ namespace Proto.Promises
         {
             private ITreeHandleable _next;
             volatile private object _valueOrPrevious;
-            // Left 16 bits are for Id, right 16 bits are for retains. (Retains are just for thread safety to prevent an object from being disposed while a callback is being added.)
-            volatile private int _idAndRetainCounter = 1 << 16;
+            // Left bits are for Id, right bits are for retains. (Retains are just for thread safety to prevent an object from being disposed while a callback is being added.)
+            volatile private int _idAndRetainCounter = 1 << ID_BITSHIFT;
             volatile private Promise.State _state;
             volatile private bool _wasAwaited;
             private bool _suppressRejection;
@@ -115,7 +116,7 @@ namespace Proto.Promises
                 {
                     unchecked
                     {
-                        return (ushort) (_idAndRetainCounter >> 16);
+                        return (ushort) (_idAndRetainCounter >> ID_BITSHIFT);
                     }
                 }
             }
@@ -158,7 +159,7 @@ namespace Proto.Promises
             private int IncrementIdAndRetain(ushort promiseId, int retainCount)
             {
                 int newValue;
-                if (!InterlockedTryAddIdAndRetain(promiseId, (1 << 16) + retainCount, out newValue)) // Left 16 bits are for Id, right 16 bits are for retains.
+                if (!InterlockedTryAddIdAndRetain(promiseId, (1 << ID_BITSHIFT) + retainCount, out newValue)) // Left bits are for Id, right bits are for retains.
                 {
                     // Public APIs do a simple validation check in DEBUG mode, this is an extra thread-safe validation in case the same object is concurrently used and/or forgotten at the same time.
                     // This is left in RELEASE mode because concurrency issues can be very difficult to track down, and might not show up in DEBUG mode.
@@ -180,7 +181,7 @@ namespace Proto.Promises
                     {
                         newValue = initialValue + addValue;
                     }
-                    uint oldId = (uint) initialValue >> 16; // Left 16 bits are for Id.
+                    uint oldId = (uint) initialValue >> ID_BITSHIFT; // Left bits are for Id.
                     if (oldId != promiseId)
                     {
                         return false;
@@ -230,7 +231,7 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
                 unchecked
                 {
-                    if ((ushort) Interlocked.Decrement(ref _idAndRetainCounter) == 0 // Right 16 bits are for retain.
+                    if ((ushort) Interlocked.Decrement(ref _idAndRetainCounter) == 0 // Right bits are for retain.
                         & _wasAwaited & _state != Promise.State.Pending)
                     {
                         Dispose();
@@ -361,7 +362,9 @@ namespace Proto.Promises
                     int _;
                     if (!InterlockedTryAddIdAndRetain(promiseId, 1, out _)) // Only retain without incrementing Id.
                     {
-                        throw new InvalidOperationException("Attempted to use an invalid Promise. This may be because you are attempting to use a promise simultaneously on multiple threads.",
+                        // Public APIs do a simple validation check in DEBUG mode, this is an extra thread-safe validation in case the same object is concurrently used and/or forgotten at the same time.
+                        // This is left in RELEASE mode because concurrency issues can be very difficult to track down, and might not show up in DEBUG mode.
+                        throw new InvalidOperationException("Attempted to use an invalid Promise. This may be because you are attempting to use a promise after it was forgotten.",
                             GetFormattedStacktrace(1));
                     }
                 }
@@ -379,7 +382,6 @@ namespace Proto.Promises
                     MarkAwaited(promiseId);
                     var newPromise = PromiseDuplicate.GetOrCreate();
                     HookupNewPromise(newPromise);
-                    MaybeDispose();
                     return newPromise;
                 }
 
@@ -742,7 +744,7 @@ namespace Proto.Promises
             internal abstract partial class DeferredPromiseBase : AsyncPromiseBase
             {
                 // Only using int because Interlocked does not support ushort.
-                private int _deferredId = 1;
+                private int _deferredId = 1 << ID_BITSHIFT; // Using left bits for Id instead of right bits so that we will get automatic wrapping without an extra operation.
                 internal ushort DeferredId
                 {
                     [MethodImpl(InlineOption)]
@@ -750,7 +752,7 @@ namespace Proto.Promises
                     {
                         unchecked
                         {
-                            return (ushort) _deferredId;
+                            return (ushort) (_deferredId >> ID_BITSHIFT);
                         }
                     }
                 }
@@ -768,16 +770,17 @@ namespace Proto.Promises
 
                 protected virtual bool TryUnregisterCancelation() { return true; }
 
-                protected bool TryIncrementDeferredIdAndUnregisterCancelation(int comparand)
+                protected bool TryIncrementDeferredIdAndUnregisterCancelation(ushort comparand)
                 {
+                    int intComp = comparand << ID_BITSHIFT; // Left bits are for Id.
                     unchecked // We want the id to wrap around.
                     {
-                        return Interlocked.CompareExchange(ref _deferredId, comparand + 1, comparand) == comparand
+                        return Interlocked.CompareExchange(ref _deferredId, intComp + (1 << ID_BITSHIFT), intComp) == intComp
                             && TryUnregisterCancelation(); // If TryUnregisterCancelation returns false, it means the CancelationSource was canceled.
                     }
                 }
 
-                internal bool TryReject<TReject>(ref TReject reason, int deferredId, int rejectSkipFrames)
+                internal bool TryReject<TReject>(ref TReject reason, ushort deferredId, int rejectSkipFrames)
                 {
                     if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
@@ -787,7 +790,7 @@ namespace Proto.Promises
                     return false;
                 }
 
-                internal bool TryCancel<TCancel>(ref TCancel reason, int deferredId)
+                internal bool TryCancel<TCancel>(ref TCancel reason, ushort deferredId)
                 {
                     if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
@@ -797,7 +800,7 @@ namespace Proto.Promises
                     return false;
                 }
 
-                internal bool TryCancel(int deferredId)
+                internal bool TryCancel(ushort deferredId)
                 {
                     if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
@@ -812,7 +815,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     // A simple increment is sufficient.
                     // If the CancelationSource was canceled before the Deferred was completed, even if the Deferred was completed before the cancelation was invoked, the cancelation takes precedence.
-                    Interlocked.Increment(ref _deferredId);
+                    Interlocked.Add(ref _deferredId, 1 << ID_BITSHIFT); // Left bits are for Id.
                     RejectOrCancelInternal(valueContainer);
                 }
             }
@@ -849,7 +852,7 @@ namespace Proto.Promises
                     base.Dispose();
                 }
 
-                internal bool TryResolve(int deferredId)
+                internal bool TryResolve(ushort deferredId)
                 {
                     if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
@@ -898,7 +901,7 @@ namespace Proto.Promises
                     base.Dispose();
                 }
 
-                internal bool TryResolve(ref T value, int deferredId)
+                internal bool TryResolve(ref T value, ushort deferredId)
                 {
                     if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {

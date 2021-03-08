@@ -67,17 +67,17 @@ namespace Proto.Promises
                 TLinked obj;
                 lock (Type<T>.locker)
                 {
-                    if (Type<T>.pool.IsNotEmpty)
+                    if (Type<T>.pool.IsEmpty)
                     {
-                        obj = Type<T>.pool.Pop();
-                        goto ReturnCasted;
+                        goto CreateNew;
                     }
+                    obj = Type<T>.pool.Pop();
                 }
                 // Exit lock before allocating or casting.
-                return creator.Create();
-            ReturnCasted:
                 RemoveFromTrackedObjects(obj);
                 return (T) obj;
+            CreateNew:
+                return creator.Create();
             }
 
             [MethodImpl(InlineOption)]

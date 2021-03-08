@@ -7,6 +7,7 @@
 #endif
 
 using NUnit.Framework;
+using System;
 using System.Linq;
 
 namespace Proto.Promises.Tests.Threading
@@ -189,31 +190,35 @@ namespace Proto.Promises.Tests.Threading
             bool completed = false;
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
-                // Setup
-                () =>
+            foreach (var action in new Func<Promise, CancelationToken, Promise>[]
                 {
-                    cancelationSource = CancelationSource.New();
-                    deferred = Promise.NewDeferred();
-                    // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
-                    deferred.Promise
-                        .CatchCancelation(_ => { }, cancelationSource.Token)
-                        .CatchCancelation(1, (cv, _) => { }, cancelationSource.Token)
-                        .Finally(() => completed = true) // Make sure it completes.
-                        .Forget();
-                    deferred.Cancel(1);
-                },
-                // Teardown
-                () =>
-                {
-                    cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
-                    Assert.IsTrue(completed);
-                },
-                // Parallel actions
-                () => cancelationSource.Cancel(),
-                () => Promise.Manager.HandleCompletes()
-            );
+                    (promise, token) => promise.CatchCancelation(_ => { }, token),
+                    (promise, token) => promise.CatchCancelation(1, (cv, _) => { }, token),
+                })
+            {
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        cancelationSource = CancelationSource.New();
+                        deferred = Promise.NewDeferred();
+                        action(deferred.Promise, cancelationSource.Token)
+                            .Finally(() => completed = true) // Make sure it completes.
+                            .Forget();
+                        deferred.Cancel(1);
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        cancelationSource.Dispose();
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(completed);
+                    },
+                    // Parallel actions
+                    () => cancelationSource.Cancel(),
+                    () => Promise.Manager.HandleCompletes()
+                );
+            }
         }
 
         [Test]
@@ -224,31 +229,35 @@ namespace Proto.Promises.Tests.Threading
             bool completed = false;
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
-                // Setup
-                () =>
+            foreach (var action in new Func<Promise<int>, CancelationToken, Promise<int>>[]
                 {
-                    cancelationSource = CancelationSource.New();
-                    deferred = Promise.NewDeferred<int>();
-                    // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
-                    deferred.Promise
-                        .CatchCancelation(_ => { }, cancelationSource.Token)
-                        .CatchCancelation(1, (cv, _) => { }, cancelationSource.Token)
-                        .Finally(() => completed = true) // Make sure it completes.
-                        .Forget();
-                    deferred.Cancel(1);
-                },
-                // Teardown
-                () =>
-                {
-                    cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
-                    Assert.IsTrue(completed);
-                },
-                // Parallel actions
-                () => cancelationSource.Cancel(),
-                () => Promise.Manager.HandleCompletes()
-            );
+                    (promise, token) => promise.CatchCancelation(_ => { }, token),
+                    (promise, token) => promise.CatchCancelation(1, (cv, _) => { }, token),
+                })
+            {
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        cancelationSource = CancelationSource.New();
+                        deferred = Promise.NewDeferred<int>();
+                        action(deferred.Promise, cancelationSource.Token)
+                            .Finally(() => completed = true) // Make sure it completes.
+                            .Forget();
+                        deferred.Cancel(1);
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        cancelationSource.Dispose();
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(completed);
+                    },
+                    // Parallel actions
+                    () => cancelationSource.Cancel(),
+                    () => Promise.Manager.HandleCompletes()
+                );
+            }
         }
 
 #if PROMISE_PROGRESS
