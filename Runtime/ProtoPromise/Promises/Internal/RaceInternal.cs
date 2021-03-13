@@ -60,7 +60,7 @@ namespace Proto.Promises
 
                 public static RacePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<RacePromise, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<RacePromise, Creator>();
 
                     promise._passThroughs = promisePassThroughs;
                     promise._waitCount = pendingAwaits;

@@ -60,7 +60,7 @@ namespace Proto.Promises
 
                 public static FirstPromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<FirstPromise, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<FirstPromise, Creator>();
 
                     promise._passThroughs = promisePassThroughs;
                     promise._waitCount = pendingAwaits;

@@ -93,7 +93,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static CancelDelegate<TCanceler> GetOrCreate(TCanceler canceler)
                 {
-                    var del = ObjectPool<CancelDelegate<TCanceler>>.GetOrCreate<CancelDelegate<TCanceler>, Creator>(new Creator());
+                    var del = ObjectPool<CancelDelegate<TCanceler>>.GetOrCreate<CancelDelegate<TCanceler>, Creator>();
                     del._canceler = canceler;
                     SetCreatedStacktrace(del, 2);
                     return del;
@@ -230,7 +230,7 @@ namespace Proto.Promises
 
             internal static CancelationRef GetOrCreate()
             {
-                var cancelRef = ObjectPool<CancelationRef>.GetOrCreate<CancelationRef, Creator>(new Creator());
+                var cancelRef = ObjectPool<CancelationRef>.GetOrCreate<CancelationRef, Creator>();
                 // Left 16 bits are for internal retains.
                 cancelRef._retainCounter = 1 << 16;
                 cancelRef._valueContainer = null;

@@ -74,7 +74,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal static AwaiterRef GetOrCreate()
             {
-                var awaiter = ObjectPool<ITreeHandleable>.GetOrCreate<AwaiterRef, Creator>(new Creator());
+                var awaiter = ObjectPool<ITreeHandleable>.GetOrCreate<AwaiterRef, Creator>();
                 awaiter._state = Promise.State.Pending;
                 return awaiter;
             }

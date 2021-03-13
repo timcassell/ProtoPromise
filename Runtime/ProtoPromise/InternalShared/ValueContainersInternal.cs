@@ -90,7 +90,7 @@ namespace Proto.Promises
 
             public static RejectionContainer<T> GetOrCreate(ref T value, int retainCount)
             {
-                var container = ObjectPool<RejectionContainer<T>>.GetOrCreate<RejectionContainer<T>, Creator>(new Creator());
+                var container = ObjectPool<RejectionContainer<T>>.GetOrCreate<RejectionContainer<T>, Creator>();
                 container._value = value;
                 container._retainCounter = retainCount;
                 return container;
@@ -277,7 +277,7 @@ namespace Proto.Promises
 
             public static CancelContainer<T> GetOrCreate(ref T value, int retainCount)
             {
-                var container = ObjectPool<CancelContainer<T>>.GetOrCreate<CancelContainer<T>, Creator>(new Creator());
+                var container = ObjectPool<CancelContainer<T>>.GetOrCreate<CancelContainer<T>, Creator>();
                 container._value = value;
                 container._retainCounter = retainCount;
                 return container;
@@ -452,7 +452,7 @@ namespace Proto.Promises
 
             public static ResolveContainer<T> GetOrCreate(ref T value, int retainCount)
             {
-                var container = ObjectPool<ResolveContainer<T>>.GetOrCreate<ResolveContainer<T>, Creator>(new Creator());
+                var container = ObjectPool<ResolveContainer<T>>.GetOrCreate<ResolveContainer<T>, Creator>();
                 container.value = value;
                 container._retainCounter = retainCount;
                 return container;

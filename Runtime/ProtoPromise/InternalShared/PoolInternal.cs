@@ -60,9 +60,9 @@ namespace Proto.Promises
             // Generic constraint for the creator allows using a struct to make a new object, so no extra memory is consumed.
             // If the compiler/JIT is smart, it should be able to resolve the creator statically and inline it, so no indirection or function call costs.
             [MethodImpl(InlineOption)]
-            internal static T GetOrCreate<T, TCreator>(TCreator creator)
+            internal static T GetOrCreate<T, TCreator>()
                 where T : TLinked
-                where TCreator : ICreator<T>
+                where TCreator : struct, ICreator<T>
             {
                 TLinked obj;
                 lock (Type<T>.locker)
@@ -77,7 +77,7 @@ namespace Proto.Promises
                 RemoveFromTrackedObjects(obj);
                 return (T) obj;
             CreateNew:
-                return creator.Create();
+                return default(TCreator).Create();
             }
 
             [MethodImpl(InlineOption)]

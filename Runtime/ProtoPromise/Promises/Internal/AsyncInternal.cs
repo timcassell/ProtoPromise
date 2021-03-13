@@ -157,7 +157,7 @@ namespace Proto.Promises
                     [MethodImpl(MethodImplOptions.AggressiveInlining)]
                     public static Continuer<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
                     {
-                        var continuer = ObjectPool<Continuer<TStateMachine>>.GetOrCreate<Continuer<TStateMachine>, Creator>(new Creator());
+                        var continuer = ObjectPool<Continuer<TStateMachine>>.GetOrCreate<Continuer<TStateMachine>, Creator>();
                         continuer._stateMachine = stateMachine;
                         return continuer;
                     }
@@ -195,7 +195,7 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static AsyncPromiseRef GetOrCreate()
             {
-                var promise = ObjectPool<ITreeHandleable>.GetOrCreate<AsyncPromiseRef, Creator>(new Creator());
+                var promise = ObjectPool<ITreeHandleable>.GetOrCreate<AsyncPromiseRef, Creator>();
                 promise.Reset();
                 return promise;
             }
@@ -385,7 +385,7 @@ namespace Proto.Promises
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 public static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<AsyncPromiseRefMachine<TStateMachine>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<AsyncPromiseRefMachine<TStateMachine>, Creator>();
                     promise.Reset();
                     // ORDER VERY IMPORTANT, Task must be set before copying stateMachine.
                     _ref = promise;
@@ -418,7 +418,7 @@ namespace Proto.Promises
             // For synchronous exceptions.
             internal static AsyncPromiseRef GetOrCreate()
             {
-                var promise = ObjectPool<ITreeHandleable>.GetOrCreate<AsyncPromiseRef, Creator>(new Creator());
+                var promise = ObjectPool<ITreeHandleable>.GetOrCreate<AsyncPromiseRef, Creator>();
                 promise.Reset();
                 return promise;
             }

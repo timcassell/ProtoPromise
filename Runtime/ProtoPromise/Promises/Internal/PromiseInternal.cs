@@ -381,7 +381,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static PromiseMultiAwait GetOrCreate()
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseMultiAwait, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseMultiAwait, Creator>();
                     promise.Reset();
                     return promise;
                 }
@@ -655,7 +655,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static PromiseDuplicate GetOrCreate()
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseDuplicate, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseDuplicate, Creator>();
                     promise.Reset();
                     return promise;
                 }
@@ -923,7 +923,7 @@ namespace Proto.Promises
 
                 internal static DeferredPromiseVoid GetOrCreate()
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseVoid, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseVoid, Creator>();
                     promise.Reset();
                     promise.ResetDepth();
                     return promise;
@@ -972,7 +972,7 @@ namespace Proto.Promises
 
                 internal static DeferredPromise<T> GetOrCreate()
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromise<T>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromise<T>, Creator>();
                     promise.Reset();
                     promise.ResetDepth();
                     return promise;
@@ -1007,7 +1007,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static PromiseResolve<TResolver> GetOrCreate(TResolver resolver)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolve<TResolver>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolve<TResolver>, Creator>();
                     promise.Reset();
                     promise._resolver = resolver;
                     return promise;
@@ -1056,7 +1056,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static PromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolvePromise<TResolver>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolvePromise<TResolver>, Creator>();
                     promise.Reset();
                     promise._resolver = resolver;
                     return promise;
@@ -1115,7 +1115,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static PromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolveReject<TResolver, TRejecter>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolveReject<TResolver, TRejecter>, Creator>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -1176,7 +1176,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static PromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolveRejectPromise<TResolver, TRejecter>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolveRejectPromise<TResolver, TRejecter>, Creator>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -1242,7 +1242,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static PromiseContinue<TContinuer> GetOrCreate(TContinuer continuer)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseContinue<TContinuer>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseContinue<TContinuer>, Creator>();
                     promise.Reset();
                     promise._continuer = continuer;
                     return promise;
@@ -1284,7 +1284,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static PromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseContinuePromise<TContinuer>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseContinuePromise<TContinuer>, Creator>();
                     promise.Reset();
                     promise._continuer = continuer;
                     return promise;
@@ -1333,7 +1333,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static PromiseFinally<TFinalizer> GetOrCreate(TFinalizer finalizer)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseFinally<TFinalizer>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseFinally<TFinalizer>, Creator>();
                     promise.Reset();
                     promise._finalizer = finalizer;
                     return promise;
@@ -1376,7 +1376,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static PromiseCancel<TCanceler> GetOrCreate(TCanceler canceler)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseCancel<TCanceler>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseCancel<TCanceler>, Creator>();
                     promise.Reset();
                     promise._canceler = canceler;
                     return promise;
@@ -1472,7 +1472,7 @@ namespace Proto.Promises
                 {
                     // owner._ref is checked for nullity before passing into this.
                     owner._ref.MarkAwaited(owner._id);
-                    var passThrough = ObjectPool<PromisePassThrough>.GetOrCreate<PromisePassThrough, Creator>(new Creator());
+                    var passThrough = ObjectPool<PromisePassThrough>.GetOrCreate<PromisePassThrough, Creator>();
                     passThrough._owner = owner._ref;
                     passThrough._index = index;
                     passThrough.ResetProgress();

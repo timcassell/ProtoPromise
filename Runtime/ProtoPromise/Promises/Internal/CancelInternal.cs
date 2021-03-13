@@ -50,7 +50,7 @@ namespace Proto.Promises
 
                 internal static DeferredPromiseVoidCancel GetOrCreate(CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseVoidCancel, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseVoidCancel, Creator>();
                     promise.Reset();
                     promise.ResetDepth();
                     cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
@@ -98,7 +98,7 @@ namespace Proto.Promises
 
                 internal static DeferredPromiseCancel<T> GetOrCreate(CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseCancel<T>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseCancel<T>, Creator>();
                     promise.Reset();
                     promise.ResetDepth();
                     cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
@@ -252,7 +252,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static CancelablePromiseResolve<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolve<TResolver>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolve<TResolver>, Creator>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -330,7 +330,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static CancelablePromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolvePromise<TResolver>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolvePromise<TResolver>, Creator>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -432,7 +432,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static CancelablePromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolveReject<TResolver, TRejecter>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolveReject<TResolver, TRejecter>, Creator>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -521,7 +521,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static CancelablePromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>, Creator>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -630,7 +630,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static CancelablePromiseContinue<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseContinue<TContinuer>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseContinue<TContinuer>, Creator>();
                     promise.Reset();
                     promise._continuer = continuer;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -699,7 +699,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static CancelablePromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseContinuePromise<TContinuer>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseContinuePromise<TContinuer>, Creator>();
                     promise.Reset();
                     promise._continuer = continuer;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -791,7 +791,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static CancelablePromiseCancel<TCanceler> GetOrCreate(TCanceler canceler, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseCancel<TCanceler>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseCancel<TCanceler>, Creator>();
                     promise.Reset();
                     promise._canceler = canceler;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.

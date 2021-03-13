@@ -441,7 +441,7 @@ namespace Proto.Promises
 
                 internal static PromiseProgress<TProgress> GetOrCreate(TProgress progress, PromiseRef owner, CancelationToken cancelationToken = default(CancelationToken))
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseProgress<TProgress>, Creator>(new Creator());
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseProgress<TProgress>, Creator>();
                     promise.Reset();
                     promise._progress = progress;
                     promise._owner = owner;

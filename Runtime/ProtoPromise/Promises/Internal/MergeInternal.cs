@@ -62,7 +62,7 @@ namespace Proto.Promises
 
                 private static MergePromise Create()
                 {
-                    return ObjectPool<ITreeHandleable>.GetOrCreate<MergePromise, Creator>(new Creator());
+                    return ObjectPool<ITreeHandleable>.GetOrCreate<MergePromise, Creator>();
                 }
 
                 public static MergePromise GetOrCreate<T>(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref T value, Action<IValueContainer, object, int> onPromiseResolved,

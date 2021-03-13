@@ -339,7 +339,7 @@ namespace Proto.Utils
         /// </summary>
         public static ReusableValueContainer<T> New(T value)
         {
-            var node = Promises.Internal.ObjectPool<ReusableValueContainer<T>>.GetOrCreate<ReusableValueContainer<T>, Creator>(new Creator());
+            var node = Promises.Internal.ObjectPool<ReusableValueContainer<T>>.GetOrCreate<ReusableValueContainer<T>, Creator>();
             node.Value = value;
             return node;
         }
