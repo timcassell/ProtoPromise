@@ -456,7 +456,7 @@ namespace Proto.Promises.Async.CompilerServices
     public struct PromiseMethodBuilder
     {
         private Internal.AsyncPromiseRef _ref;
-        private ushort _id;
+        private short _id;
 
         public Promise Task
         {
@@ -542,7 +542,7 @@ namespace Proto.Promises.Async.CompilerServices
     public struct PromiseMethodBuilder<T>
     {
         private Internal.AsyncPromiseRef _ref;
-        private ushort _id;
+        private short _id;
         private T _result;
 
         public Promise<T> Task

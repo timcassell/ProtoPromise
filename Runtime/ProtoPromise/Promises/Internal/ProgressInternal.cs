@@ -735,7 +735,7 @@ namespace Proto.Promises
             {
                 internal bool TryReportProgress(float progress, int deferredId)
                 {
-                    if (deferredId != _deferredId) return false;
+                    if (deferredId != DeferredId) return false;
                     ThrowIfInPool(this);
 
                     // Don't report progress 1.0, that will be reported automatically when the promise is resolved.

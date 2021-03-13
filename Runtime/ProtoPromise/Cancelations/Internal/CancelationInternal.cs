@@ -730,10 +730,10 @@ namespace Proto.Promises
                 {
                     initialValue = _retainCounter;
                     newValue = initialValue + 1;
-                    uint oldCount = (uint) initialValue & ushort.MaxValue;
+                    int oldCount = initialValue & ushort.MaxValue;
                     // Make sure user retain doesn't encroach on dispose retain.
                     // Checking for zero also handles the case if this is called concurrently with TryDispose and/or InvokeCallbacks.
-                    if (tokenId != _tokenId | oldCount >= uint.MaxValue | initialValue == 0) return false;
+                    if (tokenId != _tokenId | oldCount >= ushort.MaxValue | initialValue == 0) return false;
                 }
                 while (Interlocked.CompareExchange(ref _retainCounter, newValue, initialValue) != initialValue);
                 return true;
@@ -748,7 +748,7 @@ namespace Proto.Promises
                 {
                     initialValue = _retainCounter;
                     newValue = initialValue - 1;
-                    uint oldCount = (uint) initialValue & ushort.MaxValue;
+                    int oldCount = initialValue & ushort.MaxValue;
                     if (tokenId != _tokenId | oldCount <= 0) return false;
                 }
                 while (Interlocked.CompareExchange(ref _retainCounter, newValue, initialValue) != initialValue);

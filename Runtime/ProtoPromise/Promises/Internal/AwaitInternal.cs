@@ -19,14 +19,14 @@ namespace Proto.Promises
     {
         partial class PromiseRef
         {
-            internal void AddAwaiter(ITreeHandleable awaiter, ushort promiseId)
+            internal void AddAwaiter(ITreeHandleable awaiter, short promiseId)
             {
                 MarkAwaited(promiseId);
                 _suppressRejection = true;
                 AddWaiter(awaiter);
             }
 
-            internal void MarkAwaitedAndGetResultAndMaybeDispose<T>(ushort promiseId, out T result)
+            internal void MarkAwaitedAndGetResultAndMaybeDispose<T>(short promiseId, out T result)
             {
                 MarkAwaited(promiseId);
                 _suppressRejection = true;
@@ -54,17 +54,17 @@ namespace Proto.Promises
             private Action _continuation;
             private IValueContainer _valueContainer;
             private Promise.State _state;
-            // Only using int because Interlocked does not support ushort.
+            // Only using int because Interlocked does not support short.
             volatile private int _id = 1 << ID_BITSHIFT; // Using left bits for Id instead of right bits so that we will get automatic wrapping without an extra operation.
 
-            internal ushort Id
+            internal short Id
             {
                 [MethodImpl(InlineOption)]
                 get
                 {
                     unchecked
                     {
-                        return (ushort) (_id >> ID_BITSHIFT);
+                        return (short) (_id >> ID_BITSHIFT);
                     }
                 }
             }
@@ -88,7 +88,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private void IncrementId(ushort promiseId)
+            private void IncrementId(short promiseId)
             {
                 int intComp = promiseId << ID_BITSHIFT; // Left bits are for Id.
                 unchecked
@@ -101,7 +101,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal bool GetCompleted(ushort awaiterId)
+            internal bool GetCompleted(short awaiterId)
             {
                 ValidateId(awaiterId);
                 ThrowIfInPool(this);
@@ -109,7 +109,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void OnCompleted(Action continuation, ushort awaiterId)
+            internal void OnCompleted(Action continuation, short awaiterId)
             {
                 ValidateId(awaiterId);
                 ThrowIfInPool(this);
@@ -117,7 +117,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void GetResult(ushort awaiterId)
+            internal void GetResult(short awaiterId)
             {
                 ThrowIfInPool(this);
 #if PROMISE_DEBUG
@@ -139,7 +139,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal T GetResult<T>(ushort awaiterId)
+            internal T GetResult<T>(short awaiterId)
             {
                 ThrowIfInPool(this);
 #if PROMISE_DEBUG
@@ -194,9 +194,9 @@ namespace Proto.Promises
                 throw new InvalidOperationException("PromiseAwaiter is not valid. Use the 'await' keyword on a Promise instead of using PromiseAwaiter.", GetFormattedStacktrace(3));
             }
 
-            partial void ValidateId(ushort awaiterId);
+            partial void ValidateId(short awaiterId);
 #if PROMISE_DEBUG
-            partial void ValidateId(ushort awaiterId)
+            partial void ValidateId(short awaiterId)
             {
                 if (awaiterId != Id)
                 {
@@ -222,7 +222,7 @@ namespace Proto.Promises
             partial struct PromiseAwaiter : ICriticalNotifyCompletion
         {
             private readonly Internal.AwaiterRef _ref;
-            private readonly ushort _id;
+            private readonly short _id;
 
             /// <summary>
             /// Internal use.
@@ -317,7 +317,7 @@ namespace Proto.Promises
             partial struct PromiseAwaiter<T> : ICriticalNotifyCompletion
         {
             private readonly Internal.AwaiterRef _ref;
-            private readonly ushort _id;
+            private readonly short _id;
             private readonly T _result;
 
             /// <summary>

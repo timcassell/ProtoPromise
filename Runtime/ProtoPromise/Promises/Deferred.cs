@@ -26,8 +26,8 @@ namespace Proto.Promises
             struct DeferredBase : IEquatable<DeferredBase>
         {
             private readonly Internal.PromiseRef.DeferredPromiseBase _ref;
-            private readonly ushort _promiseId;
-            private readonly ushort _deferredId;
+            private readonly short _promiseId;
+            private readonly short _deferredId;
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -63,7 +63,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use for implicit cast operator.
             /// </summary>
-            internal DeferredBase(Internal.PromiseRef.DeferredPromiseBase promise, ushort promiseId, ushort deferredId)
+            internal DeferredBase(Internal.PromiseRef.DeferredPromiseBase promise, short promiseId, short deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;
@@ -286,8 +286,8 @@ namespace Proto.Promises
             struct Deferred : IEquatable<Deferred>
         {
             private readonly Internal.PromiseRef.DeferredPromiseVoid _ref;
-            private readonly ushort _promiseId;
-            private readonly ushort _deferredId;
+            private readonly short _promiseId;
+            private readonly short _deferredId;
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -323,7 +323,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use.
             /// </summary>
-            internal Deferred(Internal.PromiseRef.DeferredPromiseVoid promise, ushort promiseId, ushort deferredId)
+            internal Deferred(Internal.PromiseRef.DeferredPromiseVoid promise, short promiseId, short deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;
@@ -556,8 +556,8 @@ namespace Proto.Promises
             struct Deferred : IEquatable<Deferred>
         {
             private readonly Internal.PromiseRef.DeferredPromise<T> _ref;
-            private readonly ushort _promiseId;
-            private readonly ushort _deferredId;
+            private readonly short _promiseId;
+            private readonly short _deferredId;
 
             /// <summary>
             /// The attached <see cref="Promise{T}"/> that this controls.
@@ -593,7 +593,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use.
             /// </summary>
-            internal Deferred(Internal.PromiseRef.DeferredPromise<T> promise, ushort promiseId, ushort deferredId)
+            internal Deferred(Internal.PromiseRef.DeferredPromise<T> promise, short promiseId, short deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;

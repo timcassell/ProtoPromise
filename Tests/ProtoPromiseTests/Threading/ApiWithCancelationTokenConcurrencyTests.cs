@@ -126,6 +126,7 @@ namespace Proto.Promises.Tests.Threading
                         completed = false;
                         action(deferred.Promise, cancelationSource.Token)
                             .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
+                            .Catch(() => { })
                             .Forget();
                         deferred.Reject(1);
                     },
@@ -165,6 +166,7 @@ namespace Proto.Promises.Tests.Threading
                         completed = false;
                         action(deferred.Promise, cancelationSource.Token)
                             .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
+                            .Catch(() => { })
                             .Forget();
                         deferred.Reject(1);
                     },
