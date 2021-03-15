@@ -220,7 +220,7 @@ namespace Proto.Promises
                 owner._suppressRejection = true;
                 valueContainer.Retain();
                 _valueOrPrevious = valueContainer;
-                handleQueue.Push(this);
+                AddToHandleQueueFront(this);
             }
 
             void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -255,25 +255,28 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool InterlockedTryReleaseComplete()
             {
-                // Right bits are for retain.
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                int initialValue, newValue;
-                do
+                unchecked
                 {
-                    initialValue = _idAndRetainCounter;
-                    newValue = initialValue - 1;
-                    // Make sure retains are above 0.
-                    short oldRetains = (short) initialValue;
-                    if (oldRetains == 0)
+                    // Right bits are for retain.
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    int initialValue, newValue;
+                    do
                     {
-                        throw new OverflowException();
+                        initialValue = _idAndRetainCounter;
+                        // Make sure retains are above 0.
+                        short oldRetains = (short) initialValue;
+                        if (oldRetains == 0)
+                        {
+                            throw new OverflowException();
+                        }
+                        newValue = initialValue - 1;
                     }
-                }
-                while (Interlocked.CompareExchange(ref _idAndRetainCounter, newValue, initialValue) != initialValue);
-                return (short) newValue == 0;
+                    while (Interlocked.CompareExchange(ref _idAndRetainCounter, newValue, initialValue) != initialValue);
+                    return (short) newValue == 0;
 #else
-                return (short) Interlocked.Decrement(ref _idAndRetainCounter) == 0;
+                    return (short) Interlocked.Decrement(ref _idAndRetainCounter) == 0;
 #endif
+                }
             }
 
             protected virtual void Dispose()
@@ -459,13 +462,15 @@ namespace Proto.Promises
                     {
                         lock (_locker)
                         {
-                            _nextBranches.Push(waiter);
+                            if (_state == Promise.State.Pending)
+                            {
+                                _nextBranches.Push(waiter);
+                                goto MaybeDisposeAndReturn;
+                            }
                         }
                     }
-                    else
-                    {
-                        waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
-                    }
+                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
+                MaybeDisposeAndReturn:
                     MaybeDispose();
                 }
 
@@ -526,12 +531,16 @@ namespace Proto.Promises
                 protected sealed override void AddWaiter(ITreeHandleable waiter)
                 {
                     ThrowIfInPool(this);
-                    // When this is completed, _state is set then _waiter is swapped, so setting _waiter before checking _state here ensures thread safety.
+                    // When this is completed, _state is set then _next is swapped, so we must reverse that process here.
                     _waiter = waiter;
                     if (_state != Promise.State.Pending)
                     {
-                        _waiter = null;
-                        waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
+                        // Exchange and check for null to handle race condition with HandleWaiter and TryRemoveWaiter on other threads.
+                        waiter = Interlocked.Exchange(ref _waiter, null);
+                        if (waiter != null)
+                        {
+                            waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
+                        }
                     }
                     MaybeDispose();
                 }
@@ -723,14 +732,27 @@ namespace Proto.Promises
                 protected sealed override void AddWaiter(ITreeHandleable waiter)
                 {
                     ThrowIfInPool(this);
-                    // When this is completed, _state is set then _next is swapped, so setting _waiter before checking _state here ensures thread safety.
+                    // When this is completed, _state is set then _next is swapped, so we must reverse that process here.
                     _next = waiter;
                     if (_state != Promise.State.Pending)
                     {
-                        _next = null;
-                        waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
+                        // Exchange and check for null to handle race condition with HandleWaiter and TryRemoveWaiter on other threads.
+                        waiter = Interlocked.Exchange(ref _next, null);
+                        if (waiter != null)
+                        {
+                            waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
+                        }
                     }
                     MaybeDispose();
+                }
+
+                private void HandleWaiter(IValueContainer valueContainer)
+                {
+                    ITreeHandleable waiter = Interlocked.Exchange(ref _next, null);
+                    if (waiter != null)
+                    {
+                        waiter.MakeReady(this, valueContainer, ref _handleQueue);
+                    }
                 }
 
                 internal void ResolveInternal(IValueContainer valueContainer)
@@ -753,15 +775,6 @@ namespace Proto.Promises
                     CancelProgressListeners(null);
 
                     MaybeDispose();
-                }
-
-                internal void HandleWaiter(IValueContainer valueContainer)
-                {
-                    ITreeHandleable waiter = Interlocked.Exchange(ref _next, null);
-                    if (waiter != null)
-                    {
-                        waiter.MakeReady(this, valueContainer, ref _handleQueue);
-                    }
                 }
 
                 protected void ResolveDirect()
@@ -1464,7 +1477,7 @@ namespace Proto.Promises
                     if (_retainCount != 0)
                     {
                         string message = "A PromisePassThrough was garbage collected without it being released.";
-                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), null);
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), _target as ITraceable);
                     }
                 }
 
@@ -1495,7 +1508,7 @@ namespace Proto.Promises
                     var temp = Target;
                     if (temp.Handle(valueContainer, this, _index))
                     {
-                        handleQueue.Push(temp);
+                        AddToHandleQueueFront(temp);
                     }
                     Release();
                 }

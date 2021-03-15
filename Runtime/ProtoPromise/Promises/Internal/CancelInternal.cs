@@ -272,7 +272,7 @@ namespace Proto.Promises
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
                         owner._suppressRejection = true;
-                        handleQueue.Push(this);
+                        AddToHandleQueueFront(this);
                     }
                 }
 
@@ -358,7 +358,7 @@ namespace Proto.Promises
                         return;
                     }
                     owner._suppressRejection = true;
-                    handleQueue.Push(this);
+                    AddToHandleQueueFront(this);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -454,7 +454,7 @@ namespace Proto.Promises
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
                         owner._suppressRejection = true;
-                        handleQueue.Push(this);
+                        AddToHandleQueueFront(this);
                     }
                 }
 
@@ -551,7 +551,7 @@ namespace Proto.Promises
                         return;
                     }
                     owner._suppressRejection = true;
-                    handleQueue.Push(this);
+                    AddToHandleQueueFront(this);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -650,7 +650,7 @@ namespace Proto.Promises
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
                         owner._suppressRejection = true;
-                        handleQueue.Push(this);
+                        AddToHandleQueueFront(this);
                     }
                 }
 
@@ -727,7 +727,7 @@ namespace Proto.Promises
                         return;
                     }
                     owner._suppressRejection = true;
-                    handleQueue.Push(this);
+                    AddToHandleQueueFront(this);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -809,7 +809,7 @@ namespace Proto.Promises
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
                         owner._suppressRejection = true;
-                        handleQueue.Push(this);
+                        AddToHandleQueueFront(this);
                     }
                 }
 

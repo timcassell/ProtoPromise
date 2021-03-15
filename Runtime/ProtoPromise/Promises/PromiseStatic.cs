@@ -1228,7 +1228,7 @@ namespace Proto.Promises
             ValidateArgument(promise7, "promise7", 1);
             pendingCount += Internal.PrepareForMulti(promise7, ref value.Item7, ref passThroughs, 6, ref completedProgress);
             ValidateArgument(promise8, "promise8", 1);
-            pendingCount += Internal.PrepareForMulti(promise8, ref passThroughs, 7);
+            pendingCount += Internal.PrepareForMulti(promise8, ref passThroughs, 7, ref completedProgress);
 
             if (pendingCount == 0)
             {

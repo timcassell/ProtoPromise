@@ -23,9 +23,9 @@ namespace Proto.Promises.Tests
         {
             // Capture first exception from finalizers.
             // Only throw one exception instead of aggregate to try to avoid overloading the test error output.
-            Promise.Config.UncaughtRejectionHandler = e => Interlocked.CompareExchange(ref exception, e, null);
+            Promise.Config.UncaughtRejectionHandler = e => { throw e; };
             Promise.Config.ObjectPoolingEnabled = true; // Make sure to test object pool.
-            //Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All; // For easier debugging. Disabled because it makes the tests slow.
+            Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
         }
 
         // Just to make sure static constructor is ran.
@@ -38,11 +38,6 @@ namespace Proto.Promises.Tests
             GC.Collect();
             GC.WaitForPendingFinalizers();
             Promise.Manager.HandleCompletesAndProgress();
-            Exception e = Interlocked.Exchange(ref exception, null);
-            if (e != null)
-            {
-                throw e;
-            }
         }
 
         public static Promise ThenDuplicate(this Promise promise)

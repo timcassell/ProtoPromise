@@ -139,24 +139,30 @@ namespace Proto.Promises.Tests.Threading
             teardown += () => { };
             int actionCount = actions.Length;
             int expandCount = expandToProcessorCount ? Math.Max(Environment.ProcessorCount / actionCount, 1) : 1;
-            foreach (var combo in GenerateCombinations(offsets, actionCount))
+
+            const int minIterations = 1000;
+            int loopMax = (int) Math.Ceiling(minIterations / Math.Pow(offsets.Length, actions.Length));
+            for (int y = 0; y < loopMax; ++y)
             {
-                setup.Invoke();
-                for (int k = 0; k < expandCount; ++k)
+                foreach (var combo in GenerateCombinations(offsets, actionCount))
                 {
-                    for (int i = 0; i < actionCount; ++i)
+                    setup.Invoke();
+                    for (int k = 0; k < expandCount; ++k)
                     {
-                        int offset = combo[i];
-                        Action action = actions[i];
-                        AddParallelAction(() =>
+                        for (int i = 0; i < actionCount; ++i)
                         {
-                            for (int j = offset; j > 0; --j) { } // Just spin in a loop for the offset.
-                            action.Invoke();
-                        });
+                            int offset = combo[i];
+                            Action action = actions[i];
+                            AddParallelAction(() =>
+                            {
+                                for (int j = offset; j > 0; --j) { } // Just spin in a loop for the offset.
+                                action.Invoke();
+                            });
+                        }
                     }
+                    ExecutePendingParallelActions();
+                    teardown.Invoke();
                 }
-                ExecutePendingParallelActions();
-                teardown.Invoke();
             }
         }
 

@@ -178,7 +178,7 @@ namespace Proto.Promises
                 valueContainer.Retain();
                 _valueContainer = valueContainer;
                 _state = owner.State;
-                handleQueue.Push(this);
+                AddToHandleQueueFront(this);
             }
 
             void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)

@@ -107,80 +107,116 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void PromiseCatchMayBeRejectedAndCanceledConcurrently_void()
         {
-            var cancelationSource = default(CancelationSource);
-            var deferred = default(Promise.Deferred);
-            bool completed = false;
+            int rejection = 1;
 
-            var catchActions = TestHelper.CatchActionsVoidWithCancelation(() => { });
-            var thenActions = TestHelper.ThenActionsVoidWithCancelation(null, () => { });
-            var continueActions = TestHelper.ContinueWithActionsVoidWithCancelation(() => { });
-            var threadHelper = new ThreadHelper();
-            foreach (var action in catchActions.Concat(thenActions).Concat(continueActions))
+            // If onRejected is canceled, the rejection is unhandled. So we need to catch it here and make sure it's what we expect.
+            var prevRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = ex =>
             {
-                threadHelper.ExecuteParallelActionsWithOffsets(false,
-                    // Setup
-                    () =>
-                    {
-                        cancelationSource = CancelationSource.New();
-                        deferred = Promise.NewDeferred();
-                        completed = false;
-                        action(deferred.Promise, cancelationSource.Token)
-                            .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
-                            .Catch(() => { })
-                            .Forget();
-                        deferred.Reject(1);
-                    },
-                    // Teardown
-                    () =>
-                    {
-                        cancelationSource.Dispose();
-                        Promise.Manager.HandleCompletes();
-                        Assert.IsTrue(completed);
-                    },
-                    // Parallel actions
-                    () => cancelationSource.Cancel(),
-                    () => Promise.Manager.HandleCompletes()
-                );
+                if (!ex.Value.Equals(rejection))
+                {
+                    throw ex;
+                }
+            };
+
+            try
+            {
+                var cancelationSource = default(CancelationSource);
+                var deferred = default(Promise.Deferred);
+                bool completed = false;
+
+                var catchActions = TestHelper.CatchActionsVoidWithCancelation(() => { });
+                var thenActions = TestHelper.ThenActionsVoidWithCancelation(null, () => { });
+                var continueActions = TestHelper.ContinueWithActionsVoidWithCancelation(() => { });
+                var threadHelper = new ThreadHelper();
+                foreach (var action in catchActions.Concat(thenActions).Concat(continueActions))
+                {
+                    threadHelper.ExecuteParallelActionsWithOffsets(false,
+                        // Setup
+                        () =>
+                        {
+                            cancelationSource = CancelationSource.New();
+                            deferred = Promise.NewDeferred();
+                            completed = false;
+                            action(deferred.Promise, cancelationSource.Token)
+                                .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
+                                .Forget();
+                            deferred.Reject(rejection);
+                        },
+                        // Teardown
+                        () =>
+                        {
+                            cancelationSource.Dispose();
+                            Promise.Manager.HandleCompletes();
+                            Assert.IsTrue(completed);
+                        },
+                        // Parallel actions
+                        () => cancelationSource.Cancel(),
+                        () => Promise.Manager.HandleCompletes()
+                    );
+                }
+            }
+            finally
+            {
+                Promise.Config.UncaughtRejectionHandler = prevRejectionHandler;
             }
         }
 
         [Test]
         public void PromiseCatchMayBeRejectedAndCanceledConcurrently_T()
         {
-            var cancelationSource = default(CancelationSource);
-            var deferred = default(Promise<int>.Deferred);
-            bool completed = false;
+            int rejection = 1;
 
-            var catchActions = TestHelper.CatchActionsWithCancelation<int>(() => { });
-            var thenActions = TestHelper.ThenActionsWithCancelation<int>(null, () => { });
-            var continueActions = TestHelper.ContinueWithActionsWithCancelation<int>(() => { });
-            var threadHelper = new ThreadHelper();
-            foreach (var action in catchActions.Concat(thenActions).Concat(continueActions))
+            // If onRejected is canceled, the rejection is unhandled. So we need to catch it here and make sure it's what we expect.
+            var prevRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = ex =>
             {
-                threadHelper.ExecuteParallelActionsWithOffsets(false,
-                    // Setup
-                    () =>
-                    {
-                        cancelationSource = CancelationSource.New();
-                        deferred = Promise.NewDeferred<int>();
-                        completed = false;
-                        action(deferred.Promise, cancelationSource.Token)
-                            .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
-                            .Catch(() => { })
-                            .Forget();
-                        deferred.Reject(1);
-                    },
-                    // Teardown
-                    () =>
-                    {
-                        cancelationSource.Dispose();
-                        Promise.Manager.HandleCompletes();
-                        Assert.IsTrue(completed);
-                    },
-                    // Parallel actions
-                    () => cancelationSource.Cancel(),
-                    () => Promise.Manager.HandleCompletes()
-                );
+                if (!ex.Value.Equals(rejection))
+                {
+                    throw ex;
+                }
+            };
+
+            try
+            {
+                var cancelationSource = default(CancelationSource);
+                var deferred = default(Promise<int>.Deferred);
+                bool completed = false;
+
+                var catchActions = TestHelper.CatchActionsWithCancelation<int>(() => { });
+                var thenActions = TestHelper.ThenActionsWithCancelation<int>(null, () => { });
+                var continueActions = TestHelper.ContinueWithActionsWithCancelation<int>(() => { });
+                var threadHelper = new ThreadHelper();
+                foreach (var action in catchActions.Concat(thenActions).Concat(continueActions))
+                {
+                    threadHelper.ExecuteParallelActionsWithOffsets(false,
+                        // Setup
+                        () =>
+                        {
+                            cancelationSource = CancelationSource.New();
+                            deferred = Promise.NewDeferred<int>();
+                            completed = false;
+                            action(deferred.Promise, cancelationSource.Token)
+                                .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
+                                .Forget();
+                            deferred.Reject(rejection);
+                        },
+                        // Teardown
+                        () =>
+                        {
+                            cancelationSource.Dispose();
+                            Promise.Manager.HandleCompletes();
+                            Assert.IsTrue(completed);
+                        },
+                        // Parallel actions
+                        () => cancelationSource.Cancel(),
+                        () => Promise.Manager.HandleCompletes()
+                    );
+                }
+            }
+            finally
+            {
+                Promise.Config.UncaughtRejectionHandler = prevRejectionHandler;
             }
         }
 
