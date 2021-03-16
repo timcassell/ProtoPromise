@@ -521,7 +521,7 @@ namespace Proto.Promises
 #endif
             internal abstract class PromiseBranch : PromiseSingleAwait
             {
-                volatile private ITreeHandleable _waiter;
+                private ITreeHandleable _waiter;
 
                 protected sealed override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
                 {
@@ -533,9 +533,10 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     // When this is completed, _state is set then _next is swapped, so we must reverse that process here.
                     _waiter = waiter;
+                    Thread.MemoryBarrier(); // Make sure _state is read after _waiter is written.
                     if (_state != Promise.State.Pending)
                     {
-                        // Exchange and check for null to handle race condition with HandleWaiter and TryRemoveWaiter on other threads.
+                        // Exchange and check for null to handle race condition with HandleWaiter on another thread.
                         waiter = Interlocked.Exchange(ref _waiter, null);
                         if (waiter != null)
                         {
@@ -734,9 +735,10 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     // When this is completed, _state is set then _next is swapped, so we must reverse that process here.
                     _next = waiter;
+                    Thread.MemoryBarrier(); // Make sure _state is read after _next is written.
                     if (_state != Promise.State.Pending)
                     {
-                        // Exchange and check for null to handle race condition with HandleWaiter and TryRemoveWaiter on other threads.
+                        // Exchange and check for null to handle race condition with HandleWaiter on another thread.
                         waiter = Interlocked.Exchange(ref _next, null);
                         if (waiter != null)
                         {
