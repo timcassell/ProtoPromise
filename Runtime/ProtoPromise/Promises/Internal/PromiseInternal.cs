@@ -179,7 +179,6 @@ namespace Proto.Promises
                     throw new InvalidOperationException("Attempted to use an invalid Promise. This may be because you are attempting to use a promise simultaneously on multiple threads that you have not preserved.",
                         GetFormattedStacktrace(1));
                 }
-                ThrowIfInPool(this);
             }
 
             [MethodImpl(InlineOption)]
@@ -382,7 +381,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static PromiseMultiAwait GetOrCreate()
+                internal static PromiseMultiAwait GetOrCreate()
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseMultiAwait, Creator>();
                     promise.Reset();
@@ -546,6 +545,15 @@ namespace Proto.Promises
                     MaybeDispose();
                 }
 
+                internal void HandleWaiter(IValueContainer valueContainer)
+                {
+                    ITreeHandleable waiter = Interlocked.Exchange(ref _waiter, null);
+                    if (waiter != null)
+                    {
+                        waiter.MakeReady(this, valueContainer, ref _handleQueue);
+                    }
+                }
+
                 public override void Handle()
                 {
                     ThrowIfInPool(this);
@@ -629,15 +637,6 @@ namespace Proto.Promises
 
                     MaybeDispose();
                 }
-
-                internal void HandleWaiter(IValueContainer valueContainer)
-                {
-                    ITreeHandleable waiter = Interlocked.Exchange(ref _waiter, null);
-                    if (waiter != null)
-                    {
-                        waiter.MakeReady(this, valueContainer, ref _handleQueue);
-                    }
-                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -663,7 +662,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static PromiseDuplicate GetOrCreate()
+                internal static PromiseDuplicate GetOrCreate()
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseDuplicate, Creator>();
                     promise.Reset();
@@ -757,7 +756,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal void ResolveInternal(IValueContainer valueContainer)
+                private void ResolveInternal(IValueContainer valueContainer)
                 {
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
@@ -768,7 +767,7 @@ namespace Proto.Promises
                     MaybeDispose();
                 }
 
-                internal void RejectOrCancelInternal(IValueContainer valueContainer)
+                protected void RejectOrCancelInternal(IValueContainer valueContainer)
                 {
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
@@ -1020,7 +1019,7 @@ namespace Proto.Promises
                 private PromiseResolve() { }
 
                 [MethodImpl(InlineOption)]
-                public static PromiseResolve<TResolver> GetOrCreate(TResolver resolver)
+                internal static PromiseResolve<TResolver> GetOrCreate(TResolver resolver)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolve<TResolver>, Creator>();
                     promise.Reset();
@@ -1069,7 +1068,7 @@ namespace Proto.Promises
                 private PromiseResolvePromise() { }
 
                 [MethodImpl(InlineOption)]
-                public static PromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver)
+                internal static PromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolvePromise<TResolver>, Creator>();
                     promise.Reset();
@@ -1128,7 +1127,7 @@ namespace Proto.Promises
                 private PromiseResolveReject() { }
 
                 [MethodImpl(InlineOption)]
-                public static PromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
+                internal static PromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolveReject<TResolver, TRejecter>, Creator>();
                     promise.Reset();
@@ -1189,7 +1188,7 @@ namespace Proto.Promises
                 private PromiseResolveRejectPromise() { }
 
                 [MethodImpl(InlineOption)]
-                public static PromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
+                internal static PromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolveRejectPromise<TResolver, TRejecter>, Creator>();
                     promise.Reset();
@@ -1255,7 +1254,7 @@ namespace Proto.Promises
                 private PromiseContinue() { }
 
                 [MethodImpl(InlineOption)]
-                public static PromiseContinue<TContinuer> GetOrCreate(TContinuer continuer)
+                internal static PromiseContinue<TContinuer> GetOrCreate(TContinuer continuer)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseContinue<TContinuer>, Creator>();
                     promise.Reset();
@@ -1297,7 +1296,7 @@ namespace Proto.Promises
                 private PromiseContinuePromise() { }
 
                 [MethodImpl(InlineOption)]
-                public static PromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer)
+                internal static PromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseContinuePromise<TContinuer>, Creator>();
                     promise.Reset();
@@ -1346,7 +1345,7 @@ namespace Proto.Promises
                 private PromiseFinally() { }
 
                 [MethodImpl(InlineOption)]
-                public static PromiseFinally<TFinalizer> GetOrCreate(TFinalizer finalizer)
+                internal static PromiseFinally<TFinalizer> GetOrCreate(TFinalizer finalizer)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseFinally<TFinalizer>, Creator>();
                     promise.Reset();
@@ -1389,7 +1388,7 @@ namespace Proto.Promises
                 private PromiseCancel() { }
 
                 [MethodImpl(InlineOption)]
-                public static PromiseCancel<TCanceler> GetOrCreate(TCanceler canceler)
+                internal static PromiseCancel<TCanceler> GetOrCreate(TCanceler canceler)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseCancel<TCanceler>, Creator>();
                     promise.Reset();
@@ -1483,7 +1482,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public static PromisePassThrough GetOrCreate(Promise owner, int index)
+                internal static PromisePassThrough GetOrCreate(Promise owner, int index)
                 {
                     // owner._ref is checked for nullity before passing into this.
                     owner._ref.MarkAwaited(owner._id);
@@ -1501,7 +1500,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _target = target;
-                    Owner.AddWaiter(this);
+                    _owner.AddWaiter(this);
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
@@ -1543,6 +1542,19 @@ namespace Proto.Promises
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
                 }
+
+                internal bool TryRemoveFromOwnerAndRelease()
+                {
+                    if (_owner.TryRemoveWaiter(this))
+                    {
+                        TryUnsubscribeProgressAndRelease();
+                        Release();
+                        return true;
+                    }
+                    return false;
+                }
+
+                partial void TryUnsubscribeProgressAndRelease();
 
                 void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
             }

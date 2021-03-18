@@ -129,7 +129,7 @@ namespace Proto.Promises
                     object prev = previous;
                     while (prev is PromiseRef promise)
                     {
-                        promise._progressListeners.Remove(listener);
+                        promise._progressListeners.TryRemove(listener);
                         prev = promise._valueOrPrevious;
                     }
 #else
@@ -800,6 +800,15 @@ namespace Proto.Promises
                 partial void ResetProgress()
                 {
                     _currentProgress = default(UnsignedFixed32);
+                }
+
+                [MethodImpl(InlineOption)]
+                partial void TryUnsubscribeProgressAndRelease()
+                {
+                    if (_owner._progressListeners.TryRemove(this))
+                    {
+                        Release();
+                    }
                 }
             }
 #endif

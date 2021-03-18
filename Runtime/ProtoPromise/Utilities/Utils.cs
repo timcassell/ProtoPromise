@@ -434,16 +434,16 @@ namespace Proto.Utils
 
         // TODO: This creates new allocations if T is a struct. It's also just horribly inefficient (scans the linked list twice).
         // Remove this method with the progress refactor.
-        internal void Remove(T item)
+        internal bool TryRemove(T item)
         {
             foreach (var node in _stack)
             {
                 if (node.Value.Equals(item))
                 {
-                    _stack.TryRemove(node);
-                    return;
+                    return _stack.TryRemove(node);
                 }
             }
+            return false;
         }
 
         public Enumerator GetEnumerator()

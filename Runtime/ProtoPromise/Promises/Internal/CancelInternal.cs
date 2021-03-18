@@ -250,7 +250,7 @@ namespace Proto.Promises
                 private CancelablePromiseResolve() { }
 
                 [MethodImpl(InlineOption)]
-                public static CancelablePromiseResolve<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
+                internal static CancelablePromiseResolve<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolve<TResolver>, Creator>();
                     promise.Reset();
@@ -328,7 +328,7 @@ namespace Proto.Promises
                 private CancelablePromiseResolvePromise() { }
 
                 [MethodImpl(InlineOption)]
-                public static CancelablePromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
+                internal static CancelablePromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolvePromise<TResolver>, Creator>();
                     promise.Reset();
@@ -430,7 +430,7 @@ namespace Proto.Promises
                 private CancelablePromiseResolveReject() { }
 
                 [MethodImpl(InlineOption)]
-                public static CancelablePromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
+                internal static CancelablePromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolveReject<TResolver, TRejecter>, Creator>();
                     promise.Reset();
@@ -519,7 +519,7 @@ namespace Proto.Promises
                 private CancelablePromiseResolveRejectPromise() { }
 
                 [MethodImpl(InlineOption)]
-                public static CancelablePromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
+                internal static CancelablePromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>, Creator>();
                     promise.Reset();
@@ -628,7 +628,7 @@ namespace Proto.Promises
                 private CancelablePromiseContinue() { }
 
                 [MethodImpl(InlineOption)]
-                public static CancelablePromiseContinue<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
+                internal static CancelablePromiseContinue<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseContinue<TContinuer>, Creator>();
                     promise.Reset();
@@ -697,7 +697,7 @@ namespace Proto.Promises
                 private CancelablePromiseContinuePromise() { }
 
                 [MethodImpl(InlineOption)]
-                public static CancelablePromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
+                internal static CancelablePromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseContinuePromise<TContinuer>, Creator>();
                     promise.Reset();
@@ -789,7 +789,7 @@ namespace Proto.Promises
                 private CancelablePromiseCancel() { }
 
                 [MethodImpl(InlineOption)]
-                public static CancelablePromiseCancel<TCanceler> GetOrCreate(TCanceler canceler, CancelationToken cancelationToken)
+                internal static CancelablePromiseCancel<TCanceler> GetOrCreate(TCanceler canceler, CancelationToken cancelationToken)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseCancel<TCanceler>, Creator>();
                     promise.Reset();
