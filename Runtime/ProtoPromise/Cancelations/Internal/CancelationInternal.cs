@@ -478,14 +478,22 @@ namespace Proto.Promises
                     return isCanceled = false;
                 }
                 bool validOrder;
-                lock (_registeredCallbacks)
-                {
-                    validOrder = IndexOf(order) >= 0;
-                }
                 var temp = _valueContainer;
-                isCanceled = temp != null;
-                validOrder &= !isCanceled;
-                isCanceled &= temp != DisposedRef.instance;
+                if (temp != null)
+                {
+                    isCanceled = temp != DisposedRef.instance;
+                    validOrder = false;
+                }
+                else
+                {
+                    lock (_registeredCallbacks)
+                    {
+                        temp = _valueContainer;
+                        isCanceled = temp != null;
+                        validOrder = !isCanceled && IndexOf(order) >= 0;
+                    }
+                    isCanceled &= temp != DisposedRef.instance;
+                }
                 ReleaseAfterRetainInternal();
                 return validOrder;
             }
