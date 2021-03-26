@@ -38,8 +38,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="ProtoPromise\Utilities\AggregateException.cs" />
-    <Compile Remove="ProtoPromise\Utilities\ValueTuple.cs" />
+    <Compile Remove="ProtoPromise\ForOldRuntime\**" />
   </ItemGroup>
 
   <ItemGroup>

@@ -667,7 +667,7 @@ namespace Proto.Promises
             {
                 if (index == 0)
                 {
-                    ((Internal.ResolveContainer<T1>) target).value = ((Internal.ResolveContainer<T1>) feed).value;
+                    target.value = ((Internal.ResolveContainer<T1>) feed).value;
                 }
             }, pendingCount, 2, completedProgress);
             return new Promise<T1>(promise, promise.Id);
@@ -697,11 +697,11 @@ namespace Proto.Promises
             {
                 if (index == 0)
                 {
-                    ((Internal.ResolveContainer<ValueTuple<T1, T2>>) target).value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                    target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                 }
                 else
                 {
-                    ((Internal.ResolveContainer<ValueTuple<T1, T2>>) target).value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                    target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                 }
             }, pendingCount, 2, completedProgress);
             return new Promise<ValueTuple<T1, T2>>(promise, promise.Id);
@@ -731,14 +731,13 @@ namespace Proto.Promises
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
-                var container = (Internal.ResolveContainer<ValueTuple<T1, T2>>) target;
                 switch (index)
                 {
                     case 0:
-                        container.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        container.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                 }
             }, pendingCount, 3, completedProgress);
@@ -769,17 +768,16 @@ namespace Proto.Promises
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
-                var container = (Internal.ResolveContainer<ValueTuple<T1, T2, T3>>) target;
                 switch (index)
                 {
                     case 0:
-                        container.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        container.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        container.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                 }
             }, pendingCount, 3, completedProgress);
@@ -812,17 +810,16 @@ namespace Proto.Promises
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
-                var container = (Internal.ResolveContainer<ValueTuple<T1, T2, T3>>) target;
                 switch (index)
                 {
                     case 0:
-                        container.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        container.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        container.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                 }
             }, pendingCount, 4, completedProgress);
@@ -855,20 +852,19 @@ namespace Proto.Promises
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
-                var container = (Internal.ResolveContainer<ValueTuple<T1, T2, T3, T4>>) target;
                 switch (index)
                 {
                     case 0:
-                        container.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        container.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        container.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        container.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                 }
             }, pendingCount, 4, completedProgress);
@@ -903,20 +899,19 @@ namespace Proto.Promises
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
-                var container = (Internal.ResolveContainer<ValueTuple<T1, T2, T3, T4>>) target;
                 switch (index)
                 {
                     case 0:
-                        container.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        container.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        container.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        container.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                 }
             }, pendingCount, 5, completedProgress);
@@ -951,23 +946,22 @@ namespace Proto.Promises
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
-                var container = (Internal.ResolveContainer<ValueTuple<T1, T2, T3, T4, T5>>) target;
                 switch (index)
                 {
                     case 0:
-                        container.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        container.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        container.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        container.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                     case 4:
-                        container.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
                         break;
                 }
             }, pendingCount, 5, completedProgress);
@@ -1004,23 +998,22 @@ namespace Proto.Promises
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
-                var container = (Internal.ResolveContainer<ValueTuple<T1, T2, T3, T4, T5>>) target;
                 switch (index)
                 {
                     case 0:
-                        container.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        container.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        container.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        container.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                     case 4:
-                        container.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
                         break;
                 }
             }, pendingCount, 6, completedProgress);
@@ -1057,26 +1050,25 @@ namespace Proto.Promises
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
-                var container = (Internal.ResolveContainer<ValueTuple<T1, T2, T3, T4, T5, T6>>) target;
                 switch (index)
                 {
                     case 0:
-                        container.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        container.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        container.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        container.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                     case 4:
-                        container.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
                         break;
                     case 5:
-                        container.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
+                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
                         break;
                 }
             }, pendingCount, 6, completedProgress);
@@ -1115,26 +1107,25 @@ namespace Proto.Promises
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
-                var container = (Internal.ResolveContainer<ValueTuple<T1, T2, T3, T4, T5, T6>>) target;
                 switch (index)
                 {
                     case 0:
-                        container.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        container.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        container.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        container.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                     case 4:
-                        container.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
                         break;
                     case 5:
-                        container.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
+                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
                         break;
                 }
             }, pendingCount, 7, completedProgress);
@@ -1173,29 +1164,28 @@ namespace Proto.Promises
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
-                var container = (Internal.ResolveContainer<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>) target;
                 switch (index)
                 {
                     case 0:
-                        container.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        container.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        container.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        container.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                     case 4:
-                        container.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
                         break;
                     case 5:
-                        container.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
+                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
                         break;
                     case 6:
-                        container.value.Item7 = ((Internal.ResolveContainer<T7>) feed).value;
+                        target.value.Item7 = ((Internal.ResolveContainer<T7>) feed).value;
                         break;
                 }
             }, pendingCount, 7, completedProgress);
@@ -1236,29 +1226,28 @@ namespace Proto.Promises
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
-                var container = (Internal.ResolveContainer<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>) target;
                 switch (index)
                 {
                     case 0:
-                        container.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
                         break;
                     case 1:
-                        container.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                         break;
                     case 2:
-                        container.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
                         break;
                     case 3:
-                        container.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
                         break;
                     case 4:
-                        container.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
                         break;
                     case 5:
-                        container.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
+                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
                         break;
                     case 6:
-                        container.value.Item7 = ((Internal.ResolveContainer<T7>) feed).value;
+                        target.value.Item7 = ((Internal.ResolveContainer<T7>) feed).value;
                         break;
                 }
             }, pendingCount, 8, completedProgress);

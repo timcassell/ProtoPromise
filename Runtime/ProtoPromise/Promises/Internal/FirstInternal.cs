@@ -98,6 +98,7 @@ namespace Proto.Promises
                     {
                         MaybeDispose();
                     }
+                    passThrough.Release();
                     return handle;
                 }
 

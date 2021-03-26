@@ -27,7 +27,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class MergePromise : PromiseBranch, IMultiTreeHandleable
+            internal partial class MergePromise : PromiseBranch, IMultiTreeHandleable
             {
                 private struct Creator : ICreator<MergePromise>
                 {
@@ -40,7 +40,6 @@ namespace Proto.Promises
 
                 private readonly object _locker = new object();
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
-                private Action<IValueContainer, object, int> _onPromiseResolved;
                 private int _waitCount;
 
                 private MergePromise() { }
@@ -48,36 +47,42 @@ namespace Proto.Promises
                 protected override void Dispose()
                 {
                     base.Dispose();
-                    _onPromiseResolved = null;
+                    // Release all passthroughs.
+                    while (_passThroughs.IsNotEmpty)
+                    {
+                        _passThroughs.Pop().Release();
+                    }
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                private static MergePromise Create()
+                [MethodImpl(InlineOption)]
+                private void SuperDispose()
                 {
-                    return ObjectPool<ITreeHandleable>.GetOrCreate<MergePromise, Creator>();
-                }
-
-                public static MergePromise GetOrCreate<T>(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref T value, Action<IValueContainer, object, int> onPromiseResolved,
-                    uint pendingAwaits, uint totalAwaits, ulong completedProgress)
-                {
-                    var promise = Create();
-                    promise._onPromiseResolved = onPromiseResolved;
-                    promise._valueOrPrevious = ResolveContainer<T>.GetOrCreate(ref value, 1);
-                    promise.Setup(promisePassThroughs, pendingAwaits, totalAwaits, completedProgress);
-                    return promise;
+                    base.Dispose();
                 }
 
                 public static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, uint totalAwaits, ulong completedProgress)
                 {
-                    var promise = Create();
-                    promise._onPromiseResolved = (_, __, ___) => { };
-                    promise._valueOrPrevious = ResolveContainerVoid.GetOrCreate();
+                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<MergePromise, Creator>();
+                    promise.Setup(promisePassThroughs, pendingAwaits, totalAwaits, completedProgress);
+                    return promise;
+                }
+
+                public static MergePromise GetOrCreate<T>(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved,
+                    uint pendingAwaits, uint totalAwaits, ulong completedProgress)
+                {
+                    var promise = MergePromiseT<T>.GetOrCreate(ref value, onPromiseResolved);
                     promise.Setup(promisePassThroughs, pendingAwaits, totalAwaits, completedProgress);
                     return promise;
                 }
 
                 private void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, uint totalAwaits, ulong completedProgress)
                 {
+                    checked
+                    {
+                        // Extra retain for handle.
+                        ++pendingAwaits;
+                    }
                     unchecked
                     {
                         _waitCount = (int) pendingAwaits;
@@ -88,18 +93,46 @@ namespace Proto.Promises
                     while (promisePassThroughs.IsNotEmpty)
                     {
                         var passThrough = promisePassThroughs.Pop();
-                        // TODO: optimize away the lock here.
+                        passThrough.Retain();
                         lock (_locker)
                         {
                             _passThroughs.Push(passThrough);
-                            passThrough.SetTargetAndAddToOwner(this);
                         }
+                        passThrough.SetTargetAndAddToOwner(this);
+                        if (_valueOrPrevious != null)
+                        {
+                            // This was rejected or canceled potentially before all passthroughs were hooked up.
+                            // Try to unhook current passthrough (in case of thread race condition), and release all remaining passthroughs.
+                            int addCount;
+                            if (passThrough.TryRemoveFromOwner())
+                            {
+                                addCount = -1;
+                            }
+                            else
+                            {
+                                addCount = 0;
+                            }
+                            while (promisePassThroughs.IsNotEmpty)
+                            {
+                                var p = promisePassThroughs.Pop();
+                                p.Owner.MaybeDispose();
+                                p.Release();
+                                --addCount;
+                            }
+                            if (addCount != 0 && Interlocked.Add(ref _waitCount, addCount) == 0)
+                            {
+                                MaybeDispose();
+                            }
+                        }
+                        passThrough.Release();
                     }
                 }
 
                 public override void Handle()
                 {
-                    HandleWaiter((IValueContainer) _valueOrPrevious);
+                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
+                    _state = valueContainer.GetState();
+                    HandleWaiter(valueContainer);
                     if (_state == Promise.State.Resolved)
                     {
                         ResolveProgressListeners();
@@ -115,60 +148,185 @@ namespace Proto.Promises
                     }
                 }
 
-                bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index)
+                public virtual bool Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index) // IMultiTreeHandleable.Handle
                 {
                     ThrowIfInPool(this);
-                    lock (_locker)
-                    {
-                        if (_state != Promise.State.Pending)
-                        {
-                            _passThroughs.TryRemove(passThrough);
-                        }
-                        else
-                        {
-                            PromiseRef owner = passThrough.Owner;
-                            owner._suppressRejection = true;
-                            if (owner._state != Promise.State.Resolved) // Rejected/Canceled
-                            {
-                                valueContainer.Retain();
-                                ((IValueContainer) _valueOrPrevious).Release();
-                                _valueOrPrevious = valueContainer;
-                                _state = owner._state;
 
-                                // Remove all passthroughs
-                                while (_passThroughs.IsNotEmpty)
-                                {
-                                    var p = _passThroughs.Pop();
-                                    if (p != passThrough && p.TryRemoveFromOwnerAndRelease())
-                                    {
-                                        Interlocked.Decrement(ref _waitCount);
-                                    }
-                                }
-                                return true;
-                            }
-                            else // Resolved
+                    PromiseRef owner = passThrough.Owner;
+                    owner._suppressRejection = true;
+                    if (owner._state != Promise.State.Resolved) // Rejected/Canceled
+                    {
+                        if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
+                        {
+                            if (Interlocked.Decrement(ref _waitCount) == 0)
                             {
-                                // TODO: optimize lock so that resolves can run in parallel.
-                                _onPromiseResolved.Invoke(valueContainer, _valueOrPrevious, index);
-                                _passThroughs.TryRemove(passThrough);
-                                if (_waitCount == 1)
-                                {
-                                    _state = Promise.State.Resolved;
-                                    return true;
-                                }
-                                IncrementProgress(passThrough);
+                                MaybeDispose();
                             }
+                            return false;
                         }
-                        if (Interlocked.Decrement(ref _waitCount) == 0)
+                        valueContainer.Retain();
+
+                        // Try to unhook and release all passthroughs.
+                        ValueLinkedStack<PromisePassThrough> removedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
+                        lock (_locker)
+                        {
+                            ValueLinkedStack<PromisePassThrough> unRemovedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
+                            while (_passThroughs.IsNotEmpty)
+                            {
+                                var p = _passThroughs.Pop();
+                                if (p.TryRemoveFromOwner())
+                                {
+                                    removedPassThroughs.Push(p);
+                                }
+                                else
+                                {
+                                    unRemovedPassThroughs.Push(p);
+                                }
+                            }
+                            _passThroughs = unRemovedPassThroughs;
+                        }
+
+                        int addWaitCount = -1;
+                        while (removedPassThroughs.IsNotEmpty)
+                        {
+                            removedPassThroughs.Pop().Release();
+                            --addWaitCount;
+                        }
+                        Interlocked.Add(ref _waitCount, addWaitCount);
+                        return true;
+                    }
+                    else // Resolved
+                    {
+                        int remaining = Interlocked.Decrement(ref _waitCount);
+                        if (remaining == 1)
+                        {
+                            return Interlocked.CompareExchange(ref _valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null) == null;
+                        }
+                        if (remaining == 0)
                         {
                             MaybeDispose();
+                            return false;
                         }
+                        IncrementProgress(passThrough);
                         return false;
                     }
                 }
 
                 partial void IncrementProgress(PromisePassThrough passThrough);
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress);
+
+                private sealed class MergePromiseT<T> : MergePromise, IMultiTreeHandleable
+                {
+                    private struct CreatorT : ICreator<MergePromiseT<T>>
+                    {
+                        [MethodImpl(InlineOption)]
+                        public MergePromiseT<T> Create()
+                        {
+                            return new MergePromiseT<T>();
+                        }
+                    }
+
+                    private Action<IValueContainer, ResolveContainer<T>, int> _onPromiseResolved;
+                    private ResolveContainer<T> _valueContainer;
+
+                    private MergePromiseT() { }
+
+                    protected override void Dispose()
+                    {
+                        SuperDispose();
+                        _onPromiseResolved = null;
+                        if (_valueContainer != null)
+                        {
+                            _valueContainer.Release();
+                            _valueContainer = null;
+                        }
+                        // Release all passthroughs.
+                        while (_passThroughs.IsNotEmpty)
+                        {
+                            _passThroughs.Pop().Release();
+                        }
+                        ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    }
+
+                    public static MergePromiseT<T> GetOrCreate(ref T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved)
+                    {
+                        var promise = ObjectPool<ITreeHandleable>.GetOrCreate<MergePromiseT<T>, CreatorT>();
+                        promise._onPromiseResolved = onPromiseResolved;
+                        promise._valueContainer = ResolveContainer<T>.GetOrCreate(ref value, 1);
+                        return promise;
+                    }
+
+                    public override bool Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index)
+                    {
+                        ThrowIfInPool(this);
+
+                        PromiseRef owner = passThrough.Owner;
+                        owner._suppressRejection = true;
+                        if (owner._state != Promise.State.Resolved) // Rejected/Canceled
+                        {
+                            if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
+                            {
+                                if (Interlocked.Decrement(ref _waitCount) == 0)
+                                {
+                                    MaybeDispose();
+                                }
+                                return false;
+                            }
+                            valueContainer.Retain();
+
+                            // Try to unhook and release all passthroughs.
+                            ValueLinkedStack<PromisePassThrough> removedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
+                            lock (_locker)
+                            {
+                                ValueLinkedStack<PromisePassThrough> unRemovedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
+                                while (_passThroughs.IsNotEmpty)
+                                {
+                                    var p = _passThroughs.Pop();
+                                    if (p.TryRemoveFromOwner())
+                                    {
+                                        removedPassThroughs.Push(p);
+                                    }
+                                    else
+                                    {
+                                        unRemovedPassThroughs.Push(p);
+                                    }
+                                }
+                                _passThroughs = unRemovedPassThroughs;
+                            }
+
+                            int addWaitCount = -1;
+                            while (removedPassThroughs.IsNotEmpty)
+                            {
+                                removedPassThroughs.Pop().Release();
+                                --addWaitCount;
+                            }
+                            Interlocked.Add(ref _waitCount, addWaitCount);
+                            return true;
+                        }
+                        else // Resolved
+                        {
+                            _onPromiseResolved.Invoke(valueContainer, _valueContainer, index);
+                            int remaining = Interlocked.Decrement(ref _waitCount);
+                            if (remaining == 1)
+                            {
+                                bool successfullyResolved = Interlocked.CompareExchange(ref _valueOrPrevious, _valueContainer, null) == null;
+                                if (!successfullyResolved)
+                                {
+                                    _valueContainer.Release();
+                                }
+                                _valueContainer = null;
+                                return successfullyResolved;
+                            }
+                            if (remaining == 0)
+                            {
+                                MaybeDispose();
+                                return false;
+                            }
+                            IncrementProgress(passThrough);
+                            return false;
+                        }
+                    }
+                }
             }
 
 #if PROMISE_PROGRESS

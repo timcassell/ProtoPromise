@@ -1511,7 +1511,6 @@ namespace Proto.Promises
                     {
                         AddToHandleQueueFront(temp);
                     }
-                    Release();
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -1522,7 +1521,6 @@ namespace Proto.Promises
                     {
                         AddToHandleQueueBack(temp);
                     }
-                    Release();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1543,15 +1541,11 @@ namespace Proto.Promises
                     }
                 }
 
-                internal bool TryRemoveFromOwnerAndRelease()
+                internal bool TryRemoveFromOwner()
                 {
-                    if (_owner.TryRemoveWaiter(this))
-                    {
-                        TryUnsubscribeProgressAndRelease();
-                        Release();
-                        return true;
-                    }
-                    return false;
+                    ThrowIfInPool(this);
+                    TryUnsubscribeProgressAndRelease();
+                    return _owner.TryRemoveWaiter(this);
                 }
 
                 partial void TryUnsubscribeProgressAndRelease();

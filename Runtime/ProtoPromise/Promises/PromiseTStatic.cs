@@ -419,7 +419,7 @@ namespace Proto.Promises
 
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
             {
-                ((Internal.ResolveContainer<IList<T>>) target).value[index] = ((Internal.ResolveContainer<T>) feed).value;
+                target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, 2, completedProgress);
             return new Promise<IList<T>>(promise, promise.Id);
         }
@@ -473,7 +473,7 @@ namespace Proto.Promises
 
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
             {
-                ((Internal.ResolveContainer<IList<T>>) target).value[index] = ((Internal.ResolveContainer<T>) feed).value;
+                target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, 3, completedProgress);
             return new Promise<IList<T>>(promise, promise.Id);
         }
@@ -531,7 +531,7 @@ namespace Proto.Promises
 
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
             {
-                ((Internal.ResolveContainer<IList<T>>) target).value[index] = ((Internal.ResolveContainer<T>) feed).value;
+                target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, 4, completedProgress);
             return new Promise<IList<T>>(promise, promise.Id);
         }
@@ -608,7 +608,7 @@ namespace Proto.Promises
 
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
             {
-                ((Internal.ResolveContainer<IList<T>>) target).value[index] = ((Internal.ResolveContainer<T>) feed).value;
+                target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, totalCount, completedProgress);
             return new Promise<IList<T>>(promise, promise.Id);
         }
