@@ -93,7 +93,6 @@ namespace Proto.Promises
                     while (promisePassThroughs.IsNotEmpty)
                     {
                         var passThrough = promisePassThroughs.Pop();
-                        passThrough.Retain();
                         lock (_locker)
                         {
                             _passThroughs.Push(passThrough);
@@ -103,20 +102,12 @@ namespace Proto.Promises
                         {
                             // This was rejected or canceled potentially before all passthroughs were hooked up.
                             // Try to unhook current passthrough (in case of thread race condition), and release all remaining passthroughs.
-                            int addCount;
-                            if (passThrough.TryRemoveFromOwner())
-                            {
-                                addCount = -1;
-                            }
-                            else
-                            {
-                                addCount = 0;
-                            }
+                            int addCount = passThrough.TryRemoveFromOwner() ? -1 : 0;
                             while (promisePassThroughs.IsNotEmpty)
                             {
                                 var p = promisePassThroughs.Pop();
                                 p.Owner.MaybeDispose();
-                                p.Release();
+                                p.Release2(-2);
                                 --addCount;
                             }
                             if (addCount != 0 && Interlocked.Add(ref _waitCount, addCount) == 0)
@@ -168,9 +159,9 @@ namespace Proto.Promises
 
                         // Try to unhook and release all passthroughs.
                         ValueLinkedStack<PromisePassThrough> removedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
+                        ValueLinkedStack<PromisePassThrough> unRemovedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
                         lock (_locker)
                         {
-                            ValueLinkedStack<PromisePassThrough> unRemovedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
                             while (_passThroughs.IsNotEmpty)
                             {
                                 var p = _passThroughs.Pop();
@@ -202,14 +193,16 @@ namespace Proto.Promises
                         {
                             return Interlocked.CompareExchange(ref _valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null) == null;
                         }
-                        if (remaining == 0)
+                        else if (remaining == 0)
                         {
                             MaybeDispose();
-                            return false;
                         }
-                        IncrementProgress(passThrough);
-                        return false;
+                        else
+                        {
+                            IncrementProgress(passThrough);
+                        }
                     }
+                    return false;
                 }
 
                 partial void IncrementProgress(PromisePassThrough passThrough);
@@ -276,9 +269,9 @@ namespace Proto.Promises
 
                             // Try to unhook and release all passthroughs.
                             ValueLinkedStack<PromisePassThrough> removedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
+                            ValueLinkedStack<PromisePassThrough> unRemovedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
                             lock (_locker)
                             {
-                                ValueLinkedStack<PromisePassThrough> unRemovedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
                                 while (_passThroughs.IsNotEmpty)
                                 {
                                     var p = _passThroughs.Pop();
@@ -309,22 +302,23 @@ namespace Proto.Promises
                             int remaining = Interlocked.Decrement(ref _waitCount);
                             if (remaining == 1)
                             {
-                                bool successfullyResolved = Interlocked.CompareExchange(ref _valueOrPrevious, _valueContainer, null) == null;
-                                if (!successfullyResolved)
+                                if (Interlocked.CompareExchange(ref _valueOrPrevious, _valueContainer, null) == null)
                                 {
-                                    _valueContainer.Release();
+                                    // Only nullify if all promises resolved, otherwise we let Dispose release it.
+                                    _valueContainer = null;
+                                    return true;
                                 }
-                                _valueContainer = null;
-                                return successfullyResolved;
                             }
-                            if (remaining == 0)
+                            else if (remaining == 0)
                             {
                                 MaybeDispose();
-                                return false;
                             }
-                            IncrementProgress(passThrough);
-                            return false;
+                            else
+                            {
+                                IncrementProgress(passThrough);
+                            }
                         }
+                        return false;
                     }
                 }
             }

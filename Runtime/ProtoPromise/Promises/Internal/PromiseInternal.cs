@@ -142,7 +142,7 @@ namespace Proto.Promises
                 if (!wasAwaited)
                 {
                     // Promise was not awaited or forgotten.
-                    string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise.";
+                    string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise. Type: " + GetType();
                     AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
                 }
                 if (_state != Promise.State.Pending & _valueOrPrevious != null)
@@ -1456,15 +1456,6 @@ namespace Proto.Promises
                         return _owner;
                     }
                 }
-                internal IMultiTreeHandleable Target
-                {
-                    [MethodImpl(InlineOption)]
-                    get
-                    {
-                        ThrowIfInPool(this);
-                        return _target;
-                    }
-                }
 
                 private PromiseRef _owner;
                 private IMultiTreeHandleable _target;
@@ -1489,8 +1480,8 @@ namespace Proto.Promises
                     var passThrough = ObjectPool<PromisePassThrough>.GetOrCreate<PromisePassThrough, Creator>();
                     passThrough._owner = owner._ref;
                     passThrough._index = index;
+                    passThrough._retainCount = 2;
                     passThrough.ResetProgress();
-                    passThrough._retainCount = 1;
                     return passThrough;
                 }
 
@@ -1506,20 +1497,18 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
                     ThrowIfInPool(this);
-                    var temp = Target;
-                    if (temp.Handle(valueContainer, this, _index))
+                    if (_target.Handle(valueContainer, this, _index))
                     {
-                        AddToHandleQueueFront(temp);
+                        AddToHandleQueueFront(_target);
                     }
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(this);
-                    var temp = Target;
-                    if (temp.Handle(valueContainer, this, _index))
+                    if (_target.Handle(valueContainer, this, _index))
                     {
-                        AddToHandleQueueBack(temp);
+                        AddToHandleQueueBack(_target);
                     }
                 }
 
@@ -1530,10 +1519,16 @@ namespace Proto.Promises
                     Interlocked.Increment(ref _retainCount);
                 }
 
+                [MethodImpl(InlineOption)]
                 internal void Release()
                 {
+                    Release2(-1);
+                }
+
+                internal void Release2(int addRetains)
+                {
                     ThrowIfInPool(this);
-                    if (Interlocked.Decrement(ref _retainCount) == 0)
+                    if (Interlocked.Add(ref _retainCount, addRetains) == 0)
                     {
                         _owner = null;
                         _target = null;

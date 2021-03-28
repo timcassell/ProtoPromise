@@ -120,6 +120,7 @@ namespace Proto.Promises
 
             partial void CancelProgressListeners(object previous)
             {
+                // TODO: concurrent cancelation of promise chain in multiple places, re-add progress retains.
                 // TODO: this algorithm is O(n^3), refactor progress to reduce runtime costs of cancelations.
                 UnsignedFixed32 progress = _waitDepthAndProgress.GetIncrementedWholeTruncated();
                 while (_progressListeners.IsNotEmpty)
@@ -136,7 +137,7 @@ namespace Proto.Promises
                     PromiseRef promise = previous as PromiseRef;
                     while (promise != null)
                     {
-                        promise._progressListeners.Remove(listener);
+                        promise._progressListeners.TryRemove(listener);
                         promise = promise._valueOrPrevious as PromiseRef;
                     }
 #endif
@@ -760,7 +761,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     //Retain();
                     _currentProgress = progress;
-                    Target.IncrementProgress(progress.ToUInt32(), progress, Owner._waitDepthAndProgress);
+                    _target.IncrementProgress(progress.ToUInt32(), progress, _owner._waitDepthAndProgress);
                 }
 
                 void IProgressListener.SetProgress(PromiseRef sender, UnsignedFixed32 progress)
@@ -768,13 +769,13 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     uint dif = progress.ToUInt32() - _currentProgress.ToUInt32();
                     _currentProgress = progress;
-                    Target.IncrementProgress(dif, progress, Owner._waitDepthAndProgress);
+                    _target.IncrementProgress(dif, progress, _owner._waitDepthAndProgress);
                 }
 
                 void IProgressListener.ResolveOrSetProgress(PromiseRef sender, UnsignedFixed32 progress)
                 {
                     ThrowIfInPool(this);
-                    if (sender == Owner)
+                    if (sender == _owner)
                     {
                         Release();
                     }
@@ -783,7 +784,7 @@ namespace Proto.Promises
                 void IProgressListener.CancelOrSetProgress(PromiseRef sender, UnsignedFixed32 progress)
                 {
                     ThrowIfInPool(this);
-                    if (sender == Owner)
+                    if (sender == _owner)
                     {
                         Release();
                     }
@@ -793,7 +794,7 @@ namespace Proto.Promises
                 internal uint GetProgressDifferenceToCompletion()
                 {
                     ThrowIfInPool(this);
-                    return Owner._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32() - _currentProgress.ToUInt32();
+                    return _owner._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32() - _currentProgress.ToUInt32();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -807,6 +808,21 @@ namespace Proto.Promises
                 {
                     if (_owner._progressListeners.TryRemove(this))
                     {
+#if CSHARP_7_OR_LATER
+                        object prev = _owner._valueOrPrevious;
+                        while (prev is PromiseRef promise)
+                        {
+                            promise._progressListeners.TryRemove(this);
+                            prev = promise._valueOrPrevious;
+                        }
+#else
+                        PromiseRef promise = _owner._valueOrPrevious as PromiseRef;
+                        while (promise != null)
+                        {
+                            promise._progressListeners.TryRemove(this);
+                            promise = promise._valueOrPrevious as PromiseRef;
+                        }
+#endif
                         Release();
                     }
                 }

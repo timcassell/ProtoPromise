@@ -584,20 +584,23 @@ namespace Proto.Promises.Tests
         [Test]
         public void RaceProgressReportsTheMaximumProgress_void1()
         {
-            var deferred1 = Promise.NewDeferred();
+            for (int i = 0; i < 2; ++i)
+            {
+                var deferred1 = Promise.NewDeferred();
 
-            float progress = float.NaN;
+                float progress = float.NaN;
 
-            Promise.Race(deferred1.Promise, Promise.Resolved())
-                .Progress(p => progress = p)
-                .Forget();
+                Promise.Race(deferred1.Promise, Promise.Resolved())
+                    .Progress(p => progress = p)
+                    .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1f, progress, 0f);
+                Promise.Manager.HandleCompletesAndProgress();
+                Assert.AreEqual(1f, progress, 0f);
 
-            deferred1.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1f, progress, 0f);
+                deferred1.Resolve();
+                Promise.Manager.HandleCompletesAndProgress();
+                Assert.AreEqual(1f, progress, 0f);
+            }
         }
 
         [Test]

@@ -28,8 +28,8 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void DeferredsMayBeResolvedWhileTheirPromisesArePassedToRaceConcurrently_void0()
         {
-            Promise.Deferred deferred0 = default(Promise.Deferred);
-            Promise.Deferred deferred1 = default(Promise.Deferred);
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
             bool invoked = false;
 
             var threadHelper = new ThreadHelper();
@@ -62,9 +62,9 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void DeferredsMayBeResolvedWhileTheirPromisesArePassedToRaceConcurrently_void1()
         {
-            Promise.Deferred deferred0 = default(Promise.Deferred);
-            Promise.Deferred deferred1 = default(Promise.Deferred);
-            Promise.Deferred deferred2 = default(Promise.Deferred);
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            var deferred2 = default(Promise.Deferred);
             bool invoked = false;
 
             var threadHelper = new ThreadHelper();
@@ -99,10 +99,10 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void DeferredsMayBeResolvedWhileTheirPromisesArePassedToRaceConcurrently_void2()
         {
-            Promise.Deferred deferred0 = default(Promise.Deferred);
-            Promise.Deferred deferred1 = default(Promise.Deferred);
-            Promise.Deferred deferred2 = default(Promise.Deferred);
-            Promise.Deferred deferred3 = default(Promise.Deferred);
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            var deferred2 = default(Promise.Deferred);
+            var deferred3 = default(Promise.Deferred);
             bool invoked = false;
 
             var threadHelper = new ThreadHelper();
@@ -179,8 +179,8 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void DeferredsMayBeResolvedWhileTheirPromisesArePassedToRaceConcurrently_T0()
         {
-            Promise<int>.Deferred deferred0 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred1 = default(Promise<int>.Deferred);
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
             bool invoked = false;
 
             var threadHelper = new ThreadHelper();
@@ -213,9 +213,9 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void DeferredsMayBeResolvedWhileTheirPromisesArePassedToRaceConcurrently_T1()
         {
-            Promise<int>.Deferred deferred0 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred1 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred2 = default(Promise<int>.Deferred);
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            var deferred2 = default(Promise<int>.Deferred);
             bool invoked = false;
 
             var threadHelper = new ThreadHelper();
@@ -250,10 +250,10 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void DeferredsMayBeResolvedWhileTheirPromisesArePassedToRaceConcurrently_T2()
         {
-            Promise<int>.Deferred deferred0 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred1 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred2 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred3 = default(Promise<int>.Deferred);
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            var deferred2 = default(Promise<int>.Deferred);
+            var deferred3 = default(Promise<int>.Deferred);
             bool invoked = false;
 
             var threadHelper = new ThreadHelper();
@@ -328,12 +328,11 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_void0()
+        public void DeferredsMayBeResolvedConcurrentlyAfterTheirPromisesArePassedToRace_void0()
         {
-            Promise.Deferred deferred0 = default(Promise.Deferred);
-            Promise.Deferred deferred1 = default(Promise.Deferred);
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
             bool invoked = false;
-            int expected = 1;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -343,6 +342,9 @@ namespace Proto.Promises.Tests.Threading
                     deferred0 = Promise.NewDeferred();
                     deferred1 = Promise.NewDeferred();
                     invoked = false;
+                    Promise.Race(deferred0.Promise, deferred1.Promise)
+                        .Then(() => invoked = true)
+                        .Forget();
                 },
                 // Teardown
                 () =>
@@ -352,24 +354,17 @@ namespace Proto.Promises.Tests.Threading
                 },
                 // Parallel actions
                 () => deferred0.Resolve(),
-                () => deferred1.Reject(expected),
-                () =>
-                {
-                    Promise.Race(deferred0.Promise, deferred1.Promise)
-                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
-                        .Forget();
-                }
+                () => deferred1.Resolve()
             );
         }
 
         [Test]
-        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_void1()
+        public void DeferredsMayBeResolvedConcurrentlyAfterTheirPromisesArePassedToRace_void1()
         {
-            Promise.Deferred deferred0 = default(Promise.Deferred);
-            Promise.Deferred deferred1 = default(Promise.Deferred);
-            Promise.Deferred deferred2 = default(Promise.Deferred);
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            var deferred2 = default(Promise.Deferred);
             bool invoked = false;
-            int expected = 1;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -380,6 +375,9 @@ namespace Proto.Promises.Tests.Threading
                     deferred1 = Promise.NewDeferred();
                     deferred2 = Promise.NewDeferred();
                     invoked = false;
+                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
+                        .Then(() => invoked = true)
+                        .Forget();
                 },
                 // Teardown
                 () =>
@@ -390,25 +388,18 @@ namespace Proto.Promises.Tests.Threading
                 // Parallel actions
                 () => deferred0.Resolve(),
                 () => deferred1.Resolve(),
-                () => deferred2.Reject(expected),
-                () =>
-                {
-                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
-                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
-                        .Forget();
-                }
+                () => deferred2.Resolve()
             );
         }
 
         [Test]
-        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_void2()
+        public void DeferredsMayBeResolvedConcurrentlyAfterTheirPromisesArePassedToRace_void2()
         {
-            Promise.Deferred deferred0 = default(Promise.Deferred);
-            Promise.Deferred deferred1 = default(Promise.Deferred);
-            Promise.Deferred deferred2 = default(Promise.Deferred);
-            Promise.Deferred deferred3 = default(Promise.Deferred);
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            var deferred2 = default(Promise.Deferred);
+            var deferred3 = default(Promise.Deferred);
             bool invoked = false;
-            int expected = 1;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -420,6 +411,9 @@ namespace Proto.Promises.Tests.Threading
                     deferred2 = Promise.NewDeferred();
                     deferred3 = Promise.NewDeferred();
                     invoked = false;
+                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                        .Then(() => invoked = true)
+                        .Forget();
                 },
                 // Teardown
                 () =>
@@ -431,22 +425,15 @@ namespace Proto.Promises.Tests.Threading
                 () => deferred0.Resolve(),
                 () => deferred1.Resolve(),
                 () => deferred2.Resolve(),
-                () => deferred3.Reject(expected),
-                () =>
-                {
-                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
-                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
-                        .Forget();
-                }
+                () => deferred3.Resolve()
             );
         }
 
         [Test]
-        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_void3()
+        public void DeferredsMayBeResolvedConcurrentlyAfterTheirPromisesArePassedToRace_void3()
         {
             Promise.Deferred[] deferreds = null;
             bool invoked = false;
-            int expected = 1;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -461,6 +448,9 @@ namespace Proto.Promises.Tests.Threading
                         Promise.NewDeferred()
                     };
                     invoked = false;
+                    Promise.Race(deferreds.Select(d => d.Promise))
+                        .Then(() => invoked = true)
+                        .Forget();
                 },
                 // Teardown
                 () =>
@@ -472,23 +462,16 @@ namespace Proto.Promises.Tests.Threading
                 () => deferreds[0].Resolve(),
                 () => deferreds[1].Resolve(),
                 () => deferreds[2].Resolve(),
-                () => deferreds[3].Reject(expected),
-                () =>
-                {
-                    Promise.Race(deferreds.Select(d => d.Promise))
-                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
-                        .Forget();
-                }
+                () => deferreds[3].Resolve()
             );
         }
 
         [Test]
-        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_T0()
+        public void DeferredsMayBeResolvedConcurrentlyAfterTheirPromisesArePassedToRace_T0()
         {
-            Promise<int>.Deferred deferred0 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred1 = default(Promise<int>.Deferred);
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
             bool invoked = false;
-            int expected = 1;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -498,6 +481,9 @@ namespace Proto.Promises.Tests.Threading
                     deferred0 = Promise<int>.NewDeferred();
                     deferred1 = Promise<int>.NewDeferred();
                     invoked = false;
+                    Promise.Race(deferred0.Promise, deferred1.Promise)
+                        .Then(v => invoked = true) // Result is indeterminable, so don't check it.
+                        .Forget();
                 },
                 // Teardown
                 () =>
@@ -507,24 +493,17 @@ namespace Proto.Promises.Tests.Threading
                 },
                 // Parallel actions
                 () => deferred0.Resolve(1),
-                () => deferred1.Reject(expected),
-                () =>
-                {
-                    Promise.Race(deferred0.Promise, deferred1.Promise)
-                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
-                        .Forget();
-                }
+                () => deferred1.Resolve(2)
             );
         }
 
         [Test]
-        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_T1()
+        public void DeferredsMayBeResolvedConcurrentlyAfterTheirPromisesArePassedToRace_T1()
         {
-            Promise<int>.Deferred deferred0 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred1 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred2 = default(Promise<int>.Deferred);
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            var deferred2 = default(Promise<int>.Deferred);
             bool invoked = false;
-            int expected = 1;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -535,6 +514,9 @@ namespace Proto.Promises.Tests.Threading
                     deferred1 = Promise<int>.NewDeferred();
                     deferred2 = Promise<int>.NewDeferred();
                     invoked = false;
+                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
+                        .Then(v => invoked = true) // Result is indeterminable, so don't check it.
+                        .Forget();
                 },
                 // Teardown
                 () =>
@@ -545,25 +527,18 @@ namespace Proto.Promises.Tests.Threading
                 // Parallel actions
                 () => deferred0.Resolve(1),
                 () => deferred1.Resolve(2),
-                () => deferred2.Reject(expected),
-                () =>
-                {
-                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
-                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
-                        .Forget();
-                }
+                () => deferred2.Resolve(3)
             );
         }
 
         [Test]
-        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_T2()
+        public void DeferredsMayBeResolvedConcurrentlyAfterTheirPromisesArePassedToRace_T2()
         {
-            Promise<int>.Deferred deferred0 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred1 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred2 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred3 = default(Promise<int>.Deferred);
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            var deferred2 = default(Promise<int>.Deferred);
+            var deferred3 = default(Promise<int>.Deferred);
             bool invoked = false;
-            int expected = 1;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -575,6 +550,9 @@ namespace Proto.Promises.Tests.Threading
                     deferred2 = Promise<int>.NewDeferred();
                     deferred3 = Promise<int>.NewDeferred();
                     invoked = false;
+                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                        .Then(v => invoked = true) // Result is indeterminable, so don't check it.
+                        .Forget();
                 },
                 // Teardown
                 () =>
@@ -586,22 +564,15 @@ namespace Proto.Promises.Tests.Threading
                 () => deferred0.Resolve(1),
                 () => deferred1.Resolve(2),
                 () => deferred2.Resolve(3),
-                () => deferred3.Reject(expected),
-                () =>
-                {
-                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
-                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
-                        .Forget();
-                }
+                () => deferred3.Resolve(4)
             );
         }
 
         [Test]
-        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_T3()
+        public void DeferredsMayBeResolvedConcurrentlyAfterTheirPromisesArePassedToRace_T3()
         {
             Promise<int>.Deferred[] deferreds = null;
             bool invoked = false;
-            int expected = 1;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -616,6 +587,9 @@ namespace Proto.Promises.Tests.Threading
                         Promise.NewDeferred<int>()
                     };
                     invoked = false;
+                    Promise.Race(deferreds.Select(d => d.Promise))
+                        .Then(v => invoked = true) // Result is indeterminable, so don't check it.
+                        .Forget();
                 },
                 // Teardown
                 () =>
@@ -627,22 +601,760 @@ namespace Proto.Promises.Tests.Threading
                 () => deferreds[0].Resolve(1),
                 () => deferreds[1].Resolve(2),
                 () => deferreds[2].Resolve(3),
-                () => deferreds[3].Reject(expected),
-                () =>
-                {
-                    Promise.Race(deferreds.Select(d => d.Promise))
-                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
-                        .Forget();
-                }
+                () => deferreds[3].Resolve(4)
             );
+        }
+
+        private System.Action<UnhandledException> prevRejectionHandler;
+
+        private void HandleUncaught(object expected)
+        {
+            // If a race promise is resolved and another is rejected, the rejection is unhandled. So we need to catch it here and make sure it's what we expect.
+            prevRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = ex =>
+            {
+                if (!ex.Value.Equals(expected))
+                {
+                    throw ex;
+                }
+            };
+        }
+
+        private void ResetRejectionHandler()
+        {
+            Promise.Config.UncaughtRejectionHandler = prevRejectionHandler;
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_void0()
+        {
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferred0 = Promise.NewDeferred();
+                        deferred1 = Promise.NewDeferred();
+                        invoked = false;
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferred0.Resolve(),
+                    () => deferred1.Reject(expected),
+                    () =>
+                    {
+                        Promise.Race(deferred0.Promise, deferred1.Promise)
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    }
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_void1()
+        {
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            var deferred2 = default(Promise.Deferred);
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferred0 = Promise.NewDeferred();
+                        deferred1 = Promise.NewDeferred();
+                        deferred2 = Promise.NewDeferred();
+                        invoked = false;
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferred0.Resolve(),
+                    () => deferred1.Resolve(),
+                    () => deferred2.Reject(expected),
+                    () =>
+                    {
+                        Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    }
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_void2()
+        {
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            var deferred2 = default(Promise.Deferred);
+            var deferred3 = default(Promise.Deferred);
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferred0 = Promise.NewDeferred();
+                        deferred1 = Promise.NewDeferred();
+                        deferred2 = Promise.NewDeferred();
+                        deferred3 = Promise.NewDeferred();
+                        invoked = false;
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferred0.Resolve(),
+                    () => deferred1.Resolve(),
+                    () => deferred2.Resolve(),
+                    () => deferred3.Reject(expected),
+                    () =>
+                    {
+                        Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    }
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_void3()
+        {
+            Promise.Deferred[] deferreds = null;
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferreds = new Promise.Deferred[]
+                        {
+                        Promise.NewDeferred(),
+                        Promise.NewDeferred(),
+                        Promise.NewDeferred(),
+                        Promise.NewDeferred()
+                        };
+                        invoked = false;
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferreds[0].Resolve(),
+                    () => deferreds[1].Resolve(),
+                    () => deferreds[2].Resolve(),
+                    () => deferreds[3].Reject(expected),
+                    () =>
+                    {
+                        Promise.Race(deferreds.Select(d => d.Promise))
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    }
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_T0()
+        {
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferred0 = Promise<int>.NewDeferred();
+                        deferred1 = Promise<int>.NewDeferred();
+                        invoked = false;
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferred0.Resolve(1),
+                    () => deferred1.Reject(expected),
+                    () =>
+                    {
+                        Promise.Race(deferred0.Promise, deferred1.Promise)
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    }
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_T1()
+        {
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            var deferred2 = default(Promise<int>.Deferred);
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferred0 = Promise<int>.NewDeferred();
+                        deferred1 = Promise<int>.NewDeferred();
+                        deferred2 = Promise<int>.NewDeferred();
+                        invoked = false;
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferred0.Resolve(1),
+                    () => deferred1.Resolve(2),
+                    () => deferred2.Reject(expected),
+                    () =>
+                    {
+                        Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    }
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_T2()
+        {
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            var deferred2 = default(Promise<int>.Deferred);
+            var deferred3 = default(Promise<int>.Deferred);
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferred0 = Promise<int>.NewDeferred();
+                        deferred1 = Promise<int>.NewDeferred();
+                        deferred2 = Promise<int>.NewDeferred();
+                        deferred3 = Promise<int>.NewDeferred();
+                        invoked = false;
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferred0.Resolve(1),
+                    () => deferred1.Resolve(2),
+                    () => deferred2.Resolve(3),
+                    () => deferred3.Reject(expected),
+                    () =>
+                    {
+                        Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    }
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedWhileItsPromiseIsPassedToRaceConcurrently_T3()
+        {
+            Promise<int>.Deferred[] deferreds = null;
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferreds = new Promise<int>.Deferred[]
+                        {
+                        Promise.NewDeferred<int>(),
+                        Promise.NewDeferred<int>(),
+                        Promise.NewDeferred<int>(),
+                        Promise.NewDeferred<int>()
+                        };
+                        invoked = false;
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferreds[0].Resolve(1),
+                    () => deferreds[1].Resolve(2),
+                    () => deferreds[2].Resolve(3),
+                    () => deferreds[3].Reject(expected),
+                    () =>
+                    {
+                        Promise.Race(deferreds.Select(d => d.Promise))
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    }
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedConcurrentlyAfterItsPromiseIsPassedToRace_void0()
+        {
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferred0 = Promise.NewDeferred();
+                        deferred1 = Promise.NewDeferred();
+                        invoked = false;
+                        Promise.Race(deferred0.Promise, deferred1.Promise)
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferred0.Resolve(),
+                    () => deferred1.Reject(expected)
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedConcurrentlyAfterItsPromiseIsPassedToRace_void1()
+        {
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            var deferred2 = default(Promise.Deferred);
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferred0 = Promise.NewDeferred();
+                        deferred1 = Promise.NewDeferred();
+                        deferred2 = Promise.NewDeferred();
+                        invoked = false;
+                        Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferred0.Resolve(),
+                    () => deferred1.Resolve(),
+                    () => deferred2.Reject(expected)
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedConcurrentlyAfterItsPromiseIsPassedToRace_void2()
+        {
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            var deferred2 = default(Promise.Deferred);
+            var deferred3 = default(Promise.Deferred);
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferred0 = Promise.NewDeferred();
+                        deferred1 = Promise.NewDeferred();
+                        deferred2 = Promise.NewDeferred();
+                        deferred3 = Promise.NewDeferred();
+                        invoked = false;
+                        Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferred0.Resolve(),
+                    () => deferred1.Resolve(),
+                    () => deferred2.Resolve(),
+                    () => deferred3.Reject(expected)
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedConcurrentlyAfterItsPromiseIsPassedToRace_void3()
+        {
+            Promise.Deferred[] deferreds = null;
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferreds = new Promise.Deferred[]
+                        {
+                        Promise.NewDeferred(),
+                        Promise.NewDeferred(),
+                        Promise.NewDeferred(),
+                        Promise.NewDeferred()
+                        };
+                        invoked = false;
+                        Promise.Race(deferreds.Select(d => d.Promise))
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferreds[0].Resolve(),
+                    () => deferreds[1].Resolve(),
+                    () => deferreds[2].Resolve(),
+                    () => deferreds[3].Reject(expected)
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedConcurrentlyAfterItsPromiseIsPassedToRace_T0()
+        {
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferred0 = Promise<int>.NewDeferred();
+                        deferred1 = Promise<int>.NewDeferred();
+                        invoked = false;
+                        Promise.Race(deferred0.Promise, deferred1.Promise)
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferred0.Resolve(1),
+                    () => deferred1.Reject(expected)
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedConcurrentlyAfterItsPromiseIsPassedToRace_T1()
+        {
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            var deferred2 = default(Promise<int>.Deferred);
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferred0 = Promise<int>.NewDeferred();
+                        deferred1 = Promise<int>.NewDeferred();
+                        deferred2 = Promise<int>.NewDeferred();
+                        invoked = false;
+                        Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferred0.Resolve(1),
+                    () => deferred1.Resolve(2),
+                    () => deferred2.Reject(expected)
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedConcurrentlyAfterItsPromiseIsPassedToRace_T2()
+        {
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            var deferred2 = default(Promise<int>.Deferred);
+            var deferred3 = default(Promise<int>.Deferred);
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferred0 = Promise<int>.NewDeferred();
+                        deferred1 = Promise<int>.NewDeferred();
+                        deferred2 = Promise<int>.NewDeferred();
+                        deferred3 = Promise<int>.NewDeferred();
+                        invoked = false;
+                        Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferred0.Resolve(1),
+                    () => deferred1.Resolve(2),
+                    () => deferred2.Resolve(3),
+                    () => deferred3.Reject(expected)
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
+        }
+
+        [Test]
+        public void ADeferredMayBeRejectedConcurrentlyAfterItsPromiseIsPassedToRace_T3()
+        {
+            Promise<int>.Deferred[] deferreds = null;
+            bool invoked = false;
+            int expected = 1;
+
+            HandleUncaught(expected);
+            try
+            {
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        deferreds = new Promise<int>.Deferred[]
+                        {
+                        Promise.NewDeferred<int>(),
+                        Promise.NewDeferred<int>(),
+                        Promise.NewDeferred<int>(),
+                        Promise.NewDeferred<int>()
+                        };
+                        invoked = false;
+                        Promise.Race(deferreds.Select(d => d.Promise))
+                            .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                            .Forget();
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        Promise.Manager.HandleCompletes();
+                        Assert.IsTrue(invoked);
+                    },
+                    // Parallel actions
+                    () => deferreds[0].Resolve(1),
+                    () => deferreds[1].Resolve(2),
+                    () => deferreds[2].Resolve(3),
+                    () => deferreds[3].Reject(expected)
+                );
+            }
+            finally
+            {
+                ResetRejectionHandler();
+            }
         }
 
         [Test]
         public void ADeferredMayBeCanceledWhileItsPromiseIsPassedToRaceConcurrently_void0()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise.Deferred deferred0 = default(Promise.Deferred);
-            Promise.Deferred deferred1 = default(Promise.Deferred);
+            var cancelationSource = default(CancelationSource);
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
             bool invoked = false;
 
             var threadHelper = new ThreadHelper();
@@ -677,10 +1389,10 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void ADeferredMayBeCanceledWhileItsPromiseIsPassedToRaceConcurrently_void1()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise.Deferred deferred0 = default(Promise.Deferred);
-            Promise.Deferred deferred1 = default(Promise.Deferred);
-            Promise.Deferred deferred2 = default(Promise.Deferred);
+            var cancelationSource = default(CancelationSource);
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            var deferred2 = default(Promise.Deferred);
             bool invoked = false;
 
             var threadHelper = new ThreadHelper();
@@ -697,6 +1409,7 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
+                    cancelationSource.Dispose();
                     Promise.Manager.HandleCompletes();
                     Assert.IsTrue(invoked);
                 },
@@ -716,11 +1429,11 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void ADeferredMayBeCanceledWhileItsPromiseIsPassedToRaceConcurrently_void2()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise.Deferred deferred0 = default(Promise.Deferred);
-            Promise.Deferred deferred1 = default(Promise.Deferred);
-            Promise.Deferred deferred2 = default(Promise.Deferred);
-            Promise.Deferred deferred3 = default(Promise.Deferred);
+            var cancelationSource = default(CancelationSource);
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            var deferred2 = default(Promise.Deferred);
+            var deferred3 = default(Promise.Deferred);
             bool invoked = false;
 
             var threadHelper = new ThreadHelper();
@@ -738,6 +1451,7 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
+                    cancelationSource.Dispose();
                     Promise.Manager.HandleCompletes();
                     Assert.IsTrue(invoked);
                 },
@@ -758,7 +1472,7 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void ADeferredMayBeCanceledWhileItsPromiseIsPassedToRaceConcurrently_void3()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
+            var cancelationSource = default(CancelationSource);
             Promise.Deferred[] deferreds = null;
             bool invoked = false;
 
@@ -780,6 +1494,7 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
+                    cancelationSource.Dispose();
                     Promise.Manager.HandleCompletes();
                     Assert.IsTrue(invoked);
                 },
@@ -800,9 +1515,9 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void ADeferredMayBeCanceledWhileItsPromiseIsPassedToRaceConcurrently_T0()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise<int>.Deferred deferred0 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred1 = default(Promise<int>.Deferred);
+            var cancelationSource = default(CancelationSource);
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
             bool invoked = false;
 
             var threadHelper = new ThreadHelper();
@@ -818,6 +1533,7 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
+                    cancelationSource.Dispose();
                     Promise.Manager.HandleCompletes();
                     Assert.IsTrue(invoked);
                 },
@@ -836,10 +1552,10 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void ADeferredMayBeCanceledWhileItsPromiseIsPassedToRaceConcurrently_T1()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise<int>.Deferred deferred0 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred1 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred2 = default(Promise<int>.Deferred);
+            var cancelationSource = default(CancelationSource);
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            var deferred2 = default(Promise<int>.Deferred);
             bool invoked = false;
 
             var threadHelper = new ThreadHelper();
@@ -856,6 +1572,7 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
+                    cancelationSource.Dispose();
                     Promise.Manager.HandleCompletes();
                     Assert.IsTrue(invoked);
                 },
@@ -875,11 +1592,11 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void ADeferredMayBeCanceledWhileItsPromiseIsPassedToRaceConcurrently_T2()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise<int>.Deferred deferred0 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred1 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred2 = default(Promise<int>.Deferred);
-            Promise<int>.Deferred deferred3 = default(Promise<int>.Deferred);
+            var cancelationSource = default(CancelationSource);
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            var deferred2 = default(Promise<int>.Deferred);
+            var deferred3 = default(Promise<int>.Deferred);
             bool invoked = false;
 
             var threadHelper = new ThreadHelper();
@@ -897,6 +1614,7 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
+                    cancelationSource.Dispose();
                     Promise.Manager.HandleCompletes();
                     Assert.IsTrue(invoked);
                 },
@@ -917,7 +1635,7 @@ namespace Proto.Promises.Tests.Threading
         [Test]
         public void ADeferredMayBeCanceledWhileItsPromiseIsPassedToRaceConcurrently_T3()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
+            var cancelationSource = default(CancelationSource);
             Promise<int>.Deferred[] deferreds = null;
             bool invoked = false;
 
@@ -939,6 +1657,7 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
+                    cancelationSource.Dispose();
                     Promise.Manager.HandleCompletes();
                     Assert.IsTrue(invoked);
                 },
@@ -953,6 +1672,308 @@ namespace Proto.Promises.Tests.Threading
                         .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
                         .Forget();
                 }
+            );
+        }
+
+        [Test]
+        public void ADeferredMayBeCanceledConcurrentlyAfterItsPromiseIsPassedToRace_void0()
+        {
+            var cancelationSource = default(CancelationSource);
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            bool invoked = false;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource = CancelationSource.New();
+                    deferred0 = Promise.NewDeferred();
+                    deferred1 = Promise.NewDeferred(cancelationSource.Token);
+                    invoked = false;
+                    Promise.Race(deferred0.Promise, deferred1.Promise)
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                        .Forget();
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource.Dispose();
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(invoked);
+                },
+                // Parallel actions
+                () => deferred0.Resolve(),
+                () => cancelationSource.Cancel()
+            );
+        }
+
+        [Test]
+        public void ADeferredMayBeCanceledConcurrentlyAfterItsPromiseIsPassedToRace_void1()
+        {
+            var cancelationSource = default(CancelationSource);
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            var deferred2 = default(Promise.Deferred);
+            bool invoked = false;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource = CancelationSource.New();
+                    deferred0 = Promise.NewDeferred();
+                    deferred1 = Promise.NewDeferred();
+                    deferred2 = Promise.NewDeferred(cancelationSource.Token);
+                    invoked = false;
+                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                        .Forget();
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource.Dispose();
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(invoked);
+                },
+                // Parallel actions
+                () => deferred0.Resolve(),
+                () => deferred1.Resolve(),
+                () => cancelationSource.Cancel()
+            );
+        }
+
+        [Test]
+        public void ADeferredMayBeCanceledConcurrentlyAfterItsPromiseIsPassedToRace_void2()
+        {
+            var cancelationSource = default(CancelationSource);
+            var deferred0 = default(Promise.Deferred);
+            var deferred1 = default(Promise.Deferred);
+            var deferred2 = default(Promise.Deferred);
+            var deferred3 = default(Promise.Deferred);
+            bool invoked = false;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource = CancelationSource.New();
+                    deferred0 = Promise.NewDeferred();
+                    deferred1 = Promise.NewDeferred();
+                    deferred2 = Promise.NewDeferred();
+                    deferred3 = Promise.NewDeferred(cancelationSource.Token);
+                    invoked = false;
+                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                        .Forget();
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource.Dispose();
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(invoked);
+                },
+                // Parallel actions
+                () => deferred0.Resolve(),
+                () => deferred1.Resolve(),
+                () => deferred2.Resolve(),
+                () => cancelationSource.Cancel()
+            );
+        }
+
+        [Test]
+        public void ADeferredMayBeCanceledConcurrentlyAfterItsPromiseIsPassedToRace_void3()
+        {
+            var cancelationSource = default(CancelationSource);
+            Promise.Deferred[] deferreds = null;
+            bool invoked = false;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource = CancelationSource.New();
+                    deferreds = new Promise.Deferred[]
+                    {
+                        Promise.NewDeferred(),
+                        Promise.NewDeferred(),
+                        Promise.NewDeferred(),
+                        Promise.NewDeferred(cancelationSource.Token)
+                    };
+                    invoked = false;
+                    Promise.Race(deferreds.Select(d => d.Promise))
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                        .Forget();
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource.Dispose();
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(invoked);
+                },
+                // Parallel actions
+                () => deferreds[0].Resolve(),
+                () => deferreds[1].Resolve(),
+                () => deferreds[2].Resolve(),
+                () => cancelationSource.Cancel()
+            );
+        }
+
+        [Test]
+        public void ADeferredMayBeCanceledConcurrentlyAfterItsPromiseIsPassedToRace_T0()
+        {
+            var cancelationSource = default(CancelationSource);
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            bool invoked = false;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource = CancelationSource.New();
+                    deferred0 = Promise<int>.NewDeferred();
+                    deferred1 = Promise<int>.NewDeferred(cancelationSource.Token);
+                    invoked = false;
+                    Promise.Race(deferred0.Promise, deferred1.Promise)
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                        .Forget();
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource.Dispose();
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(invoked);
+                },
+                // Parallel actions
+                () => deferred0.Resolve(1),
+                () => cancelationSource.Cancel()
+            );
+        }
+
+        [Test]
+        public void ADeferredMayBeCanceledConcurrentlyAfterItsPromiseIsPassedToRace_T1()
+        {
+            var cancelationSource = default(CancelationSource);
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            var deferred2 = default(Promise<int>.Deferred);
+            bool invoked = false;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource = CancelationSource.New();
+                    deferred0 = Promise<int>.NewDeferred();
+                    deferred1 = Promise<int>.NewDeferred();
+                    deferred2 = Promise<int>.NewDeferred(cancelationSource.Token);
+                    invoked = false;
+                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                        .Forget();
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource.Dispose();
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(invoked);
+                },
+                // Parallel actions
+                () => deferred0.Resolve(1),
+                () => deferred1.Resolve(2),
+                () => cancelationSource.Cancel()
+            );
+        }
+
+        [Test]
+        public void ADeferredMayBeCanceledConcurrentlyAfterItsPromiseIsPassedToRace_T2()
+        {
+            var cancelationSource = default(CancelationSource);
+            var deferred0 = default(Promise<int>.Deferred);
+            var deferred1 = default(Promise<int>.Deferred);
+            var deferred2 = default(Promise<int>.Deferred);
+            var deferred3 = default(Promise<int>.Deferred);
+            bool invoked = false;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource = CancelationSource.New();
+                    deferred0 = Promise<int>.NewDeferred();
+                    deferred1 = Promise<int>.NewDeferred();
+                    deferred2 = Promise<int>.NewDeferred();
+                    deferred3 = Promise<int>.NewDeferred(cancelationSource.Token);
+                    invoked = false;
+                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                        .Forget();
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource.Dispose();
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(invoked);
+                },
+                // Parallel actions
+                () => deferred0.Resolve(1),
+                () => deferred1.Resolve(2),
+                () => deferred2.Resolve(3),
+                () => cancelationSource.Cancel()
+            );
+        }
+
+        [Test]
+        public void ADeferredMayBeCanceledConcurrentlyAfterItsPromiseIsPassedToRace_T3()
+        {
+            var cancelationSource = default(CancelationSource);
+            Promise<int>.Deferred[] deferreds = null;
+            bool invoked = false;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
+                {
+                    cancelationSource = CancelationSource.New();
+                    deferreds = new Promise<int>.Deferred[]
+                    {
+                        Promise.NewDeferred<int>(),
+                        Promise.NewDeferred<int>(),
+                        Promise.NewDeferred<int>(),
+                        Promise.NewDeferred<int>(cancelationSource.Token)
+                    };
+                    invoked = false;
+                    Promise.Race(deferreds.Select(d => d.Promise))
+                        .Finally(() => invoked = true) // State is indeterminable, so just make sure promise completes.
+                        .Forget();
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource.Dispose();
+                    Promise.Manager.HandleCompletes();
+                    Assert.IsTrue(invoked);
+                },
+                // Parallel actions
+                () => deferreds[0].Resolve(1),
+                () => deferreds[1].Resolve(2),
+                () => deferreds[2].Resolve(3),
+                () => cancelationSource.Cancel()
             );
         }
     }

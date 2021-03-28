@@ -41,35 +41,64 @@ namespace Proto.Promises
 
                 private readonly object _locker = new object();
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
-                private uint _waitCount;
+                private int _waitCount;
 
                 private FirstPromise() { }
 
                 protected override void Dispose()
                 {
-                    if (_waitCount == 0) // Quick fix until TODO is done.
+                    base.Dispose();
+                    // Release all passthroughs.
+                    while (_passThroughs.IsNotEmpty)
                     {
-                        base.Dispose();
-                        ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                        _passThroughs.Pop().Release();
                     }
-                    else
-                    {
-                        Interlocked.Increment(ref _idAndRetainCounter);
-                    }
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
                 public static FirstPromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits)
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<FirstPromise, Creator>();
 
-                    promise._passThroughs = promisePassThroughs;
-                    promise._waitCount = pendingAwaits;
-                    promise.Reset();
-                    promise.SetupProgress();
-
-                    foreach (var passThrough in promisePassThroughs)
+                    checked
                     {
+                        // Extra retain for handle.
+                        ++pendingAwaits;
+                    }
+                    unchecked
+                    {
+                        promise._waitCount = (int) pendingAwaits;
+                    }
+                    promise.Reset();
+                    promise.SetupProgress(promisePassThroughs);
+
+                    while (promisePassThroughs.IsNotEmpty)
+                    {
+                        var passThrough = promisePassThroughs.Pop();
+                        lock (promise._locker)
+                        {
+                            promise._passThroughs.Push(passThrough);
+                        }
+                        passThrough.Owner._suppressRejection = true;
                         passThrough.SetTargetAndAddToOwner(promise);
+                        if (promise._valueOrPrevious != null)
+                        {
+                            // This was completed potentially before all passthroughs were hooked up.
+                            // Try to unhook current passthrough (in case of thread race condition), and release all remaining passthroughs.
+                            int addCount = passThrough.TryRemoveFromOwner() ? -1 : 0;
+                            while (promisePassThroughs.IsNotEmpty)
+                            {
+                                var p = promisePassThroughs.Pop();
+                                p.Owner.MaybeDispose();
+                                p.Release2(-2);
+                                --addCount;
+                            }
+                            if (addCount != 0 && Interlocked.Add(ref promise._waitCount, addCount) == 0)
+                            {
+                                promise.MaybeDispose();
+                            }
+                        }
+                        passThrough.Release();
                     }
 
                     return promise;
@@ -77,32 +106,87 @@ namespace Proto.Promises
 
                 public override void Handle()
                 {
-                    HandleSelf((IValueContainer) _valueOrPrevious);
-                }
-
-                bool IMultiTreeHandleable.Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index)
-                {
-                    ThrowIfInPool(this);
-                    // TODO: remove all passthroughs from their owners when this is completed early.
-                    _passThroughs.TryRemove(passThrough);
-                    PromiseRef owner = passThrough.Owner;
-                    owner._suppressRejection = true;
-                    bool done = --_waitCount == 0;
-                    bool handle = _valueOrPrevious == null & (owner._state == Promise.State.Resolved | done);
-                    if (handle)
+                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
+                    _state = valueContainer.GetState();
+                    HandleWaiter(valueContainer);
+                    if (_state == Promise.State.Resolved)
                     {
-                        valueContainer.Retain();
-                        _valueOrPrevious = valueContainer;
+                        ResolveProgressListeners();
                     }
-                    else if (done & _state != Promise.State.Pending) // Quick fix until TODO is done.
+                    else
+                    {
+                        CancelProgressListeners(null);
+                    }
+
+                    if (Interlocked.Decrement(ref _waitCount) == 0)
                     {
                         MaybeDispose();
                     }
-                    passThrough.Release();
-                    return handle;
                 }
 
-                partial void SetupProgress();
+                public bool Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index) // IMultiTreeHandleable.Handle
+                {
+                    ThrowIfInPool(this);
+
+                    int addWaitCount;
+                    if (passThrough.Owner._state != Promise.State.Resolved) // Rejected/Canceled
+                    {
+                        int remaining = Interlocked.Decrement(ref _waitCount);
+                        if (remaining != 1 || Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
+                        {
+                            if (remaining == 0)
+                            {
+                                MaybeDispose();
+                            }
+                            return false;
+                        }
+                        addWaitCount = 0;
+                    }
+                    else // Resolved
+                    {
+                        if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
+                        {
+                            if (Interlocked.Decrement(ref _waitCount) == 0)
+                            {
+                                MaybeDispose();
+                            }
+                            return false;
+                        }
+                        addWaitCount = -1;
+                    }
+
+                    valueContainer.Retain();
+
+                    // Try to unhook and release all passthroughs.
+                    ValueLinkedStack<PromisePassThrough> removedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
+                    ValueLinkedStack<PromisePassThrough> unRemovedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
+                    lock (_locker)
+                    {
+                        while (_passThroughs.IsNotEmpty)
+                        {
+                            var p = _passThroughs.Pop();
+                            if (p.TryRemoveFromOwner())
+                            {
+                                removedPassThroughs.Push(p);
+                            }
+                            else
+                            {
+                                unRemovedPassThroughs.Push(p);
+                            }
+                        }
+                        _passThroughs = unRemovedPassThroughs;
+                    }
+
+                    while (removedPassThroughs.IsNotEmpty)
+                    {
+                        removedPassThroughs.Pop().Release();
+                        --addWaitCount;
+                    }
+                    Interlocked.Add(ref _waitCount, addWaitCount);
+                    return true;
+                }
+
+                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs);
             }
 
 #if PROMISE_PROGRESS
@@ -110,17 +194,16 @@ namespace Proto.Promises
             {
                 private UnsignedFixed32 _currentAmount;
 
-                partial void SetupProgress()
+                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs)
                 {
                     _currentAmount = default(UnsignedFixed32);
 
+                    // Expect the shortest chain to finish first.
                     uint minWaitDepth = uint.MaxValue;
-                    foreach (var passThrough in _passThroughs)
+                    foreach (var passThrough in promisePassThroughs)
                     {
                         minWaitDepth = Math.Min(minWaitDepth, passThrough.Owner._waitDepthAndProgress.WholePart);
                     }
-
-                    // Expect the shortest chain to finish first.
                     _waitDepthAndProgress = new UnsignedFixed32(minWaitDepth);
                 }
 

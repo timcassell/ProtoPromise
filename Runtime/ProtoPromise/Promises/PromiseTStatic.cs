@@ -203,13 +203,13 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             if (promise1._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
                 T value = promise1._result;
                 return Internal.CreateResolved(ref value);
             }
             if (promise2._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
                 T value = promise2._result;
                 return Internal.CreateResolved(ref value);
             }
@@ -233,22 +233,22 @@ namespace Proto.Promises
             ValidateArgument(promise3, "promise3", 1);
             if (promise1._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
                 T value = promise1._result;
                 return Internal.CreateResolved(ref value);
             }
             if (promise2._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
                 T value = promise2._result;
                 return Internal.CreateResolved(ref value);
             }
             if (promise3._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
                 T value = promise3._result;
                 return Internal.CreateResolved(ref value);
             }
@@ -274,33 +274,33 @@ namespace Proto.Promises
             ValidateArgument(promise4, "promise4", 1);
             if (promise1._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, false);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, true);
                 T value = promise1._result;
                 return Internal.CreateResolved(ref value);
             }
             if (promise2._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, false);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, true);
                 T value = promise2._result;
                 return Internal.CreateResolved(ref value);
             }
             if (promise3._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, false);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, true);
                 T value = promise3._result;
                 return Internal.CreateResolved(ref value);
             }
             if (promise4._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
                 T value = promise4._result;
                 return Internal.CreateResolved(ref value);
             }
