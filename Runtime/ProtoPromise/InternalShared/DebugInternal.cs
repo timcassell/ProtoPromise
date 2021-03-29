@@ -137,7 +137,10 @@ namespace Proto.Promises
                     if (prev == this)
                     {
                         other._ref.MarkAwaitedAndMaybeDispose(other._id, true);
-                        passThroughs.Clear();
+                        while (passThroughs.Count > 0)
+                        {
+                            passThroughs.Pop().Release();
+                        }
                         throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(other._ref));
                     }
                     prev.BorrowPassthroughs(passThroughs);
