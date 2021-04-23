@@ -38,14 +38,14 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
         }
 
-        public static Promise ThenDuplicate(this Promise promise)
+        public static Promise ThenDuplicate(this Promise promise, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return promise.Then(() => { });
+            return promise.Then(() => { }, cancelationToken);
         }
 
-        public static Promise<T> ThenDuplicate<T>(this Promise<T> promise)
+        public static Promise<T> ThenDuplicate<T>(this Promise<T> promise, CancelationToken cancelationToken = default(CancelationToken))
         {
-            return promise.Then(v => v);
+            return promise.Then(v => v, cancelationToken);
         }
 
 #if PROMISE_PROGRESS

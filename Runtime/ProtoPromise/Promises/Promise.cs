@@ -35,7 +35,7 @@ namespace Proto.Promises
         {
             get
             {
-                return _id == Internal.ValidIdFromApi | (_ref != null && _id == _ref.Id);
+                return _id == (_ref == null ? Internal.ValidIdFromApi : _ref.Id);
             }
         }
 

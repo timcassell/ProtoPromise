@@ -108,14 +108,7 @@ namespace Proto.Promises
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     _state = valueContainer.GetState();
                     HandleWaiter(valueContainer);
-                    if (_state == Promise.State.Resolved)
-                    {
-                        ResolveProgressListeners();
-                    }
-                    else
-                    {
-                        CancelProgressListeners(null);
-                    }
+                    HandleProgressListener(_state);
 
                     if (Interlocked.Decrement(ref _waitCount) == 0)
                     {
@@ -173,8 +166,10 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class RacePromise
+            partial class RacePromise : IProgressInvokable
             {
+                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
+
                 private UnsignedFixed32 _currentAmount;
 
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs)
@@ -190,25 +185,10 @@ namespace Proto.Promises
                     _waitDepthAndProgress = new UnsignedFixed32(minWaitDepth);
                 }
 
-                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous)
+                protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);
-                    // This is guaranteed to be pending.
-                    previous = this;
-                    return true;
-                }
-
-                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, Stack<PromisePassThrough> passThroughs)
-                {
-                    ThrowIfInPool(this);
-                    bool firstSubscribe = _progressListeners.IsEmpty;
-                    _progressListeners.Push(progressListener);
-                    if (firstSubscribe & _state == Promise.State.Pending)
-                    {
-                        BorrowPassthroughs(passThroughs);
-                    }
-
-                    previous = null;
+                    _progressListener = progressListener;
                     return false;
                 }
 
@@ -221,7 +201,6 @@ namespace Proto.Promises
                 void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
                 {
                     ThrowIfInPool(this);
-                    if (_state != Promise.State.Pending) return;
 
                     // TODO: thread synchronization.
                     // Use double for better precision.
@@ -229,12 +208,28 @@ namespace Proto.Promises
                     if (newAmount > _currentAmount)
                     {
                         _currentAmount = newAmount;
-
-                        foreach (var progressListener in _progressListeners)
+                        if ((InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) != 0) // Was not already in progress queue?
                         {
-                            progressListener.SetProgress(this, newAmount);
+                            InterlockedRetainDisregardId();
+                            AddToFrontOfProgressQueue(this);
                         }
                     }
+                }
+
+                void IProgressInvokable.Invoke()
+                {
+                    var progress = CurrentProgress();
+                    InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
+                    if ((InterlockedSetProgressFlags(ProgressFlags.SetProgressLocked) & ProgressFlags.SetProgressLocked) == 0)
+                    {
+                        IProgressListener progressListener = _progressListener;
+                        if (progressListener != null)
+                        {
+                            progressListener.SetProgress(this, progress);
+                        }
+                        InterlockedUnsetProgressFlags(ProgressFlags.SetProgressLocked);
+                    }
+                    MaybeDispose();
                 }
             }
 #endif

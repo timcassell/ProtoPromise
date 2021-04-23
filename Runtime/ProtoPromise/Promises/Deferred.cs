@@ -206,7 +206,7 @@ namespace Proto.Promises
 #else
                 ValidateProgress(progress, 1);
 
-                return _ref != null && _ref.TryReportProgress(progress, _deferredId);
+                return _ref != null && _ref.TryReportProgress(progress, _deferredId, _promiseId);
 #endif
             }
 
@@ -365,7 +365,7 @@ namespace Proto.Promises
 
             /// <summary>
             /// Cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
             public void Cancel<TCancel>(TCancel reason)
@@ -379,7 +379,7 @@ namespace Proto.Promises
             /// <summary>
             /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// <para/> Returns true if successful, false otherwise.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             public bool TryCancel<TCancel>(TCancel reason)
             {
@@ -388,7 +388,7 @@ namespace Proto.Promises
 
             /// <summary>
             /// Cancel the linked <see cref="Promise"/> without a reason.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
             public void Cancel()
@@ -402,7 +402,7 @@ namespace Proto.Promises
             /// <summary>
             /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// <para/> Returns true if successful, false otherwise.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             public bool TryCancel()
             {
@@ -444,7 +444,7 @@ namespace Proto.Promises
 #else
                 ValidateProgress(progress, 1);
 
-                return _ref != null && _ref.TryReportProgress(progress, _deferredId);
+                return _ref != null && _ref.TryReportProgress(progress, _deferredId, _promiseId);
 #endif
             }
 
@@ -635,7 +635,7 @@ namespace Proto.Promises
 
             /// <summary>
             /// Cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
             public void Cancel<TCancel>(TCancel reason)
@@ -649,7 +649,7 @@ namespace Proto.Promises
             /// <summary>
             /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// <para/> Returns true if successful, false otherwise.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             public bool TryCancel<TCancel>(TCancel reason)
             {
@@ -658,7 +658,7 @@ namespace Proto.Promises
 
             /// <summary>
             /// Cancel the linked <see cref="Promise"/> without a reason.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
             public void Cancel()
@@ -672,7 +672,7 @@ namespace Proto.Promises
             /// <summary>
             /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// <para/> Returns true if successful, false otherwise.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="Deferred.New(CancelationToken)"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             public bool TryCancel()
             {
@@ -714,7 +714,7 @@ namespace Proto.Promises
 #else
                 ValidateProgress(progress, 1);
 
-                return _ref != null && _ref.TryReportProgress(progress, _deferredId);
+                return _ref != null && _ref.TryReportProgress(progress, _deferredId, _promiseId);
 #endif
             }
 

@@ -40,6 +40,8 @@ namespace Proto.Promises
 #endif
         internal sealed partial class AwaiterRef : ITreeHandleable
         {
+            private const int ID_BITSHIFT = 16;
+
             private struct Creator : ICreator<AwaiterRef>
             {
                 [MethodImpl(InlineOption)]

@@ -97,7 +97,7 @@ namespace Proto.Promises
                 internal static void AddResolveWait<TResolver>(Promise _this, TResolver resolver, CancelationToken cancelationToken, out Promise newPromise)
                     where TResolver : IDelegateResolvePromise
                 {
-                    PromiseRef promise;
+                    PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
@@ -120,12 +120,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
                         }
                         else
                         {
                             promise = PromiseResolvePromise<TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -135,7 +135,7 @@ namespace Proto.Promises
                 internal static void AddResolveWait<TResolver, TResult>(Promise _this, TResolver resolver, CancelationToken cancelationToken, out Promise<TResult> newPromise)
                     where TResolver : IDelegateResolvePromise
                 {
-                    PromiseRef promise;
+                    PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
@@ -158,12 +158,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
                         }
                         else
                         {
                             promise = PromiseResolvePromise<TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -252,7 +252,7 @@ namespace Proto.Promises
                     where TResolver : IDelegateResolvePromise
                     where TRejecter : IDelegateRejectPromise
                 {
-                    PromiseRef promise;
+                    PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
@@ -275,12 +275,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
                         }
                         else
                         {
                             promise = PromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -291,7 +291,7 @@ namespace Proto.Promises
                     where TResolver : IDelegateResolvePromise
                     where TRejecter : IDelegateRejectPromise
                 {
-                    PromiseRef promise;
+                    PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
@@ -314,12 +314,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
                         }
                         else
                         {
                             promise = PromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -405,7 +405,7 @@ namespace Proto.Promises
                 internal static void AddContinueWait<TContinuer>(Promise _this, TContinuer resolver, CancelationToken cancelationToken, out Promise newPromise)
                     where TContinuer : IDelegateContinuePromise
                 {
-                    PromiseRef promise;
+                    PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
@@ -428,12 +428,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
                         }
                         else
                         {
                             promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -443,7 +443,7 @@ namespace Proto.Promises
                 internal static void AddContinueWait<TContinuer, TResult>(Promise _this, TContinuer resolver, CancelationToken cancelationToken, out Promise<TResult> newPromise)
                     where TContinuer : IDelegateContinuePromise
                 {
-                    PromiseRef promise;
+                    PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
@@ -466,12 +466,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
                         }
                         else
                         {
                             promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -535,7 +535,7 @@ namespace Proto.Promises
                     PromiseProgress<TProgress> promise;
                     if (_this._ref == null)
                     {
-                        promise = PromiseProgress<TProgress>.GetOrCreate(progress, _this._ref, cancelationToken);
+                        promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken);
                         promise.SetDepth();
                         promise._valueOrPrevious = ResolveContainerVoid.GetOrCreate();
                         AddToHandleQueueBack(promise);
@@ -543,14 +543,8 @@ namespace Proto.Promises
                     else
                     {
                         _this._ref.MarkAwaited(_this._id);
-                        promise = PromiseProgress<TProgress>.GetOrCreate(progress, _this._ref, cancelationToken);
-                        promise.SetDepth(_this._ref);
-                        promise._valueOrPrevious = _this._ref;
-                        if (_this._ref._state == Promise.State.Pending)
-                        {
-                            SubscribeListenerToTree(_this._ref, promise);
-                        }
-                        _this._ref.AddWaiter(promise);
+                        promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken);
+                        _this._ref.HookupNewPromiseWithProgress(promise, promise);
                     }
                     return new Promise(promise, promise.Id);
                 }
@@ -640,7 +634,7 @@ namespace Proto.Promises
                 internal static void AddResolveWait<T, TResolver>(Promise<T> _this, TResolver resolver, CancelationToken cancelationToken, out Promise newPromise)
                     where TResolver : IDelegateResolvePromise
                 {
-                    PromiseRef promise;
+                    PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
@@ -664,12 +658,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
                         }
                         else
                         {
                             promise = PromiseResolvePromise<TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -679,7 +673,7 @@ namespace Proto.Promises
                 internal static void AddResolveWait<T, TResolver, TResult>(Promise<T> _this, TResolver resolver, CancelationToken cancelationToken, out Promise<TResult> newPromise)
                     where TResolver : IDelegateResolvePromise
                 {
-                    PromiseRef promise;
+                    PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
@@ -703,12 +697,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
                         }
                         else
                         {
                             promise = PromiseResolvePromise<TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -799,7 +793,7 @@ namespace Proto.Promises
                     where TResolver : IDelegateResolvePromise
                     where TRejecter : IDelegateRejectPromise
                 {
-                    PromiseRef promise;
+                    PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
@@ -823,12 +817,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
                         }
                         else
                         {
                             promise = PromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -839,7 +833,7 @@ namespace Proto.Promises
                     where TResolver : IDelegateResolvePromise
                     where TRejecter : IDelegateRejectPromise
                 {
-                    PromiseRef promise;
+                    PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
@@ -863,12 +857,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
                         }
                         else
                         {
                             promise = PromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -956,7 +950,7 @@ namespace Proto.Promises
                 internal static void AddContinueWait<T, TContinuer>(Promise<T> _this, TContinuer resolver, CancelationToken cancelationToken, out Promise newPromise)
                     where TContinuer : IDelegateContinuePromise
                 {
-                    PromiseRef promise;
+                    PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
@@ -980,12 +974,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
                         }
                         else
                         {
                             promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -995,7 +989,7 @@ namespace Proto.Promises
                 internal static void AddContinueWait<T, TContinuer, TResult>(Promise<T> _this, TContinuer resolver, CancelationToken cancelationToken, out Promise<TResult> newPromise)
                     where TContinuer : IDelegateContinuePromise
                 {
-                    PromiseRef promise;
+                    PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         object container = ResolveContainer<T>.GetOrCreate(_this._result, 1);
@@ -1019,12 +1013,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
                         }
                         else
                         {
                             promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -1088,7 +1082,7 @@ namespace Proto.Promises
                     PromiseProgress<TProgress> promise;
                     if (_this._ref == null)
                     {
-                        promise = PromiseProgress<TProgress>.GetOrCreate(progress, _this._ref, cancelationToken);
+                        promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken);
                         promise.SetDepth();
                         promise._valueOrPrevious = ResolveContainerVoid.GetOrCreate();
                         AddToHandleQueueBack(promise);
@@ -1096,14 +1090,8 @@ namespace Proto.Promises
                     else
                     {
                         _this._ref.MarkAwaited(_this._id);
-                        promise = PromiseProgress<TProgress>.GetOrCreate(progress, _this._ref, cancelationToken);
-                        promise.SetDepth(_this._ref);
-                        promise._valueOrPrevious = _this._ref;
-                        if (_this._ref._state == Promise.State.Pending)
-                        {
-                            SubscribeListenerToTree(_this._ref, promise);
-                        }
-                        _this._ref.AddWaiter(promise);
+                        promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken);
+                        _this._ref.HookupNewPromiseWithProgress(promise, promise);
                     }
                     return new Promise<TResult>(promise, promise.Id);
                 }

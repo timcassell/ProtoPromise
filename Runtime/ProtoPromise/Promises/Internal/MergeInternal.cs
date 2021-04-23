@@ -124,14 +124,7 @@ namespace Proto.Promises
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     _state = valueContainer.GetState();
                     HandleWaiter(valueContainer);
-                    if (_state == Promise.State.Resolved)
-                    {
-                        ResolveProgressListeners();
-                    }
-                    else
-                    {
-                        CancelProgressListeners(null);
-                    }
+                    HandleProgressListener(_state);
 
                     if (Interlocked.Decrement(ref _waitCount) == 0)
                     {
@@ -324,8 +317,10 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class MergePromise
+            partial class MergePromise : IProgressInvokable
             {
+                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
+
                 // These are used to avoid rounding errors when normalizing the progress.
                 // Use 64 bits to allow combining many promises with very deep chains.
                 private double _progressScaler;
@@ -359,25 +354,10 @@ namespace Proto.Promises
                     IncrementProgress(passThrough.GetProgressDifferenceToCompletion());
                 }
 
-                protected override bool SubscribeProgressAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous)
+                protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);
-                    // This is guaranteed to be pending.
-                    previous = this;
-                    return true;
-                }
-
-                protected override bool SubscribeProgressIfWaiterAndContinueLoop(ref IProgressListener progressListener, out PromiseRef previous, Stack<PromisePassThrough> passThroughs)
-                {
-                    ThrowIfInPool(this);
-                    bool firstSubscribe = _progressListeners.IsEmpty;
-                    _progressListeners.Push(progressListener);
-                    if (firstSubscribe & _state == Promise.State.Pending)
-                    {
-                        BorrowPassthroughs(passThroughs);
-                    }
-
-                    previous = null;
+                    _progressListener = progressListener;
                     return false;
                 }
 
@@ -395,16 +375,29 @@ namespace Proto.Promises
 
                 private void IncrementProgress(uint amount)
                 {
-                    if (_state != Promise.State.Pending) return;
-
                     // TODO: thread synchronization.
                     _unscaledProgress.Increment(amount);
-                    UnsignedFixed32 newProgress = CurrentProgress();
-
-                    foreach (var progressListener in _progressListeners)
+                    if ((InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) != 0) // Was not already in progress queue?
                     {
-                        progressListener.SetProgress(this, newProgress);
+                        InterlockedRetainDisregardId();
+                        AddToFrontOfProgressQueue(this);
                     }
+                }
+
+                void IProgressInvokable.Invoke()
+                {
+                    var progress = CurrentProgress();
+                    InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
+                    if ((InterlockedSetProgressFlags(ProgressFlags.SetProgressLocked) & ProgressFlags.SetProgressLocked) == 0)
+                    {
+                        IProgressListener progressListener = _progressListener;
+                        if (progressListener != null)
+                        {
+                            progressListener.SetProgress(this, progress);
+                        }
+                        InterlockedUnsetProgressFlags(ProgressFlags.SetProgressLocked);
+                    }
+                    MaybeDispose();
                 }
             }
 #endif

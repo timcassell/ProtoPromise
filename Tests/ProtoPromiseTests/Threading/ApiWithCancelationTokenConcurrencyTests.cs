@@ -760,6 +760,94 @@ namespace Proto.Promises.Tests.Threading
                 );
             }
         }
+
+        [Test]
+        public void Progress_PromisesChainMayBeCanceledInMultiplePlacesAndProgressReportedConcurrently_void()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+            var deferred = default(Promise.Deferred);
+            bool completed = false;
+
+            var threadHelper = new ThreadHelper();
+            foreach (var action in new Func<Promise, CancelationToken, CancelationToken, Promise>[]
+                {
+                    (promise, token1, token2) => promise.ThenDuplicate(token1).ThenDuplicate().ThenDuplicate(token2).ThenDuplicate().Progress(_ => { }),
+                    (promise, token1, token2) => promise.ThenDuplicate(token1).ThenDuplicate().ThenDuplicate(token2).ThenDuplicate().Progress(1, (cv, _) => { }),
+                })
+            {
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        cancelationSource1 = CancelationSource.New();
+                        cancelationSource2 = CancelationSource.New();
+                        deferred = Promise.NewDeferred();
+                        // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
+                        action(deferred.Promise, cancelationSource1.Token, cancelationSource2.Token)
+                            .Finally(() => completed = true) // Make sure it completes.
+                            .Forget();
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        cancelationSource1.Dispose();
+                        cancelationSource2.Dispose();
+                        deferred.Resolve();
+                        Promise.Manager.HandleCompletesAndProgress();
+                        Assert.IsTrue(completed);
+                    },
+                    // Parallel actions
+                    () => cancelationSource1.Cancel(),
+                    () => cancelationSource2.Cancel(),
+                    () => deferred.ReportProgress(0.5f)
+                );
+            }
+        }
+
+        [Test]
+        public void Progress_PromisesChainMayBeCanceledInMultiplePlacesAndProgressReportedConcurrently_T()
+        {
+            var cancelationSource1 = default(CancelationSource);
+            var cancelationSource2 = default(CancelationSource);
+            var deferred = default(Promise<int>.Deferred);
+            bool completed = false;
+
+            var threadHelper = new ThreadHelper();
+            foreach (var action in new Func<Promise, CancelationToken, CancelationToken, Promise>[]
+                {
+                    (promise, token1, token2) => promise.ThenDuplicate(token1).ThenDuplicate().ThenDuplicate().ThenDuplicate(token2).ThenDuplicate().Progress(_ => { }),
+                    (promise, token1, token2) => promise.ThenDuplicate(token1).ThenDuplicate().ThenDuplicate().ThenDuplicate(token2).ThenDuplicate().Progress(1, (cv, _) => { }),
+                })
+            {
+                threadHelper.ExecuteParallelActionsWithOffsets(false,
+                    // Setup
+                    () =>
+                    {
+                        cancelationSource1 = CancelationSource.New();
+                        cancelationSource2 = CancelationSource.New();
+                        deferred = Promise.NewDeferred<int>();
+                        // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
+                        action(deferred.Promise, cancelationSource1.Token, cancelationSource2.Token)
+                            .Finally(() => completed = true) // Make sure it completes.
+                            .Forget();
+                    },
+                    // Teardown
+                    () =>
+                    {
+                        cancelationSource1.Dispose();
+                        cancelationSource2.Dispose();
+                        deferred.Resolve(1);
+                        Promise.Manager.HandleCompletesAndProgress();
+                        Assert.IsTrue(completed);
+                    },
+                    // Parallel actions
+                    () => cancelationSource1.Cancel(),
+                    () => cancelationSource2.Cancel(),
+                    () => deferred.ReportProgress(0.5f)
+                );
+            }
+        }
 #endif
     }
 }
