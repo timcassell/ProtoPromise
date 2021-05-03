@@ -40,19 +40,19 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Use IsPending. Promise may still be valid when Deferred is invalid.", false)]
+            [Obsolete("Use IsValidAndPending.", false)]
             public bool IsValid
             {
                 get
                 {
-                    return IsPending;
+                    return IsValidAndPending;
                 }
             }
 
             /// <summary>
             /// Get whether or not this instance is valid and the attached <see cref="Promise"/> is still pending.
             /// </summary>
-            public bool IsPending
+            public bool IsValidAndPending
             {
                 get
                 {
@@ -251,12 +251,12 @@ namespace Proto.Promises
                 return !(lhs == rhs);
             }
 
-            [Obsolete("DeferredBase.State is no longer valid. Use IsPending.", true)]
+            [Obsolete("DeferredBase.State is no longer valid. Use IsValidAndPending.", true)]
             public State State
             {
                 get
                 {
-                    throw new InvalidOperationException("DeferredBase.State is no longer valid. Use IsPending.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("DeferredBase.State is no longer valid. Use IsValidAndPending.", Internal.GetFormattedStacktrace(1));
                 }
             }
 
@@ -300,19 +300,19 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Use IsPending. Promise may still be valid when Deferred is invalid.", false)]
+            [Obsolete("Use IsValidAndPending.", false)]
             public bool IsValid
             {
                 get
                 {
-                    return IsPending;
+                    return IsValidAndPending;
                 }
             }
 
             /// <summary>
             /// Get whether or not this instance is valid and the attached <see cref="Promise"/> is still pending.
             /// </summary>
-            public bool IsPending
+            public bool IsValidAndPending
             {
                 get
                 {
@@ -518,12 +518,12 @@ namespace Proto.Promises
                 return !(lhs == rhs);
             }
 
-            [Obsolete("Deferred.State is no longer valid. Use IsPending.", true)]
+            [Obsolete("Deferred.State is no longer valid. Use IsValidAndPending.", true)]
             public State State
             {
                 get
                 {
-                    throw new InvalidOperationException("Deferred.State is no longer valid. Use IsPending.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.State is no longer valid. Use IsValidAndPending.", Internal.GetFormattedStacktrace(1));
                 }
             }
 
@@ -570,19 +570,19 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Use IsPending. Promise may still be valid when Deferred is invalid.", false)]
+            [Obsolete("Use IsValidAndPending.", false)]
             public bool IsValid
             {
                 get
                 {
-                    return IsPending;
+                    return IsValidAndPending;
                 }
             }
 
             /// <summary>
             /// Get whether or not this instance is valid and the attached <see cref="Promise"/> is still pending.
             /// </summary>
-            public bool IsPending
+            public bool IsValidAndPending
             {
                 get
                 {
@@ -788,12 +788,12 @@ namespace Proto.Promises
                 return !(lhs == rhs);
             }
 
-            [Obsolete("Deferred.State is no longer valid. Use IsPending.", true)]
+            [Obsolete("Deferred.State is no longer valid. Use IsValidAndPending.", true)]
             public Promise.State State
             {
                 get
                 {
-                    throw new InvalidOperationException("Deferred.State is no longer valid. Use IsPending.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.State is no longer valid. Use IsValidAndPending.", Internal.GetFormattedStacktrace(1));
                 }
             }
 

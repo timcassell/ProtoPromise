@@ -44,7 +44,7 @@ namespace Proto.Promises.Tests
                 string state = null;
 
                 var deferred = Promise.NewDeferred();
-                Assert.IsTrue(deferred.IsPending);
+                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .CatchCancelation(_ => state = Canceled)
@@ -53,14 +53,14 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(state);
 
                 deferred.Resolve();
-                Assert.IsFalse(deferred.IsPending);
+                Assert.IsFalse(deferred.IsValidAndPending);
                 Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Resolved, state);
 
                 state = null;
                 deferred = Promise.NewDeferred();
-                Assert.IsTrue(deferred.IsPending);
+                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .CatchCancelation(_ => state = Canceled)
@@ -69,13 +69,13 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(state);
 
                 deferred.Reject("Fail Value");
-                Assert.IsFalse(deferred.IsPending);
+                Assert.IsFalse(deferred.IsValidAndPending);
                 Promise.Manager.HandleCompletesAndProgress();
 
                 state = null;
                 CancelationSource cancelationSource = CancelationSource.New();
                 deferred = Promise.NewDeferred(cancelationSource.Token);
-                Assert.IsTrue(deferred.IsPending);
+                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .CatchCancelation(_ => state = Canceled)
@@ -84,7 +84,7 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(state);
 
                 cancelationSource.Cancel();
-                Assert.IsFalse(deferred.IsPending);
+                Assert.IsFalse(deferred.IsValidAndPending);
                 Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Canceled, state);
@@ -93,7 +93,7 @@ namespace Proto.Promises.Tests
                 state = null;
                 cancelationSource = CancelationSource.New();
                 deferred = Promise.NewDeferred(cancelationSource.Token);
-                Assert.IsTrue(deferred.IsPending);
+                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .CatchCancelation(_ => state = Canceled)
@@ -102,7 +102,7 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(state);
 
                 cancelationSource.Cancel("Cancel Value");
-                Assert.IsFalse(deferred.IsPending);
+                Assert.IsFalse(deferred.IsValidAndPending);
                 Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Canceled, state);
@@ -116,7 +116,7 @@ namespace Proto.Promises.Tests
                 string state = null;
 
                 var deferred = Promise.NewDeferred<int>();
-                Assert.IsTrue(deferred.IsPending);
+                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .CatchCancelation(_ => state = Canceled)
@@ -125,14 +125,14 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(state);
 
                 deferred.Resolve(1);
-                Assert.IsFalse(deferred.IsPending);
+                Assert.IsFalse(deferred.IsValidAndPending);
                 Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Resolved, state);
 
                 state = null;
                 deferred = Promise.NewDeferred<int>();
-                Assert.IsTrue(deferred.IsPending);
+                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .CatchCancelation(_ => state = Canceled)
@@ -141,13 +141,13 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(state);
 
                 deferred.Reject("Fail Value");
-                Assert.IsFalse(deferred.IsPending);
+                Assert.IsFalse(deferred.IsValidAndPending);
                 Promise.Manager.HandleCompletesAndProgress();
 
                 state = null;
                 CancelationSource cancelationSource = CancelationSource.New();
                 deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-                Assert.IsTrue(deferred.IsPending);
+                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .CatchCancelation(_ => state = Canceled)
@@ -156,7 +156,7 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(state);
 
                 cancelationSource.Cancel();
-                Assert.IsFalse(deferred.IsPending);
+                Assert.IsFalse(deferred.IsValidAndPending);
                 Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Canceled, state);
@@ -165,7 +165,7 @@ namespace Proto.Promises.Tests
                 state = null;
                 cancelationSource = CancelationSource.New();
                 deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-                Assert.IsTrue(deferred.IsPending);
+                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .CatchCancelation(_ => state = Canceled)
@@ -174,7 +174,7 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(state);
 
                 cancelationSource.Cancel("Cancel Value");
-                Assert.IsFalse(deferred.IsPending);
+                Assert.IsFalse(deferred.IsValidAndPending);
                 Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Canceled, state);

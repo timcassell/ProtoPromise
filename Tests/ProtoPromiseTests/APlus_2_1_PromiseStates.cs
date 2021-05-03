@@ -27,7 +27,7 @@ namespace Proto.Promises.Tests
                 string state = null;
 
                 var deferred = Promise.NewDeferred();
-                Assert.IsTrue(deferred.IsPending);
+                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(() => state = Resolved, () => state = Rejected)
@@ -35,14 +35,14 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(state);
 
                 deferred.Resolve();
-                Assert.IsFalse(deferred.IsPending);
+                Assert.IsFalse(deferred.IsValidAndPending);
                 Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Resolved, state);
 
                 state = null;
                 deferred = Promise.NewDeferred();
-                Assert.IsTrue(deferred.IsPending);
+                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(() => state = Resolved, () => state = Rejected)
@@ -50,7 +50,7 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(state);
 
                 deferred.Reject("Fail Value");
-                Assert.IsFalse(deferred.IsPending);
+                Assert.IsFalse(deferred.IsValidAndPending);
                 Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Rejected, state);
@@ -63,7 +63,7 @@ namespace Proto.Promises.Tests
                 string state = null;
 
                 var deferred = Promise.NewDeferred<int>();
-                Assert.IsTrue(deferred.IsPending);
+                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(v => state = Resolved, () => state = Rejected)
@@ -71,14 +71,14 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(state);
 
                 deferred.Resolve(1);
-                Assert.IsFalse(deferred.IsPending);
+                Assert.IsFalse(deferred.IsValidAndPending);
                 Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Resolved, state);
 
                 state = null;
                 deferred = Promise.NewDeferred<int>();
-                Assert.IsTrue(deferred.IsPending);
+                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(v => state = Resolved, () => state = Rejected)
@@ -86,7 +86,7 @@ namespace Proto.Promises.Tests
                 Assert.IsNull(state);
 
                 deferred.Reject("Fail Value");
-                Assert.IsFalse(deferred.IsPending);
+                Assert.IsFalse(deferred.IsValidAndPending);
                 Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Rejected, state);
