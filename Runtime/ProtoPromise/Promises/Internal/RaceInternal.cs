@@ -106,9 +106,10 @@ namespace Proto.Promises
                 public override void Handle()
                 {
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
-                    _state = valueContainer.GetState();
+                    Promise.State state = valueContainer.GetState();
+                    State = state;
                     HandleWaiter(valueContainer);
-                    HandleProgressListener(_state);
+                    HandleProgressListener(state);
 
                     if (Interlocked.Decrement(ref _waitCount) == 0)
                     {
@@ -123,7 +124,7 @@ namespace Proto.Promises
                     PromiseRef owner = passThrough.Owner;
                     if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                     {
-                        owner._suppressRejection = true;
+                        owner.SuppressRejection = true;
                         valueContainer.Retain();
 
                         // Try to unhook and release all passthroughs.
@@ -180,9 +181,9 @@ namespace Proto.Promises
                     uint minWaitDepth = uint.MaxValue;
                     foreach (var passThrough in promisePassThroughs)
                     {
-                        minWaitDepth = Math.Min(minWaitDepth, passThrough.Owner._waitDepthAndProgress.WholePart);
+                        minWaitDepth = Math.Min(minWaitDepth, passThrough.Owner._smallFields._waitDepthAndProgress.WholePart);
                     }
-                    _waitDepthAndProgress = new UnsignedFixed32(minWaitDepth);
+                    _smallFields._waitDepthAndProgress = new UnsignedFixed32(minWaitDepth);
                 }
 
                 protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
@@ -208,7 +209,7 @@ namespace Proto.Promises
                     if (newAmount > _currentAmount)
                     {
                         _currentAmount = newAmount;
-                        if ((InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) != 0) // Was not already in progress queue?
+                        if ((_smallFields.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) != 0) // Was not already in progress queue?
                         {
                             InterlockedRetainDisregardId();
                             AddToFrontOfProgressQueue(this);
@@ -219,15 +220,15 @@ namespace Proto.Promises
                 void IProgressInvokable.Invoke()
                 {
                     var progress = CurrentProgress();
-                    InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
-                    if ((InterlockedSetProgressFlags(ProgressFlags.SetProgressLocked) & ProgressFlags.SetProgressLocked) == 0)
+                    _smallFields.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
+                    if ((_smallFields.InterlockedSetProgressFlags(ProgressFlags.SetProgressLocked) & ProgressFlags.SetProgressLocked) == 0)
                     {
                         IProgressListener progressListener = _progressListener;
                         if (progressListener != null)
                         {
                             progressListener.SetProgress(this, progress);
                         }
-                        InterlockedUnsetProgressFlags(ProgressFlags.SetProgressLocked);
+                        _smallFields.InterlockedUnsetProgressFlags(ProgressFlags.SetProgressLocked);
                     }
                     MaybeDispose();
                 }

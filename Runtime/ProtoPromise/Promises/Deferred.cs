@@ -206,7 +206,7 @@ namespace Proto.Promises
 #else
                 ValidateProgress(progress, 1);
 
-                return _ref != null && _ref.TryReportProgress(progress, _deferredId, _promiseId);
+                return _ref != null && _ref.TryReportProgress(progress, _deferredId);
 #endif
             }
 
@@ -444,7 +444,7 @@ namespace Proto.Promises
 #else
                 ValidateProgress(progress, 1);
 
-                return _ref != null && _ref.TryReportProgress(progress, _deferredId, _promiseId);
+                return _ref != null && _ref.TryReportProgress(progress, _deferredId);
 #endif
             }
 
@@ -714,7 +714,7 @@ namespace Proto.Promises
 #else
                 ValidateProgress(progress, 1);
 
-                return _ref != null && _ref.TryReportProgress(progress, _deferredId, _promiseId);
+                return _ref != null && _ref.TryReportProgress(progress, _deferredId);
 #endif
             }
 

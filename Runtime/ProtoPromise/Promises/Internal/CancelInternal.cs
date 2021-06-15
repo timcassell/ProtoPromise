@@ -156,7 +156,7 @@ namespace Proto.Promises
                     RetainAndSetCanceled();
                     object currentValue = Interlocked.Exchange(ref owner._valueOrPrevious, valueContainer);
                     valueContainer.Retain();
-                    owner._state = Promise.State.Canceled;
+                    owner.State = Promise.State.Canceled;
 
 #if CSHARP_7_OR_LATER
                     if (currentValue is PromiseRef previous)
@@ -273,7 +273,7 @@ namespace Proto.Promises
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner._suppressRejection = true;
+                        owner.SuppressRejection = true;
                         AddToHandleQueueFront(this);
                     }
                     WaitForProgressRetain();
@@ -283,7 +283,7 @@ namespace Proto.Promises
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner._suppressRejection = true;
+                        owner.SuppressRejection = true;
                         AddToHandleQueueBack(this);
                     }
                     WaitForProgressRetain();
@@ -362,7 +362,7 @@ namespace Proto.Promises
                         WaitForProgressRetain();
                         return;
                     }
-                    owner._suppressRejection = true;
+                    owner.SuppressRejection = true;
                     AddToHandleQueueFront(this);
                     WaitForProgressRetain();
                 }
@@ -380,7 +380,7 @@ namespace Proto.Promises
                         WaitForProgressRetain();
                         return;
                     }
-                    owner._suppressRejection = true;
+                    owner.SuppressRejection = true;
                     AddToHandleQueueBack(this);
                     WaitForProgressRetain();
                 }
@@ -461,7 +461,7 @@ namespace Proto.Promises
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner._suppressRejection = true;
+                        owner.SuppressRejection = true;
                         AddToHandleQueueFront(this);
                     }
                     WaitForProgressRetain();
@@ -471,7 +471,7 @@ namespace Proto.Promises
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner._suppressRejection = true;
+                        owner.SuppressRejection = true;
                         AddToHandleQueueBack(this);
                     }
                     WaitForProgressRetain();
@@ -561,7 +561,7 @@ namespace Proto.Promises
                         WaitForProgressRetain();
                         return;
                     }
-                    owner._suppressRejection = true;
+                    owner.SuppressRejection = true;
                     AddToHandleQueueFront(this);
                     WaitForProgressRetain();
                 }
@@ -579,7 +579,7 @@ namespace Proto.Promises
                         WaitForProgressRetain();
                         return;
                     }
-                    owner._suppressRejection = true;
+                    owner.SuppressRejection = true;
                     AddToHandleQueueBack(this);
                     WaitForProgressRetain();
                 }
@@ -663,7 +663,7 @@ namespace Proto.Promises
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner._suppressRejection = true;
+                        owner.SuppressRejection = true;
                         AddToHandleQueueFront(this);
                     }
                     WaitForProgressRetain();
@@ -673,7 +673,7 @@ namespace Proto.Promises
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner._suppressRejection = true;
+                        owner.SuppressRejection = true;
                         AddToHandleQueueBack(this);
                     }
                     WaitForProgressRetain();
@@ -743,7 +743,7 @@ namespace Proto.Promises
                         WaitForProgressRetain();
                         return;
                     }
-                    owner._suppressRejection = true;
+                    owner.SuppressRejection = true;
                     AddToHandleQueueFront(this);
                     WaitForProgressRetain();
                 }
@@ -761,7 +761,7 @@ namespace Proto.Promises
                         WaitForProgressRetain();
                         return;
                     }
-                    owner._suppressRejection = true;
+                    owner.SuppressRejection = true;
                     AddToHandleQueueBack(this);
                     WaitForProgressRetain();
                 }
@@ -828,7 +828,7 @@ namespace Proto.Promises
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner._suppressRejection = true;
+                        owner.SuppressRejection = true;
                         AddToHandleQueueFront(this);
                     }
                     WaitForProgressRetain();
@@ -838,7 +838,7 @@ namespace Proto.Promises
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner._suppressRejection = true;
+                        owner.SuppressRejection = true;
                         AddToHandleQueueBack(this);
                     }
                     WaitForProgressRetain();

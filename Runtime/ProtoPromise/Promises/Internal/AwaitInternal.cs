@@ -22,14 +22,14 @@ namespace Proto.Promises
             internal void AddAwaiter(ITreeHandleable awaiter, short promiseId)
             {
                 MarkAwaited(promiseId);
-                _suppressRejection = true;
+                SuppressRejection = true;
                 AddWaiter(awaiter);
             }
 
             internal void MarkAwaitedAndGetResultAndMaybeDispose<T>(short promiseId, out T result)
             {
                 MarkAwaited(promiseId);
-                _suppressRejection = true;
+                SuppressRejection = true;
                 result = ((ResolveContainer<T>) _valueOrPrevious).value;
                 MaybeDispose();
             }
