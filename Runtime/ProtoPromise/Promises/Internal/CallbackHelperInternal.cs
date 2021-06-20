@@ -4,6 +4,8 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
+
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;

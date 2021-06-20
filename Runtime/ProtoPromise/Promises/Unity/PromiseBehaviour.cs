@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace Proto.Promises
@@ -7,70 +8,101 @@ namespace Proto.Promises
     {
         static Promise()
         {
-            // Set default rejection and warning handlers to route to UnityEngine.Debug.
-            Config.UncaughtRejectionHandler = Debug.LogException;
-            Config.WarningHandler = Debug.LogWarning;
-#if UNITY_EDITOR
-            if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
-#endif
-            {
-                // Create a PromiseBehaviour instance before any promise actions are made.
-                new GameObject("Proto.Promises.PromiseBehaviour").AddComponent<PromiseBehaviour>();
-            }
+            Unity.PromiseBehaviour.Init();
         }
     }
 
-    // I would have nested this within Promise, but you can only change the execution order of un-nested behaviours.
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [System.Diagnostics.DebuggerNonUserCode]
-#endif
-    public sealed class PromiseBehaviour : MonoBehaviour
+    partial struct Promise<T>
     {
-        private static PromiseBehaviour _instance;
-
-        private void Start()
+        static Promise()
         {
-            if (_instance != null)
-            {
-                Promise.Manager.LogWarning("There can only be one instance of PromiseBehaviour. Destroying new instance.");
-                Destroy(this);
-                return;
-            }
-            DontDestroyOnLoad(gameObject);
-            gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
-            _instance = this;
-            StartCoroutine(UpdateRoutine());
+            Unity.PromiseBehaviour.Init();
         }
+    }
 
-        private void OnDestroy()
-        {
-#if UNITY_EDITOR
-            if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
+    namespace Unity // I would have nested this within Promise, but you can only change the execution order of un-nested behaviours, so add a nested namespace instead.
+    {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
 #endif
+        public sealed class PromiseBehaviour : MonoBehaviour
+        {
+            // To prevent error:
+			// UnityException: get_isPlayingOrWillChangePlaymode is not allowed to be called from a MonoBehaviour constructor (or instance field initializer),
+			// call it in Awake or Start instead.
+            private static class Dummy
             {
-                if (_instance == this)
+                // NoInlining is to ensure that the static constructor runs.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                public static void Init() { }
+
+                static Dummy()
                 {
-                    Promise.Manager.LogWarning("PromiseBehaviour destroyed! Promise callbacks will no longer be automatically invoked!");
-                    _instance = null;
+                    // Set default rejection and warning handlers to route to UnityEngine.Debug.
+                    Promises.Promise.Config.UncaughtRejectionHandler = Debug.LogException;
+                    Promises.Promise.Config.WarningHandler = Debug.LogWarning;
+#if UNITY_EDITOR
+                    if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
+#endif
+                    {
+                        // Create a PromiseBehaviour instance before any promise actions are made.
+                        new GameObject("Proto.Promises.Unity.PromiseBehaviour").AddComponent<PromiseBehaviour>();
+                    }
                 }
             }
-        }
 
-        private IEnumerator UpdateRoutine()
-        {
-            while (true)
+            private static PromiseBehaviour _instance;
+
+            [MethodImpl(Promises.Internal.InlineOption)]
+            public static void Init()
             {
-                yield return null;
-                // Invoke progress delegates during the normal coroutine cycle.
-                Promise.Manager.HandleCompletesAndProgress();
+                Dummy.Init();
             }
-        }
 
-        private void Update()
-        {
-            Promise.Manager.HandleCompletes();
-        }
+            private void Start()
+            {
+                if (_instance != null)
+                {
+                    Promise.Manager.LogWarning("There can only be one instance of PromiseBehaviour. Destroying new instance.");
+                    Destroy(this);
+                    return;
+                }
+                DontDestroyOnLoad(gameObject);
+                gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
+                _instance = this;
+                StartCoroutine(UpdateRoutine());
+            }
 
-        // Optionally add extra HandleCompletes calls for LateUpdate, FixedUpdate, WaitForEndOfFrame, etc.
+            private void OnDestroy()
+            {
+#if UNITY_EDITOR
+                if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
+#endif
+                {
+                    if (_instance == this)
+                    {
+                        Promise.Manager.LogWarning("PromiseBehaviour destroyed! Promise callbacks will no longer be automatically invoked!");
+                        _instance = null;
+                    }
+                }
+            }
+
+            private IEnumerator UpdateRoutine()
+            {
+                while (true)
+                {
+                    yield return null;
+                    // Invoke progress delegates during the normal coroutine cycle.
+                    Promise.Manager.HandleCompletesAndProgress();
+                }
+            }
+
+            private void Update()
+            {
+                Promise.Manager.HandleCompletes();
+            }
+
+            // Optionally add extra HandleCompletes calls for LateUpdate, FixedUpdate, WaitForEndOfFrame, etc.
+        }
     }
 }

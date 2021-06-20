@@ -9,6 +9,8 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0034 // Simplify 'default' expression
+
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -48,7 +50,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal bool InterlockedTryIncrementPromiseId(short promiseId)
                 {
-                    IdRetain initialValue = default, newValue;
+                    IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
@@ -70,7 +72,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal bool InterlockedTryIncrementDeferredId(short deferredId)
                 {
-                    IdRetain initialValue = default, newValue;
+                    IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
@@ -92,7 +94,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void InterlockedIncrementDeferredId()
                 {
-                    IdRetain initialValue = default, newValue;
+                    IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
@@ -108,7 +110,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal bool InterlockedTryRetain(short promiseId)
                 {
-                    IdRetain initialValue = default, newValue;
+                    IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
@@ -135,7 +137,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal bool InterlockedTryRetainWithDeferredId(short deferredId)
                 {
-                    IdRetain initialValue = default, newValue;
+                    IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
@@ -163,7 +165,7 @@ namespace Proto.Promises
                 internal bool InterlockedTryReleaseComplete()
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    IdRetain initialValue = default, newValue;
+                    IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
@@ -185,7 +187,7 @@ namespace Proto.Promises
 
                 internal uint InterlockedRetainDisregardId(uint retains = 1)
                 {
-                    IdRetain initialValue = default, newValue;
+                    IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);

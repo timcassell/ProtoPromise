@@ -10,6 +10,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Collections.Generic;
@@ -144,7 +145,7 @@ namespace Proto.Promises
             {
                 internal ProgressFlags InterlockedSetProgressFlags(ProgressFlags progressFlags)
                 {
-                    StateAndFlags initialValue = default, newValue;
+                    StateAndFlags initialValue = default(StateAndFlags), newValue;
                     do
                     {
                         initialValue._intValue = _stateAndFlags._intValue;
@@ -157,7 +158,7 @@ namespace Proto.Promises
 
                 internal ProgressFlags InterlockedUnsetProgressFlags(ProgressFlags progressFlags)
                 {
-                    StateAndFlags initialValue = default, newValue;
+                    StateAndFlags initialValue = default(StateAndFlags), newValue;
                     ProgressFlags unsetFlags = ~progressFlags;
                     do
                     {

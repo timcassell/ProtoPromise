@@ -520,8 +520,8 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise, CancelationToken, Promise>[]
                 {
-                    (promise, token) => promise.CatchCancelation(_ => { }, token),
-                    (promise, token) => promise.CatchCancelation(1, (cv, _) => { }, token),
+                    (p, token) => p.CatchCancelation(_ => { }, token),
+                    (p, token) => p.CatchCancelation(1, (cv, _) => { }, token),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -563,8 +563,8 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise<int>, CancelationToken, Promise<int>>[]
                 {
-                    (promise, token) => promise.CatchCancelation(_ => { }, token),
-                    (promise, token) => promise.CatchCancelation(1, (cv, _) => { }, token),
+                    (p, token) => p.CatchCancelation(_ => { }, token),
+                    (p, token) => p.CatchCancelation(1, (cv, _) => { }, token),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -687,8 +687,8 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise, CancelationToken, Promise>[]
                 {
-                    (promise, token) => promise.Progress(_ => { }, token),
-                    (promise, token) => promise.Progress(1, (cv, _) => { }, token),
+                    (p, token) => p.Progress(_ => { }, token),
+                    (p, token) => p.Progress(1, (cv, _) => { }, token),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -730,8 +730,8 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise, CancelationToken, Promise>[]
                 {
-                    (promise, token) => promise.Progress(_ => { }, token),
-                    (promise, token) => promise.Progress(1, (cv, _) => { }, token),
+                    (p, token) => p.Progress(_ => { }, token),
+                    (p, token) => p.Progress(1, (cv, _) => { }, token),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,

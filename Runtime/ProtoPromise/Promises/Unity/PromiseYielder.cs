@@ -209,7 +209,7 @@ namespace Proto.Promises
         {
             private struct Creator : ICreator<YieldInstructionVoid>
             {
-                [MethodImpl(256)]
+                [MethodImpl(InlineOption)]
                 public YieldInstructionVoid Create()
                 {
                     return new YieldInstructionVoid();
@@ -220,7 +220,7 @@ namespace Proto.Promises
 
             public static YieldInstructionVoid GetOrCreate(object valueContainer, Promise.State state)
             {
-                var yieldInstruction = ObjectPool<ITreeHandleable>.GetOrCreate<YieldInstructionVoid, Creator>(new Creator());
+                var yieldInstruction = ObjectPool<ITreeHandleable>.GetOrCreate<YieldInstructionVoid, Creator>();
                 yieldInstruction._value = valueContainer;
                 yieldInstruction._state = state;
                 yieldInstruction._isActive = true;
@@ -255,7 +255,7 @@ namespace Proto.Promises
         {
             private struct Creator : ICreator<YieldInstruction<T>>
             {
-                [MethodImpl(256)]
+                [MethodImpl(InlineOption)]
                 public YieldInstruction<T> Create()
                 {
                     return new YieldInstruction<T>();
@@ -266,7 +266,7 @@ namespace Proto.Promises
 
             public static YieldInstruction<T> GetOrCreate(object valueContainer, Promise.State state)
             {
-                var yieldInstruction = ObjectPool<ITreeHandleable>.GetOrCreate<YieldInstruction<T>, Creator>(new Creator());
+                var yieldInstruction = ObjectPool<ITreeHandleable>.GetOrCreate<YieldInstruction<T>, Creator>();
                 yieldInstruction._value = valueContainer;
                 yieldInstruction._state = state;
                 yieldInstruction._isActive = true;
@@ -361,7 +361,7 @@ namespace Proto.Promises
         {
             private struct Creator : Internal.ICreator<Routine>
             {
-                [MethodImpl(256)]
+                [MethodImpl(Promises.Internal.InlineOption)]
                 public Routine Create()
                 {
                     return new Routine();
@@ -372,7 +372,7 @@ namespace Proto.Promises
 
             public static Routine GetOrCreate()
             {
-                return Internal.ObjectPool<Routine>.GetOrCreate<Routine, Creator>(new Creator());
+                return Internal.ObjectPool<Routine>.GetOrCreate<Routine, Creator>();
             }
 
             private Routine() { }
@@ -421,7 +421,7 @@ namespace Proto.Promises
         {
             private struct Creator : Internal.ICreator<Routine<T>>
             {
-                [MethodImpl(256)]
+                [MethodImpl(Promises.Internal.InlineOption)]
                 public Routine<T> Create()
                 {
                     return new Routine<T>();
@@ -432,7 +432,7 @@ namespace Proto.Promises
 
             public static Routine<T> GetOrCreate()
             {
-                return Internal.ObjectPool<Routine<T>>.GetOrCreate<Routine<T>, Creator>(new Creator());
+                return Internal.ObjectPool<Routine<T>>.GetOrCreate<Routine<T>, Creator>();
             }
 
             private Routine() { }

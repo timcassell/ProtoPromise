@@ -1,4 +1,6 @@
-﻿using System;
+﻿#if CSHARP_7_OR_LATER
+
+using System;
 
 namespace Proto.Promises.Tests
 {
@@ -509,3 +511,5 @@ namespace Proto.Promises.Tests
         }
     }
 }
+
+#endif

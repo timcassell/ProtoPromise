@@ -1,7 +1,7 @@
 ﻿using UnityEditor;
 using System.Reflection;
 
-namespace Proto.Promises
+namespace Proto.Promises.Unity
 {
     [InitializeOnLoad]
     internal static class ExecutionOrderSetter

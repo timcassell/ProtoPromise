@@ -11,6 +11,7 @@
 
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Collections.Generic;
@@ -123,9 +124,9 @@ namespace Proto.Promises
                 {
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     Promise.State state = valueContainer.GetState();
-                    State = State;
+                    State = state;
                     HandleWaiter(valueContainer);
-                    HandleProgressListener(State);
+                    HandleProgressListener(state);
 
                     if (Interlocked.Decrement(ref _waitCount) == 0)
                     {

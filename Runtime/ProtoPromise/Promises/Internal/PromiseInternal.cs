@@ -145,7 +145,7 @@ namespace Proto.Promises
                 if (!WasAwaitedOrForgotten)
                 {
                     // Promise was not awaited or forgotten.
-                    string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise. Type: " + GetType();
+                    string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise.";
                     AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
                 }
                 if (State != Promise.State.Pending & _valueOrPrevious != null)
@@ -331,7 +331,7 @@ namespace Proto.Promises
 
             protected abstract bool TryRemoveWaiter(ITreeHandleable treeHandleable);
 
-            protected abstract void AddWaiter(ITreeHandleable waiter);
+            internal abstract void AddWaiter(ITreeHandleable waiter);
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
@@ -416,7 +416,7 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void AddWaiter(ITreeHandleable waiter)
+                internal override void AddWaiter(ITreeHandleable waiter)
                 {
                     ThrowIfInPool(this);
                     if (State == Promise.State.Pending)
@@ -483,7 +483,7 @@ namespace Proto.Promises
                     return Interlocked.CompareExchange(ref _waiter, null, treeHandleable) == treeHandleable;
                 }
 
-                protected sealed override void AddWaiter(ITreeHandleable waiter)
+                internal sealed override void AddWaiter(ITreeHandleable waiter)
                 {
                     ThrowIfInPool(this);
                     // When this is completed, _state is set then _next is swapped, so we must reverse that process here.
@@ -678,7 +678,7 @@ namespace Proto.Promises
                     return Interlocked.CompareExchange(ref _next, null, treeHandleable) == treeHandleable;
                 }
 
-                protected sealed override void AddWaiter(ITreeHandleable waiter)
+                internal sealed override void AddWaiter(ITreeHandleable waiter)
                 {
                     ThrowIfInPool(this);
                     // When this is completed, _state is set then _next is swapped, so we must reverse that process here.
@@ -930,12 +930,12 @@ namespace Proto.Promises
                 }
             }
 
-            // IDelegate to reduce the amount of classes I would have to write(Composition Over Inheritance).
+            // IDelegate to reduce the amount of classes I would have to write (Composition Over Inheritance).
             // Using generics with constraints allows us to use structs to get composition for "free"
             // (no extra object allocation or extra memory overhead, and the compiler will generate the Promise classes for us).
             // The only downside is that more classes are created than if we just used straight interfaces (not a problem with JIT, but makes the code size larger with AOT).
 
-            // Resolve types for more common .Then(onResolved) calls to be more efficient.
+            // Resolve types for more common .Then(onResolved) calls to be more efficient (because the runtime does not allow 0-size structs).
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
