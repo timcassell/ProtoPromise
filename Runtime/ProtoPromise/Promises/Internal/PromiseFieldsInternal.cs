@@ -10,6 +10,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Runtime.CompilerServices;
@@ -204,9 +205,9 @@ namespace Proto.Promises
                     while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                     return newValue._retains;
                 }
-            }
+            } // IdRetain
 
-            private partial struct SmallFields
+            private struct SmallFields
             {
                 // Wrapping 32-bit struct fields in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
@@ -226,13 +227,61 @@ namespace Proto.Promises
                     internal bool _wasAwaitedOrForgotten;
 #if PROMISE_PROGRESS
                     [FieldOffset(3)]
-                    volatile internal ProgressFlags _progressFlags;
-                    // int value allows us to use interlocked to set the progress flags.
+                    volatile private ProgressFlags _progressFlags;
+                    // int value with [FieldOffset(0)] allows us to use Interlocked to set the progress flags without consuming more memory than necessary.
                     [FieldOffset(0)]
-                    volatile internal int _intValue;
-#endif
-                }
-            }
-        }
-    }
+                    volatile private int _intValue;
+
+                    [MethodImpl(InlineOption)]
+                    internal ProgressFlags InterlockedSetSubscribedIfSecondPrevious()
+                    {
+                        StateAndFlags initialValue = default(StateAndFlags), newValue;
+                        do
+                        {
+                            initialValue._intValue = _intValue;
+                            newValue = initialValue;
+                            ProgressFlags setFlags = (ProgressFlags) ((byte) (newValue._progressFlags & ProgressFlags.SecondPrevious) << 1); // Change SecondPrevious flag to SecondSubscribed.
+                            newValue._progressFlags |= setFlags;
+                        }
+                        while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
+                        return initialValue._progressFlags;
+                    }
+
+                    internal ProgressFlags InterlockedSetProgressFlags(ProgressFlags progressFlags)
+                    {
+                        StateAndFlags initialValue = default(StateAndFlags), newValue;
+                        do
+                        {
+                            initialValue._intValue = _intValue;
+                            newValue = initialValue;
+                            newValue._progressFlags |= progressFlags;
+                        }
+                        while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
+                        return initialValue._progressFlags;
+                    }
+
+                    internal ProgressFlags InterlockedUnsetProgressFlags(ProgressFlags progressFlags)
+                    {
+                        StateAndFlags initialValue = default(StateAndFlags), newValue;
+                        ProgressFlags unsetFlags = ~progressFlags;
+                        do
+                        {
+                            initialValue._intValue = _intValue;
+                            newValue = initialValue;
+                            newValue._progressFlags &= unsetFlags;
+                        }
+                        while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
+                        return initialValue._progressFlags;
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    internal bool ProgressFlagsAreSet(ProgressFlags progressFlags)
+                    {
+                        return (_progressFlags & progressFlags) != 0;
+                    }
+#endif // PROMISE_PROGRESS
+                } // StateAndFlags
+            } // SmallFields
+        } // PromiseRef
+    } // Internal
 }

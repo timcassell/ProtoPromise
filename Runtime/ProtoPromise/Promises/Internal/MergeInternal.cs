@@ -134,11 +134,10 @@ namespace Proto.Promises
                     }
                 }
 
-                public virtual bool Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index) // IMultiTreeHandleable.Handle
+                public virtual bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index) // IMultiTreeHandleable.Handle
                 {
                     ThrowIfInPool(this);
 
-                    PromiseRef owner = passThrough.Owner;
                     owner.SuppressRejection = true;
                     if (owner.State != Promise.State.Resolved) // Rejected/Canceled
                     {
@@ -194,13 +193,13 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            IncrementProgress(passThrough);
+                            IncrementProgress(owner, passThrough);
                         }
                     }
                     return false;
                 }
 
-                partial void IncrementProgress(PromisePassThrough passThrough);
+                partial void IncrementProgress(PromiseRef owner, PromisePassThrough passThrough);
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress);
 
                 private sealed class MergePromiseT<T> : MergePromise, IMultiTreeHandleable
@@ -244,11 +243,10 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    public override bool Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index)
+                    public override bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index)
                     {
                         ThrowIfInPool(this);
 
-                        PromiseRef owner = passThrough.Owner;
                         owner.SuppressRejection = true;
                         if (owner.State != Promise.State.Resolved) // Rejected/Canceled
                         {
@@ -310,7 +308,7 @@ namespace Proto.Promises
                             }
                             else
                             {
-                                IncrementProgress(passThrough);
+                                IncrementProgress(owner, passThrough);
                             }
                         }
                         return false;
@@ -327,6 +325,12 @@ namespace Proto.Promises
                 // Use 64 bits to allow combining many promises with very deep chains.
                 private double _progressScaler;
                 private UnsignedFixed64 _unscaledProgress;
+
+                protected override PromiseRef GetPreviousForProgress(ref IProgressListener progressListener)
+                {
+                    ThrowIfInPool(this);
+                    return null;
+                }
 
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress)
                 {
@@ -351,9 +355,9 @@ namespace Proto.Promises
                     }
                 }
 
-                partial void IncrementProgress(PromisePassThrough passThrough)
+                partial void IncrementProgress(PromiseRef owner, PromisePassThrough passThrough)
                 {
-                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion());
+                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion(owner));
                 }
 
                 protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
@@ -379,7 +383,7 @@ namespace Proto.Promises
                 {
                     // TODO: thread synchronization.
                     _unscaledProgress.Increment(amount);
-                    if ((_smallFields.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) != 0) // Was not already in progress queue?
+                    if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
                         InterlockedRetainDisregardId();
                         AddToFrontOfProgressQueue(this);
@@ -389,15 +393,11 @@ namespace Proto.Promises
                 void IProgressInvokable.Invoke()
                 {
                     var progress = CurrentProgress();
-                    _smallFields.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
-                    if ((_smallFields.InterlockedSetProgressFlags(ProgressFlags.SetProgressLocked) & ProgressFlags.SetProgressLocked) == 0)
+                    _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
+                    IProgressListener progressListener = _progressListener;
+                    if (progressListener != null)
                     {
-                        IProgressListener progressListener = _progressListener;
-                        if (progressListener != null)
-                        {
-                            progressListener.SetProgress(this, progress);
-                        }
-                        _smallFields.InterlockedUnsetProgressFlags(ProgressFlags.SetProgressLocked);
+                        progressListener.SetProgress(this, progress);
                     }
                     MaybeDispose();
                 }

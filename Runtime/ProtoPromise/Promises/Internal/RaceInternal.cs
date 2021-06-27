@@ -118,11 +118,10 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index) // IMultiTreeHandleable.Handle
+                public bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index) // IMultiTreeHandleable.Handle
                 {
                     ThrowIfInPool(this);
 
-                    PromiseRef owner = passThrough.Owner;
                     if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                     {
                         owner.SuppressRejection = true;
@@ -174,6 +173,12 @@ namespace Proto.Promises
 
                 private UnsignedFixed32 _currentAmount;
 
+                protected override PromiseRef GetPreviousForProgress(ref IProgressListener progressListener)
+                {
+                    ThrowIfInPool(this);
+                    return null;
+                }
+
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs)
                 {
                     _currentAmount = default(UnsignedFixed32);
@@ -210,7 +215,7 @@ namespace Proto.Promises
                     if (newAmount > _currentAmount)
                     {
                         _currentAmount = newAmount;
-                        if ((_smallFields.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) != 0) // Was not already in progress queue?
+                        if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                         {
                             InterlockedRetainDisregardId();
                             AddToFrontOfProgressQueue(this);
@@ -221,15 +226,11 @@ namespace Proto.Promises
                 void IProgressInvokable.Invoke()
                 {
                     var progress = CurrentProgress();
-                    _smallFields.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
-                    if ((_smallFields.InterlockedSetProgressFlags(ProgressFlags.SetProgressLocked) & ProgressFlags.SetProgressLocked) == 0)
+                    _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
+                    IProgressListener progressListener = _progressListener;
+                    if (progressListener != null)
                     {
-                        IProgressListener progressListener = _progressListener;
-                        if (progressListener != null)
-                        {
-                            progressListener.SetProgress(this, progress);
-                        }
-                        _smallFields.InterlockedUnsetProgressFlags(ProgressFlags.SetProgressLocked);
+                        progressListener.SetProgress(this, progress);
                     }
                     MaybeDispose();
                 }

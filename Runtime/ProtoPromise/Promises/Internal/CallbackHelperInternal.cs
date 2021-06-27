@@ -122,12 +122,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolvePromise<TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -160,12 +160,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolvePromise<TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -277,12 +277,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -316,12 +316,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -430,12 +430,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -468,12 +468,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -546,7 +546,7 @@ namespace Proto.Promises
                     {
                         _this._ref.MarkAwaited(_this._id);
                         promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken);
-                        _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                        _this._ref.HookupNewPromiseWithProgress(promise);
                     }
                     return new Promise(promise, promise.Id);
                 }
@@ -660,12 +660,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolvePromise<TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -699,12 +699,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolvePromise<TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -819,12 +819,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -859,12 +859,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -976,12 +976,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -1015,12 +1015,12 @@ namespace Proto.Promises
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                            _this._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -1093,7 +1093,7 @@ namespace Proto.Promises
                     {
                         _this._ref.MarkAwaited(_this._id);
                         promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken);
-                        _this._ref.HookupNewPromiseWithProgress(promise, promise);
+                        _this._ref.HookupNewPromiseWithProgress(promise);
                     }
                     return new Promise<TResult>(promise, promise.Id);
                 }

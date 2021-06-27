@@ -250,7 +250,7 @@ namespace Proto.Promises
                     _valueOrPrevious = null;
                 }
 #if PROMISE_PROGRESS
-                _smallFields.InterlockedUnsetProgressFlags(ProgressFlags.All);
+                _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.All);
 #endif
             }
 
@@ -275,44 +275,29 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            private void HookupNewCancelablePromiseWithProgress(PromiseRef newPromise, IProgressListener progressListener)
-            {
-                newPromise.SetDepth(this);
-                if (Interlocked.CompareExchange(ref newPromise._valueOrPrevious, this, null) == null)
-                {
-                    if (State == Promise.State.Pending)
-                    {
-                        SubscribeListener(progressListener);
-                    }
-                    AddWaiter(newPromise);
-                }
-                else
-                {
-                    MaybeDispose();
-                }
-            }
-
-            private void HookupNewPromiseWithProgress(PromiseRef newPromise, IProgressListener progressListener)
+            private void HookupNewPromiseWithProgress<TPromiseRef>(TPromiseRef newPromise) where TPromiseRef : PromiseRef, IProgressListener
             {
                 newPromise.SetDepth(this);
                 newPromise._valueOrPrevious = this;
-                if (State == Promise.State.Pending)
-                {
-                    SubscribeListener(progressListener);
-                }
-                AddWaiter(newPromise);
+                AddWaiterWithProgress(newPromise);
+            }
+
+            private void AddWaiterWithProgress<TWaiter>(TWaiter waiter) where TWaiter : ITreeHandleable, IProgressListener
+            {
+                SubscribeListener(waiter);
+                AddWaiter(waiter);
             }
 #else
             [MethodImpl(InlineOption)]
-            private void HookupNewCancelablePromiseWithProgress(PromiseRef newPromise, IProgressListener progressListener)
+            private void HookupNewPromiseWithProgress<TPromiseRef>(TPromiseRef newPromise) where TPromiseRef : PromiseRef, IProgressListener
             {
-                HookupNewCancelablePromise(newPromise);
+                HookupNewPromise(newPromise);
             }
 
             [MethodImpl(InlineOption)]
-            private void HookupNewPromiseWithProgress(PromiseRef newPromise, IProgressListener progressListener)
+            private void AddWaiterWithProgress<TWaiter>(TWaiter waiter) where TWaiter : ITreeHandleable, IProgressListener
             {
-                HookupNewPromise(newPromise);
+                AddWaiter(waiter);
             }
 #endif
 
@@ -1370,7 +1355,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class PromisePassThrough : ITreeHandleable, ILinked<PromisePassThrough>
+            internal sealed partial class PromisePassThrough : ITreeHandleable, ILinked<PromisePassThrough>, IProgressListener
             {
                 private struct Creator : ICreator<PromisePassThrough>
                 {
@@ -1394,7 +1379,7 @@ namespace Proto.Promises
                     }
                 }
 
-                private PromiseRef _owner;
+                volatile private PromiseRef _owner;
                 private IMultiTreeHandleable _target;
                 private int _index;
                 private int _retainCounter;
@@ -1428,13 +1413,13 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _target = target;
-                    _owner.AddWaiter(this);
+                    _owner.AddWaiterWithProgress(this);
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
                     ThrowIfInPool(this);
-                    if (_target.Handle(valueContainer, this, _index))
+                    if (TryRemoveProgressFromOwner() != null && _target.Handle(owner, valueContainer, this, _index))
                     {
                         AddToHandleQueueFront(_target);
                     }
@@ -1443,7 +1428,7 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(this);
-                    if (_target.Handle(valueContainer, this, _index))
+                    if (TryRemoveProgressFromOwner() != null && _target.Handle(owner, valueContainer, this, _index))
                     {
                         AddToHandleQueueBack(_target);
                     }
@@ -1481,11 +1466,19 @@ namespace Proto.Promises
                 internal bool TryRemoveFromOwner()
                 {
                     ThrowIfInPool(this);
-                    TryUnsubscribeProgressAndRelease();
-                    return _owner.TryRemoveWaiter(this);
+                    PromiseRef owner = TryRemoveProgressFromOwner();
+                    return owner != null && owner.TryRemoveWaiter(this);
                 }
 
-                partial void TryUnsubscribeProgressAndRelease();
+                [MethodImpl(InlineOption)]
+                private PromiseRef TryRemoveProgressFromOwner()
+                {
+                    PromiseRef owner = Interlocked.Exchange(ref _owner, null);
+                    TryUnsubscribeProgressAndRelease(owner);
+                    return owner;
+                }
+
+                partial void TryUnsubscribeProgressAndRelease(PromiseRef owner);
 
                 void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
             }

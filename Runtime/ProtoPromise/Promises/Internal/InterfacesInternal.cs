@@ -6,7 +6,7 @@
         {
             internal partial interface IMultiTreeHandleable : ITreeHandleable
             {
-                bool Handle(IValueContainer valueContainer, PromisePassThrough passThrough, int index);
+                bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index);
             }
 
             internal interface IDelegateResolve

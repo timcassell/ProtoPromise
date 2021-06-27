@@ -10,6 +10,7 @@
 #endif
 
 using Proto.Utils;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -22,9 +23,6 @@ namespace Proto.Promises
         internal const MethodImplOptions InlineOption = MethodImplOptions.NoInlining;
 #else
         internal const MethodImplOptions InlineOption = (MethodImplOptions) 256; // AggressiveInlining
-#endif
-
-#if PROMISE_DEBUG
 #endif
 
 #if !PROMISE_PROGRESS
@@ -152,6 +150,61 @@ namespace Proto.Promises
                     prev = passThrough.Owner;
                     passThrough.Release();
                     goto Repeat;
+                }
+            }
+
+            [ThreadStatic]
+            private static Stack<PromisePassThrough> _passthroughsForIterativeAlgorithm;
+            private static Stack<PromisePassThrough> PassthroughsForIterativeAlgorithm
+            {
+                get
+                {
+                    if (_passthroughsForIterativeAlgorithm == null)
+                    {
+                        _passthroughsForIterativeAlgorithm = new Stack<PromisePassThrough>();
+                    }
+                    return _passthroughsForIterativeAlgorithm;
+                }
+            }
+
+            protected virtual void BorrowPassthroughs(Stack<PromisePassThrough> borrower) { }
+
+            private static void ExchangePassthroughs(ref ValueLinkedStack<PromisePassThrough> from, Stack<PromisePassThrough> to, object locker)
+            {
+                lock (locker)
+                {
+                    foreach (var passthrough in from)
+                    {
+                        passthrough.Retain();
+                        to.Push(passthrough);
+                    }
+                }
+            }
+
+            partial class MergePromise
+            {
+                protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
+                {
+                    ThrowIfInPool(this);
+                    ExchangePassthroughs(ref _passThroughs, borrower, _locker);
+                }
+            }
+
+            partial class RacePromise
+            {
+                protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
+                {
+                    ThrowIfInPool(this);
+                    ExchangePassthroughs(ref _passThroughs, borrower, _locker);
+                }
+            }
+
+            partial class FirstPromise
+            {
+                protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
+                {
+                    ThrowIfInPool(this);
+                    ExchangePassthroughs(ref _passThroughs, borrower, _locker);
                 }
             }
         }
