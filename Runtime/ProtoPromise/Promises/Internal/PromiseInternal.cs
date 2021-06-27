@@ -17,7 +17,6 @@
 using Proto.Utils;
 using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -25,70 +24,12 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
 #endif
-    [StructLayout(LayoutKind.Auto)]
-    partial struct Promise
-    {
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        internal readonly Internal.PromiseRef _ref;
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        internal readonly short _id;
-
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRef promiseRef, short id)
-        {
-            _ref = promiseRef;
-            _id = id;
-        }
-    }
+    partial struct Promise { }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
 #endif
-    [StructLayout(LayoutKind.Auto)]
-    partial struct Promise<T>
-    {
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        internal readonly Internal.PromiseRef _ref;
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        internal readonly short _id;
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        internal readonly T _result;
-
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRef promiseRef, short id)
-        {
-            _ref = promiseRef;
-            _id = id;
-            _result = default(T);
-        }
-
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRef promiseRef, short id, ref T value)
-        {
-            _ref = promiseRef;
-            _id = id;
-            _result = value;
-        }
-    }
+    partial struct Promise<T> { }
 
     partial class Internal
     {
@@ -344,9 +285,6 @@ namespace Proto.Promises
                     }
                 }
 
-                private readonly object _branchLocker = new object();
-                private ValueLinkedStack<ITreeHandleable> _nextBranches;
-
                 private PromiseMultiAwait() { }
 
                 ~PromiseMultiAwait()
@@ -461,8 +399,6 @@ namespace Proto.Promises
 #endif
             internal abstract partial class PromiseBranch : PromiseSingleAwait
             {
-                private ITreeHandleable _waiter;
-
                 protected sealed override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
                 {
                     return Interlocked.CompareExchange(ref _waiter, null, treeHandleable) == treeHandleable;
@@ -925,7 +861,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseResolve<TResolver> : PromiseBranch where TResolver : IDelegateResolve
+            private sealed partial class PromiseResolve<TResolver> : PromiseBranch
+                where TResolver : IDelegateResolve
             {
                 private struct Creator : ICreator<PromiseResolve<TResolver>>
                 {
@@ -935,8 +872,6 @@ namespace Proto.Promises
                         return new PromiseResolve<TResolver>();
                     }
                 }
-
-                private TResolver _resolver;
 
                 private PromiseResolve() { }
 
@@ -974,7 +909,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseResolvePromise<TResolver> : PromiseWaitPromise where TResolver : IDelegateResolvePromise
+            private sealed partial class PromiseResolvePromise<TResolver> : PromiseWaitPromise
+                where TResolver : IDelegateResolvePromise
             {
                 private struct Creator : ICreator<PromiseResolvePromise<TResolver>>
                 {
@@ -984,8 +920,6 @@ namespace Proto.Promises
                         return new PromiseResolvePromise<TResolver>();
                     }
                 }
-
-                private TResolver _resolver;
 
                 private PromiseResolvePromise() { }
 
@@ -1030,7 +964,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseResolveReject<TResolver, TRejecter> : PromiseBranch
+            private sealed partial class PromiseResolveReject<TResolver, TRejecter> : PromiseBranch
                 where TResolver : IDelegateResolve
                 where TRejecter : IDelegateReject
             {
@@ -1042,9 +976,6 @@ namespace Proto.Promises
                         return new PromiseResolveReject<TResolver, TRejecter>();
                     }
                 }
-
-                private TResolver _resolver;
-                private TRejecter _rejecter;
 
                 private PromiseResolveReject() { }
 
@@ -1091,7 +1022,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
+            private sealed partial class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
                 where TResolver : IDelegateResolvePromise
                 where TRejecter : IDelegateRejectPromise
             {
@@ -1103,9 +1034,6 @@ namespace Proto.Promises
                         return new PromiseResolveRejectPromise<TResolver, TRejecter>();
                     }
                 }
-
-                private TResolver _resolver;
-                private TRejecter _rejecter;
 
                 private PromiseResolveRejectPromise() { }
 
@@ -1159,7 +1087,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseContinue<TContinuer> : PromiseBranch
+            private sealed partial class PromiseContinue<TContinuer> : PromiseBranch
                 where TContinuer : IDelegateContinue
             {
                 private struct Creator : ICreator<PromiseContinue<TContinuer>>
@@ -1170,8 +1098,6 @@ namespace Proto.Promises
                         return new PromiseContinue<TContinuer>();
                     }
                 }
-
-                private TContinuer _continuer;
 
                 private PromiseContinue() { }
 
@@ -1201,7 +1127,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseContinuePromise<TContinuer> : PromiseWaitPromise
+            private sealed partial class PromiseContinuePromise<TContinuer> : PromiseWaitPromise
                 where TContinuer : IDelegateContinuePromise
             {
                 private struct Creator : ICreator<PromiseContinuePromise<TContinuer>>
@@ -1212,8 +1138,6 @@ namespace Proto.Promises
                         return new PromiseContinuePromise<TContinuer>();
                     }
                 }
-
-                private TContinuer _continuer;
 
                 private PromiseContinuePromise() { }
 
@@ -1250,7 +1174,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseFinally<TFinalizer> : PromiseBranch
+            private sealed partial class PromiseFinally<TFinalizer> : PromiseBranch
                 where TFinalizer : IDelegateSimple
             {
                 private struct Creator : ICreator<PromiseFinally<TFinalizer>>
@@ -1261,8 +1185,6 @@ namespace Proto.Promises
                         return new PromiseFinally<TFinalizer>();
                     }
                 }
-
-                private TFinalizer _finalizer;
 
                 private PromiseFinally() { }
 
@@ -1293,7 +1215,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class PromiseCancel<TCanceler> : PromiseBranch, ITreeHandleable
+            private sealed partial class PromiseCancel<TCanceler> : PromiseBranch, ITreeHandleable
                 where TCanceler : IDelegateSimple
             {
                 private struct Creator : ICreator<PromiseCancel<TCanceler>>
@@ -1304,8 +1226,6 @@ namespace Proto.Promises
                         return new PromiseCancel<TCanceler>();
                     }
                 }
-
-                private TCanceler _canceler;
 
                 private PromiseCancel() { }
 
@@ -1366,9 +1286,6 @@ namespace Proto.Promises
                     }
                 }
 
-                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
-                PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
-
                 internal PromiseRef Owner
                 {
                     [MethodImpl(InlineOption)]
@@ -1378,11 +1295,6 @@ namespace Proto.Promises
                         return _owner;
                     }
                 }
-
-                volatile private PromiseRef _owner;
-                private IMultiTreeHandleable _target;
-                private int _index;
-                private int _retainCounter;
 
                 private PromisePassThrough() { }
 
@@ -1481,7 +1393,168 @@ namespace Proto.Promises
                 partial void TryUnsubscribeProgressAndRelease(PromiseRef owner);
 
                 void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
-            }
+            } // PromisePassThrough
+
+            private partial struct IdRetain
+            {
+                [MethodImpl(InlineOption)]
+                internal bool InterlockedTryIncrementPromiseId(short promiseId)
+                {
+                    IdRetain initialValue = default(IdRetain), newValue;
+                    do
+                    {
+                        initialValue._longValue = Interlocked.Read(ref _longValue);
+                        // Make sure id matches.
+                        if (initialValue._promiseId != promiseId)
+                        {
+                            return false;
+                        }
+                        newValue = initialValue;
+                        unchecked // We want the id to wrap around.
+                        {
+                            ++newValue._promiseId;
+                        }
+                    }
+                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    return true;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal bool InterlockedTryIncrementDeferredId(short deferredId)
+                {
+                    IdRetain initialValue = default(IdRetain), newValue;
+                    do
+                    {
+                        initialValue._longValue = Interlocked.Read(ref _longValue);
+                        // Make sure id matches.
+                        if (initialValue._deferredId != deferredId)
+                        {
+                            return false;
+                        }
+                        newValue = initialValue;
+                        unchecked // We want the id to wrap around.
+                        {
+                            ++newValue._deferredId;
+                        }
+                    }
+                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    return true;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void InterlockedIncrementDeferredId()
+                {
+                    IdRetain initialValue = default(IdRetain), newValue;
+                    do
+                    {
+                        initialValue._longValue = Interlocked.Read(ref _longValue);
+                        newValue = initialValue;
+                        unchecked // We want the id to wrap around.
+                        {
+                            ++newValue._deferredId;
+                        }
+                    }
+                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal bool InterlockedTryRetain(short promiseId)
+                {
+                    IdRetain initialValue = default(IdRetain), newValue;
+                    do
+                    {
+                        initialValue._longValue = Interlocked.Read(ref _longValue);
+                        // Make sure id matches and we're not overflowing.
+                        if (initialValue._promiseId != promiseId | initialValue._retains == uint.MaxValue) // Use a single branch for fast-path.
+                        {
+                            // If either check fails, see which failed.
+                            if (initialValue._promiseId != promiseId)
+                            {
+                                return false;
+                            }
+                            throw new OverflowException("A promise was retained more than " + uint.MaxValue + " times.");
+                        }
+                        newValue = initialValue;
+                        unchecked
+                        {
+                            ++newValue._retains;
+                        }
+                    }
+                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    return true;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal bool InterlockedTryRetainWithDeferredId(short deferredId)
+                {
+                    IdRetain initialValue = default(IdRetain), newValue;
+                    do
+                    {
+                        initialValue._longValue = Interlocked.Read(ref _longValue);
+                        // Make sure id matches and we're not overflowing.
+                        if (initialValue._deferredId != deferredId | initialValue._retains == uint.MaxValue) // Use a single branch for fast-path.
+                        {
+                            // If either check fails, see which failed.
+                            if (initialValue._deferredId != deferredId)
+                            {
+                                return false;
+                            }
+                            throw new OverflowException("A promise was retained more than " + uint.MaxValue + " times.");
+                        }
+                        newValue = initialValue;
+                        unchecked
+                        {
+                            ++newValue._retains;
+                        }
+                    }
+                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    return true;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal bool InterlockedTryReleaseComplete()
+                {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    IdRetain initialValue = default(IdRetain), newValue;
+                    do
+                    {
+                        initialValue._longValue = Interlocked.Read(ref _longValue);
+                        newValue = initialValue;
+                        checked
+                        {
+                            --newValue._retains;
+                        }
+                    }
+                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    return newValue._retains == 0;
+#else
+                    unchecked
+                    {
+                        return InterlockedRetainDisregardId((uint) -1) == 0;
+                    }
+#endif
+                }
+
+                internal uint InterlockedRetainDisregardId(uint retains = 1)
+                {
+                    IdRetain initialValue = default(IdRetain), newValue;
+                    do
+                    {
+                        initialValue._longValue = Interlocked.Read(ref _longValue);
+                        newValue = initialValue;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                        checked
+#else
+                        unchecked
+#endif
+                        {
+                            newValue._retains += retains;
+                        }
+                    }
+                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    return newValue._retains;
+                }
+            } // IdRetain
 
             internal static void MaybeMarkAwaitedAndDispose(Promise promise, bool suppressRejection)
             {
@@ -1490,7 +1563,7 @@ namespace Proto.Promises
                     promise._ref.MarkAwaitedAndMaybeDispose(promise._id, suppressRejection);
                 }
             }
-        }
+        } // PromiseRef
 
         internal static uint PrepareForMulti(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index)
         {
@@ -1565,5 +1638,5 @@ namespace Proto.Promises
             return new Promise<T>(null, ValidIdFromApi, ref value);
 #endif
         }
-    }
+    } // Internal
 }

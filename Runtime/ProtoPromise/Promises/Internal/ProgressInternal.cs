@@ -67,6 +67,60 @@ namespace Proto.Promises
                 All = SecondPrevious | SecondSubscribed | InProgressQueue | SubscribeProgressLocked
             }
 
+            partial struct SmallFields
+            {
+                partial struct StateAndFlags
+                {
+                    [MethodImpl(InlineOption)]
+                    internal ProgressFlags InterlockedSetSubscribedIfSecondPrevious()
+                    {
+                        StateAndFlags initialValue = default(StateAndFlags), newValue;
+                        do
+                        {
+                            initialValue._intValue = _intValue;
+                            newValue = initialValue;
+                            ProgressFlags setFlags = (ProgressFlags) ((byte) (newValue._progressFlags & ProgressFlags.SecondPrevious) << 1); // Change SecondPrevious flag to SecondSubscribed.
+                            newValue._progressFlags |= setFlags;
+                        }
+                        while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
+                        return initialValue._progressFlags;
+                    }
+
+                    internal ProgressFlags InterlockedSetProgressFlags(ProgressFlags progressFlags)
+                    {
+                        StateAndFlags initialValue = default(StateAndFlags), newValue;
+                        do
+                        {
+                            initialValue._intValue = _intValue;
+                            newValue = initialValue;
+                            newValue._progressFlags |= progressFlags;
+                        }
+                        while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
+                        return initialValue._progressFlags;
+                    }
+
+                    internal ProgressFlags InterlockedUnsetProgressFlags(ProgressFlags progressFlags)
+                    {
+                        StateAndFlags initialValue = default(StateAndFlags), newValue;
+                        ProgressFlags unsetFlags = ~progressFlags;
+                        do
+                        {
+                            initialValue._intValue = _intValue;
+                            newValue = initialValue;
+                            newValue._progressFlags &= unsetFlags;
+                        }
+                        while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
+                        return initialValue._progressFlags;
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    internal bool ProgressFlagsAreSet(ProgressFlags progressFlags)
+                    {
+                        return (_progressFlags & progressFlags) != 0;
+                    }
+                } // StateAndFlags
+            } // SmallFields
+
             private void SubscribeListener(IProgressListener progressListener)
             {
                 PromiseRef current = this, previous;
@@ -309,21 +363,10 @@ namespace Proto.Promises
                 void IncrementProgress(uint increment, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount);
             }
 
-            internal class PromiseProgressBase : PromiseBranch
-            {
-                // TODO: thread synchronization.
-                protected UnsignedFixed32 _current;
-                volatile protected bool _handling;
-                volatile internal bool _suspended;
-                volatile protected bool _canceled;
-                volatile protected bool _canceledFromToken;
-                protected CancelationRegistration _cancelationRegistration;
-            }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed class PromiseProgress<TProgress> : PromiseProgressBase, IProgressListener, IProgressInvokable, ITraceable, ICancelDelegate
+            internal sealed partial class PromiseProgress<TProgress> : PromiseProgressBase, IProgressListener, IProgressInvokable, ICancelDelegate
                 where TProgress : IProgress<float>
             {
                 private struct Creator : ICreator<PromiseProgress<TProgress>>
@@ -334,16 +377,7 @@ namespace Proto.Promises
                         return new PromiseProgress<TProgress>();
                     }
                 }
-
-#if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
-#endif
-                IProgressListener ILinked<IProgressListener>.Next { get; set; }
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-
                 // TODO: thread synchronization.
-                private TProgress _progress;
-
                 private PromiseProgress() { }
 
                 internal static PromiseProgress<TProgress> GetOrCreate(TProgress progress, CancelationToken cancelationToken = default(CancelationToken))
@@ -575,8 +609,6 @@ namespace Proto.Promises
 
             partial class PromiseSingleAwait
             {
-                volatile protected IProgressListener _progressListener;
-
                 protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);
@@ -652,12 +684,6 @@ namespace Proto.Promises
 
             partial class PromiseMultiAwait : IProgressInvokable
             {
-                private readonly object _progressCollectionLocker = new object();
-                private ValueLinkedStack<IProgressListener> _progressListeners;
-
-                IProgressListener ILinked<IProgressListener>.Next { get; set; }
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-
                 protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);
@@ -913,9 +939,6 @@ namespace Proto.Promises
 
             partial class PromiseWaitPromise : IProgressInvokable
             {
-                IProgressListener ILinked<IProgressListener>.Next { get; set; }
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-
                 partial void SubscribeProgressToOther(PromiseRef other)
                 {
                     // Lazy subscribe: only subscribe to second previous if a progress listener is added to this (this keeps execution more efficient when progress isn't used).
@@ -1060,11 +1083,7 @@ namespace Proto.Promises
 
             partial class PromisePassThrough
             {
-                IProgressListener ILinked<IProgressListener>.Next { get; set; }
-
                 // TODO: thread safety
-                private UnsignedFixed32 _currentProgress;
-
                 void IProgressListener.SetInitialProgress(PromiseRef sender, Promise.State state, UnsignedFixed32 progress)
                 {
                     ThrowIfInPool(this);

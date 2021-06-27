@@ -27,7 +27,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed class DeferredPromiseVoidCancel : DeferredPromiseVoid, ICancelDelegate
+            internal sealed partial class DeferredPromiseVoidCancel : DeferredPromiseVoid, ICancelDelegate
             {
                 private struct Creator : ICreator<DeferredPromiseVoidCancel>
                 {
@@ -37,8 +37,6 @@ namespace Proto.Promises
                         return new DeferredPromiseVoidCancel();
                     }
                 }
-
-                private CancelationRegistration _cancelationRegistration;
 
                 private DeferredPromiseVoidCancel() { }
 
@@ -75,7 +73,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed class DeferredPromiseCancel<T> : DeferredPromise<T>, ICancelDelegate
+            internal sealed partial class DeferredPromiseCancel<T> : DeferredPromise<T>, ICancelDelegate
             {
                 private struct Creator : ICreator<DeferredPromiseCancel<T>>
                 {
@@ -85,8 +83,6 @@ namespace Proto.Promises
                         return new DeferredPromiseCancel<T>();
                     }
                 }
-
-                private CancelationRegistration _cancelationRegistration;
 
                 private DeferredPromiseCancel() { }
 
@@ -120,11 +116,8 @@ namespace Proto.Promises
                 void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
             }
 
-            internal struct CancelationHelper
+            internal partial struct CancelationHelper
             {
-                private CancelationRegistration _cancelationRegistration;
-                private int _retainAndCanceled; // 17th bit is canceled, lower 16 bits are retains.
-
                 [MethodImpl(InlineOption)]
                 internal void Register(CancelationToken cancelationToken, ICancelDelegate cancelable)
                 {
@@ -235,7 +228,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class CancelablePromiseResolve<TResolver> : PromiseBranch, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseResolve<TResolver> : PromiseBranch, ITreeHandleable, ICancelDelegate
                 where TResolver : IDelegateResolve
             {
                 private struct Creator : ICreator<CancelablePromiseResolve<TResolver>>
@@ -246,9 +239,6 @@ namespace Proto.Promises
                         return new CancelablePromiseResolve<TResolver>();
                     }
                 }
-
-                private CancelationHelper _cancelationHelper;
-                private TResolver _resolver;
 
                 private CancelablePromiseResolve() { }
 
@@ -315,7 +305,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
                 where TResolver : IDelegateResolvePromise
             {
                 private struct Creator : ICreator<CancelablePromiseResolvePromise<TResolver>>
@@ -326,9 +316,6 @@ namespace Proto.Promises
                         return new CancelablePromiseResolvePromise<TResolver>();
                     }
                 }
-
-                private CancelationHelper _cancelationHelper;
-                private TResolver _resolver;
 
                 private CancelablePromiseResolvePromise() { }
 
@@ -419,7 +406,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseBranch, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseBranch, ITreeHandleable, ICancelDelegate
                 where TResolver : IDelegateResolve
                 where TRejecter : IDelegateReject
             {
@@ -431,10 +418,6 @@ namespace Proto.Promises
                         return new CancelablePromiseResolveReject<TResolver, TRejecter>();
                     }
                 }
-
-                private CancelationHelper _cancelationHelper;
-                private TResolver _resolver;
-                private TRejecter _rejecter;
 
                 private CancelablePromiseResolveReject() { }
 
@@ -510,7 +493,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
                 where TResolver : IDelegateResolvePromise
                 where TRejecter : IDelegateRejectPromise
             {
@@ -522,10 +505,6 @@ namespace Proto.Promises
                         return new CancelablePromiseResolveRejectPromise<TResolver, TRejecter>();
                     }
                 }
-
-                private CancelationHelper _cancelationHelper;
-                private TResolver _resolver;
-                private TRejecter _rejecter;
 
                 private CancelablePromiseResolveRejectPromise() { }
 
@@ -625,7 +604,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class CancelablePromiseContinue<TContinuer> : PromiseBranch, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseContinue<TContinuer> : PromiseBranch, ITreeHandleable, ICancelDelegate
                 where TContinuer : IDelegateContinue
             {
                 private struct Creator : ICreator<CancelablePromiseContinue<TContinuer>>
@@ -636,9 +615,6 @@ namespace Proto.Promises
                         return new CancelablePromiseContinue<TContinuer>();
                     }
                 }
-
-                private CancelationHelper _cancelationHelper;
-                private TContinuer _continuer;
 
                 private CancelablePromiseContinue() { }
 
@@ -696,7 +672,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class CancelablePromiseContinuePromise<TContinuer> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseContinuePromise<TContinuer> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
                 where TContinuer : IDelegateContinuePromise
             {
                 private struct Creator : ICreator<CancelablePromiseContinuePromise<TContinuer>>
@@ -707,9 +683,6 @@ namespace Proto.Promises
                         return new CancelablePromiseContinuePromise<TContinuer>();
                     }
                 }
-
-                private CancelationHelper _cancelationHelper;
-                private TContinuer _continuer;
 
                 private CancelablePromiseContinuePromise() { }
 
@@ -792,7 +765,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed class CancelablePromiseCancel<TCanceler> : PromiseBranch, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseCancel<TCanceler> : PromiseBranch, ITreeHandleable, ICancelDelegate
                 where TCanceler : IDelegateSimple
             {
                 private struct Creator : ICreator<CancelablePromiseCancel<TCanceler>>
@@ -803,9 +776,6 @@ namespace Proto.Promises
                         return new CancelablePromiseCancel<TCanceler>();
                     }
                 }
-
-                private CancelationHelper _cancelationHelper;
-                private TCanceler _canceler;
 
                 private CancelablePromiseCancel() { }
 

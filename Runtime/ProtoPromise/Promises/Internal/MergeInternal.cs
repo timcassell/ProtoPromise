@@ -39,10 +39,6 @@ namespace Proto.Promises
                     }
                 }
 
-                private readonly object _locker = new object();
-                private ValueLinkedStack<PromisePassThrough> _passThroughs;
-                private int _waitCount;
-
                 private MergePromise() { }
 
                 protected override void Dispose()
@@ -319,13 +315,6 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class MergePromise : IProgressInvokable
             {
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-
-                // These are used to avoid rounding errors when normalizing the progress.
-                // Use 64 bits to allow combining many promises with very deep chains.
-                private double _progressScaler;
-                private UnsignedFixed64 _unscaledProgress;
-
                 protected override PromiseRef GetPreviousForProgress(ref IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);

@@ -1,24 +1,13 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
-#define PROMISE_DEBUG
-#else
-#undef PROMISE_DEBUG
-#endif
-
-using System;
+﻿using System;
 using Proto.Utils;
 
 namespace Proto.Promises
 {
     internal static partial class Internal
     {
-        public interface ITraceable
-        {
-#if PROMISE_DEBUG
-            CausalityTrace Trace { get; set; }
-#endif
-        }
+        internal partial interface ITraceable { }
 
-        public interface IValueContainer
+        internal interface IValueContainer
         {
             void Retain();
             void Release();
@@ -30,43 +19,38 @@ namespace Proto.Promises
             void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd);
         }
 
-        public interface ITreeHandleable : ILinked<ITreeHandleable>
+        internal interface ITreeHandleable : ILinked<ITreeHandleable>
         {
             void Handle();
             void MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue);
             void MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer);
         }
 
-        public interface IRejectionToContainer
+        internal interface IRejectionToContainer
         {
             IRejectValueContainer ToContainer(ITraceable traceable);
         }
 
-        public interface ICancelationToContainer
+        internal interface ICancelationToContainer
         {
             ICancelValueContainer ToContainer();
         }
 
-        public interface ICantHandleException
+        internal interface ICantHandleException
         {
             void AddToUnhandledStack(ITraceable traceable);
         }
 
-        public interface IThrowable
+        internal interface IThrowable
         {
             Exception GetException();
         }
 
-        public interface IRejectValueContainer : IValueContainer, IThrowable
-        {
-#if PROMISE_DEBUG
-            void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, CausalityTrace createdStacktraces);
-#endif
-        }
+        internal partial interface IRejectValueContainer : IValueContainer, IThrowable { }
 
-        public interface ICancelValueContainer : IValueContainer, IThrowable { }
+        internal interface ICancelValueContainer : IValueContainer, IThrowable { }
 
-        public interface ICancelDelegate
+        internal interface ICancelDelegate
         {
             void Invoke(ICancelValueContainer valueContainer);
             void Dispose();

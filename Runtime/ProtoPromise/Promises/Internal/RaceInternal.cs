@@ -40,10 +40,6 @@ namespace Proto.Promises
                     }
                 }
 
-                private readonly object _locker = new object();
-                private ValueLinkedStack<PromisePassThrough> _passThroughs;
-                private int _waitCount;
-
                 private RacePromise() { }
 
                 protected override void Dispose()
@@ -169,10 +165,6 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class RacePromise : IProgressInvokable
             {
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-
-                private UnsignedFixed32 _currentAmount;
-
                 protected override PromiseRef GetPreviousForProgress(ref IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);

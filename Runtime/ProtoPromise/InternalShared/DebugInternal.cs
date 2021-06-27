@@ -35,12 +35,21 @@ namespace Proto.Promises
         // Calls to these get compiled away in RELEASE mode
         partial class PromiseRef
         {
-            static partial void ValidateOperation(Promise promise, int skipFrames);
             static partial void ValidateArgument(object arg, string argName, int skipFrames);
             partial void ValidateReturn(Promise other);
         }
 
 #if PROMISE_DEBUG
+        partial interface ITraceable
+        {
+            CausalityTrace Trace { get; set; }
+        }
+
+        partial interface IRejectValueContainer
+        {
+            void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, CausalityTrace createdStacktraces);
+        }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
@@ -97,13 +106,6 @@ namespace Proto.Promises
 
         partial class PromiseRef
         {
-            CausalityTrace ITraceable.Trace { get; set; }
-
-            static partial void ValidateOperation(Promise promise, int skipFrames)
-            {
-                Internal.ValidateOperation(promise, skipFrames + 1);
-            }
-
             static partial void ValidateArgument(object arg, string argName, int skipFrames)
             {
                 Internal.ValidateArgument(arg, argName, skipFrames + 1);
