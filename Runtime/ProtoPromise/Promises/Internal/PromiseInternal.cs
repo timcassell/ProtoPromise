@@ -1331,7 +1331,8 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
                     ThrowIfInPool(this);
-                    if (TryRemoveProgressFromOwner() != null && _target.Handle(owner, valueContainer, this, _index))
+                    _owner = null;
+                    if (_target.Handle(owner, valueContainer, this, _index))
                     {
                         AddToHandleQueueFront(_target);
                     }
@@ -1340,7 +1341,8 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(this);
-                    if (TryRemoveProgressFromOwner() != null && _target.Handle(owner, valueContainer, this, _index))
+                    _owner = null;
+                    if (_target.Handle(owner, valueContainer, this, _index))
                     {
                         AddToHandleQueueBack(_target);
                     }
@@ -1378,16 +1380,13 @@ namespace Proto.Promises
                 internal bool TryRemoveFromOwner()
                 {
                     ThrowIfInPool(this);
-                    PromiseRef owner = TryRemoveProgressFromOwner();
-                    return owner != null && owner.TryRemoveWaiter(this);
-                }
-
-                [MethodImpl(InlineOption)]
-                private PromiseRef TryRemoveProgressFromOwner()
-                {
-                    PromiseRef owner = Interlocked.Exchange(ref _owner, null);
+                    PromiseRef owner = _owner;
+                    if (owner == null)
+                    {
+                        return false;
+                    }
                     TryUnsubscribeProgressAndRelease(owner);
-                    return owner;
+                    return owner.TryRemoveWaiter(this);
                 }
 
                 partial void TryUnsubscribeProgressAndRelease(PromiseRef owner);
