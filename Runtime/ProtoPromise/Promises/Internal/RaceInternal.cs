@@ -12,10 +12,10 @@
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Proto.Utils;

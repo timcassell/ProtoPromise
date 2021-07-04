@@ -48,12 +48,12 @@ namespace Proto.Promises.Tests.Threading
                     Assert.IsNaN(progress1);
                     Assert.IsNaN(progress2);
                     Promise.Manager.HandleCompletesAndProgress();
-                    // Both progress should be the same.
-                    Assert.AreEqual(progress1, progress2);
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
                     Assert.LessOrEqual(progress1, 0.4f);
+                    Assert.Greater(progress2, 0.2f - TestHelper.progressEpsilon);
+                    Assert.LessOrEqual(progress2, 0.4f);
                 },
                 // Parallel Actions
                 () => deferred.ReportProgress(0.2f),
@@ -88,12 +88,12 @@ namespace Proto.Promises.Tests.Threading
                     Assert.IsNaN(progress1);
                     Assert.IsNaN(progress2);
                     Promise.Manager.HandleCompletesAndProgress();
-                    // Both progress should be the same.
-                    Assert.AreEqual(progress1, progress2);
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
                     Assert.LessOrEqual(progress1, 0.4f);
+                    Assert.Greater(progress2, 0.2f - TestHelper.progressEpsilon);
+                    Assert.LessOrEqual(progress2, 0.4f);
                 },
                 // Parallel Actions
                 () => deferred.ReportProgress(0.2f),
@@ -128,12 +128,12 @@ namespace Proto.Promises.Tests.Threading
                     Assert.IsNaN(progress1);
                     Assert.IsNaN(progress2);
                     Promise.Manager.HandleCompletesAndProgress();
-                    // Both progress should be the same.
-                    Assert.AreEqual(progress1, progress2);
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
                     Assert.LessOrEqual(progress1, 0.4f);
+                    Assert.Greater(progress2, 0.2f - TestHelper.progressEpsilon);
+                    Assert.LessOrEqual(progress2, 0.4f);
                 },
                 // Parallel Actions
                 () => deferred.ReportProgress(0.2f),
@@ -168,12 +168,12 @@ namespace Proto.Promises.Tests.Threading
                     Assert.IsNaN(progress1);
                     Assert.IsNaN(progress2);
                     Promise.Manager.HandleCompletesAndProgress();
-                    // Both progress should be the same.
-                    Assert.AreEqual(progress1, progress2);
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
                     Assert.LessOrEqual(progress1, 0.4f);
+                    Assert.Greater(progress2, 0.2f - TestHelper.progressEpsilon);
+                    Assert.LessOrEqual(progress2, 0.4f);
                 },
                 // Parallel Actions
                 () => deferred.ReportProgress(0.2f),
@@ -617,8 +617,8 @@ namespace Proto.Promises.Tests.Threading
         {
             float expected = 0.1f;
             float progress = float.NaN;
-            Promise.Deferred deferred = default(Promise.Deferred);
-            Promise promise = default(Promise);
+            var deferred = default(Promise.Deferred);
+            var promise = default(Promise);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -648,9 +648,9 @@ namespace Proto.Promises.Tests.Threading
         {
             float expected = 0.1f;
             float progress = float.NaN;
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise.Deferred deferred = default(Promise.Deferred);
-            Promise promise = default(Promise);
+            var cancelationSource = default(CancelationSource);
+            var deferred = default(Promise.Deferred);
+            var promise = default(Promise);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -682,8 +682,8 @@ namespace Proto.Promises.Tests.Threading
         {
             float expected = 0.1f;
             float progress = float.NaN;
-            Promise<int>.Deferred deferred = default(Promise<int>.Deferred);
-            Promise promise = default(Promise);
+            var deferred = default(Promise<int>.Deferred);
+            var promise = default(Promise);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -713,9 +713,9 @@ namespace Proto.Promises.Tests.Threading
         {
             float expected = 0.1f;
             float progress = float.NaN;
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise<int>.Deferred deferred = default(Promise<int>.Deferred);
-            Promise promise = default(Promise);
+            var cancelationSource = default(CancelationSource);
+            var deferred = default(Promise<int>.Deferred);
+            var promise = default(Promise);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -744,10 +744,10 @@ namespace Proto.Promises.Tests.Threading
 #endif
 
         [Test]
-        public void DeferredMayBeBeResolvedAndPromiseAwaitedConcurrently_void0()
+        public void DeferredMayBeResolvedAndPromiseAwaitedConcurrently_void0()
         {
-            Promise.Deferred deferred = default(Promise.Deferred);
-            Promise promise = default(Promise);
+            var deferred = default(Promise.Deferred);
+            var promise = default(Promise);
 
             int invokedCount = 0;
 
@@ -773,11 +773,11 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeResolvedAndPromiseAwaitedConcurrently_void1()
+        public void DeferredMayBeResolvedAndPromiseAwaitedConcurrently_void1()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise.Deferred deferred = default(Promise.Deferred);
-            Promise promise = default(Promise);
+            var cancelationSource = default(CancelationSource);
+            var deferred = default(Promise.Deferred);
+            var promise = default(Promise);
 
             int invokedCount = 0;
 
@@ -805,10 +805,10 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeResolvedAndPromiseAwaitedConcurrently_T0()
+        public void DeferredMayBeResolvedAndPromiseAwaitedConcurrently_T0()
         {
-            Promise<int>.Deferred deferred = default(Promise<int>.Deferred);
-            Promise<int> promise = default(Promise<int>);
+            var deferred = default(Promise<int>.Deferred);
+            var promise = default(Promise<int>);
 
             int invokedCount = 0;
 
@@ -834,11 +834,11 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeResolvedAndPromiseAwaitedConcurrently_T1()
+        public void DeferredMayBeResolvedAndPromiseAwaitedConcurrently_T1()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise<int>.Deferred deferred = default(Promise<int>.Deferred);
-            Promise<int> promise = default(Promise<int>);
+            var cancelationSource = default(CancelationSource);
+            var deferred = default(Promise<int>.Deferred);
+            var promise = default(Promise<int>);
 
             int invokedCount = 0;
 
@@ -866,10 +866,10 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeRejectedAndPromiseAwaitedConcurrently_void0()
+        public void DeferredMayBeRejectedAndPromiseAwaitedConcurrently_void0()
         {
-            Promise.Deferred deferred = default(Promise.Deferred);
-            Promise promise = default(Promise);
+            var deferred = default(Promise.Deferred);
+            var promise = default(Promise);
 
             int invokedCount = 0;
 
@@ -895,11 +895,11 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeRejectedAndPromiseAwaitedConcurrently_void1()
+        public void DeferredMayBeRejectedAndPromiseAwaitedConcurrently_void1()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise.Deferred deferred = default(Promise.Deferred);
-            Promise promise = default(Promise);
+            var cancelationSource = default(CancelationSource);
+            var deferred = default(Promise.Deferred);
+            var promise = default(Promise);
 
             int invokedCount = 0;
 
@@ -927,10 +927,10 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeRejectedAndPromiseAwaitedConcurrently_T0()
+        public void DeferredMayBeRejectedAndPromiseAwaitedConcurrently_T0()
         {
-            Promise<int>.Deferred deferred = default(Promise<int>.Deferred);
-            Promise<int> promise = default(Promise<int>);
+            var deferred = default(Promise<int>.Deferred);
+            var promise = default(Promise<int>);
 
             int invokedCount = 0;
 
@@ -956,11 +956,11 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeRejectedAndPromiseAwaitedConcurrently_T1()
+        public void DeferredMayBeRejectedAndPromiseAwaitedConcurrently_T1()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise<int>.Deferred deferred = default(Promise<int>.Deferred);
-            Promise<int> promise = default(Promise<int>);
+            var cancelationSource = default(CancelationSource);
+            var deferred = default(Promise<int>.Deferred);
+            var promise = default(Promise<int>);
 
             int invokedCount = 0;
 
@@ -988,11 +988,11 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeCanceledAndPromiseAwaitedConcurrently_void0()
+        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_void0()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise.Deferred deferred = default(Promise.Deferred);
-            Promise promise = default(Promise);
+            var cancelationSource = default(CancelationSource);
+            var deferred = default(Promise.Deferred);
+            var promise = default(Promise);
 
             int invokedCount = 0;
 
@@ -1020,11 +1020,11 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeCanceledAndPromiseAwaitedConcurrently_void1()
+        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_void1()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise.Deferred deferred = default(Promise.Deferred);
-            Promise promise = default(Promise);
+            var cancelationSource = default(CancelationSource);
+            var deferred = default(Promise.Deferred);
+            var promise = default(Promise);
 
             int invokedCount = 0;
 
@@ -1052,10 +1052,10 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeCanceledAndPromiseAwaitedConcurrently_void2()
+        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_void2()
         {
-            Promise.Deferred deferred = default(Promise.Deferred);
-            Promise promise = default(Promise);
+            var deferred = default(Promise.Deferred);
+            var promise = default(Promise);
 
             int invokedCount = 0;
 
@@ -1081,10 +1081,10 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeCanceledAndPromiseAwaitedConcurrently_void3()
+        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_void3()
         {
-            Promise.Deferred deferred = default(Promise.Deferred);
-            Promise promise = default(Promise);
+            var deferred = default(Promise.Deferred);
+            var promise = default(Promise);
 
             int invokedCount = 0;
 
@@ -1110,11 +1110,11 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeCanceledAndPromiseAwaitedConcurrently_T0()
+        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_T0()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise<int>.Deferred deferred = default(Promise<int>.Deferred);
-            Promise<int> promise = default(Promise<int>);
+            var cancelationSource = default(CancelationSource);
+            var deferred = default(Promise<int>.Deferred);
+            var promise = default(Promise<int>);
 
             int invokedCount = 0;
 
@@ -1142,11 +1142,11 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeCanceledAndPromiseAwaitedConcurrently_T1()
+        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_T1()
         {
-            CancelationSource cancelationSource = default(CancelationSource);
-            Promise<int>.Deferred deferred = default(Promise<int>.Deferred);
-            Promise<int> promise = default(Promise<int>);
+            var cancelationSource = default(CancelationSource);
+            var deferred = default(Promise<int>.Deferred);
+            var promise = default(Promise<int>);
 
             int invokedCount = 0;
 
@@ -1174,10 +1174,10 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeCanceledAndPromiseAwaitedConcurrently_T2()
+        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_T2()
         {
-            Promise<int>.Deferred deferred = default(Promise<int>.Deferred);
-            Promise<int> promise = default(Promise<int>);
+            var deferred = default(Promise<int>.Deferred);
+            var promise = default(Promise<int>);
 
             int invokedCount = 0;
 
@@ -1203,10 +1203,10 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void DeferredMayBeBeCanceledAndPromiseAwaitedConcurrently_T3()
+        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_T3()
         {
-            Promise<int>.Deferred deferred = default(Promise<int>.Deferred);
-            Promise<int> promise = default(Promise<int>);
+            var deferred = default(Promise<int>.Deferred);
+            var promise = default(Promise<int>);
 
             int invokedCount = 0;
 

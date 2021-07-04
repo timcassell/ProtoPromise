@@ -11,6 +11,7 @@
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable RECS0001 // Class is declared partial but has only one part
 #pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
@@ -333,7 +334,10 @@ namespace Proto.Promises
 
                 protected override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
                 {
-                    ThrowIfInPool(this);
+                    if (State != Promise.State.Pending)
+                    {
+                        return false;
+                    }
                     lock (_branchLocker)
                     {
                         return _nextBranches.TryRemove(treeHandleable);
@@ -402,7 +406,6 @@ namespace Proto.Promises
             {
                 protected sealed override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
                 {
-                    ThrowIfInPool(this);
                     return Interlocked.CompareExchange(ref _waiter, null, treeHandleable) == treeHandleable;
                 }
 
@@ -503,9 +506,10 @@ namespace Proto.Promises
 
                 internal void HandleSelf(IValueContainer valueContainer)
                 {
-                    State = valueContainer.GetState();
+                    Promise.State state = valueContainer.GetState();
+                    State = state;
                     HandleWaiter(valueContainer);
-                    HandleProgressListener(State);
+                    HandleProgressListener(state);
 
                     MaybeDispose();
                 }
@@ -598,7 +602,6 @@ namespace Proto.Promises
             {
                 protected sealed override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
                 {
-                    ThrowIfInPool(this);
                     return Interlocked.CompareExchange(ref _next, null, treeHandleable) == treeHandleable;
                 }
 
@@ -1337,7 +1340,6 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _owner = null;
-                    // TODO: wait for flag
                     if (_target.Handle(owner, valueContainer, this, _index))
                     {
                         AddToHandleQueueFront(_target);
@@ -1386,7 +1388,6 @@ namespace Proto.Promises
                 internal bool TryRemoveFromOwner()
                 {
                     ThrowIfInPool(this);
-                    // TODO: set flag and wait for it in MakeReady
                     PromiseRef owner = _owner;
                     if (owner == null)
                     {
@@ -1420,8 +1421,7 @@ namespace Proto.Promises
                         {
                             ++newValue._promiseId;
                         }
-                    }
-                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                     return true;
                 }
 
@@ -1442,8 +1442,7 @@ namespace Proto.Promises
                         {
                             ++newValue._deferredId;
                         }
-                    }
-                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                     return true;
                 }
 
@@ -1459,8 +1458,7 @@ namespace Proto.Promises
                         {
                             ++newValue._deferredId;
                         }
-                    }
-                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1485,8 +1483,7 @@ namespace Proto.Promises
                         {
                             ++newValue._retains;
                         }
-                    }
-                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                     return true;
                 }
 
@@ -1512,8 +1509,7 @@ namespace Proto.Promises
                         {
                             ++newValue._retains;
                         }
-                    }
-                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                     return true;
                 }
 
@@ -1530,8 +1526,7 @@ namespace Proto.Promises
                         {
                             --newValue._retains;
                         }
-                    }
-                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                     return newValue._retains == 0;
 #else
                     unchecked
@@ -1556,8 +1551,7 @@ namespace Proto.Promises
                         {
                             newValue._retains += retains;
                         }
-                    }
-                    while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                     return newValue._retains;
                 }
             } // IdRetain

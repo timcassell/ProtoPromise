@@ -891,7 +891,7 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void RaceProgressReportsTheMaximumProgressvoid_4()
+        public void RaceProgressReportsTheMaximumProgress_void4()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();

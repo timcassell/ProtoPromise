@@ -11,6 +11,7 @@
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
@@ -85,8 +86,7 @@ namespace Proto.Promises
                             newValue = initialValue;
                             ProgressFlags setFlags = (ProgressFlags) ((byte) (newValue._progressFlags & ProgressFlags.SecondPrevious) << 1); // Change SecondPrevious flag to SecondSubscribed.
                             newValue._progressFlags |= setFlags;
-                        }
-                        while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
+                        } while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
                         return initialValue._progressFlags;
                     }
 
@@ -98,8 +98,7 @@ namespace Proto.Promises
                             initialValue._intValue = _intValue;
                             newValue = initialValue;
                             newValue._progressFlags |= progressFlags;
-                        }
-                        while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
+                        } while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
                         return initialValue._progressFlags;
                     }
 
@@ -112,8 +111,7 @@ namespace Proto.Promises
                             initialValue._intValue = _intValue;
                             newValue = initialValue;
                             newValue._progressFlags &= unsetFlags;
-                        }
-                        while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
+                        } while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
                         return initialValue._progressFlags;
                     }
 
@@ -135,7 +133,6 @@ namespace Proto.Promises
                 while (true)
                 {
                     current._smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.Subscribing);
-                    Thread.MemoryBarrier(); // Make sure to write ProgressLocked before reading _valueOrPrevious.
                     previous = current.GetPreviousForProgress(ref progressListener);
                     if (!continueLoop | previous == null)
                     {
@@ -184,7 +181,7 @@ namespace Proto.Promises
             }
 
             private uint NextWholeProgress { get { return _smallFields._waitDepthAndProgress.WholePart + 1u; } }
-            protected abstract void UnsubscribeProgressListener(ref IProgressListener progressListener, out PromiseRef previous);
+            protected abstract void UnsubscribeProgressListener(IProgressListener progressListener, out PromiseRef previous);
 
             partial void ResetDepth()
             {
@@ -405,7 +402,7 @@ namespace Proto.Promises
                 void SetInitialProgress(PromiseRef sender, Promise.State state, UnsignedFixed32 progress);
                 void SetProgress(PromiseRef sender, UnsignedFixed32 progress, out PromiseSingleAwait nextRef);
                 void ResolveOrSetProgress(PromiseRef sender, UnsignedFixed32 progress);
-                void CancelProgress(PromiseRef sender);
+                void CancelProgress();
                 void Retain();
             }
 
@@ -459,8 +456,7 @@ namespace Proto.Promises
                         initialValue._intValue = _smallProgressFields._intValue;
                         newValue = initialValue;
                         newValue._handling = value;
-                    }
-                    while (Interlocked.CompareExchange(ref _smallProgressFields._intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
+                    } while (Interlocked.CompareExchange(ref _smallProgressFields._intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
                     return initialValue._handling;
                 }
             }
@@ -555,7 +551,6 @@ namespace Proto.Promises
 
                 void IProgressListener.SetProgress(PromiseRef sender, UnsignedFixed32 progress, out PromiseSingleAwait nextRef)
                 {
-                    // TODO: handle race condition with ResolveOrSetProgress and CancelProgress and Handle, don't Dispose early
                     ThrowIfInPool(this);
                     SetProgress(progress);
                     nextRef = this;
@@ -629,7 +624,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IProgressListener.CancelProgress(PromiseRef sender)
+                void IProgressListener.CancelProgress()
                 {
                     ThrowIfInPool(this);
                     IsSuspended = true;
@@ -694,7 +689,6 @@ namespace Proto.Promises
                 void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
                 {
                     ThrowIfInPool(this);
-                    // TODO: Remove this from the owner's progress listeners.
                     IsCanceled = true;
                 }
 
@@ -713,13 +707,12 @@ namespace Proto.Promises
                     return false;
                 }
 
-                protected override void UnsubscribeProgressListener(ref IProgressListener progressListener, out PromiseRef previous)
+                protected override void UnsubscribeProgressListener(IProgressListener progressListener, out PromiseRef previous)
                 {
-                    ThrowIfInPool(this);
                     if (Interlocked.CompareExchange(ref _progressListener, null, progressListener) == progressListener)
                     {
                         WaitWhileProgressFlags(ProgressFlags.Reporting);
-                        progressListener.CancelProgress(this);
+                        progressListener.CancelProgress();
                     }
                     previous = null;
                 }
@@ -771,7 +764,7 @@ namespace Proto.Promises
                     if (progressListener != null)
                     {
                         WaitWhileProgressFlags(ProgressFlags.Reporting);
-                        progressListener.CancelProgress(this);
+                        progressListener.CancelProgress();
                     }
                 }
 
@@ -787,13 +780,12 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void UnsubscribeProgressListener(ref IProgressListener progressListener, out PromiseRef previous)
+                protected override void UnsubscribeProgressListener(IProgressListener progressListener, out PromiseRef previous)
                 {
-                    ThrowIfInPool(this);
                     if (Interlocked.CompareExchange(ref _progressListener, null, progressListener) == progressListener)
                     {
                         WaitWhileProgressFlags(ProgressFlags.Reporting);
-                        progressListener.CancelProgress(this);
+                        progressListener.CancelProgress();
                         previous = _valueOrPrevious as PromiseRef;
                     }
                     else
@@ -901,7 +893,7 @@ namespace Proto.Promises
                     }
                     while (progressListeners.IsNotEmpty)
                     {
-                        progressListeners.Pop().CancelProgress(this);
+                        progressListeners.Pop().CancelProgress();
                     }
                 }
 
@@ -917,17 +909,19 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void UnsubscribeProgressListener(ref IProgressListener progressListener, out PromiseRef previous)
+                protected override void UnsubscribeProgressListener(IProgressListener progressListener, out PromiseRef previous)
                 {
-                    ThrowIfInPool(this);
-                    bool removed;
-                    lock (_progressCollectionLocker)
+                    if (State == Promise.State.Pending)
                     {
-                        removed = _progressListeners.TryRemove(progressListener);
-                    }
-                    if (removed)
-                    {
-                        progressListener.CancelProgress(this);
+                        bool removed;
+                        lock (_progressCollectionLocker)
+                        {
+                            removed = _progressListeners.TryRemove(progressListener);
+                        }
+                        if (removed)
+                        {
+                            progressListener.CancelProgress();
+                        }
                     }
                     previous = null;
                 }
@@ -942,7 +936,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IProgressListener.CancelProgress(PromiseRef sender)
+                void IProgressListener.CancelProgress()
                 {
                     MaybeDispose();
                 }
@@ -1036,14 +1030,14 @@ namespace Proto.Promises
                     if (progressListener != null)
                     {
                         WaitWhileProgressFlags(ProgressFlags.Reporting);
-                        progressListener.CancelProgress(this);
+                        progressListener.CancelProgress();
 
-                        // TODO: Remove progressListener from chain.
-                        //PromiseRef promise = previous as PromiseRef;
-                        //while (promise != null)
-                        //{
-                        //    promise.UnsubscribeProgressListener(ref progressListener, out promise);
-                        //}
+                        // Remove progressListener from chain.
+                        PromiseRef promise = previous as PromiseRef;
+                        while (promise != null)
+                        {
+                            promise.UnsubscribeProgressListener(progressListener, out promise);
+                        }
                     }
                 }
             }
@@ -1209,7 +1203,7 @@ namespace Proto.Promises
                     MaybeDispose();
                 }
 
-                void IProgressListener.CancelProgress(PromiseRef sender)
+                void IProgressListener.CancelProgress()
                 {
                     MaybeDispose();
                 }
@@ -1235,7 +1229,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (state == Promise.State.Pending)
                     {
-                        _smallFields._waitDepthAndProgress = progress;
+                        _currentProgress = progress;
                         _target.IncrementProgress(progress.ToUInt32(), progress, _owner._smallFields._waitDepthAndProgress);
                     }
                     else
@@ -1247,7 +1241,7 @@ namespace Proto.Promises
                 void IProgressListener.SetProgress(PromiseRef sender, UnsignedFixed32 progress, out PromiseSingleAwait nextRef)
                 {
                     ThrowIfInPool(this);
-                    uint dif = _smallFields._waitDepthAndProgress.InterlockedSetAndGetDifference(progress);
+                    uint dif = _currentProgress.InterlockedSetAndGetDifference(progress);
                     _target.IncrementProgress(dif, progress, _owner._smallFields._waitDepthAndProgress);
                     nextRef = null;
                 }
@@ -1257,7 +1251,7 @@ namespace Proto.Promises
                     Release();
                 }
 
-                void IProgressListener.CancelProgress(PromiseRef sender)
+                void IProgressListener.CancelProgress()
                 {
                     Release();
                 }
@@ -1271,26 +1265,22 @@ namespace Proto.Promises
                 internal uint GetProgressDifferenceToCompletion(PromiseRef owner)
                 {
                     ThrowIfInPool(this);
-                    return owner._smallFields._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32() - _smallFields._waitDepthAndProgress.ToUInt32();
+                    return owner._smallFields._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32() - _currentProgress.ToUInt32();
                 }
 
                 [MethodImpl(InlineOption)]
                 partial void ResetProgress()
                 {
-                    _smallFields._waitDepthAndProgress = default(UnsignedFixed32);
+                    _currentProgress = default(UnsignedFixed32);
                 }
 
                 [MethodImpl(InlineOption)]
                 partial void TryUnsubscribeProgressAndRelease(PromiseRef owner)
                 {
-                    _smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.Reporting);
-                    
-                    // TODO: Remove this from the owner's progress listeners.
-                    //IProgressListener progressListener = this;
-                    //while (owner != null)
-                    //{
-                    //    owner.UnsubscribeProgressListener(ref progressListener, out owner);
-                    //}
+                    do
+                    {
+                        owner.UnsubscribeProgressListener(this, out owner);
+                    } while (owner != null);
                 }
             } // PromisePassThrough
 #endif

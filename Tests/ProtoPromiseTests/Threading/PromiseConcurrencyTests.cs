@@ -204,11 +204,11 @@ namespace Proto.Promises.Tests.Threading
         {
             int invokedCount = 0;
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise;
+            var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(
-                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); })
+                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Forget()
             );
 
             promise.Forget();
@@ -222,11 +222,11 @@ namespace Proto.Promises.Tests.Threading
         public void PromiseProgressMayBeCalledConcurrently_Resolved_void()
         {
             int invokedCount = 0;
-            Promise promise = Promise.Resolved();
+            Promise promise = Promise.Resolved().Preserve();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(
-                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); })
+                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Forget()
             );
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();
@@ -238,11 +238,11 @@ namespace Proto.Promises.Tests.Threading
         {
             int invokedCount = 0;
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise;
+            var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(
-                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); })
+                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Forget()
             );
 
             promise.Forget();
@@ -256,11 +256,11 @@ namespace Proto.Promises.Tests.Threading
         public void PromiseProgressMayBeCalledConcurrently_Resolved_T()
         {
             int invokedCount = 0;
-            Promise<int> promise = Promise.Resolved(1);
+            Promise<int> promise = Promise.Resolved(1).Preserve();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(
-                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); })
+                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Forget()
             );
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();

@@ -12,6 +12,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 using Proto.Utils;
 using System;
@@ -108,7 +109,7 @@ namespace Proto.Promises
                 [FieldOffset(0)]
                 private long _longValue;
 
-                [MethodImpl(Internal.InlineOption)]
+                [MethodImpl(InlineOption)]
                 internal IdRetain(short initialId)
                 {
                     _longValue = 0;
@@ -138,7 +139,7 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
                     [FieldOffset(3)]
                     volatile private ProgressFlags _progressFlags;
-                    // int value with [FieldOffset(0)] allows us to use Interlocked to set the progress flags without consuming more memory than necessary.
+                    // int value with [FieldOffset(0)] allows us to use Interlocked to set the flags without consuming more memory than necessary.
                     [FieldOffset(0)]
                     volatile private int _intValue;
 #endif
@@ -176,23 +177,6 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-#endif
-            }
-
-            partial class PromisePassThrough : ITreeHandleable, ILinked<PromisePassThrough>, IProgressListener
-            {
-                volatile private PromiseRef _owner;
-                private IMultiTreeHandleable _target;
-                private int _index;
-                private int _retainCounter;
-
-                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
-                PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
-
-#if PROMISE_PROGRESS
-                IProgressListener ILinked<IProgressListener>.Next { get; set; }
-
-                private SmallFields _smallFields;
 #endif
             }
 
@@ -364,6 +348,24 @@ namespace Proto.Promises
 #endif
             }
 
+            partial class PromisePassThrough : ITreeHandleable, ILinked<PromisePassThrough>, IProgressListener
+            {
+                volatile private PromiseRef _owner;
+                private IMultiTreeHandleable _target;
+                private int _index;
+                private int _retainCounter;
+
+                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+                PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
+
+#if PROMISE_PROGRESS
+                IProgressListener ILinked<IProgressListener>.Next { get; set; }
+
+                internal UnsignedFixed32 _currentProgress;
+#endif
+            }
+            #endregion
+
 #if PROMISE_PROGRESS
             internal partial class PromiseProgressBase : PromiseBranch
             {
@@ -396,7 +398,6 @@ namespace Proto.Promises
                 private TProgress _progress;
             }
 #endif
-            #endregion
         } // PromiseRef
     } // Internal
 }

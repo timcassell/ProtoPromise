@@ -170,6 +170,7 @@ namespace Proto.Utils
 #endif
     public struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
     {
+        // TODO: Use a sentinel object with a circular reference to make insertions/removals branchless.
         private T _first;
         private T _last;
 
