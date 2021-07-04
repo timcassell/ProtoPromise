@@ -17,7 +17,7 @@ namespace Proto.Promises
     {
         internal static event Action OnClearPool;
 
-        public static void ClearPool()
+        internal static void ClearPool()
         {
             Action temp = OnClearPool;
             if (temp != null)
@@ -33,6 +33,7 @@ namespace Proto.Promises
         internal static partial class ObjectPool<TLinked> where TLinked : class, ILinked<TLinked>
         {
             // TODO: This is the bottleneck across the entire library for multithreading, investigate using ConcurrentBag (not safe in Unity's WebGL).
+            // It may be worthwhile to add InterlockedTryPop and InterlockedPush to ValueLinkedStack<T> instead of using a lock or ConcurrentBag.
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
@@ -43,8 +44,8 @@ namespace Proto.Promises
                 // No array allocations or linked list node allocations are necessary (the objects have links built-in through the ILinked<> interface).
                 // Even the pool itself doesn't require a class instance (that would be necessary with a typed dictionary).
 
-                public static ValueLinkedStack<TLinked> pool; // Must not be readonly.
-                public static readonly object locker = new object(); // Simple lock for now.
+                internal static ValueLinkedStack<TLinked> pool; // Must not be readonly.
+                internal static readonly object locker = new object(); // Simple lock for now.
 
                 // The downside to static pools instead of a Type dictionary is adding each type's clear function to the OnClearPool delegate consumes memory and is potentially more expensive than clearing a dictionary.
                 // This cost could be removed if Promise.Config.ObjectPoolingEnabled is made constant and set to false, and we add a check before accessing the pool.

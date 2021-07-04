@@ -238,11 +238,7 @@ namespace Proto.Promises
                 {
                     var progress = CurrentProgress();
                     _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
-                    IProgressListener progressListener = _progressListener;
-                    if (progressListener != null)
-                    {
-                        progressListener.SetProgress(this, progress);
-                    }
+                    ReportProgress(progress);
                     MaybeDispose();
                 }
             }

@@ -371,7 +371,7 @@ namespace Proto.Promises
                 private void IncrementProgress(uint amount)
                 {
                     // TODO: thread synchronization.
-                    _unscaledProgress.Increment(amount);
+                    _unscaledProgress.InterlockedIncrement(amount);
                     if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
                         InterlockedRetainDisregardId();
@@ -383,11 +383,7 @@ namespace Proto.Promises
                 {
                     var progress = CurrentProgress();
                     _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
-                    IProgressListener progressListener = _progressListener;
-                    if (progressListener != null)
-                    {
-                        progressListener.SetProgress(this, progress);
-                    }
+                    ReportProgress(progress);
                     MaybeDispose();
                 }
             }

@@ -192,7 +192,7 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
 
-                private UnsignedFixed32 _currentProgress;
+                private SmallFields _smallFields;
 #endif
             }
 
@@ -365,13 +365,25 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            internal class PromiseProgressBase : PromiseBranch
+            internal partial class PromiseProgressBase : PromiseBranch
             {
-                protected UnsignedFixed32 _current;
-                volatile protected bool _handling;
-                volatile internal bool _suspended;
-                volatile protected bool _canceled;
-                volatile protected bool _canceledFromToken;
+                [StructLayout(LayoutKind.Explicit)]
+                private struct SmallProgressFields
+                {
+                    [FieldOffset(0)]
+                    volatile internal bool _handling;
+                    [FieldOffset(1)]
+                    volatile internal bool _suspended;
+                    [FieldOffset(2)]
+                    volatile internal bool _complete;
+                    [FieldOffset(3)]
+                    volatile internal bool _canceled;
+                    // int value with [FieldOffset(0)] allows us to use Interlocked to set the flags without consuming more memory than necessary.
+                    [FieldOffset(0)]
+                    volatile internal int _intValue;
+                }
+
+                private SmallProgressFields _smallProgressFields;
                 protected CancelationRegistration _cancelationRegistration;
             }
 

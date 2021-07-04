@@ -450,6 +450,7 @@ namespace Proto.Promises
             }
 #endif
 
+            // TODO: check typeof(T).IsValueType == false and use the PromiseRef as the value container for reference types.
             public static ResolveContainer<T> GetOrCreate(ref T value, int retainCount)
             {
                 var container = ObjectPool<ResolveContainer<T>>.GetOrCreate<ResolveContainer<T>, Creator>();

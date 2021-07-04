@@ -142,7 +142,7 @@ namespace Proto.Promises
                 valueContainer.Retain();
                 _valueOrPrevious = valueContainer;
                 AddToHandleQueueFront(this);
-                WaitForProgressRetain();
+                WaitWhileProgressFlags(ProgressFlags.Subscribing);
             }
 
             void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -152,7 +152,7 @@ namespace Proto.Promises
                 valueContainer.Retain();
                 _valueOrPrevious = valueContainer;
                 AddToHandleQueueBack(this);
-                WaitForProgressRetain();
+                WaitWhileProgressFlags(ProgressFlags.Subscribing);
             }
 
             protected void Reset()
@@ -333,6 +333,7 @@ namespace Proto.Promises
 
                 protected override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
                 {
+                    ThrowIfInPool(this);
                     lock (_branchLocker)
                     {
                         return _nextBranches.TryRemove(treeHandleable);
@@ -401,6 +402,7 @@ namespace Proto.Promises
             {
                 protected sealed override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
                 {
+                    ThrowIfInPool(this);
                     return Interlocked.CompareExchange(ref _waiter, null, treeHandleable) == treeHandleable;
                 }
 
@@ -596,6 +598,7 @@ namespace Proto.Promises
             {
                 protected sealed override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
                 {
+                    ThrowIfInPool(this);
                     return Interlocked.CompareExchange(ref _next, null, treeHandleable) == treeHandleable;
                 }
 
@@ -1325,6 +1328,8 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _target = target;
+                    // Unfortunately, we have to eagerly subscribe progress. Lazy algorithm would be much more expensive with thread safety, requiring allocations.
+                    // But it's not so bad, because it doesn't allocate any memory (just uses CPU cycles to set it up).
                     _owner.AddWaiterWithProgress(this);
                 }
 
@@ -1332,6 +1337,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _owner = null;
+                    // TODO: wait for flag
                     if (_target.Handle(owner, valueContainer, this, _index))
                     {
                         AddToHandleQueueFront(_target);
@@ -1380,6 +1386,7 @@ namespace Proto.Promises
                 internal bool TryRemoveFromOwner()
                 {
                     ThrowIfInPool(this);
+                    // TODO: set flag and wait for it in MakeReady
                     PromiseRef owner = _owner;
                     if (owner == null)
                     {

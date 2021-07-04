@@ -267,7 +267,7 @@ namespace Proto.Promises
                         owner.SuppressRejection = true;
                         AddToHandleQueueFront(this);
                     }
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -277,7 +277,7 @@ namespace Proto.Promises
                         owner.SuppressRejection = true;
                         AddToHandleQueueBack(this);
                     }
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
@@ -347,12 +347,12 @@ namespace Proto.Promises
                     }
                     else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        WaitForProgressRetain();
+                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
                         return;
                     }
                     owner.SuppressRejection = true;
                     AddToHandleQueueFront(this);
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -365,12 +365,12 @@ namespace Proto.Promises
                     }
                     else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        WaitForProgressRetain();
+                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
                         return;
                     }
                     owner.SuppressRejection = true;
                     AddToHandleQueueBack(this);
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
@@ -448,7 +448,7 @@ namespace Proto.Promises
                         owner.SuppressRejection = true;
                         AddToHandleQueueFront(this);
                     }
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -458,7 +458,7 @@ namespace Proto.Promises
                         owner.SuppressRejection = true;
                         AddToHandleQueueBack(this);
                     }
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
@@ -538,12 +538,12 @@ namespace Proto.Promises
                     }
                     else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        WaitForProgressRetain();
+                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
                         return;
                     }
                     owner.SuppressRejection = true;
                     AddToHandleQueueFront(this);
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -556,12 +556,12 @@ namespace Proto.Promises
                     }
                     else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        WaitForProgressRetain();
+                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
                         return;
                     }
                     owner.SuppressRejection = true;
                     AddToHandleQueueBack(this);
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
@@ -643,7 +643,7 @@ namespace Proto.Promises
                         owner.SuppressRejection = true;
                         AddToHandleQueueFront(this);
                     }
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -653,7 +653,7 @@ namespace Proto.Promises
                         owner.SuppressRejection = true;
                         AddToHandleQueueBack(this);
                     }
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
@@ -714,12 +714,12 @@ namespace Proto.Promises
                     }
                     else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        WaitForProgressRetain();
+                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
                         return;
                     }
                     owner.SuppressRejection = true;
                     AddToHandleQueueFront(this);
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -732,12 +732,12 @@ namespace Proto.Promises
                     }
                     else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        WaitForProgressRetain();
+                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
                         return;
                     }
                     owner.SuppressRejection = true;
                     AddToHandleQueueBack(this);
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
@@ -802,7 +802,7 @@ namespace Proto.Promises
                         owner.SuppressRejection = true;
                         AddToHandleQueueFront(this);
                     }
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
@@ -812,7 +812,7 @@ namespace Proto.Promises
                         owner.SuppressRejection = true;
                         AddToHandleQueueBack(this);
                     }
-                    WaitForProgressRetain();
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 public override void Handle()
