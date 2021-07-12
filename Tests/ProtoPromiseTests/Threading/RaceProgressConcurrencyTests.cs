@@ -1,4 +1,11 @@
-﻿#if CSHARP_7_OR_LATER
+﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+#endif
+
+#if CSHARP_7_OR_LATER
+#if PROMISE_PROGRESS
 
 using NUnit.Framework;
 using System.Collections.Generic;
@@ -6,7 +13,7 @@ using System.Linq;
 
 namespace Proto.Promises.Tests.Threading
 {
-    public class RaceConcurrencyTests
+    public class RaceProgressConcurrencyTests
     {
         const string rejectValue = "Fail";
 
@@ -25,15 +32,11 @@ namespace Proto.Promises.Tests.Threading
         [Theory]
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToRaceConcurrently_void0(CompleteType completeType0, CompleteType completeType1)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var cancelationSource0 = default(CancelationSource);
             var cancelationSource1 = default(CancelationSource);
+            var racePromise = default(Promise);
             bool continueInvoked = false;
 
             var completer0 = TestHelper.GetCompleterVoid(completeType0, rejectValue);
@@ -46,6 +49,7 @@ namespace Proto.Promises.Tests.Threading
                 {
                     deferred0 = TestHelper.GetNewDeferredVoid(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredVoid(completeType1, out cancelationSource1);
+                    racePromise = Promise.Race(deferred0.Promise, deferred1.Promise);
                     continueInvoked = false;
                 },
                 // Teardown
@@ -59,15 +63,16 @@ namespace Proto.Promises.Tests.Threading
                 // Parallel actions
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
+                () => deferred0.TryReportProgress(0.5f),
+                () => deferred1.TryReportProgress(0.5f),
                 () =>
                 {
-                    Promise.Race(deferred0.Promise, deferred1.Promise)
+                    racePromise
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 }
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -76,17 +81,13 @@ namespace Proto.Promises.Tests.Threading
             [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var deferred2 = default(Promise.Deferred);
             var cancelationSource0 = default(CancelationSource);
             var cancelationSource1 = default(CancelationSource);
             var cancelationSource2 = default(CancelationSource);
+            var racePromise = default(Promise);
             bool continueInvoked = false;
 
             var completer0 = TestHelper.GetCompleterVoid(completeType0, rejectValue);
@@ -101,6 +102,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred0 = TestHelper.GetNewDeferredVoid(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredVoid(completeType1, out cancelationSource1);
                     deferred2 = TestHelper.GetNewDeferredVoid(completeType2, out cancelationSource2);
+                    racePromise = Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise);
                     continueInvoked = false;
                 },
                 // Teardown
@@ -116,15 +118,17 @@ namespace Proto.Promises.Tests.Threading
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
+                () => deferred0.TryReportProgress(0.5f),
+                () => deferred1.TryReportProgress(0.5f),
+                () => deferred2.TryReportProgress(0.5f),
                 () =>
                 {
-                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
+                    racePromise
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 }
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -134,11 +138,6 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var deferred2 = default(Promise.Deferred);
@@ -147,6 +146,7 @@ namespace Proto.Promises.Tests.Threading
             var cancelationSource1 = default(CancelationSource);
             var cancelationSource2 = default(CancelationSource);
             var cancelationSource3 = default(CancelationSource);
+            var racePromise = default(Promise);
             bool continueInvoked = false;
 
             var completer0 = TestHelper.GetCompleterVoid(completeType0, rejectValue);
@@ -163,6 +163,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred1 = TestHelper.GetNewDeferredVoid(completeType1, out cancelationSource1);
                     deferred2 = TestHelper.GetNewDeferredVoid(completeType2, out cancelationSource2);
                     deferred3 = TestHelper.GetNewDeferredVoid(completeType3, out cancelationSource3);
+                    racePromise = Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise);
                     continueInvoked = false;
                 },
                 // Teardown
@@ -180,15 +181,18 @@ namespace Proto.Promises.Tests.Threading
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
                 () => completer3(deferred3, cancelationSource3),
+                () => deferred0.TryReportProgress(0.5f),
+                () => deferred1.TryReportProgress(0.5f),
+                () => deferred2.TryReportProgress(0.5f),
+                () => deferred3.TryReportProgress(0.5f),
                 () =>
                 {
-                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                    racePromise
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 }
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -198,17 +202,13 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             Promise.Deferred[] deferreds = null;
             IEnumerator<Promise> promises = null;
             var cancelationSource0 = default(CancelationSource);
             var cancelationSource1 = default(CancelationSource);
             var cancelationSource2 = default(CancelationSource);
             var cancelationSource3 = default(CancelationSource);
+            var racePromise = default(Promise);
             bool continueInvoked = false;
 
             var completer0 = TestHelper.GetCompleterVoid(completeType0, rejectValue);
@@ -229,6 +229,7 @@ namespace Proto.Promises.Tests.Threading
                         TestHelper.GetNewDeferredVoid(completeType3, out cancelationSource3)
                     };
                     promises = deferreds.Select(d => d.Promise).GetEnumerator();
+                    racePromise = Promise.Race(promises);
                     continueInvoked = false;
                 },
                 // Teardown
@@ -246,29 +247,28 @@ namespace Proto.Promises.Tests.Threading
                 () => completer1(deferreds[1], cancelationSource1),
                 () => completer2(deferreds[2], cancelationSource2),
                 () => completer3(deferreds[3], cancelationSource3),
+                () => deferreds[0].TryReportProgress(0.5f),
+                () => deferreds[1].TryReportProgress(0.5f),
+                () => deferreds[2].TryReportProgress(0.5f),
+                () => deferreds[3].TryReportProgress(0.5f),
                 () =>
                 {
-                    Promise.Race(promises)
+                    racePromise
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 }
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Theory]
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToRaceConcurrently_T0(CompleteType completeType0, CompleteType completeType1)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var cancelationSource0 = default(CancelationSource);
             var cancelationSource1 = default(CancelationSource);
+            var racePromise = default(Promise<int>);
             bool continueInvoked = false;
 
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
@@ -281,6 +281,7 @@ namespace Proto.Promises.Tests.Threading
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
+                    racePromise = Promise.Race(deferred0.Promise, deferred1.Promise);
                     continueInvoked = false;
                 },
                 // Teardown
@@ -294,15 +295,16 @@ namespace Proto.Promises.Tests.Threading
                 // Parallel actions
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
+                () => deferred0.TryReportProgress(0.5f),
+                () => deferred1.TryReportProgress(0.5f),
                 () =>
                 {
-                    Promise.Race(deferred0.Promise, deferred1.Promise)
+                    racePromise
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 }
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -311,17 +313,13 @@ namespace Proto.Promises.Tests.Threading
             [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var deferred2 = default(Promise<int>.Deferred);
             var cancelationSource0 = default(CancelationSource);
             var cancelationSource1 = default(CancelationSource);
             var cancelationSource2 = default(CancelationSource);
+            var racePromise = default(Promise<int>);
             bool continueInvoked = false;
 
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
@@ -336,6 +334,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
                     deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
+                    racePromise = Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise);
                     continueInvoked = false;
                 },
                 // Teardown
@@ -351,15 +350,17 @@ namespace Proto.Promises.Tests.Threading
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
+                () => deferred0.TryReportProgress(0.5f),
+                () => deferred1.TryReportProgress(0.5f),
+                () => deferred2.TryReportProgress(0.5f),
                 () =>
                 {
-                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
+                    racePromise
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 }
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -369,11 +370,6 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var deferred2 = default(Promise<int>.Deferred);
@@ -382,6 +378,7 @@ namespace Proto.Promises.Tests.Threading
             var cancelationSource1 = default(CancelationSource);
             var cancelationSource2 = default(CancelationSource);
             var cancelationSource3 = default(CancelationSource);
+            var racePromise = default(Promise<int>);
             bool continueInvoked = false;
 
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
@@ -398,6 +395,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
                     deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
                     deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
+                    racePromise = Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise);
                     continueInvoked = false;
                 },
                 // Teardown
@@ -415,15 +413,18 @@ namespace Proto.Promises.Tests.Threading
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
                 () => completer3(deferred3, cancelationSource3),
+                () => deferred0.TryReportProgress(0.5f),
+                () => deferred1.TryReportProgress(0.5f),
+                () => deferred2.TryReportProgress(0.5f),
+                () => deferred3.TryReportProgress(0.5f),
                 () =>
                 {
-                    Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                    racePromise
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 }
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -433,17 +434,12 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             Promise<int>.Deferred[] deferreds = null;
-            IEnumerator<Promise<int>> promises = null;
             var cancelationSource0 = default(CancelationSource);
             var cancelationSource1 = default(CancelationSource);
             var cancelationSource2 = default(CancelationSource);
             var cancelationSource3 = default(CancelationSource);
+            var racePromise = default(Promise<int>);
             bool continueInvoked = false;
 
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
@@ -463,7 +459,7 @@ namespace Proto.Promises.Tests.Threading
                         TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2),
                         TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3)
                     };
-                    promises = deferreds.Select(d => d.Promise).GetEnumerator();
+                    racePromise = Promise<int>.Race(deferreds.Select(d => d.Promise).GetEnumerator());
                     continueInvoked = false;
                 },
                 // Teardown
@@ -481,25 +477,23 @@ namespace Proto.Promises.Tests.Threading
                 () => completer1(deferreds[1], cancelationSource1),
                 () => completer2(deferreds[2], cancelationSource2),
                 () => completer3(deferreds[3], cancelationSource3),
+                () => deferreds[0].TryReportProgress(0.5f),
+                () => deferreds[1].TryReportProgress(0.5f),
+                () => deferreds[2].TryReportProgress(0.5f),
+                () => deferreds[3].TryReportProgress(0.5f),
                 () =>
                 {
-                    Promise<int>.Race(promises)
+                    racePromise
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 }
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Theory]
         public void DeferredsMayBeCompletedConcurrentlyAfterTheirPromisesArePassedToRace_void0(CompleteType completeType0, CompleteType completeType1)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var cancelationSource0 = default(CancelationSource);
@@ -518,6 +512,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred1 = TestHelper.GetNewDeferredVoid(completeType1, out cancelationSource1);
                     continueInvoked = false;
                     Promise.Race(deferred0.Promise, deferred1.Promise)
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 },
@@ -531,10 +526,10 @@ namespace Proto.Promises.Tests.Threading
                 },
                 // Parallel actions
                 () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1)
+                () => completer1(deferred1, cancelationSource1),
+                () => deferred0.TryReportProgress(0.5f),
+                () => deferred1.TryReportProgress(0.5f)
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -543,11 +538,6 @@ namespace Proto.Promises.Tests.Threading
             [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var deferred2 = default(Promise.Deferred);
@@ -570,6 +560,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred2 = TestHelper.GetNewDeferredVoid(completeType2, out cancelationSource2);
                     continueInvoked = false;
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 },
@@ -585,10 +576,11 @@ namespace Proto.Promises.Tests.Threading
                 // Parallel actions
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2)
+                () => completer2(deferred2, cancelationSource2),
+                () => deferred0.TryReportProgress(0.5f),
+                () => deferred1.TryReportProgress(0.5f),
+                () => deferred2.TryReportProgress(0.5f)
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -598,11 +590,6 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var deferred2 = default(Promise.Deferred);
@@ -629,6 +616,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred3 = TestHelper.GetNewDeferredVoid(completeType3, out cancelationSource3);
                     continueInvoked = false;
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 },
@@ -646,10 +634,12 @@ namespace Proto.Promises.Tests.Threading
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
-                () => completer3(deferred3, cancelationSource3)
+                () => completer3(deferred3, cancelationSource3),
+                () => deferred0.TryReportProgress(0.5f),
+                () => deferred1.TryReportProgress(0.5f),
+                () => deferred2.TryReportProgress(0.5f),
+                () => deferred3.TryReportProgress(0.5f)
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -659,11 +649,6 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             Promise.Deferred[] deferreds = null;
             var cancelationSource0 = default(CancelationSource);
             var cancelationSource1 = default(CancelationSource);
@@ -690,6 +675,7 @@ namespace Proto.Promises.Tests.Threading
                     };
                     continueInvoked = false;
                     Promise.Race(deferreds.Select(d => d.Promise).GetEnumerator())
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 },
@@ -707,20 +693,17 @@ namespace Proto.Promises.Tests.Threading
                 () => completer0(deferreds[0], cancelationSource0),
                 () => completer1(deferreds[1], cancelationSource1),
                 () => completer2(deferreds[2], cancelationSource2),
-                () => completer3(deferreds[3], cancelationSource3)
+                () => completer3(deferreds[3], cancelationSource3),
+                () => deferreds[0].TryReportProgress(0.5f),
+                () => deferreds[1].TryReportProgress(0.5f),
+                () => deferreds[2].TryReportProgress(0.5f),
+                () => deferreds[3].TryReportProgress(0.5f)
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Theory]
         public void DeferredsMayBeCompletedConcurrentlyAfterTheirPromisesArePassedToRace_T0(CompleteType completeType0, CompleteType completeType1)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var cancelationSource0 = default(CancelationSource);
@@ -739,6 +722,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
                     continueInvoked = false;
                     Promise.Race(deferred0.Promise, deferred1.Promise)
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 },
@@ -752,10 +736,10 @@ namespace Proto.Promises.Tests.Threading
                 },
                 // Parallel actions
                 () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1)
+                () => completer1(deferred1, cancelationSource1),
+                () => deferred0.TryReportProgress(0.5f),
+                () => deferred1.TryReportProgress(0.5f)
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -764,11 +748,6 @@ namespace Proto.Promises.Tests.Threading
             [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var deferred2 = default(Promise<int>.Deferred);
@@ -791,6 +770,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
                     continueInvoked = false;
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise)
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 },
@@ -806,10 +786,11 @@ namespace Proto.Promises.Tests.Threading
                 // Parallel actions
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2)
+                () => completer2(deferred2, cancelationSource2),
+                () => deferred0.TryReportProgress(0.5f),
+                () => deferred1.TryReportProgress(0.5f),
+                () => deferred2.TryReportProgress(0.5f)
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -819,11 +800,6 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var deferred2 = default(Promise<int>.Deferred);
@@ -850,6 +826,7 @@ namespace Proto.Promises.Tests.Threading
                     deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
                     continueInvoked = false;
                     Promise.Race(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 },
@@ -867,10 +844,12 @@ namespace Proto.Promises.Tests.Threading
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
-                () => completer3(deferred3, cancelationSource3)
+                () => completer3(deferred3, cancelationSource3),
+                () => deferred0.TryReportProgress(0.5f),
+                () => deferred1.TryReportProgress(0.5f),
+                () => deferred2.TryReportProgress(0.5f),
+                () => deferred3.TryReportProgress(0.5f)
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -880,11 +859,6 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
-            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            var currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
-
             Promise<int>.Deferred[] deferreds = null;
             var cancelationSource0 = default(CancelationSource);
             var cancelationSource1 = default(CancelationSource);
@@ -911,6 +885,7 @@ namespace Proto.Promises.Tests.Threading
                     };
                     continueInvoked = false;
                     Promise<int>.Race(deferreds.Select(d => d.Promise).GetEnumerator())
+                        .Progress(v => { }) // Callback might not be invoked if the promise is canceled/rejected.
                         .ContinueWith(r => continueInvoked = true)
                         .Forget();
                 },
@@ -928,12 +903,15 @@ namespace Proto.Promises.Tests.Threading
                 () => completer0(deferreds[0], cancelationSource0),
                 () => completer1(deferreds[1], cancelationSource1),
                 () => completer2(deferreds[2], cancelationSource2),
-                () => completer3(deferreds[3], cancelationSource3)
+                () => completer3(deferreds[3], cancelationSource3),
+                () => deferreds[0].TryReportProgress(0.5f),
+                () => deferreds[1].TryReportProgress(0.5f),
+                () => deferreds[2].TryReportProgress(0.5f),
+                () => deferreds[3].TryReportProgress(0.5f)
             );
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
     }
 }
 
-#endif
+#endif // PROMISE_PROGRESS
+#endif // CSHARP_7_OR_LATER

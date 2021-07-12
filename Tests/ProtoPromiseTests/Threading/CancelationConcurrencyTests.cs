@@ -1,5 +1,7 @@
 ﻿#if CSHARP_7_OR_LATER
 
+#pragma warning disable IDE0018 // Inline variable declaration
+
 using NUnit.Framework;
 using System;
 using System.Collections.Concurrent;

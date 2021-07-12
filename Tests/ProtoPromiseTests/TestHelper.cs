@@ -12,6 +12,14 @@ using System.Threading;
 
 namespace Proto.Promises.Tests
 {
+    public enum CompleteType
+    {
+        Resolve,
+        Reject,
+        Cancel,
+        CancelFromToken
+    }
+
     public delegate void TestAction<T>(ref T value);
 
     // These help test all Then/Catch/ContinueWith methods at once.
@@ -36,6 +44,55 @@ namespace Proto.Promises.Tests
             GC.Collect();
             GC.WaitForPendingFinalizers();
             Promise.Manager.HandleCompletesAndProgress();
+        }
+
+        public static Action<Promise.Deferred, CancelationSource> GetCompleterVoid(CompleteType completeType, string rejectValue)
+        {
+            return completeType == CompleteType.Resolve
+                ? (deferred, _) => deferred.Resolve()
+                : completeType == CompleteType.Reject
+                ? (deferred, _) => deferred.Reject(rejectValue)
+                : completeType == CompleteType.Cancel
+                ? (deferred, _) => deferred.Cancel()
+                : (Action<Promise.Deferred, CancelationSource>) ((_, cancelationSource) => cancelationSource.Cancel());
+        }
+
+        public static Action<Promise<T>.Deferred, CancelationSource> GetCompleterT<T>(CompleteType completeType, T resolveValue, string rejectValue)
+        {
+            switch (completeType)
+            {
+                case CompleteType.Resolve:
+                    return (deferred, _) => deferred.Resolve(resolveValue);
+                case CompleteType.Reject:
+                    return (deferred, _) => deferred.Reject(rejectValue);
+                case CompleteType.Cancel:
+                    return (deferred, _) => deferred.Cancel();
+                case CompleteType.CancelFromToken:
+                    return (_, cancelationSource) => cancelationSource.Cancel();
+            }
+            throw new Exception();
+        }
+
+        public static Promise.Deferred GetNewDeferredVoid(CompleteType completeType, out CancelationSource cancelationSource)
+        {
+            if (completeType == CompleteType.CancelFromToken)
+            {
+                cancelationSource = CancelationSource.New();
+                return Promise.NewDeferred(cancelationSource.Token);
+            }
+            cancelationSource = default(CancelationSource);
+            return Promise.NewDeferred();
+        }
+
+        public static Promise<T>.Deferred GetNewDeferredT<T>(CompleteType completeType, out CancelationSource cancelationSource)
+        {
+            if (completeType == CompleteType.CancelFromToken)
+            {
+                cancelationSource = CancelationSource.New();
+                return Promise<T>.NewDeferred(cancelationSource.Token);
+            }
+            cancelationSource = default(CancelationSource);
+            return Promise<T>.NewDeferred();
         }
 
         public static Promise ThenDuplicate(this Promise promise, CancelationToken cancelationToken = default(CancelationToken))

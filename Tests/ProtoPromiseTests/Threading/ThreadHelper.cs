@@ -10,7 +10,7 @@ namespace Proto.Promises.Tests.Threading
     public class ThreadHelper
     {
         public static readonly int multiExecutionCount = Math.Min(Environment.ProcessorCount * 100, 32766); // Maximum participants Barrier allows is 32767 (15 bits), subtract 1 for main/test thread.
-        private static readonly int[] offsets = new int[] { 0, 10, 100, 1000 };
+        private static readonly int[] offsets = new int[] { 0, 10, 100 };
 
         private readonly Stack<Task> _executingTasks = new Stack<Task>(multiExecutionCount);
         private readonly Barrier _barrier = new Barrier(1);
