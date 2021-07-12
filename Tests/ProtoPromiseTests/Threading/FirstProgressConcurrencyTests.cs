@@ -155,7 +155,8 @@ namespace Proto.Promises.Tests.Threading
             var completer3 = TestHelper.GetCompleterVoid(completeType3, rejectValue);
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -217,7 +218,8 @@ namespace Proto.Promises.Tests.Threading
             var completer3 = TestHelper.GetCompleterVoid(completeType3, rejectValue);
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -387,7 +389,8 @@ namespace Proto.Promises.Tests.Threading
             var completer3 = TestHelper.GetCompleterT(completeType3, 4, rejectValue);
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -448,7 +451,8 @@ namespace Proto.Promises.Tests.Threading
             var completer3 = TestHelper.GetCompleterT(completeType3, 4, rejectValue);
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -606,7 +610,8 @@ namespace Proto.Promises.Tests.Threading
             var completer3 = TestHelper.GetCompleterVoid(completeType3, rejectValue);
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -662,7 +667,8 @@ namespace Proto.Promises.Tests.Threading
             var completer3 = TestHelper.GetCompleterVoid(completeType3, rejectValue);
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -816,7 +822,8 @@ namespace Proto.Promises.Tests.Threading
             var completer3 = TestHelper.GetCompleterT(completeType3, 4, rejectValue);
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -872,7 +879,8 @@ namespace Proto.Promises.Tests.Threading
             var completer3 = TestHelper.GetCompleterT(completeType3, 4, rejectValue);
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {

@@ -194,7 +194,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
 #endif
-    public class RethrowException : Exception
+    public class RethrowException : Exception, Internal.IRejectionToContainer
     {
 #if !PROMISE_DEBUG
         private static readonly RethrowException _instance = new RethrowException();
@@ -209,6 +209,17 @@ namespace Proto.Promises
 #else
             return _instance;
 #endif
+        }
+
+        Internal.IRejectValueContainer Internal.IRejectionToContainer.ToContainer(Internal.ITraceable traceable)
+        {
+#if PROMISE_DEBUG
+            string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(this, true) });
+#else
+            string stacktrace = new StackTrace(this, true).ToString();
+#endif
+            object exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+            return Internal.RejectionContainer<object>.GetOrCreate(ref exception, 0);
         }
     }
 

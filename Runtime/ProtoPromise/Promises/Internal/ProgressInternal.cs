@@ -207,7 +207,7 @@ namespace Proto.Promises
             }
 
             // Handle progress.
-            private static ValueLinkedQueueZeroGC<IProgressInvokable> _progressQueue;
+            private static ValueLinkedQueue<IProgressInvokable> _progressQueue;
             private static bool _runningProgress;
 
             private static void AddToFrontOfProgressQueue(IProgressInvokable progressListener)
@@ -689,7 +689,6 @@ namespace Proto.Promises
                 public override void Handle()
                 {
                     ThrowIfInPool(this);
-                    // TODO: handle thread race conditions (don't dispose early)
                     bool notCanceled = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !IsCanceled;
                     IsComplete = true;
 
@@ -1264,7 +1263,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (state == Promise.State.Pending)
                     {
-                        _currentProgress = progress;
+                        _smallFields._currentProgress = progress;
                         _target.IncrementProgress(progress.ToUInt32(), progress, _owner._smallFields._waitDepthAndProgress);
                     }
                     else
@@ -1275,17 +1274,31 @@ namespace Proto.Promises
 
                 void IProgressListener.SetProgress(PromiseRef sender, UnsignedFixed32 progress, out PromiseSingleAwait nextRef)
                 {
-                    // TODO: need unit tests for this (race/first/merge promises with progress)
                     ThrowIfInPool(this);
-                    uint dif = _currentProgress.InterlockedSetAndGetDifference(progress);
-                    _target.IncrementProgress(dif, progress, _owner._smallFields._waitDepthAndProgress);
+                    uint dif = _smallFields._currentProgress.InterlockedSetAndGetDifference(progress);
+                    _smallFields._reportingProgress = true;
+                    Thread.MemoryBarrier(); // Make sure _target and _owner are read after _reportingProgress is written.
+                    var target = _target;
+                    var owner = _owner;
+                    if (target != null & owner != null)
+                    {
+                        target.IncrementProgress(dif, progress, owner._smallFields._waitDepthAndProgress);
+                    }
+                    _smallFields._reportingProgress = false;
                     nextRef = null;
+                }
+
+                partial void WaitWhileReportingProgress()
+                {
+                    SpinWait spinner = new SpinWait();
+                    while (_smallFields._reportingProgress)
+                    {
+                        spinner.SpinOnce();
+                    }
                 }
 
                 void IProgressListener.ResolveOrSetProgress(PromiseRef sender, UnsignedFixed32 progress)
                 {
-                    // TODO: maybe retain _target during setup and release here for thread safety.
-                    // Or nullify _target and check for null in SetProgress.
                     Release();
                 }
 
@@ -1303,25 +1316,26 @@ namespace Proto.Promises
                 internal uint GetProgressDifferenceToCompletion(PromiseRef owner)
                 {
                     ThrowIfInPool(this);
-                    return owner._smallFields._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32() - _currentProgress.ToUInt32();
+                    return owner._smallFields._waitDepthAndProgress.GetIncrementedWholeTruncated().ToUInt32() - _smallFields._currentProgress.ToUInt32();
                 }
 
                 [MethodImpl(InlineOption)]
                 partial void ResetProgress()
                 {
-                    _currentProgress = default(UnsignedFixed32);
+                    _smallFields._currentProgress = default(UnsignedFixed32);
                 }
 
                 [MethodImpl(InlineOption)]
                 partial void TryUnsubscribeProgressAndRelease(PromiseRef owner)
                 {
+                    // Don't need to check for null on the first pass becaues it is checked for null on the caller's side.
                     do
                     {
                         owner.UnsubscribeProgressListener(this, out owner);
                     } while (owner != null);
                 }
             } // PromisePassThrough
-#endif
+#endif // PROMISE_PROGRESS
         } // PromiseRef
     } // Internal
 }

@@ -174,7 +174,8 @@ namespace Proto.Promises.Tests.Threading
             bool continueInvoked = false;
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -242,7 +243,8 @@ namespace Proto.Promises.Tests.Threading
             bool continueInvoked = false;
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -451,7 +453,8 @@ namespace Proto.Promises.Tests.Threading
             bool continueInvoked = false;
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -530,7 +533,8 @@ namespace Proto.Promises.Tests.Threading
             bool continueInvoked = false;
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -718,7 +722,8 @@ namespace Proto.Promises.Tests.Threading
             bool continueInvoked = false;
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -781,7 +786,8 @@ namespace Proto.Promises.Tests.Threading
             bool continueInvoked = false;
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -975,7 +981,8 @@ namespace Proto.Promises.Tests.Threading
             bool continueInvoked = false;
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {
@@ -1049,7 +1056,8 @@ namespace Proto.Promises.Tests.Threading
             bool continueInvoked = false;
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
+            // Don't use WithOffsets because there are too many actions.
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 // Setup
                 () =>
                 {

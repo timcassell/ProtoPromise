@@ -120,7 +120,7 @@ namespace Proto.Promises
 
             private partial struct SmallFields
             {
-                // Wrapping 32-bit struct fields in another struct fixes issue with extra padding
+                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
                 internal StateAndFlags _stateAndFlags;
 #if PROMISE_PROGRESS
@@ -350,18 +350,27 @@ namespace Proto.Promises
 
             partial class PromisePassThrough : ITreeHandleable, ILinked<PromisePassThrough>, IProgressListener
             {
+                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+                private struct PassThroughSmallFields
+                {
+                    internal int _index;
+                    internal int _retainCounter;
+#if PROMISE_PROGRESS
+                    internal UnsignedFixed32 _currentProgress;
+                    volatile internal bool _reportingProgress;
+#endif
+                }
+
                 volatile private PromiseRef _owner;
-                private IMultiTreeHandleable _target;
-                private int _index;
-                private int _retainCounter;
+                volatile private IMultiTreeHandleable _target;
+                private PassThroughSmallFields _smallFields;
 
                 ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
 
 #if PROMISE_PROGRESS
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
-
-                internal UnsignedFixed32 _currentProgress;
 #endif
             }
             #endregion

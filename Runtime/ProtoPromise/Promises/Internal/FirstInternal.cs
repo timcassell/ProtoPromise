@@ -220,7 +220,6 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
 
-                    // TODO: thread synchronization.
                     // Use double for better precision.
                     var newAmount = new UnsignedFixed32(senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
                     if (newAmount > _currentAmount)

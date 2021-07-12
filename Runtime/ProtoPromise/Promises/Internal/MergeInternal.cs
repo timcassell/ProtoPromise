@@ -370,7 +370,6 @@ namespace Proto.Promises
 
                 private void IncrementProgress(uint amount)
                 {
-                    // TODO: thread synchronization.
                     _unscaledProgress.InterlockedIncrement(amount);
                     if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {

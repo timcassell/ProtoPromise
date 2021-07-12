@@ -458,13 +458,7 @@ namespace Proto.Promises
                         else
                         {
                             valueContainer.ReleaseAndMaybeAddToUnhandledStack(true);
-#if PROMISE_DEBUG
-                            string stacktrace = FormatStackTrace(new System.Diagnostics.StackTrace[1] { new System.Diagnostics.StackTrace(e, true) });
-#else
-                            string stacktrace = new System.Diagnostics.StackTrace(e, true).ToString();
-#endif
-                            object exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-                            RejectOrCancelInternal(RejectionContainer<object>.GetOrCreate(ref exception, 0));
+                            RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this));
                         }
                     }
                     catch (OperationCanceledException e)
@@ -1306,7 +1300,7 @@ namespace Proto.Promises
 
                 ~PromisePassThrough()
                 {
-                    if (_retainCounter != 0)
+                    if (_smallFields._retainCounter != 0)
                     {
                         string message = "A PromisePassThrough was garbage collected without it being released.";
                         AddRejectionToUnhandledStack(new UnreleasedObjectException(message), _target as ITraceable);
@@ -1319,13 +1313,14 @@ namespace Proto.Promises
                     owner._ref.MarkAwaited(owner._id);
                     var passThrough = ObjectPool<PromisePassThrough>.GetOrCreate<PromisePassThrough, Creator>();
                     passThrough._owner = owner._ref;
-                    passThrough._index = index;
-                    passThrough._retainCounter = 2;
+                    passThrough._smallFields._index = index;
+                    passThrough._smallFields._retainCounter = 2;
                     passThrough.ResetProgress();
                     return passThrough;
                 }
 
                 partial void ResetProgress();
+                partial void WaitWhileReportingProgress();
 
                 internal void SetTargetAndAddToOwner(IMultiTreeHandleable target)
                 {
@@ -1339,20 +1334,26 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
                     ThrowIfInPool(this);
+                    var target = _target;
                     _owner = null;
-                    if (_target.Handle(owner, valueContainer, this, _index))
+                    _target = null;
+                    WaitWhileReportingProgress();
+                    if (target.Handle(owner, valueContainer, this, _smallFields._index))
                     {
-                        AddToHandleQueueFront(_target);
+                        AddToHandleQueueFront(target);
                     }
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(this);
+                    var target = _target;
                     _owner = null;
-                    if (_target.Handle(owner, valueContainer, this, _index))
+                    _target = null;
+                    WaitWhileReportingProgress();
+                    if (target.Handle(owner, valueContainer, this, _smallFields._index))
                     {
-                        AddToHandleQueueBack(_target);
+                        AddToHandleQueueBack(target);
                     }
                 }
 
@@ -1362,7 +1363,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     int _;
                     // Don't let counter wrap around past 0.
-                    if (!InterlockedAddIfNotEqual(ref _retainCounter, 1, -1, out _))
+                    if (!InterlockedAddIfNotEqual(ref _smallFields._retainCounter, 1, -1, out _))
                     {
                         throw new OverflowException();
                     }
@@ -1377,7 +1378,7 @@ namespace Proto.Promises
                 internal void Release2(int addRetains)
                 {
                     ThrowIfInPool(this);
-                    if (Interlocked.Add(ref _retainCounter, addRetains) == 0)
+                    if (Interlocked.Add(ref _smallFields._retainCounter, addRetains) == 0)
                     {
                         _owner = null;
                         _target = null;
@@ -1394,7 +1395,12 @@ namespace Proto.Promises
                         return false;
                     }
                     TryUnsubscribeProgressAndRelease(owner);
-                    return owner.TryRemoveWaiter(this);
+                    if (owner.TryRemoveWaiter(this))
+                    {
+                        _target = null;
+                        return true;
+                    }
+                    return false;
                 }
 
                 partial void TryUnsubscribeProgressAndRelease(PromiseRef owner);

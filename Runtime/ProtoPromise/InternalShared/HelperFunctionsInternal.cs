@@ -220,7 +220,6 @@ namespace Proto.Promises
             }
             else
             {
-                // TODO: transform RethrowException to InvalidOperationException.
 #if CSHARP_7_OR_LATER
                 if (((object) reason) is IRejectionToContainer internalRejection)
 #else
