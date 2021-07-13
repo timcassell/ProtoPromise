@@ -32,6 +32,11 @@ namespace Proto.Promises.Tests.Threading
         [Theory]
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToRaceConcurrently_void0(CompleteType completeType0, CompleteType completeType1)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var cancelationSource0 = default(CancelationSource);
@@ -73,6 +78,8 @@ namespace Proto.Promises.Tests.Threading
                         .Forget();
                 }
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -81,6 +88,11 @@ namespace Proto.Promises.Tests.Threading
             [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var deferred2 = default(Promise.Deferred);
@@ -129,6 +141,8 @@ namespace Proto.Promises.Tests.Threading
                         .Forget();
                 }
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -138,6 +152,11 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var deferred2 = default(Promise.Deferred);
@@ -194,6 +213,8 @@ namespace Proto.Promises.Tests.Threading
                         .Forget();
                 }
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -203,6 +224,11 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             Promise.Deferred[] deferreds = null;
             IEnumerator<Promise> promises = null;
             var cancelationSource0 = default(CancelationSource);
@@ -261,11 +287,18 @@ namespace Proto.Promises.Tests.Threading
                         .Forget();
                 }
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Theory]
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToRaceConcurrently_T0(CompleteType completeType0, CompleteType completeType1)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var cancelationSource0 = default(CancelationSource);
@@ -307,6 +340,8 @@ namespace Proto.Promises.Tests.Threading
                         .Forget();
                 }
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -315,6 +350,11 @@ namespace Proto.Promises.Tests.Threading
             [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var deferred2 = default(Promise<int>.Deferred);
@@ -363,6 +403,8 @@ namespace Proto.Promises.Tests.Threading
                         .Forget();
                 }
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -372,6 +414,11 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var deferred2 = default(Promise<int>.Deferred);
@@ -428,6 +475,8 @@ namespace Proto.Promises.Tests.Threading
                         .Forget();
                 }
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -437,6 +486,11 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             Promise<int>.Deferred[] deferreds = null;
             var cancelationSource0 = default(CancelationSource);
             var cancelationSource1 = default(CancelationSource);
@@ -493,11 +547,18 @@ namespace Proto.Promises.Tests.Threading
                         .Forget();
                 }
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Theory]
         public void DeferredsMayBeCompletedConcurrentlyAfterTheirPromisesArePassedToRace_void0(CompleteType completeType0, CompleteType completeType1)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var cancelationSource0 = default(CancelationSource);
@@ -534,6 +595,8 @@ namespace Proto.Promises.Tests.Threading
                 () => deferred0.TryReportProgress(0.5f),
                 () => deferred1.TryReportProgress(0.5f)
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -542,6 +605,11 @@ namespace Proto.Promises.Tests.Threading
             [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var deferred2 = default(Promise.Deferred);
@@ -585,6 +653,8 @@ namespace Proto.Promises.Tests.Threading
                 () => deferred1.TryReportProgress(0.5f),
                 () => deferred2.TryReportProgress(0.5f)
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -594,6 +664,11 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var deferred2 = default(Promise.Deferred);
@@ -645,6 +720,8 @@ namespace Proto.Promises.Tests.Threading
                 () => deferred2.TryReportProgress(0.5f),
                 () => deferred3.TryReportProgress(0.5f)
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -654,6 +731,11 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             Promise.Deferred[] deferreds = null;
             var cancelationSource0 = default(CancelationSource);
             var cancelationSource1 = default(CancelationSource);
@@ -705,11 +787,18 @@ namespace Proto.Promises.Tests.Threading
                 () => deferreds[2].TryReportProgress(0.5f),
                 () => deferreds[3].TryReportProgress(0.5f)
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Theory]
         public void DeferredsMayBeCompletedConcurrentlyAfterTheirPromisesArePassedToRace_T0(CompleteType completeType0, CompleteType completeType1)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var cancelationSource0 = default(CancelationSource);
@@ -746,6 +835,8 @@ namespace Proto.Promises.Tests.Threading
                 () => deferred0.TryReportProgress(0.5f),
                 () => deferred1.TryReportProgress(0.5f)
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -754,6 +845,11 @@ namespace Proto.Promises.Tests.Threading
             [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var deferred2 = default(Promise<int>.Deferred);
@@ -797,6 +893,8 @@ namespace Proto.Promises.Tests.Threading
                 () => deferred1.TryReportProgress(0.5f),
                 () => deferred2.TryReportProgress(0.5f)
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -806,6 +904,11 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var deferred2 = default(Promise<int>.Deferred);
@@ -857,6 +960,8 @@ namespace Proto.Promises.Tests.Threading
                 () => deferred2.TryReportProgress(0.5f),
                 () => deferred3.TryReportProgress(0.5f)
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test] // Only generate up to 2 parameters (more takes too long to test)
@@ -866,6 +971,11 @@ namespace Proto.Promises.Tests.Threading
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
+            // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+
             Promise<int>.Deferred[] deferreds = null;
             var cancelationSource0 = default(CancelationSource);
             var cancelationSource1 = default(CancelationSource);
@@ -917,6 +1027,8 @@ namespace Proto.Promises.Tests.Threading
                 () => deferreds[2].TryReportProgress(0.5f),
                 () => deferreds[3].TryReportProgress(0.5f)
             );
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
     }
 }
