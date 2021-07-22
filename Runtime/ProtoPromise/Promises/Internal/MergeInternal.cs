@@ -45,9 +45,12 @@ namespace Proto.Promises
                 {
                     base.Dispose();
                     // Release all passthroughs.
-                    while (_passThroughs.IsNotEmpty)
+                    lock (_locker)
                     {
-                        _passThroughs.Pop().Release();
+                        while (_passThroughs.IsNotEmpty)
+                        {
+                            _passThroughs.Pop().Release();
+                        }
                     }
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
@@ -104,7 +107,7 @@ namespace Proto.Promises
                             {
                                 var p = promisePassThroughs.Pop();
                                 p.Owner.MaybeDispose();
-                                p.Release2(-2);
+                                p.Release(-2);
                                 --addCount;
                             }
                             if (addCount != 0 && Interlocked.Add(ref _waitCount, addCount) == 0)
@@ -224,9 +227,12 @@ namespace Proto.Promises
                             _valueContainer = null;
                         }
                         // Release all passthroughs.
-                        while (_passThroughs.IsNotEmpty)
+                        lock (_locker)
                         {
-                            _passThroughs.Pop().Release();
+                            while (_passThroughs.IsNotEmpty)
+                            {
+                                _passThroughs.Pop().Release();
+                            }
                         }
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
@@ -329,17 +335,17 @@ namespace Proto.Promises
                     {
                         _unscaledProgress = new UnsignedFixed64(completedProgress);
 
-                        ulong expectedProgressCounter = totalAwaits;
-                        uint maxWaitDepth = 0;
+                        long expectedProgressCounter = totalAwaits;
+                        int maxWaitDepth = 0;
                         foreach (var passThrough in promisePassThroughs)
                         {
-                            uint waitDepth = passThrough.Owner._smallFields._waitDepthAndProgress.WholePart;
+                            int waitDepth = passThrough.Owner._smallFields._waitDepthAndProgress.WholePart;
                             expectedProgressCounter += waitDepth;
                             maxWaitDepth = Math.Max(maxWaitDepth, waitDepth);
                         }
 
                         // Use the longest chain as this depth.
-                        _smallFields._waitDepthAndProgress = new UnsignedFixed32(maxWaitDepth);
+                        _smallFields._waitDepthAndProgress = new Fixed32(maxWaitDepth);
                         _progressScaler = (double) NextWholeProgress / (double) expectedProgressCounter;
                     }
                 }
@@ -356,13 +362,13 @@ namespace Proto.Promises
                     return false;
                 }
 
-                protected override UnsignedFixed32 CurrentProgress()
+                protected override Fixed32 CurrentProgress()
                 {
                     ThrowIfInPool(this);
-                    return new UnsignedFixed32(_unscaledProgress.ToDouble() * _progressScaler);
+                    return new Fixed32(_unscaledProgress.ToDouble() * _progressScaler);
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
+                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount)
                 {
                     ThrowIfInPool(this);
                     IncrementProgress(amount);

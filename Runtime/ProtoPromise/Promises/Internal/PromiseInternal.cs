@@ -88,6 +88,7 @@ namespace Proto.Promises
                 {
                     // Promise was not awaited or forgotten.
                     string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise.";
+                    // TODO: change to UnobservedPromiseException.
                     AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
                 }
                 if (State != Promise.State.Pending & _valueOrPrevious != null)
@@ -1302,7 +1303,15 @@ namespace Proto.Promises
                 {
                     if (_smallFields._retainCounter != 0)
                     {
-                        string message = "A PromisePassThrough was garbage collected without it being released.";
+                        // For debugging. This should never happen.
+                        string message = "A PromisePassThrough was garbage collected without it being released."
+#if CSHARP_7_OR_LATER
+                            + $" _retainCounter: {_smallFields._retainCounter}, _index: {_smallFields._index}, _target: {_target}, _owner: {_owner}"
+#if PROMISE_PROGRESS
+                            + $", _reportingProgress: {_smallFields._reportingProgress}, _settingInitialProgress: {_smallFields._settingInitialProgress}, _currentProgress: {_smallFields._currentProgress.ToDouble()}"
+#endif
+#endif
+                            ;
                         AddRejectionToUnhandledStack(new UnreleasedObjectException(message), _target as ITraceable);
                     }
                 }
@@ -1320,7 +1329,7 @@ namespace Proto.Promises
                 }
 
                 partial void ResetProgress();
-                partial void WaitWhileReportingProgress();
+                partial void WaitWhileProgressIsBusy();
 
                 internal void SetTargetAndAddToOwner(IMultiTreeHandleable target)
                 {
@@ -1337,7 +1346,7 @@ namespace Proto.Promises
                     var target = _target;
                     _owner = null;
                     _target = null;
-                    WaitWhileReportingProgress();
+                    WaitWhileProgressIsBusy();
                     if (target.Handle(owner, valueContainer, this, _smallFields._index))
                     {
                         AddToHandleQueueFront(target);
@@ -1350,7 +1359,7 @@ namespace Proto.Promises
                     var target = _target;
                     _owner = null;
                     _target = null;
-                    WaitWhileReportingProgress();
+                    WaitWhileProgressIsBusy();
                     if (target.Handle(owner, valueContainer, this, _smallFields._index))
                     {
                         AddToHandleQueueBack(target);
@@ -1369,13 +1378,7 @@ namespace Proto.Promises
                     }
                 }
 
-                [MethodImpl(InlineOption)]
-                internal void Release()
-                {
-                    Release2(-1);
-                }
-
-                internal void Release2(int addRetains)
+                internal void Release(int addRetains = -1)
                 {
                     ThrowIfInPool(this);
                     if (Interlocked.Add(ref _smallFields._retainCounter, addRetains) == 0)
@@ -1389,18 +1392,16 @@ namespace Proto.Promises
                 internal bool TryRemoveFromOwner()
                 {
                     ThrowIfInPool(this);
-                    PromiseRef owner = _owner;
-                    if (owner == null)
-                    {
-                        return false;
-                    }
-                    TryUnsubscribeProgressAndRelease(owner);
-                    if (owner.TryRemoveWaiter(this))
-                    {
-                        _target = null;
-                        return true;
-                    }
+                    // TODO: return false for now as this causes some threading tests to fail.
                     return false;
+                    //PromiseRef owner = _owner;
+                    //if (owner == null)
+                    //{
+                    //    return false;
+                    //}
+                    //_owner = null;
+                    //TryUnsubscribeProgressAndRelease(owner);
+                    //return owner.TryRemoveWaiter(this);
                 }
 
                 partial void TryUnsubscribeProgressAndRelease(PromiseRef owner);

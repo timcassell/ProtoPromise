@@ -187,7 +187,6 @@ namespace Proto.Promises
             {
                 protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
                 {
-                    ThrowIfInPool(this);
                     ExchangePassthroughs(ref _passThroughs, borrower, _locker);
                 }
             }
@@ -196,7 +195,6 @@ namespace Proto.Promises
             {
                 protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
                 {
-                    ThrowIfInPool(this);
                     ExchangePassthroughs(ref _passThroughs, borrower, _locker);
                 }
             }
@@ -205,7 +203,6 @@ namespace Proto.Promises
             {
                 protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
                 {
-                    ThrowIfInPool(this);
                     ExchangePassthroughs(ref _passThroughs, borrower, _locker);
                 }
             }

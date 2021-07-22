@@ -124,7 +124,7 @@ namespace Proto.Promises
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
                 internal StateAndFlags _stateAndFlags;
 #if PROMISE_PROGRESS
-                internal UnsignedFixed32 _waitDepthAndProgress;
+                internal Fixed32 _waitDepthAndProgress;
 #endif
 
                 [StructLayout(LayoutKind.Explicit)]
@@ -164,6 +164,7 @@ namespace Proto.Promises
                 private ValueLinkedStack<ITreeHandleable> _nextBranches;
 
 #if PROMISE_PROGRESS
+                internal Fixed32 _currentProgress;
                 private readonly object _progressCollectionLocker = new object();
                 private ValueLinkedStack<IProgressListener> _progressListeners;
 
@@ -175,6 +176,8 @@ namespace Proto.Promises
             partial class PromiseWaitPromise : PromiseBranch
             {
 #if PROMISE_PROGRESS
+                // TODO: handle suspended progress via _currentProgress (current implementation isn't bullet-proof, progress can still be invoked from a previous even after a promise is canceled).
+                //internal Fixed32 _currentProgress;
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
 #endif
@@ -331,7 +334,7 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
 
-                private UnsignedFixed32 _currentAmount;
+                private Fixed32 _currentAmount;
 #endif
             }
 
@@ -344,7 +347,7 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
 
-                private UnsignedFixed32 _currentAmount;
+                private Fixed32 _currentAmount;
 #endif
             }
 
@@ -357,8 +360,9 @@ namespace Proto.Promises
                     internal int _index;
                     internal int _retainCounter;
 #if PROMISE_PROGRESS
-                    internal UnsignedFixed32 _currentProgress;
-                    volatile internal bool _reportingProgress;
+                    internal Fixed32 _currentProgress;
+                    internal volatile bool _settingInitialProgress;
+                    internal volatile bool _reportingProgress;
 #endif
                 }
 
@@ -376,35 +380,24 @@ namespace Proto.Promises
             #endregion
 
 #if PROMISE_PROGRESS
-            internal partial class PromiseProgressBase : PromiseBranch
-            {
-                [StructLayout(LayoutKind.Explicit)]
-                private struct SmallProgressFields
-                {
-                    [FieldOffset(0)]
-                    volatile internal bool _handling;
-                    [FieldOffset(1)]
-                    volatile internal bool _suspended;
-                    [FieldOffset(2)]
-                    volatile internal bool _complete;
-                    [FieldOffset(3)]
-                    volatile internal bool _canceled;
-                    // int value with [FieldOffset(0)] allows us to use Interlocked to set the flags without consuming more memory than necessary.
-                    [FieldOffset(0)]
-                    volatile internal int _intValue;
-                }
-
-                private SmallProgressFields _smallProgressFields;
-                protected CancelationRegistration _cancelationRegistration;
-            }
-
-            partial class PromiseProgress<TProgress> : PromiseProgressBase, IProgressListener, IProgressInvokable
+            partial class PromiseProgress<TProgress> : PromiseBranch, IProgressListener, IProgressInvokable
                 where TProgress : IProgress<float>
             {
+                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+                private struct ProgressSmallFields
+                {
+                    internal Fixed32 _currentProgress;
+                    volatile internal bool _complete;
+                    volatile internal bool _canceled;
+                }
+
+                private ProgressSmallFields _smallProgressFields;
+                private CancelationRegistration _cancelationRegistration;
+                private TProgress _progress;
+
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-
-                private TProgress _progress;
             }
 #endif
         } // PromiseRef

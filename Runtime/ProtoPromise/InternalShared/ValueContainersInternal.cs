@@ -83,7 +83,8 @@ namespace Proto.Promises
             {
                 if (_retainCounter != 0)
                 {
-                    string message = "A RejectionContainer was garbage collected without it being released.";
+                    // For debugging. This should never happen.
+                    string message = "A RejectionContainer was garbage collected without it being released. _retainCounter: " + _retainCounter + ", _value: " + _value;
                     AddRejectionToUnhandledStack(new UnreleasedObjectException(message), null);
                 }
             }
@@ -269,7 +270,8 @@ namespace Proto.Promises
             {
                 if (_retainCounter != 0)
                 {
-                    string message = "A CancelContainer was garbage collected without it being released.";
+                    // For debugging. This should never happen.
+                    string message = "A CancelContainer was garbage collected without it being released. _retainCounter: " + _retainCounter + ", _value: " + _value;
                     AddRejectionToUnhandledStack(new UnreleasedObjectException(message), null);
                 }
             }
@@ -444,7 +446,8 @@ namespace Proto.Promises
             {
                 if (_retainCounter != 0)
                 {
-                    string message = "A ResolveContainer was garbage collected without it being released.";
+                    // For debugging. This should never happen.
+                    string message = "A ResolveContainer was garbage collected without it being released. _retainCounter: " + _retainCounter + ", value: " + value;
                     AddRejectionToUnhandledStack(new UnreleasedObjectException(message), null);
                 }
             }

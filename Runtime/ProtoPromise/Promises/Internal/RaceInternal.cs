@@ -46,9 +46,12 @@ namespace Proto.Promises
                 {
                     base.Dispose();
                     // Release all passthroughs.
-                    while (_passThroughs.IsNotEmpty)
+                    lock (_locker)
                     {
-                        _passThroughs.Pop().Release();
+                        while (_passThroughs.IsNotEmpty)
+                        {
+                            _passThroughs.Pop().Release();
+                        }
                     }
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
@@ -86,7 +89,7 @@ namespace Proto.Promises
                             {
                                 var p = promisePassThroughs.Pop();
                                 p.Owner.MaybeDispose();
-                                p.Release2(-2);
+                                p.Release(-2);
                                 --addCount;
                             }
                             if (addCount != 0 && Interlocked.Add(ref promise._waitCount, addCount) == 0)
@@ -173,15 +176,15 @@ namespace Proto.Promises
 
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs)
                 {
-                    _currentAmount = default(UnsignedFixed32);
+                    _currentAmount = default(Fixed32);
 
                     // Expect the shortest chain to finish first.
-                    uint minWaitDepth = uint.MaxValue;
+                    int minWaitDepth = int.MaxValue;
                     foreach (var passThrough in promisePassThroughs)
                     {
                         minWaitDepth = Math.Min(minWaitDepth, passThrough.Owner._smallFields._waitDepthAndProgress.WholePart);
                     }
-                    _smallFields._waitDepthAndProgress = new UnsignedFixed32(minWaitDepth);
+                    _smallFields._waitDepthAndProgress = new Fixed32(minWaitDepth);
                 }
 
                 protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
@@ -191,18 +194,18 @@ namespace Proto.Promises
                     return false;
                 }
 
-                protected override UnsignedFixed32 CurrentProgress()
+                protected override Fixed32 CurrentProgress()
                 {
                     ThrowIfInPool(this);
                     return _currentAmount;
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, UnsignedFixed32 senderAmount, UnsignedFixed32 ownerAmount)
+                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount)
                 {
                     ThrowIfInPool(this);
 
                     // Use double for better precision.
-                    var newAmount = new UnsignedFixed32(senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
+                    var newAmount = new Fixed32(senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
                     if (newAmount > _currentAmount)
                     {
                         _currentAmount = newAmount;
