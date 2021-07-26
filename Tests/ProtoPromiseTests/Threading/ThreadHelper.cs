@@ -10,14 +10,14 @@ namespace Proto.Promises.Tests.Threading
     public class ThreadHelper
     {
         public static readonly int multiExecutionCount = Math.Min(Environment.ProcessorCount * 100, 32766); // Maximum participants Barrier allows is 32767 (15 bits), subtract 1 for main/test thread.
-        private static readonly int[] offsets = new int[] { 0, 10, 100 };
+        private static readonly int[] offsets = new int[] { 0, 10, 100 }; // Only using 3 values to not explode test times.
 
         private readonly Stack<Task> _executingTasks = new Stack<Task>(multiExecutionCount);
         private readonly Barrier _barrier = new Barrier(1);
         private int _currentParticipants = 0;
         private readonly TimeSpan _timeout;
 
-        public ThreadHelper() : this(TimeSpan.FromSeconds(10)) { } // 10 second timeout should be enough for most cases.
+        public ThreadHelper() : this(TimeSpan.FromSeconds(1000)) { } // 1000 second timeout should be enough for most cases (10 seconds for each thread).
 
         public ThreadHelper(TimeSpan timeout)
         {
@@ -124,9 +124,22 @@ namespace Proto.Promises.Tests.Threading
             }
         }
 
+        public void ExecuteParallelActionsMaybeWithOffsets(Action setup, Action teardown, List<Action> actions)
+        {
+            // If there are too many actions, don't use offsets because it takes too long to run tests.
+            if (actions.Count > 8)
+            {
+                ExecuteParallelActions(multiExecutionCount, setup, teardown, actions.ToArray());
+            }
+            else
+            {
+                ExecuteParallelActionsWithOffsets(false, setup, teardown, actions.ToArray());
+            }
+        }
+
         /// <summary>
         /// Run each action in parallel multiple times with differing offsets for each run.
-        /// <para/>The number of runs is 4^actions.Length, so be careful if you don't want the test to run too long.
+        /// <para/>The number of runs is 3^actions.Length, so be careful if you don't want the test to run too long.
         /// </summary>
         /// <param name="expandToProcessorCount">If true, copies each action on additional threads up to the processor count. This can help test more without increasing the time it takes to complete.
         /// <para/>Example: 2 actions with 6 processors, runs each action 3 times in parallel.</param>
@@ -140,29 +153,24 @@ namespace Proto.Promises.Tests.Threading
             int actionCount = actions.Length;
             int expandCount = expandToProcessorCount ? Math.Max(Environment.ProcessorCount / actionCount, 1) : 1;
 
-            const int minIterations = 1000;
-            int loopMax = (int) Math.Ceiling(minIterations / Math.Pow(offsets.Length, actions.Length));
-            for (int y = 0; y < loopMax; ++y)
+            foreach (var combo in GenerateCombinations(offsets, actionCount))
             {
-                foreach (var combo in GenerateCombinations(offsets, actionCount))
+                setup.Invoke();
+                for (int k = 0; k < expandCount; ++k)
                 {
-                    setup.Invoke();
-                    for (int k = 0; k < expandCount; ++k)
+                    for (int i = 0; i < actionCount; ++i)
                     {
-                        for (int i = 0; i < actionCount; ++i)
+                        int offset = combo[i];
+                        Action action = actions[i];
+                        AddParallelAction(() =>
                         {
-                            int offset = combo[i];
-                            Action action = actions[i];
-                            AddParallelAction(() =>
-                            {
-                                for (int j = offset; j > 0; --j) { } // Just spin in a loop for the offset.
-                                action.Invoke();
-                            });
-                        }
+                            for (int j = offset; j > 0; --j) { } // Just spin in a loop for the offset.
+                            action.Invoke();
+                        });
                     }
-                    ExecutePendingParallelActions();
-                    teardown.Invoke();
                 }
+                ExecutePendingParallelActions();
+                teardown.Invoke();
             }
         }
 

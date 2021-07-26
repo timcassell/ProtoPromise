@@ -1,10 +1,170 @@
-﻿#if CSHARP_7_OR_LATER
+﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+#endif
 
+#if CSHARP_7_OR_LATER
+
+using NUnit.Framework;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 
+// These help test all method for threaded concurrency.
 namespace Proto.Promises.Tests
 {
-    // These help test all methods for concurrency.
+    public enum CombineType
+    {
+        InSetup_NoProgress,
+        Parallel_NoProgress,
+#if PROMISE_PROGRESS
+        InSetup_WithProgress,
+        Parallel_WithProgress,
+        InSetup_ProgressParallel,
+#endif
+    }
+
+    public abstract class ParallelCombineTestHelper
+    {
+        internal CombineType _combineType;
+        public bool Success { get; protected set; }
+
+        public abstract void MaybeAddParallelAction(List<Action> parallelActions);
+        public abstract void Setup();
+        public abstract void Teardown();
+
+        public static ParallelCombineTestHelper Create(CombineType combineType, Func<Promise> combiner)
+        {
+            return new ParallelCombineTestHelperVoid()
+            {
+                _combineType = combineType,
+                _combiner = combiner
+            };
+        }
+
+        public static ParallelCombineTestHelper Create<T>(CombineType combineType, Func<Promise<T>> combiner, T expectedResolveValue)
+        {
+            return new ParallelCombineTestHelperT<T>()
+            {
+                _combineType = combineType,
+                _combiner = combiner,
+                _expectedResolveValue = expectedResolveValue
+            };
+        }
+
+        private class ParallelCombineTestHelperVoid : ParallelCombineTestHelper
+        {
+            internal Promise _combinedPromise;
+            internal Func<Promise> _combiner;
+
+            public override void MaybeAddParallelAction(List<Action> parallelActions)
+            {
+                switch (_combineType)
+                {
+                    case CombineType.Parallel_NoProgress:
+                        parallelActions.Add(() => _combinedPromise = _combiner());
+                        break;
+#if PROMISE_PROGRESS
+                    case CombineType.Parallel_WithProgress:
+                        parallelActions.Add(() => _combinedPromise = _combiner().Progress(v => { }));
+                        break;
+                    case CombineType.InSetup_ProgressParallel:
+                        parallelActions.Add(() => _combinedPromise = _combinedPromise.Progress(v => { }));
+                        break;
+#endif
+                }
+            }
+
+            public override void Setup()
+            {
+                Success = false;
+                if (
+#if PROMISE_PROGRESS
+                    _combineType == CombineType.InSetup_WithProgress)
+                {
+                    _combinedPromise = _combiner().Progress(v => { });
+                }
+                else if (_combineType == CombineType.InSetup_ProgressParallel ||
+#endif
+                    _combineType == CombineType.InSetup_NoProgress)
+                {
+                    _combinedPromise = _combiner();
+                }
+            }
+
+            public override void Teardown()
+            {
+                _combinedPromise.ContinueWith(r => Success = true).Forget();
+                _combinedPromise = default(Promise);
+            }
+        }
+
+        private class ParallelCombineTestHelperT<T> : ParallelCombineTestHelper
+        {
+            internal Promise<T> _combinedPromise;
+            internal Func<Promise<T>> _combiner;
+            internal T _expectedResolveValue;
+
+            public override void MaybeAddParallelAction(List<Action> parallelActions)
+            {
+                switch (_combineType)
+                {
+                    case CombineType.Parallel_NoProgress:
+                        parallelActions.Add(() => _combinedPromise = _combiner());
+                        break;
+#if PROMISE_PROGRESS
+                    case CombineType.Parallel_WithProgress:
+                        parallelActions.Add(() => _combinedPromise = _combiner().Progress(v => { }));
+                        break;
+                    case CombineType.InSetup_ProgressParallel:
+                        parallelActions.Add(() => _combinedPromise = _combinedPromise.Progress(v => { }));
+                        break;
+#endif
+                }
+            }
+
+            public override void Setup()
+            {
+                Success = false;
+                if (
+#if PROMISE_PROGRESS
+                    _combineType == CombineType.InSetup_WithProgress)
+                {
+                    _combinedPromise = _combiner().Progress(v => { });
+                }
+                else if (_combineType == CombineType.InSetup_ProgressParallel ||
+#endif
+                    _combineType == CombineType.InSetup_NoProgress)
+                {
+                    _combinedPromise = _combiner();
+                }
+            }
+
+            public override void Teardown()
+            {
+                _combinedPromise
+                    .ContinueWith(r =>
+                    {
+                        if (r.State == Promise.State.Resolved)
+                        {
+                            if (_expectedResolveValue is IEnumerable)
+                            {
+                                CollectionAssert.AreEqual((IEnumerable) _expectedResolveValue, (IEnumerable) r.Result);
+                            }
+                            else
+                            {
+                                Assert.AreEqual(_expectedResolveValue, r.Result);
+                            }
+                        }
+                        Success = true;
+                    })
+                    .Forget();
+                _combinedPromise = default(Promise<T>);
+            }
+        }
+    }
+
     public static partial class TestHelper
     {
         public static Action<Promise>[] ResolveActionsVoid(Action onResolved)

@@ -8,7 +8,6 @@
 
 using System;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace Proto.Promises.Tests
 {
@@ -17,7 +16,7 @@ namespace Proto.Promises.Tests
         Resolve,
         Reject,
         Cancel,
-        CancelFromToken
+        CancelFromToken,
     }
 
     public delegate void TestAction<T>(ref T value);

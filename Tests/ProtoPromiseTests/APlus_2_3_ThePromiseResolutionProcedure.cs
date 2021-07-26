@@ -1584,7 +1584,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_race_void()
         {
-            var extraDeferred = Promise.NewDeferred();
+            var extraDeferred = Promise.NewDeferred<int>();
             var extraPromise = extraDeferred.Promise.Preserve();
 
             var resolveDeferred = Promise.NewDeferred();
@@ -1612,7 +1612,7 @@ namespace Proto.Promises.Tests
             Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return promise.ThenDuplicate().ThenDuplicate().Catch(() => 1);
+                return Promise.Race(extraPromise, promise.ThenDuplicate().ThenDuplicate()).Catch(() => 1);
             };
 
             TestAction<Promise> onCallbackAdded = (ref Promise p) =>
@@ -1681,7 +1681,7 @@ namespace Proto.Promises.Tests
 
             resolvePromise.Forget();
             rejectPromise.Forget();
-            extraDeferred.Resolve();
+            extraDeferred.Resolve(1);
             extraPromise.Forget();
         }
 
@@ -1716,7 +1716,7 @@ namespace Proto.Promises.Tests
             Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return promise.ThenDuplicate().ThenDuplicate().Catch(() => 1);
+                return Promise.Race(promise.ThenDuplicate().ThenDuplicate(), extraPromise).Catch(() => 1);
             };
 
             TestAction<Promise> onCallbackAdded = (ref Promise p) =>
@@ -1794,7 +1794,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_first_void()
         {
-            var extraDeferred = Promise.NewDeferred();
+            var extraDeferred = Promise.NewDeferred<int>();
             var extraPromise = extraDeferred.Promise.Preserve();
 
             var resolveDeferred = Promise.NewDeferred();
@@ -1822,7 +1822,7 @@ namespace Proto.Promises.Tests
             Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return promise.ThenDuplicate().ThenDuplicate().Catch(() => 1);
+                return Promise.First(promise.ThenDuplicate().ThenDuplicate(), extraPromise).Catch(() => 1);
             };
 
             TestAction<Promise> onCallbackAdded = (ref Promise p) =>
@@ -1891,7 +1891,7 @@ namespace Proto.Promises.Tests
 
             resolvePromise.Forget();
             rejectPromise.Forget();
-            extraDeferred.Resolve();
+            extraDeferred.Resolve(1);
             extraPromise.Forget();
         }
 
@@ -1926,7 +1926,7 @@ namespace Proto.Promises.Tests
             Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return promise.ThenDuplicate().ThenDuplicate().Catch(() => 1);
+                return Promise.First(extraPromise, promise.ThenDuplicate().ThenDuplicate()).Catch(() => 1);
             };
 
             TestAction<Promise> onCallbackAdded = (ref Promise p) =>
@@ -2004,7 +2004,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_all_void()
         {
-            var extraDeferred = Promise.NewDeferred();
+            var extraDeferred = Promise.NewDeferred<int>();
             var extraPromise = extraDeferred.Promise.Preserve();
 
             var resolveDeferred = Promise.NewDeferred();
@@ -2032,7 +2032,9 @@ namespace Proto.Promises.Tests
             Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return promise.ThenDuplicate().ThenDuplicate().Catch(() => 1);
+                return Promise.All(promise.ThenDuplicate().ThenDuplicate(), extraPromise)
+                    .Catch(() => { })
+                    .Then(() => 1);
             };
 
             TestAction<Promise> onCallbackAdded = (ref Promise p) =>
@@ -2101,7 +2103,7 @@ namespace Proto.Promises.Tests
 
             resolvePromise.Forget();
             rejectPromise.Forget();
-            extraDeferred.Resolve();
+            extraDeferred.Resolve(1);
             extraPromise.Forget();
         }
 
@@ -2130,13 +2132,16 @@ namespace Proto.Promises.Tests
             Func<Promise, Promise> promiseToPromise = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return Promise.All(extraPromise, promise.ThenDuplicate().ThenDuplicate()).Catch(() => { });
+                return Promise.All(extraPromise, promise.ThenDuplicate().ThenDuplicate())
+                    .Catch(() => { });
             };
 
             Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return promise.ThenDuplicate().ThenDuplicate().Catch(() => 1);
+                return Promise.All(extraPromise, promise.ThenDuplicate().ThenDuplicate())
+                    .Catch(() => { })
+                    .Then(() => 1);
             };
 
             TestAction<Promise> onCallbackAdded = (ref Promise p) =>
