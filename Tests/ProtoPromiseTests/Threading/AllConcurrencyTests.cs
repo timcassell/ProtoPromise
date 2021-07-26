@@ -41,7 +41,7 @@ namespace Proto.Promises.Tests.Threading
         public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_void0(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1)
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1)
         {
             var completer0 = TestHelper.GetCompleterVoid(completeType0, rejectValue);
             var completer1 = TestHelper.GetCompleterVoid(completeType1, rejectValue);
@@ -91,7 +91,7 @@ namespace Proto.Promises.Tests.Threading
         public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_void1(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
             var completer0 = TestHelper.GetCompleterVoid(completeType0, rejectValue);
@@ -149,7 +149,7 @@ namespace Proto.Promises.Tests.Threading
         public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_void2(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
@@ -215,7 +215,7 @@ namespace Proto.Promises.Tests.Threading
         public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_void3(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
@@ -283,7 +283,7 @@ namespace Proto.Promises.Tests.Threading
         public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_T0(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1)
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
             var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
@@ -334,7 +334,7 @@ namespace Proto.Promises.Tests.Threading
         public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_T1(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
@@ -393,7 +393,7 @@ namespace Proto.Promises.Tests.Threading
         public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_T2(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
@@ -460,7 +460,7 @@ namespace Proto.Promises.Tests.Threading
         public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_T3(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {

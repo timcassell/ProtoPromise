@@ -41,7 +41,7 @@ namespace Proto.Promises.Tests.Threading
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToFirstConcurrently_void0(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1)
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1)
         {
             var completer0 = TestHelper.GetCompleterVoid(completeType0, rejectValue);
             var completer1 = TestHelper.GetCompleterVoid(completeType1, rejectValue);
@@ -87,11 +87,11 @@ namespace Proto.Promises.Tests.Threading
             );
         }
 
-        [Test] // Only generate up to 2 parameters (more takes too long to test)
+        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToFirstConcurrently_void1(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
             var completer0 = TestHelper.GetCompleterVoid(completeType0, rejectValue);
@@ -145,11 +145,11 @@ namespace Proto.Promises.Tests.Threading
             );
         }
 
-        [Test] // Only generate up to 2 parameters (more takes too long to test)
+        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToFirstConcurrently_void2(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
@@ -211,11 +211,11 @@ namespace Proto.Promises.Tests.Threading
             );
         }
 
-        [Test] // Only generate up to 2 parameters (more takes too long to test)
+        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToFirstConcurrently_void3(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
@@ -283,7 +283,7 @@ namespace Proto.Promises.Tests.Threading
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToFirstConcurrently_T0(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1)
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
             var completer1 = TestHelper.GetCompleterT(completeType1, 1, rejectValue);
@@ -330,11 +330,11 @@ namespace Proto.Promises.Tests.Threading
             );
         }
 
-        [Test] // Only generate up to 2 parameters (more takes too long to test)
+        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToFirstConcurrently_T1(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
@@ -389,11 +389,11 @@ namespace Proto.Promises.Tests.Threading
             );
         }
 
-        [Test] // Only generate up to 2 parameters (more takes too long to test)
+        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToFirstConcurrently_T2(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
@@ -456,11 +456,11 @@ namespace Proto.Promises.Tests.Threading
             );
         }
 
-        [Test] // Only generate up to 2 parameters (more takes too long to test)
+        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToFirstConcurrently_T3(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
+            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {

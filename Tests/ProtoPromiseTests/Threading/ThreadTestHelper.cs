@@ -14,6 +14,18 @@ using System.Collections.Generic;
 // These help test all method for threaded concurrency.
 namespace Proto.Promises.Tests
 {
+    public class MaybeValuesAttribute : ValuesAttribute
+    {
+        // If progress is enabled, only use a single value instead of all values (otherwise takes a long time to run tests).
+        public MaybeValuesAttribute(object arg1)
+#if PROMISE_PROGRESS
+            : base(arg1)
+#else
+            : base()
+#endif
+        { }
+    }
+
     public enum CombineType
     {
         InSetup_NoProgress,
