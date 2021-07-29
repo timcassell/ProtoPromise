@@ -140,7 +140,7 @@ namespace Proto.Promises
                     if (!continueLoop | previous == null)
                     {
                         current._smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.SettingInitial);
-                        current.SetInitialProgress(currentListener);
+                        current.SetInitialProgress(currentListener, currentListener == progressListener);
                         current._smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.Subscribing | ProgressFlags.SettingInitial);
                         current.MaybeDispose();
                         return;
@@ -153,7 +153,7 @@ namespace Proto.Promises
             }
 
             protected abstract bool AddProgressListenerAndContinueLoop(IProgressListener progressListener);
-            protected abstract void SetInitialProgress(IProgressListener progressListener);
+            protected abstract void SetInitialProgress(IProgressListener progressListener, bool shouldReport);
             protected virtual PromiseRef GetPreviousForProgress(ref IProgressListener progressListener)
             {
                 return _valueOrPrevious as PromiseRef;
@@ -346,10 +346,25 @@ namespace Proto.Promises
                     return wholePart + decimalPart;
                 }
 
+                internal bool InterlockedTrySetIfGreater(Fixed32 other)
+                {
+                    int otherValue = other._value;
+                    int current;
+                    do
+                    {
+                        current = _value;
+                        if (otherValue < current)
+                        {
+                            return false;
+                        }
+                    } while (Interlocked.CompareExchange(ref _value, otherValue, current) != current);
+                    return true;
+                }
+
                 [MethodImpl(InlineOption)]
                 internal bool InterlockedTrySetAndGetDifferenceIfNotNegativeAndWholeIsGreater(Fixed32 other, out uint dif)
                 {
-
+                    int otherValue = other._value;
                     int otherWholePart = other.WholePart;
                     int current;
                     do
@@ -362,7 +377,7 @@ namespace Proto.Promises
                             dif = 0;
                             return false;
                         }
-                    } while (Interlocked.CompareExchange(ref _value, other._value, current) != current);
+                    } while (Interlocked.CompareExchange(ref _value, otherValue, current) != current);
                     unchecked
                     {
                         dif = (uint) other._value - (uint) (current & PositiveMask); // Make positive before getting difference.
@@ -401,6 +416,7 @@ namespace Proto.Promises
 
                 internal bool InterlockedTrySetIfNotNegativeAndWholeIsGreater(Fixed32 other)
                 {
+                    int otherValue = other._value;
                     int otherWholePart = other.WholePart;
                     int current;
                     do
@@ -412,7 +428,7 @@ namespace Proto.Promises
                         {
                             return false;
                         }
-                    } while (Interlocked.CompareExchange(ref _value, other._value, current) != current);
+                    } while (Interlocked.CompareExchange(ref _value, otherValue, current) != current);
                     return true;
                 }
 
@@ -566,7 +582,7 @@ namespace Proto.Promises
 
             partial interface IProgressListener : ILinked<IProgressListener>
             {
-                void SetInitialProgress(PromiseRef sender, Promise.State state, Fixed32 progress);
+                void SetInitialProgress(PromiseRef sender, Promise.State state, Fixed32 progress, bool shouldReport);
                 void SetProgress(PromiseRef sender, Fixed32 progress, out PromiseSingleAwait nextRef);
                 void ResolveOrSetProgress(PromiseRef sender, Fixed32 progress);
                 void CancelProgress();
@@ -575,7 +591,7 @@ namespace Proto.Promises
 
             partial interface IMultiTreeHandleable
             {
-                void IncrementProgress(uint increment, Fixed32 senderAmount, Fixed32 ownerAmount);
+                void IncrementProgress(uint increment, Fixed32 senderAmount, Fixed32 ownerAmount, bool shouldReport);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -703,14 +719,14 @@ namespace Proto.Promises
                     MaybeDispose();
                 }
 
-                void IProgressListener.SetInitialProgress(PromiseRef sender, Promise.State state, Fixed32 progress)
+                void IProgressListener.SetInitialProgress(PromiseRef sender, Promise.State state, Fixed32 progress, bool shouldReport)
                 {
                     ThrowIfInPool(this);
                     switch (state)
                     {
                         case Promise.State.Pending:
                         {
-                            if (!sender.GetIsProgressSuspended() && TrySetInitialProgressAndMarkInQueue(progress))
+                            if ((shouldReport & !sender.GetIsProgressSuspended()) && TrySetInitialProgressAndMarkInQueue(progress))
                             {
                                 InterlockedRetainDisregardId();
                                 // Always add new listeners to the back.
@@ -720,7 +736,7 @@ namespace Proto.Promises
                         }
                         case Promise.State.Resolved:
                         {
-                            if (sender != _valueOrPrevious && TrySetInitialProgressAndMarkInQueue(progress))
+                            if ((shouldReport & sender != _valueOrPrevious) && TrySetInitialProgressAndMarkInQueue(progress))
                             {
                                 // Always add new listeners to the back.
                                 AddToBackOfProgressQueue(this);
@@ -756,7 +772,7 @@ namespace Proto.Promises
                     MaybeDispose();
                 }
 
-                protected override void SetInitialProgress(IProgressListener progressListener)
+                protected override void SetInitialProgress(IProgressListener progressListener, bool shouldReport)
                 {
                     ThrowIfInPool(this);
                     Promise.State state = State;
@@ -764,14 +780,14 @@ namespace Proto.Promises
                     {
                         if (_progressListener == progressListener)
                         {
-                            progressListener.SetInitialProgress(this, state, _smallProgressFields._currentProgress);
+                            progressListener.SetInitialProgress(this, state, _smallProgressFields._currentProgress, shouldReport);
                         }
                     }
                     else
                     {
                         if (Interlocked.CompareExchange(ref _progressListener, null, progressListener) == progressListener)
                         {
-                            progressListener.SetInitialProgress(this, Promise.State.Canceled, _smallFields._waitDepthAndProgress.GetIncrementedWholeTruncated());
+                            progressListener.SetInitialProgress(this, Promise.State.Canceled, _smallFields._waitDepthAndProgress.GetIncrementedWholeTruncated(), false);
                         }
                     }
                 }
@@ -845,7 +861,7 @@ namespace Proto.Promises
                     return true;
                 }
 
-                protected override void SetInitialProgress(IProgressListener progressListener)
+                protected override void SetInitialProgress(IProgressListener progressListener, bool shouldReport)
                 {
                     ThrowIfInPool(this);
                     Promise.State state = State;
@@ -853,14 +869,14 @@ namespace Proto.Promises
                     {
                         if (_progressListener == progressListener)
                         {
-                            progressListener.SetInitialProgress(this, state, CurrentProgress());
+                            progressListener.SetInitialProgress(this, state, CurrentProgress(), shouldReport);
                         }
                     }
                     else
                     {
                         if (Interlocked.CompareExchange(ref _progressListener, null, progressListener) == progressListener)
                         {
-                            progressListener.SetInitialProgress(this, state, _smallFields._waitDepthAndProgress.GetIncrementedWholeTruncated());
+                            progressListener.SetInitialProgress(this, state, _smallFields._waitDepthAndProgress.GetIncrementedWholeTruncated(), shouldReport);
                         }
                     }
                 }
@@ -962,7 +978,7 @@ namespace Proto.Promises
                     return _valueOrPrevious as PromiseRef;
                 }
 
-                protected override void SetInitialProgress(IProgressListener progressListener)
+                protected override void SetInitialProgress(IProgressListener progressListener, bool shouldReport)
                 {
                     ThrowIfInPool(this);
                     Promise.State state = State;
@@ -975,7 +991,7 @@ namespace Proto.Promises
                         }
                         if (contained)
                         {
-                            progressListener.SetInitialProgress(this, state, CurrentProgress());
+                            progressListener.SetInitialProgress(this, state, CurrentProgress(), shouldReport);
                         }
                     }
                     else
@@ -987,7 +1003,7 @@ namespace Proto.Promises
                         }
                         if (removed)
                         {
-                            progressListener.SetInitialProgress(this, state, _smallFields._waitDepthAndProgress.GetIncrementedWholeTruncated());
+                            progressListener.SetInitialProgress(this, state, _smallFields._waitDepthAndProgress.GetIncrementedWholeTruncated(), shouldReport);
                         }
                     }
                 }
@@ -1073,14 +1089,14 @@ namespace Proto.Promises
                     MaybeDispose();
                 }
 
-                void IProgressListener.SetInitialProgress(PromiseRef sender, Promise.State state, Fixed32 progress)
+                void IProgressListener.SetInitialProgress(PromiseRef sender, Promise.State state, Fixed32 progress, bool shouldReport)
                 {
                     ThrowIfInPool(this);
                     switch (state)
                     {
                         case Promise.State.Pending:
                         {
-                            if (!sender.GetIsProgressSuspended() && TrySetInitialProgressAndMarkInQueue(progress))
+                            if ((shouldReport & !sender.GetIsProgressSuspended()) && TrySetInitialProgressAndMarkInQueue(progress))
                             {
                                 InterlockedRetainDisregardId();
                                 // Always add new listeners to the back.
@@ -1090,7 +1106,7 @@ namespace Proto.Promises
                         }
                         case Promise.State.Resolved:
                         {
-                            if (sender != _valueOrPrevious && TrySetInitialProgressAndMarkInQueue(progress))
+                            if ((shouldReport & sender != _valueOrPrevious) && TrySetInitialProgressAndMarkInQueue(progress))
                             {
                                 // Always add new listeners to the back.
                                 AddToBackOfProgressQueue(this);
@@ -1264,7 +1280,7 @@ namespace Proto.Promises
                     _smallFields._waitDepthAndProgress = previousDepth.GetIncrementedWholeTruncated();
                 }
 
-                void IProgressListener.SetInitialProgress(PromiseRef sender, Promise.State state, Fixed32 progress)
+                void IProgressListener.SetInitialProgress(PromiseRef sender, Promise.State state, Fixed32 progress, bool shouldReport)
                 {
                     ThrowIfInPool(this);
                     // Check type in case of race condition with MakeReady.
@@ -1281,7 +1297,7 @@ namespace Proto.Promises
                     {
                         case Promise.State.Pending:
                         {
-                            if (!sender.GetIsProgressSuspended() && TrySetInitialProgressAndMarkInQueue(previous, progress))
+                            if ((shouldReport & !sender.GetIsProgressSuspended()) && TrySetInitialProgressAndMarkInQueue(previous, progress))
                             {
                                 InterlockedRetainDisregardId();
                                 // Always add new listeners to the back.
@@ -1291,7 +1307,7 @@ namespace Proto.Promises
                         }
                         case Promise.State.Resolved:
                         {
-                            if (sender != _valueOrPrevious && TrySetInitialProgressAndMarkInQueue(previous, progress))
+                            if ((shouldReport & sender != _valueOrPrevious) && TrySetInitialProgressAndMarkInQueue(previous, progress))
                             {
                                 // Always add new listeners to the back.
                                 AddToBackOfProgressQueue(this);
@@ -1391,7 +1407,7 @@ namespace Proto.Promises
 
             partial class PromisePassThrough
             {
-                void IProgressListener.SetInitialProgress(PromiseRef sender, Promise.State state, Fixed32 progress)
+                void IProgressListener.SetInitialProgress(PromiseRef sender, Promise.State state, Fixed32 progress, bool shouldReport)
                 {
                     ThrowIfInPool(this);
                     if (state == Promise.State.Pending)
@@ -1402,7 +1418,7 @@ namespace Proto.Promises
                         var owner = _owner;
                         if (didSet & owner != null)
                         {
-                            _target.IncrementProgress(progress.ToPositiveUInt32(), progress, owner._smallFields._waitDepthAndProgress);
+                            _target.IncrementProgress(progress.ToPositiveUInt32(), progress, owner._smallFields._waitDepthAndProgress, shouldReport);
                         }
                         _smallFields._settingInitialProgress = false;
                     }
@@ -1423,7 +1439,7 @@ namespace Proto.Promises
                     var owner = _owner;
                     if (didSet & owner != null)
                     {
-                        _target.IncrementProgress(dif, progress, owner._smallFields._waitDepthAndProgress);
+                        _target.IncrementProgress(dif, progress, owner._smallFields._waitDepthAndProgress, true);
                     }
                     _smallFields._reportingProgress = false;
                     nextRef = null;

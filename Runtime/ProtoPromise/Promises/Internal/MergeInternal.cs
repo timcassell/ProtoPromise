@@ -352,7 +352,7 @@ namespace Proto.Promises
 
                 partial void IncrementProgress(PromiseRef owner, PromisePassThrough passThrough)
                 {
-                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion(owner));
+                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion(owner), true);
                 }
 
                 protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
@@ -368,16 +368,17 @@ namespace Proto.Promises
                     return new Fixed32(_unscaledProgress.ToDouble() * _progressScaler);
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount)
+                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, bool shouldReport)
                 {
                     ThrowIfInPool(this);
-                    IncrementProgress(amount);
+                    IncrementProgress(amount, shouldReport);
                 }
 
-                private void IncrementProgress(uint amount)
+                private void IncrementProgress(uint amount, bool shouldReport)
                 {
                     _unscaledProgress.InterlockedIncrement(amount);
-                    if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
+                    if (shouldReport
+                        && (_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
                         InterlockedRetainDisregardId();
                         AddToFrontOfProgressQueue(this);

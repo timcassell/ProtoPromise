@@ -216,18 +216,18 @@ namespace Proto.Promises
                 protected override Fixed32 CurrentProgress()
                 {
                     ThrowIfInPool(this);
+                    Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
                     return _currentAmount;
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount)
+                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, bool shouldReport)
                 {
                     ThrowIfInPool(this);
 
                     // Use double for better precision.
                     var newAmount = new Fixed32(senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
-                    if (newAmount > _currentAmount)
+                    if (shouldReport & _currentAmount.InterlockedTrySetIfGreater(newAmount))
                     {
-                        _currentAmount = newAmount;
                         if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                         {
                             InterlockedRetainDisregardId();
