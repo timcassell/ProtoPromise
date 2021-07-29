@@ -304,6 +304,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseMultiAwait, Creator>();
                     promise.Reset();
+                    promise.ResetProgress();
                     return promise;
                 }
 
@@ -1334,36 +1335,41 @@ namespace Proto.Promises
                 internal void SetTargetAndAddToOwner(IMultiTreeHandleable target)
                 {
                     ThrowIfInPool(this);
+                    var owner = _owner;
+                    // Check for null in case of race condition with TryRemoveFromOwner().
+                    if (owner == null)
+                    {
+                        return;
+                    }
+                    Retain();
                     _target = target;
                     // Unfortunately, we have to eagerly subscribe progress. Lazy algorithm would be much more expensive with thread safety, requiring allocations.
                     // But it's not so bad, because it doesn't allocate any memory (just uses CPU cycles to set it up).
-                    _owner.AddWaiterWithProgress(this);
+                    owner.AddWaiterWithProgress(this);
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
                     ThrowIfInPool(this);
-                    var target = _target;
-                    _owner = null;
-                    _target = null;
+                    bool isValid = Interlocked.Exchange(ref _owner, null) != null;
                     WaitWhileProgressIsBusy();
-                    if (target.Handle(owner, valueContainer, this, _smallFields._index))
+                    if (isValid && _target.Handle(owner, valueContainer, this, _smallFields._index))
                     {
-                        AddToHandleQueueFront(target);
+                        AddToHandleQueueFront(_target);
                     }
+                    Release();
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(this);
-                    var target = _target;
-                    _owner = null;
-                    _target = null;
+                    bool isValid = Interlocked.Exchange(ref _owner, null) != null;
                     WaitWhileProgressIsBusy();
-                    if (target.Handle(owner, valueContainer, this, _smallFields._index))
+                    if (isValid && _target.Handle(owner, valueContainer, this, _smallFields._index))
                     {
-                        AddToHandleQueueBack(target);
+                        AddToHandleQueueBack(_target);
                     }
+                    Release();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1383,7 +1389,6 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (Interlocked.Add(ref _smallFields._retainCounter, addRetains) == 0)
                     {
-                        _owner = null;
                         _target = null;
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
@@ -1392,16 +1397,18 @@ namespace Proto.Promises
                 internal bool TryRemoveFromOwner()
                 {
                     ThrowIfInPool(this);
-                    // TODO: return false for now as this causes some threading tests to fail.
-                    return false;
-                    //PromiseRef owner = _owner;
-                    //if (owner == null)
-                    //{
-                    //    return false;
-                    //}
-                    //_owner = null;
-                    //TryUnsubscribeProgressAndRelease(owner);
-                    //return owner.TryRemoveWaiter(this);
+                    PromiseRef owner = Interlocked.Exchange(ref _owner, null);
+                    if (owner == null)
+                    {
+                        return false;
+                    }
+                    WaitWhileProgressIsBusy();
+                    TryUnsubscribeProgressAndRelease(owner);
+                    if (owner.TryRemoveWaiter(this))
+                    {
+                        Release();
+                    }
+                    return true;
                 }
 
                 partial void TryUnsubscribeProgressAndRelease(PromiseRef owner);

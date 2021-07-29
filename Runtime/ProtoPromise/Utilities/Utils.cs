@@ -145,6 +145,30 @@ namespace Proto.Utils
             return false;
         }
 
+        public bool Contains(T item)
+        {
+            if (item == _first)
+            {
+                return true;
+            }
+            if (IsEmpty)
+            {
+                return false;
+            }
+            T node = _first;
+            T next = node.Next;
+            while (next != null)
+            {
+                if (next == item)
+                {
+                    return true;
+                }
+                node = next;
+                next = node.Next;
+            }
+            return false;
+        }
+
         [MethodImpl(Promises.Internal.InlineOption)]
         public Enumerator<T> GetEnumerator()
         {

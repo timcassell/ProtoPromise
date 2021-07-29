@@ -1265,6 +1265,146 @@ namespace Proto.Promises.Tests
             // Promise must be forgotten since it was never returned in onResolved because it was canceled.
             deferred2.Promise.Forget();
         }
+
+        [Test]
+        public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Pending_void()
+        {
+            int invokedCount = 0;
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+
+            for (int i = 0; i < 600; ++i)
+            {
+                promise.Progress(v => { ++invokedCount; }).Forget();
+            }
+
+            promise.Forget();
+            deferred.ReportProgress(0.1f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(600, invokedCount);
+            deferred.Resolve();
+        }
+
+        [Test]
+        public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Resolved_void()
+        {
+            int invokedCount = 0;
+            Promise promise = Promise.Resolved().Preserve();
+
+            for (int i = 0; i < 600; ++i)
+            {
+                promise.Progress(v => { ++invokedCount; }).Forget();
+            }
+
+            promise.Forget();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(600, invokedCount);
+        }
+
+        [Test]
+        public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Pending_T()
+        {
+            int invokedCount = 0;
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
+
+            for (int i = 0; i < 600; ++i)
+            {
+                promise.Progress(v => { ++invokedCount; }).Forget();
+            }
+
+            promise.Forget();
+            deferred.ReportProgress(0.1f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(600, invokedCount);
+            deferred.Resolve(1);
+        }
+
+        [Test]
+        public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Resolved_T()
+        {
+            int invokedCount = 0;
+            Promise<int> promise = Promise.Resolved(1).Preserve();
+
+            for (int i = 0; i < 600; ++i)
+            {
+                promise.Progress(v => { ++invokedCount; }).Forget();
+            }
+
+            promise.Forget();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(600, invokedCount);
+        }
+
+        [Test]
+        public void ProgressMayBeChainSubscribedMultipleTimes_Pending_void()
+        {
+            int invokedCount = 0;
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise;
+
+            for (int i = 0; i < 600; ++i)
+            {
+                promise = promise.Progress(v => { ++invokedCount; });
+            }
+
+            promise.Forget();
+            deferred.ReportProgress(0.1f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(600, invokedCount);
+            deferred.Resolve();
+        }
+
+        [Test]
+        public void ProgressMayBeChainSubscribedMultipleTimes_Resolved_void()
+        {
+            int invokedCount = 0;
+            Promise promise = Promise.Resolved();
+
+            for (int i = 0; i < 600; ++i)
+            {
+                promise = promise.Progress(v => { ++invokedCount; });
+            }
+
+            promise.Forget();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(600, invokedCount);
+        }
+
+        [Test]
+        public void ProgressMayBeChainSubscribedMultipleTimes_Pending_T()
+        {
+            int invokedCount = 0;
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise;
+
+            for (int i = 0; i < 600; ++i)
+            {
+                promise = promise.Progress(v => { ++invokedCount; });
+            }
+
+            promise.Forget();
+            deferred.ReportProgress(0.1f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(600, invokedCount);
+            deferred.Resolve(1);
+        }
+
+        [Test]
+        public void ProgressMayBeChainSubscribedMultipleTimes_Resolved_T()
+        {
+            int invokedCount = 0;
+            Promise<int> promise = Promise.Resolved(1);
+
+            for (int i = 0; i < 600; ++i)
+            {
+                promise = promise.Progress(v => { ++invokedCount; });
+            }
+
+            promise.Forget();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(600, invokedCount);
+        }
     }
 }
 #endif

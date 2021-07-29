@@ -9,6 +9,88 @@ namespace Proto.Promises.Tests.Threading
 {
     public class ThreadHelper
     {
+        private sealed class ThreadRunner
+        {
+            private static readonly Queue<ThreadRunner> _pool = new Queue<ThreadRunner>();
+
+            private readonly object _locker = new object();
+            private Action _action;
+            private int _offset;
+            private Barrier _barrier;
+            private TaskCompletionSource<bool> _taskCompletionSource;
+
+            private ThreadRunner() { }
+
+            public static Task Run(Action action, int offset, Barrier barrier)
+            {
+                bool reused;
+                ThreadRunner threadRunner;
+                lock (_pool)
+                {
+                    reused = _pool.TryDequeue(out threadRunner);
+                }
+                if (!reused)
+                {
+                    threadRunner = new ThreadRunner();
+                }
+                lock (threadRunner._locker)
+                {
+                    threadRunner._action = action;
+                    threadRunner._offset = offset;
+                    threadRunner._barrier = barrier;
+                    var taskSource = threadRunner._taskCompletionSource = new TaskCompletionSource<bool>();
+                    if (reused)
+                    {
+                        Monitor.Pulse(threadRunner._locker);
+                    }
+                    else
+                    {
+                        // Thread will never be garbage collected until the application terminates.
+                        new Thread(threadRunner.ThreadAction) { IsBackground = true }.Start();
+                    }
+                    return taskSource.Task;
+                }
+            }
+
+            private void ThreadAction()
+            {
+                Action action = _action;
+                int offset = _offset;
+                Barrier barrier = _barrier;
+                TaskCompletionSource<bool> taskSource = _taskCompletionSource;
+                while (true)
+                {
+                    try
+                    {
+                        barrier.SignalAndWait(); // Try to make actions run in lock-step to increase likelihood of breaking race conditions.
+                        for (int j = offset; j > 0; --j) { } // Just spin in a loop for the offset.
+                        action.Invoke();
+                        taskSource.SetResult(true);
+                    }
+                    catch (Exception e)
+                    {
+                        taskSource.SetException(e);
+                    }
+                    // Allow GC to reclaim memory.
+                    _action = null;
+                    _barrier = null;
+                    _taskCompletionSource = null;
+                    lock (_locker)
+                    {
+                        lock (_pool)
+                        {
+                            _pool.Enqueue(this);
+                        }
+                        Monitor.Wait(_locker);
+                        action = _action;
+                        offset = _offset;
+                        barrier = _barrier;
+                        taskSource = _taskCompletionSource;
+                    }
+                }
+            }
+        }
+
         public static readonly int multiExecutionCount = Math.Min(Environment.ProcessorCount * 100, 32766); // Maximum participants Barrier allows is 32767 (15 bits), subtract 1 for main/test thread.
         private static readonly int[] offsets = new int[] { 0, 10, 100 }; // Only using 3 values to not explode test times.
 
@@ -48,28 +130,14 @@ namespace Proto.Promises.Tests.Threading
         /// <summary>
         /// Add an action to be run in parallel.
         /// </summary>
-        public void AddParallelAction(Action action)
+        public void AddParallelAction(Action action, int offset = 0)
         {
-            var taskSource = new TaskCompletionSource<bool>();
             lock (_executingTasks)
             {
                 ++_currentParticipants;
                 _barrier.AddParticipant();
-                _executingTasks.Push(taskSource.Task);
+                _executingTasks.Push(ThreadRunner.Run(action, offset, _barrier));
             }
-            new Thread(() =>
-            {
-                try
-                {
-                    _barrier.SignalAndWait(); // Try to make actions run in lock-step to increase likelihood of breaking race conditions.
-                    action.Invoke();
-                    taskSource.SetResult(true);
-                }
-                catch (Exception e)
-                {
-                    taskSource.SetException(e);
-                }
-            }).Start();
         }
 
         /// <summary>
@@ -80,11 +148,11 @@ namespace Proto.Promises.Tests.Threading
             Task[] tasks;
             lock (_executingTasks)
             {
+                tasks = _executingTasks.ToArray();
+                _executingTasks.Clear();
                 _barrier.SignalAndWait();
                 _barrier.RemoveParticipants(_currentParticipants);
                 _currentParticipants = 0;
-                tasks = _executingTasks.ToArray();
-                _executingTasks.Clear();
             }
             try
             {
@@ -160,13 +228,7 @@ namespace Proto.Promises.Tests.Threading
                 {
                     for (int i = 0; i < actionCount; ++i)
                     {
-                        int offset = combo[i];
-                        Action action = actions[i];
-                        AddParallelAction(() =>
-                        {
-                            for (int j = offset; j > 0; --j) { } // Just spin in a loop for the offset.
-                            action.Invoke();
-                        });
+                        AddParallelAction(actions[i], combo[i]);
                     }
                 }
                 ExecutePendingParallelActions();

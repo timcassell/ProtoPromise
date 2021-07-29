@@ -284,6 +284,8 @@ namespace Proto.Promises.Async.CompilerServices
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
+            // TODO: to support ExecutionContext for AsyncLocal
+            //new AsyncTaskMethodBuilder().Start(ref stateMachine);
             stateMachine.MoveNext();
         }
 
