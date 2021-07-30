@@ -37,6 +37,13 @@ namespace Proto.Promises.Tests
 #endif
     }
 
+    public enum ActionType
+    {
+        InSetup,
+        InTeardown,
+        Parallel,
+    }
+
     public abstract class ParallelCombineTestHelper
     {
         internal CombineType _combineType;
@@ -174,6 +181,58 @@ namespace Proto.Promises.Tests
                     .Forget();
                 _combinedPromise = default(Promise<T>);
             }
+        }
+    }
+
+    public class ParallelActionTestHelper
+    {
+        private ActionType _actionType;
+        private Action _action;
+        private int _repeatCount;
+
+        private ParallelActionTestHelper() { }
+
+        public void MaybeAddParallelAction(List<Action> parallelActions)
+        {
+            if (_actionType == ActionType.Parallel)
+            {
+                for (int i = 0; i < _repeatCount; ++i)
+                {
+                    parallelActions.Add(_action);
+                }
+            }
+        }
+        
+        public void Setup()
+        {
+            if (_actionType == ActionType.InSetup)
+            {
+                for (int i = 0; i < _repeatCount; ++i)
+                {
+                    _action();
+                }
+            }
+        }
+
+        public void Teardown()
+        {
+            if (_actionType == ActionType.InTeardown)
+            {
+                for (int i = 0; i < _repeatCount; ++i)
+                {
+                    _action();
+                }
+            }
+        }
+
+        public static ParallelActionTestHelper Create(ActionType actionType, int repeatCount, Action action)
+        {
+            return new ParallelActionTestHelper()
+            {
+                _actionType = actionType,
+                _action = action,
+                _repeatCount = repeatCount
+            };
         }
     }
 

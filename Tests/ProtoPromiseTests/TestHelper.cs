@@ -47,13 +47,18 @@ namespace Proto.Promises.Tests
 
         public static Action<Promise.Deferred, CancelationSource> GetCompleterVoid(CompleteType completeType, string rejectValue)
         {
-            return completeType == CompleteType.Resolve
-                ? (deferred, _) => deferred.Resolve()
-                : completeType == CompleteType.Reject
-                ? (deferred, _) => deferred.Reject(rejectValue)
-                : completeType == CompleteType.Cancel
-                ? (deferred, _) => deferred.Cancel()
-                : (Action<Promise.Deferred, CancelationSource>) ((_, cancelationSource) => cancelationSource.Cancel());
+            switch (completeType)
+            {
+                case CompleteType.Resolve:
+                    return (deferred, _) => deferred.Resolve();
+                case CompleteType.Reject:
+                    return (deferred, _) => deferred.Reject(rejectValue);
+                case CompleteType.Cancel:
+                    return (deferred, _) => deferred.Cancel();
+                case CompleteType.CancelFromToken:
+                    return (_, cancelationSource) => cancelationSource.Cancel();
+            }
+            throw new Exception();
         }
 
         public static Action<Promise<T>.Deferred, CancelationSource> GetCompleterT<T>(CompleteType completeType, T resolveValue, string rejectValue)
@@ -68,6 +73,38 @@ namespace Proto.Promises.Tests
                     return (deferred, _) => deferred.Cancel();
                 case CompleteType.CancelFromToken:
                     return (_, cancelationSource) => cancelationSource.Cancel();
+            }
+            throw new Exception();
+        }
+
+        public static Action<Promise.Deferred, CancelationSource> GetTryCompleterVoid(CompleteType completeType, string rejectValue)
+        {
+            switch (completeType)
+            {
+                case CompleteType.Resolve:
+                    return (deferred, _) => deferred.TryResolve();
+                case CompleteType.Reject:
+                    return (deferred, _) => deferred.TryReject(rejectValue);
+                case CompleteType.Cancel:
+                    return (deferred, _) => deferred.TryCancel();
+                case CompleteType.CancelFromToken:
+                    return (_, cancelationSource) => cancelationSource.TryCancel();
+            }
+            throw new Exception();
+        }
+
+        public static Action<Promise<T>.Deferred, CancelationSource> GetTryCompleterT<T>(CompleteType completeType, T resolveValue, string rejectValue)
+        {
+            switch (completeType)
+            {
+                case CompleteType.Resolve:
+                    return (deferred, _) => deferred.TryResolve(resolveValue);
+                case CompleteType.Reject:
+                    return (deferred, _) => deferred.TryReject(rejectValue);
+                case CompleteType.Cancel:
+                    return (deferred, _) => deferred.TryCancel();
+                case CompleteType.CancelFromToken:
+                    return (_, cancelationSource) => cancelationSource.TryCancel();
             }
             throw new Exception();
         }

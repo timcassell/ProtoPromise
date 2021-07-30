@@ -7,6 +7,7 @@
 #endif
 
 using NUnit.Framework;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +17,8 @@ namespace Proto.Promises.Tests.Threading
 {
     public class PromiseConcurrencyTests
     {
+        const string rejectValue = "Fail";
+
         [SetUp]
         public void Setup()
         {
@@ -200,25 +203,6 @@ namespace Proto.Promises.Tests.Threading
 
 #if PROMISE_PROGRESS
         [Test]
-        public void PromiseProgressMayBeCalledConcurrently_Pending_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Forget()
-            );
-
-            promise.Forget();
-            deferred.ReportProgress(0.1f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-            deferred.Resolve();
-        }
-
-        [Test]
         public void PromiseProgressMayBeCalledConcurrently_Resolved_void()
         {
             int invokedCount = 0;
@@ -234,25 +218,6 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void PromiseProgressMayBeCalledConcurrently_Pending_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Forget()
-            );
-
-            promise.Forget();
-            deferred.ReportProgress(0.1f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-            deferred.Resolve(1);
-        }
-
-        [Test]
         public void PromiseProgressMayBeCalledConcurrently_Resolved_T()
         {
             int invokedCount = 0;
@@ -265,6 +230,148 @@ namespace Proto.Promises.Tests.Threading
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
+        }
+
+        [Test]
+        public void PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReporteddConcurrently_Pending_void(
+            [Values] ActionType subscribeType,
+            [Values] ActionType reportType,
+            [Values] ActionType completePlace,
+            [Values] CompleteType completeType)
+        {
+            int expectedInvokes = completeType == CompleteType.Resolve ? 10 : 0;
+
+            var deferred = default(Promise.Deferred);
+            var promise = default(Promise);
+            var cancelationSource = default(CancelationSource);
+            int invokedCount = 0;
+
+            List<Action> parallelActions = new List<Action>();
+
+            var progressSubscriber = ParallelActionTestHelper.Create(
+                subscribeType,
+                10,
+                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Catch(() => { }).Forget()
+            );
+            progressSubscriber.MaybeAddParallelAction(parallelActions);
+
+            var progressReporter = ParallelActionTestHelper.Create(
+                reportType,
+                10,
+                () => deferred.TryReportProgress(0.5f)
+            );
+            progressReporter.MaybeAddParallelAction(parallelActions);
+
+            var tryCompleter = TestHelper.GetTryCompleterVoid(completeType, rejectValue);
+            var promiseCompleter = ParallelActionTestHelper.Create(
+                completePlace,
+                10,
+                () => tryCompleter(deferred, cancelationSource)
+            );
+            promiseCompleter.MaybeAddParallelAction(parallelActions);
+
+            Action setupAction = () =>
+            {
+                invokedCount = 0;
+                deferred = TestHelper.GetNewDeferredVoid(completeType, out cancelationSource);
+                promise = deferred.Promise.Preserve();
+                progressSubscriber.Setup();
+                progressReporter.Setup();
+                promiseCompleter.Setup();
+            };
+            Action teardownAction = () =>
+            {
+                progressSubscriber.Teardown();
+                progressReporter.Teardown();
+                promiseCompleter.Teardown();
+                cancelationSource.TryDispose();
+                promise.Forget();
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(expectedInvokes, invokedCount);
+            };
+            if (parallelActions.Count == 0)
+            {
+                setupAction();
+                teardownAction();
+                return;
+            }
+            var threadHelper = new ThreadHelper(TimeSpan.FromSeconds(10));
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
+                setupAction,
+                teardownAction,
+                parallelActions.ToArray()
+            );
+        }
+
+        [Test]
+        public void PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReporteddConcurrently_Pending_T(
+            [Values] ActionType subscribeType,
+            [Values] ActionType reportType,
+            [Values] ActionType completePlace,
+            [Values] CompleteType completeType)
+        {
+            int expectedInvokes = completeType == CompleteType.Resolve ? 10 : 0;
+
+            var deferred = default(Promise<int>.Deferred);
+            var promise = default(Promise<int>);
+            var cancelationSource = default(CancelationSource);
+            int invokedCount = 0;
+
+            List<Action> parallelActions = new List<Action>();
+
+            var progressSubscriber = ParallelActionTestHelper.Create(
+                subscribeType,
+                10,
+                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Catch(() => { }).Forget()
+            );
+            progressSubscriber.MaybeAddParallelAction(parallelActions);
+
+            var progressReporter = ParallelActionTestHelper.Create(
+                reportType,
+                10,
+                () => deferred.TryReportProgress(0.5f)
+            );
+            progressReporter.MaybeAddParallelAction(parallelActions);
+
+            var tryCompleter = TestHelper.GetTryCompleterT(completeType, 1, rejectValue);
+            var promiseCompleter = ParallelActionTestHelper.Create(
+                completePlace,
+                10,
+                () => tryCompleter(deferred, cancelationSource)
+            );
+            promiseCompleter.MaybeAddParallelAction(parallelActions);
+
+            Action setupAction = () =>
+            {
+                invokedCount = 0;
+                deferred = TestHelper.GetNewDeferredT<int>(completeType, out cancelationSource);
+                promise = deferred.Promise.Preserve();
+                progressSubscriber.Setup();
+                progressReporter.Setup();
+                promiseCompleter.Setup();
+            };
+            Action teardownAction = () =>
+            {
+                progressSubscriber.Teardown();
+                progressReporter.Teardown();
+                promiseCompleter.Teardown();
+                cancelationSource.TryDispose();
+                promise.Forget();
+                Promise.Manager.HandleCompletes();
+                Assert.AreEqual(expectedInvokes, invokedCount);
+            };
+            if (parallelActions.Count == 0)
+            {
+                setupAction();
+                teardownAction();
+                return;
+            }
+            var threadHelper = new ThreadHelper(TimeSpan.FromSeconds(10));
+            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
+                setupAction,
+                teardownAction,
+                parallelActions.ToArray()
+            );
         }
 #endif
 
