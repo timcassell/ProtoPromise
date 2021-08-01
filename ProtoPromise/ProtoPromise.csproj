@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <RootNamespace>ProtoPromise</RootNamespace>
+    <DefineConstants>TRACE;CSHARP_7_3_OR_NEWER</DefineConstants>
+    <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
+    <Version>2.0.0</Version>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="CLSCompliantAttribute">
+      <_Parameter1>true</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!--Version ending in `.1` is full fat with progress, ending in `.0` is without progress-->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <VersionSuffix>.1</VersionSuffix>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <VersionSuffix>.1</VersionSuffix>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoProgress|AnyCPU'">
+    <DefineConstants>$(DefineConstants);RELEASE;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
+    <VersionSuffix>.0</VersionSuffix>
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_NoProgress|AnyCPU'">
+    <DefineConstants>$(DefineConstants);DEBUG;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
+    <VersionSuffix>.0</VersionSuffix>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\ProtoPromise_Unity\Assets\Third Party\ProtoPromise\Core\ProtoPromise\**/*.cs" />
+    <Compile Remove="..\ProtoPromise_Unity\Assets\Third Party\ProtoPromise\Core\ProtoPromise\Promises\Unity\**/*" />
+  </ItemGroup>
+
+</Project>
