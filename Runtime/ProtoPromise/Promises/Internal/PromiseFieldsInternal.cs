@@ -166,7 +166,7 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
                 internal Fixed32 _currentProgress;
                 private readonly object _progressCollectionLocker = new object();
-                private ValueLinkedStack<IProgressListener> _progressListeners;
+                private ValueLinkedQueue<IProgressListener> _progressListeners; // TODO: change to ValueLinkedStack to use less memory. Make sure progress is still invoked in order.
 
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }

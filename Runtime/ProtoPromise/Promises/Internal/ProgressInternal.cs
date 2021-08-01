@@ -668,10 +668,7 @@ namespace Proto.Promises
                         if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                         {
                             InterlockedRetainDisregardId();
-                            // TODO: this is now only true when called from PromiseMultiAwait. All others are called in forward order.
-
-                            // This is called by the promise in reverse order that listeners were added, adding to the front reverses that and puts them in proper order.
-                            AddToFrontOfProgressQueue(this);
+                            AddToBackOfProgressQueue(this);
                         }
                     }
                 }
@@ -952,7 +949,7 @@ namespace Proto.Promises
                     bool notSubscribed = (_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.SelfSubscribed) & ProgressFlags.SelfSubscribed) == 0;
                     lock (_progressCollectionLocker)
                     {
-                        _progressListeners.Push(progressListener);
+                        _progressListeners.Enqueue(progressListener);
                     }
                     PromiseRef previous = null;
                     if (notSubscribed)
@@ -1002,7 +999,7 @@ namespace Proto.Promises
 
                 partial void ResolveProgressListeners()
                 {
-                    ValueLinkedStack<IProgressListener> progressListeners;
+                    ValueLinkedQueue<IProgressListener> progressListeners;
                     lock (_progressCollectionLocker)
                     {
                         progressListeners = _progressListeners;
@@ -1011,13 +1008,13 @@ namespace Proto.Promises
                     Fixed32 progress = _smallFields._waitDepthAndProgress.GetIncrementedWholeTruncated();
                     while (progressListeners.IsNotEmpty)
                     {
-                        progressListeners.Pop().ResolveOrSetProgress(this, progress);
+                        progressListeners.DequeueRisky().ResolveOrSetProgress(this, progress);
                     }
                 }
 
                 partial void CancelProgressListeners()
                 {
-                    ValueLinkedStack<IProgressListener> progressListeners;
+                    ValueLinkedQueue<IProgressListener> progressListeners;
                     lock (_progressCollectionLocker)
                     {
                         progressListeners = _progressListeners;
@@ -1025,7 +1022,7 @@ namespace Proto.Promises
                     }
                     while (progressListeners.IsNotEmpty)
                     {
-                        progressListeners.Pop().CancelProgress();
+                        progressListeners.DequeueRisky().CancelProgress();
                     }
                 }
 
@@ -1091,8 +1088,7 @@ namespace Proto.Promises
                             if ((shouldReport & !sender.GetIsProgressSuspended()) && TrySetInitialProgressAndMarkInQueue(progress))
                             {
                                 InterlockedRetainDisregardId();
-                                // Always add new listeners to the back.
-                                AddToBackOfProgressQueue(this);
+                                AddToFrontOfProgressQueue(this);
                             }
                             break;
                         }
@@ -1100,8 +1096,7 @@ namespace Proto.Promises
                         {
                             if ((shouldReport & sender != _valueOrPrevious) && TrySetInitialProgressAndMarkInQueue(progress))
                             {
-                                // Always add new listeners to the back.
-                                AddToBackOfProgressQueue(this);
+                                AddToFrontOfProgressQueue(this);
                                 break; // Break instead of InterlockedRetainDisregardId().
                             }
                             MaybeDispose();
@@ -1284,8 +1279,7 @@ namespace Proto.Promises
                             if ((shouldReport & !sender.GetIsProgressSuspended()) && TrySetInitialProgressAndMarkInQueue(previous, progress))
                             {
                                 InterlockedRetainDisregardId();
-                                // Always add new listeners to the back.
-                                AddToBackOfProgressQueue(this);
+                                AddToFrontOfProgressQueue(this);
                             }
                             break;
                         }
@@ -1293,8 +1287,7 @@ namespace Proto.Promises
                         {
                             if ((shouldReport & sender != _valueOrPrevious) && TrySetInitialProgressAndMarkInQueue(previous, progress))
                             {
-                                // Always add new listeners to the back.
-                                AddToBackOfProgressQueue(this);
+                                AddToFrontOfProgressQueue(this);
                             }
                             else
                             {

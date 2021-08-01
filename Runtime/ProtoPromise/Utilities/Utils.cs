@@ -145,30 +145,6 @@ namespace Proto.Utils
             return false;
         }
 
-        public bool Contains(T item)
-        {
-            if (item == _first)
-            {
-                return true;
-            }
-            if (IsEmpty)
-            {
-                return false;
-            }
-            T node = _first;
-            T next = node.Next;
-            while (next != null)
-            {
-                if (next == item)
-                {
-                    return true;
-                }
-                node = next;
-                next = node.Next;
-            }
-            return false;
-        }
-
         [MethodImpl(Promises.Internal.InlineOption)]
         public Enumerator<T> GetEnumerator()
         {
@@ -317,6 +293,66 @@ namespace Proto.Utils
             _first = _first.Next;
             temp.Next = null;
             return temp;
+        }
+
+        public bool TryRemove(T item)
+        {
+            if (IsEmpty)
+            {
+                return false;
+            }
+            if (item == _first)
+            {
+                _first = _first.Next;
+                item.Next = null;
+                if (item == _last)
+                {
+                    _last = null;
+                }
+                return true;
+            }
+            T node = _first;
+            T next = node.Next;
+            while (next != null)
+            {
+                if (next == item)
+                {
+                    node.Next = next.Next;
+                    item.Next = null;
+                    if (item == _last)
+                    {
+                        _last = node;
+                    }
+                    return true;
+                }
+                node = next;
+                next = node.Next;
+            }
+            return false;
+        }
+
+        public bool Contains(T item)
+        {
+            if (item == _first)
+            {
+                return true;
+            }
+            if (IsEmpty)
+            {
+                return false;
+            }
+            T node = _first;
+            T next = node.Next;
+            while (next != null)
+            {
+                if (next == item)
+                {
+                    return true;
+                }
+                node = next;
+                next = node.Next;
+            }
+            return false;
         }
 
         [MethodImpl(Promises.Internal.InlineOption)]

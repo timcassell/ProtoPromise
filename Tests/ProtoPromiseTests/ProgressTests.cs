@@ -1405,6 +1405,154 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(600, invokedCount);
         }
+
+        [Test]
+        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Pending_void()
+        {
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+            int[] results = new int[600];
+
+            for (int i = 0; i < 600; ++i)
+            {
+                int index = i;
+                promise.Progress(i, (num, v) => { results[index] = num; }).Forget();
+            }
+
+            promise.Forget();
+            deferred.ReportProgress(0.1f);
+            Promise.Manager.HandleCompletesAndProgress();
+            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            deferred.Resolve();
+        }
+
+        [Test]
+        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Resolved_void()
+        {
+            Promise promise = Promise.Resolved().Preserve();
+            int[] results = new int[600];
+
+            for (int i = 0; i < 600; ++i)
+            {
+                int index = i;
+                promise.Progress(i, (num, v) => { results[index] = num; }).Forget();
+            }
+
+            promise.Forget();
+            Promise.Manager.HandleCompletesAndProgress();
+            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+        }
+
+        [Test]
+        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Pending_T()
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise.Preserve();
+            int[] results = new int[600];
+
+            for (int i = 0; i < 600; ++i)
+            {
+                int index = i;
+                promise.Progress(i, (num, v) => { results[index] = num; }).Forget();
+            }
+
+            promise.Forget();
+            deferred.ReportProgress(0.1f);
+            Promise.Manager.HandleCompletesAndProgress();
+            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            deferred.Resolve(1);
+        }
+
+        [Test]
+        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Resolved_T()
+        {
+            Promise<int> promise = Promise.Resolved(1).Preserve();
+            int[] results = new int[600];
+
+            for (int i = 0; i < 600; ++i)
+            {
+                int index = i;
+                promise.Progress(i, (num, v) => { results[index] = num; }).Forget();
+            }
+
+            promise.Forget();
+            Promise.Manager.HandleCompletesAndProgress();
+            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+        }
+
+        [Test]
+        public void ProgressChainSubscribedWillBeInvokedInOrder_Pending_void()
+        {
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise;
+            int[] results = new int[600];
+
+            for (int i = 0; i < 600; ++i)
+            {
+                int index = i;
+                promise = promise.Progress(i, (num, v) => { results[index] = num; });
+            }
+
+            promise.Forget();
+            deferred.ReportProgress(0.1f);
+            Promise.Manager.HandleCompletesAndProgress();
+            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            deferred.Resolve();
+        }
+
+        [Test]
+        public void _Resolved_void()
+        {
+            Promise promise = Promise.Resolved();
+            int[] results = new int[600];
+
+            for (int i = 0; i < 600; ++i)
+            {
+                int index = i;
+                promise = promise.Progress(i, (num, v) => { results[index] = num; });
+            }
+
+            promise.Forget();
+            Promise.Manager.HandleCompletesAndProgress();
+            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+        }
+
+        [Test]
+        public void ProgressChainSubscribedWillBeInvokedInOrder_Pending_T()
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise;
+            int[] results = new int[600];
+
+            for (int i = 0; i < 600; ++i)
+            {
+                int index = i;
+                promise = promise.Progress(i, (num, v) => { results[index] = num; });
+            }
+
+            promise.Forget();
+            deferred.ReportProgress(0.1f);
+            Promise.Manager.HandleCompletesAndProgress();
+            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            deferred.Resolve(1);
+        }
+
+        [Test]
+        public void ProgressChainSubscribedWillBeInvokedInOrder_Resolved_T()
+        {
+            Promise<int> promise = Promise.Resolved(1);
+            int[] results = new int[600];
+
+            for (int i = 0; i < 600; ++i)
+            {
+                int index = i;
+                promise = promise.Progress(i, (num, v) => { results[index] = num; });
+            }
+
+            promise.Forget();
+            Promise.Manager.HandleCompletesAndProgress();
+            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+        }
     }
 }
 #endif
