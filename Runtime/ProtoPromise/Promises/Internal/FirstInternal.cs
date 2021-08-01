@@ -187,9 +187,10 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class FirstPromise : IProgressInvokable
             {
-                protected override PromiseRef GetPreviousForProgress(ref IProgressListener progressListener)
+                protected override PromiseRef AddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);
+                    _progressListener = progressListener;
                     return null;
                 }
 
@@ -204,13 +205,6 @@ namespace Proto.Promises
                         minWaitDepth = Math.Min(minWaitDepth, passThrough.Owner._smallFields._waitDepthAndProgress.WholePart);
                     }
                     _smallFields._waitDepthAndProgress = new Fixed32(minWaitDepth);
-                }
-
-                protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
-                {
-                    ThrowIfInPool(this);
-                    _progressListener = progressListener;
-                    return false;
                 }
 
                 protected override Fixed32 CurrentProgress()

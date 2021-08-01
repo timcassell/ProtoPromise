@@ -133,31 +133,22 @@ namespace Proto.Promises
                 {
                     IProgressListener currentListener = progressListener;
                     currentListener.Retain();
-                    bool continueLoop = current.AddProgressListenerAndContinueLoop(progressListener);
-                    current._smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.Subscribing);
-                    Thread.MemoryBarrier(); // Make sure read happens after write.
-                    PromiseRef previous = current.GetPreviousForProgress(ref progressListener);
-                    if (!continueLoop | previous == null)
+                    PromiseRef previous = current.AddProgressListenerAndGetPreviousRetained(ref progressListener);
+                    if (previous == null)
                     {
                         current._smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.SettingInitial);
                         current.SetInitialProgress(currentListener, currentListener == progressListener);
-                        current._smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.Subscribing | ProgressFlags.SettingInitial);
+                        current._smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.SettingInitial);
                         current.MaybeDispose();
                         return;
                     }
-                    previous.InterlockedRetainDisregardId();
-                    current._smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.Subscribing); // We only need to hold the lock until we retain. That way we're not holding the lock while the listener is added to a collection.
                     current.MaybeDispose();
                     current = previous;
                 }
             }
 
-            protected abstract bool AddProgressListenerAndContinueLoop(IProgressListener progressListener);
+            protected abstract PromiseRef AddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener);
             protected abstract void SetInitialProgress(IProgressListener progressListener, bool shouldReport);
-            protected virtual PromiseRef GetPreviousForProgress(ref IProgressListener progressListener)
-            {
-                return _valueOrPrevious as PromiseRef;
-            }
 
             partial void WaitWhileProgressFlags(ProgressFlags progressFlags)
             {
@@ -217,7 +208,6 @@ namespace Proto.Promises
             // Handle progress.
             private static readonly object _progressLocker = new object();
             private static ValueLinkedQueue<IProgressInvokable> _progressQueue;
-            private static bool _runningProgress;
 
             private static void AddToFrontOfProgressQueue(IProgressInvokable progressListener)
             {
@@ -237,14 +227,6 @@ namespace Proto.Promises
 
             internal static void InvokeProgressListeners()
             {
-                if (_runningProgress)
-                {
-                    // HandleProgress is running higher in the program stack, so just return.
-                    return;
-                }
-
-                _runningProgress = true;
-
                 while (true)
                 {
                     ValueLinkedQueue<IProgressInvokable> queue;
@@ -263,9 +245,6 @@ namespace Proto.Promises
                         queue.DequeueRisky().Invoke();
                     } while (queue.IsNotEmpty);
                 }
-
-                _progressQueue.ClearLast();
-                _runningProgress = false;
             }
 
             /// <summary>
@@ -833,12 +812,11 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     InterlockedRetainDisregardId();
                 }
-
-                protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
+                protected override PromiseRef AddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);
                     _progressListener = progressListener;
-                    return false;
+                    return null;
                 }
 
                 protected override void UnsubscribeProgressListener(IProgressListener progressListener, out PromiseRef previous)
@@ -854,11 +832,19 @@ namespace Proto.Promises
 
             partial class PromiseSingleAwait
             {
-                protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
+                protected override PromiseRef AddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);
                     _progressListener = progressListener;
-                    return true;
+                    // Mark subscribing to prevent repooling while we get previous, then unmark after we have retained previous.
+                    _smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.Subscribing);
+                    PromiseRef previous = _valueOrPrevious as PromiseRef;
+                    if (previous != null)
+                    {
+                        previous.InterlockedRetainDisregardId();
+                    }
+                    _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.Subscribing);
+                    return previous;
                 }
 
                 protected override void SetInitialProgress(IProgressListener progressListener, bool shouldReport)
@@ -960,7 +946,7 @@ namespace Proto.Promises
                     _currentProgress = default(Fixed32);
                 }
 
-                protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
+                protected override PromiseRef AddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);
                     bool notSubscribed = (_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.SelfSubscribed) & ProgressFlags.SelfSubscribed) == 0;
@@ -968,14 +954,20 @@ namespace Proto.Promises
                     {
                         _progressListeners.Push(progressListener);
                     }
-                    return notSubscribed;
-                }
-
-                protected override PromiseRef GetPreviousForProgress(ref IProgressListener progressListener)
-                {
-                    ThrowIfInPool(this);
+                    PromiseRef previous = null;
+                    if (notSubscribed)
+                    {
+                        // Mark subscribing to prevent repooling while we get previous, then unmark after we have retained previous.
+                        _smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.Subscribing);
+                        previous = _valueOrPrevious as PromiseRef;
+                        if (previous != null)
+                        {
+                            previous.InterlockedRetainDisregardId();
+                        }
+                        _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.Subscribing);
+                    }
                     progressListener = this;
-                    return _valueOrPrevious as PromiseRef;
+                    return previous;
                 }
 
                 protected override void SetInitialProgress(IProgressListener progressListener, bool shouldReport)
@@ -1197,16 +1189,10 @@ namespace Proto.Promises
 
             partial class AsyncPromiseBase
             {
-                protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
+                protected override PromiseRef AddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);
                     _progressListener = progressListener;
-                    return false;
-                }
-
-                protected override PromiseRef GetPreviousForProgress(ref IProgressListener progressListener)
-                {
-                    ThrowIfInPool(this);
                     return null;
                 }
             }
@@ -1247,20 +1233,10 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override PromiseRef GetPreviousForProgress(ref IProgressListener progressListener)
+                protected override PromiseRef AddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);
-#if CSHARP_7_OR_LATER
-                    if (!(_valueOrPrevious is PromiseRef previous))
-#else
-                    PromiseRef previous = _valueOrPrevious as PromiseRef;
-                    if (previous == null)
-#endif
-                    {
-                        // Promise is either transitioning to second previous, or has already completed.
-                        return null;
-                    }
-
+                    _progressListener = progressListener;
                     ProgressFlags oldFlags = _smallFields._stateAndFlags.InterlockedSetSubscribedIfSecondPrevious();
                     bool secondPrevious = (oldFlags & ProgressFlags.SecondPrevious) != 0;
                     bool secondSubscribed = (oldFlags & ProgressFlags.SelfSubscribed) != 0;
@@ -1272,6 +1248,14 @@ namespace Proto.Promises
                         }
                         progressListener = this;
                     }
+                    // Mark subscribing to prevent repooling while we get previous, then unmark after we have retained previous.
+                    _smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.Subscribing);
+                    PromiseRef previous = _valueOrPrevious as PromiseRef;
+                    if (previous != null) // If previous is null, this is either transitioning to second previous, or has already completed.
+                    {
+                        previous.InterlockedRetainDisregardId();
+                    }
+                    _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.Subscribing);
                     return previous;
                 }
 

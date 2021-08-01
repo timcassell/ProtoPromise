@@ -321,9 +321,10 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class MergePromise : IProgressInvokable
             {
-                protected override PromiseRef GetPreviousForProgress(ref IProgressListener progressListener)
+                protected override PromiseRef AddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener)
                 {
                     ThrowIfInPool(this);
+                    _progressListener = progressListener;
                     return null;
                 }
 
@@ -353,13 +354,6 @@ namespace Proto.Promises
                 partial void IncrementProgress(PromiseRef owner, PromisePassThrough passThrough)
                 {
                     IncrementProgress(passThrough.GetProgressDifferenceToCompletion(owner), true);
-                }
-
-                protected override bool AddProgressListenerAndContinueLoop(IProgressListener progressListener)
-                {
-                    ThrowIfInPool(this);
-                    _progressListener = progressListener;
-                    return false;
                 }
 
                 protected override Fixed32 CurrentProgress()

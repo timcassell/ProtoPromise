@@ -276,7 +276,6 @@ namespace Proto.Promises
 
         // Handle promises in a depth-first manner.
         private static ValueLinkedQueue<ITreeHandleable> _handleQueue;
-        private static bool _runningHandles;
         private static readonly object _handleLocker = new object();
 
         internal static void AddToHandleQueueFront(ITreeHandleable handleable)
@@ -305,14 +304,6 @@ namespace Proto.Promises
 
         internal static void HandleEvents()
         {
-            if (_runningHandles)
-            {
-                // HandleEvents is running higher in the program stack, so just return.
-                return;
-            }
-
-            _runningHandles = true;
-
             while (true)
             {
                 ValueLinkedQueue<ITreeHandleable> queue;
@@ -331,8 +322,6 @@ namespace Proto.Promises
                     queue.DequeueRisky().Handle();
                 } while (queue.IsNotEmpty);
             }
-
-            _runningHandles = false;
         }
 
         private static ValueLinkedStackZeroGC<UnhandledException> _unhandledExceptions;
