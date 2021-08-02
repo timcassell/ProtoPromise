@@ -1,4 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER
+﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
 
 #pragma warning disable IDE0018 // Inline variable declaration
 

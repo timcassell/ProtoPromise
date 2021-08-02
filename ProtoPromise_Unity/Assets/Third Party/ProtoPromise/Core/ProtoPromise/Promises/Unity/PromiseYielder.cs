@@ -207,20 +207,12 @@ namespace Proto.Promises
 #endif
         internal sealed class YieldInstructionVoid : Promise.YieldInstruction, ITreeHandleable // Annoying old runtime can't compile generic ObjectPool with interface only in the base.
         {
-            private struct Creator : ICreator<YieldInstructionVoid>
-            {
-                [MethodImpl(InlineOption)]
-                public YieldInstructionVoid Create()
-                {
-                    return new YieldInstructionVoid();
-                }
-            }
-
             private YieldInstructionVoid() { }
 
             public static YieldInstructionVoid GetOrCreate(object valueContainer, Promise.State state)
             {
-                var yieldInstruction = ObjectPool<ITreeHandleable>.GetOrCreate<YieldInstructionVoid, Creator>();
+                var yieldInstruction = ObjectPool<ITreeHandleable>.TryTake<YieldInstructionVoid>()
+                    ?? new YieldInstructionVoid();
                 yieldInstruction._value = valueContainer;
                 yieldInstruction._state = state;
                 yieldInstruction._isActive = true;
@@ -253,20 +245,12 @@ namespace Proto.Promises
 #endif
         internal sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, ITreeHandleable // Annoying old runtime can't compile generic ObjectPool with interface only in the base.
         {
-            private struct Creator : ICreator<YieldInstruction<T>>
-            {
-                [MethodImpl(InlineOption)]
-                public YieldInstruction<T> Create()
-                {
-                    return new YieldInstruction<T>();
-                }
-            }
-
             private YieldInstruction() { }
 
             public static YieldInstruction<T> GetOrCreate(object valueContainer, Promise.State state)
             {
-                var yieldInstruction = ObjectPool<ITreeHandleable>.GetOrCreate<YieldInstruction<T>, Creator>();
+                var yieldInstruction = ObjectPool<ITreeHandleable>.TryTake<YieldInstruction<T>>()
+                    ?? new YieldInstruction<T>();
                 yieldInstruction._value = valueContainer;
                 yieldInstruction._state = state;
                 yieldInstruction._isActive = true;
@@ -303,7 +287,6 @@ namespace Proto.Promises
 #endif
     public sealed class PromiseYielder : MonoBehaviour
     {
-        static Action _onClearObjects;
         static PromiseYielder _instance;
 
         static PromiseYielder Instance
@@ -346,33 +329,17 @@ namespace Proto.Promises
             }
         }
 
-        public static void ClearPooledObjects()
-        {
-            if (_onClearObjects != null)
-            {
-                _onClearObjects.Invoke();
-            }
-        }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
         private class Routine : IEnumerator, ILinked<Routine>
         {
-            private struct Creator : Internal.ICreator<Routine>
-            {
-                [MethodImpl(Promises.Internal.InlineOption)]
-                public Routine Create()
-                {
-                    return new Routine();
-                }
-            }
-
             Routine ILinked<Routine>.Next { get; set; }
 
             public static Routine GetOrCreate()
             {
-                return Internal.ObjectPool<Routine>.GetOrCreate<Routine, Creator>();
+                return Internal.ObjectPool<Routine>.TryTake<Routine>()
+                    ?? new Routine();
             }
 
             private Routine() { }
@@ -419,20 +386,12 @@ namespace Proto.Promises
 #endif
         private class Routine<T> : IEnumerator, ILinked<Routine<T>>
         {
-            private struct Creator : Internal.ICreator<Routine<T>>
-            {
-                [MethodImpl(Promises.Internal.InlineOption)]
-                public Routine<T> Create()
-                {
-                    return new Routine<T>();
-                }
-            }
-
             Routine<T> ILinked<Routine<T>>.Next { get; set; }
 
             public static Routine<T> GetOrCreate()
             {
-                return Internal.ObjectPool<Routine<T>>.GetOrCreate<Routine<T>, Creator>();
+                return Internal.ObjectPool<Routine<T>>.TryTake<Routine<T>>()
+                    ?? new Routine<T>();
             }
 
             private Routine() { }

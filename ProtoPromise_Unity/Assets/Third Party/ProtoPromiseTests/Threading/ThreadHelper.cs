@@ -1,4 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER
+﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
 
 using System;
 using System.Collections.Generic;

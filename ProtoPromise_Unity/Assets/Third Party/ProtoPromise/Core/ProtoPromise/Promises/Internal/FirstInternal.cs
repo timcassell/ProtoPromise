@@ -31,15 +31,6 @@ namespace Proto.Promises
 #endif
             internal sealed partial class FirstPromise : PromiseBranch, IMultiTreeHandleable
             {
-                private struct Creator : ICreator<FirstPromise>
-                {
-                    [MethodImpl(InlineOption)]
-                    public FirstPromise Create()
-                    {
-                        return new FirstPromise();
-                    }
-                }
-
                 private FirstPromise() { }
 
                 protected override void Dispose()
@@ -58,7 +49,8 @@ namespace Proto.Promises
 
                 public static FirstPromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<FirstPromise, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<FirstPromise>()
+                        ?? new FirstPromise();
 
                     checked
                     {

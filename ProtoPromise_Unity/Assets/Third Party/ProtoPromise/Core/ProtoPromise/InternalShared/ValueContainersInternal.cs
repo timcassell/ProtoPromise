@@ -20,15 +20,6 @@ namespace Proto.Promises
 #endif
         internal sealed class RejectionContainer<T> : ILinked<RejectionContainer<T>>, IRejectValueContainer, IValueContainer<T>, IRejectionToContainer, ICantHandleException
         {
-            private struct Creator : ICreator<RejectionContainer<T>>
-            {
-                [MethodImpl(InlineOption)]
-                public RejectionContainer<T> Create()
-                {
-                    return new RejectionContainer<T>();
-                }
-            }
-
             RejectionContainer<T> ILinked<RejectionContainer<T>>.Next { get; set; }
 
             public T Value
@@ -91,7 +82,8 @@ namespace Proto.Promises
 
             public static RejectionContainer<T> GetOrCreate(ref T value, int retainCount)
             {
-                var container = ObjectPool<RejectionContainer<T>>.GetOrCreate<RejectionContainer<T>, Creator>();
+                var container = ObjectPool<RejectionContainer<T>>.TryTake<RejectionContainer<T>>()
+                    ?? new RejectionContainer<T>();
                 container._value = value;
                 container._retainCounter = retainCount;
                 return container;
@@ -220,15 +212,6 @@ namespace Proto.Promises
 #endif
         internal sealed class CancelContainer<T> : ILinked<CancelContainer<T>>, ICancelValueContainer, IValueContainer<T>, ICancelationToContainer
         {
-            private struct Creator : ICreator<CancelContainer<T>>
-            {
-                [MethodImpl(InlineOption)]
-                public CancelContainer<T> Create()
-                {
-                    return new CancelContainer<T>();
-                }
-            }
-
             CancelContainer<T> ILinked<CancelContainer<T>>.Next { get; set; }
 
             private int _retainCounter;
@@ -279,7 +262,8 @@ namespace Proto.Promises
 
             public static CancelContainer<T> GetOrCreate(ref T value, int retainCount)
             {
-                var container = ObjectPool<CancelContainer<T>>.GetOrCreate<CancelContainer<T>, Creator>();
+                var container = ObjectPool<CancelContainer<T>>.TryTake<CancelContainer<T>>()
+                    ?? new CancelContainer<T>();
                 container._value = value;
                 container._retainCounter = retainCount;
                 return container;
@@ -395,15 +379,6 @@ namespace Proto.Promises
 #endif
         internal sealed class ResolveContainer<T> : ILinked<ResolveContainer<T>>, IValueContainer, IValueContainer<T>
         {
-            private struct Creator : ICreator<ResolveContainer<T>>
-            {
-                [MethodImpl(InlineOption)]
-                public ResolveContainer<T> Create()
-                {
-                    return new ResolveContainer<T>();
-                }
-            }
-
             ResolveContainer<T> ILinked<ResolveContainer<T>>.Next { get; set; }
 
             private int _retainCounter;
@@ -456,7 +431,8 @@ namespace Proto.Promises
             // TODO: check typeof(T).IsValueType == false and use the PromiseRef as the value container for reference types.
             public static ResolveContainer<T> GetOrCreate(ref T value, int retainCount)
             {
-                var container = ObjectPool<ResolveContainer<T>>.GetOrCreate<ResolveContainer<T>, Creator>();
+                var container = ObjectPool<ResolveContainer<T>>.TryTake<ResolveContainer<T>>()
+                    ?? new ResolveContainer<T>();
                 container.value = value;
                 container._retainCounter = retainCount;
                 return container;

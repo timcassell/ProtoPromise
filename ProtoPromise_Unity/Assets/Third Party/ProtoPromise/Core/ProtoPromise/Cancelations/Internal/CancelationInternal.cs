@@ -72,15 +72,6 @@ namespace Proto.Promises
             private sealed class CancelDelegate<TCanceler> : ICancelDelegate, ITraceable, ILinked<CancelDelegate<TCanceler>>
                 where TCanceler : IDelegateSimple
             {
-                private struct Creator : ICreator<CancelDelegate<TCanceler>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public CancelDelegate<TCanceler> Create()
-                    {
-                        return new CancelDelegate<TCanceler>();
-                    }
-                }
-
 #if PROMISE_DEBUG
                 CausalityTrace ITraceable.Trace { get; set; }
 #endif
@@ -93,7 +84,8 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static CancelDelegate<TCanceler> GetOrCreate(TCanceler canceler)
                 {
-                    var del = ObjectPool<CancelDelegate<TCanceler>>.GetOrCreate<CancelDelegate<TCanceler>, Creator>();
+                    var del = ObjectPool<CancelDelegate<TCanceler>>.TryTake<CancelDelegate<TCanceler>>()
+                        ?? new CancelDelegate<TCanceler>();
                     del._canceler = canceler;
                     SetCreatedStacktrace(del, 2);
                     return del;
@@ -127,15 +119,6 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     Dispose();
-                }
-            }
-
-            private struct Creator : ICreator<CancelationRef>
-            {
-                [MethodImpl(InlineOption)]
-                public CancelationRef Create()
-                {
-                    return new CancelationRef();
                 }
             }
 
@@ -230,7 +213,8 @@ namespace Proto.Promises
 
             internal static CancelationRef GetOrCreate()
             {
-                var cancelRef = ObjectPool<CancelationRef>.GetOrCreate<CancelationRef, Creator>();
+                var cancelRef = ObjectPool<CancelationRef>.TryTake<CancelationRef>()
+                    ?? new CancelationRef();
                 // Left 16 bits are for internal retains.
                 cancelRef._retainCounter = 1 << 16;
                 cancelRef._valueContainer = null;

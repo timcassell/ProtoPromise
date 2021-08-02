@@ -29,15 +29,6 @@ namespace Proto.Promises
 #endif
             internal sealed partial class DeferredPromiseVoidCancel : DeferredPromiseVoid, ICancelDelegate
             {
-                private struct Creator : ICreator<DeferredPromiseVoidCancel>
-                {
-                    [MethodImpl(InlineOption)]
-                    public DeferredPromiseVoidCancel Create()
-                    {
-                        return new DeferredPromiseVoidCancel();
-                    }
-                }
-
                 private DeferredPromiseVoidCancel() { }
 
                 protected override void Dispose()
@@ -49,7 +40,8 @@ namespace Proto.Promises
 
                 internal static DeferredPromiseVoidCancel GetOrCreate(CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseVoidCancel, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromiseVoidCancel>()
+                        ?? new DeferredPromiseVoidCancel();
                     promise.Reset();
                     promise.ResetDepth();
                     cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
@@ -75,15 +67,6 @@ namespace Proto.Promises
 #endif
             internal sealed partial class DeferredPromiseCancel<T> : DeferredPromise<T>, ICancelDelegate
             {
-                private struct Creator : ICreator<DeferredPromiseCancel<T>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public DeferredPromiseCancel<T> Create()
-                    {
-                        return new DeferredPromiseCancel<T>();
-                    }
-                }
-
                 private DeferredPromiseCancel() { }
 
                 protected override void Dispose()
@@ -95,7 +78,8 @@ namespace Proto.Promises
 
                 internal static DeferredPromiseCancel<T> GetOrCreate(CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseCancel<T>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromiseCancel<T>>()
+                        ?? new DeferredPromiseCancel<T>();
                     promise.Reset();
                     promise.ResetDepth();
                     cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
@@ -231,21 +215,13 @@ namespace Proto.Promises
             private sealed partial class CancelablePromiseResolve<TResolver> : PromiseBranch, ITreeHandleable, ICancelDelegate
                 where TResolver : IDelegateResolve
             {
-                private struct Creator : ICreator<CancelablePromiseResolve<TResolver>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public CancelablePromiseResolve<TResolver> Create()
-                    {
-                        return new CancelablePromiseResolve<TResolver>();
-                    }
-                }
-
                 private CancelablePromiseResolve() { }
 
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseResolve<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolve<TResolver>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolve<TResolver>>()
+                        ?? new CancelablePromiseResolve<TResolver>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -308,21 +284,13 @@ namespace Proto.Promises
             private sealed partial class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
                 where TResolver : IDelegateResolvePromise
             {
-                private struct Creator : ICreator<CancelablePromiseResolvePromise<TResolver>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public CancelablePromiseResolvePromise<TResolver> Create()
-                    {
-                        return new CancelablePromiseResolvePromise<TResolver>();
-                    }
-                }
-
                 private CancelablePromiseResolvePromise() { }
 
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolvePromise<TResolver>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolvePromise<TResolver>>()
+                        ?? new CancelablePromiseResolvePromise<TResolver>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -410,21 +378,13 @@ namespace Proto.Promises
                 where TResolver : IDelegateResolve
                 where TRejecter : IDelegateReject
             {
-                private struct Creator : ICreator<CancelablePromiseResolveReject<TResolver, TRejecter>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public CancelablePromiseResolveReject<TResolver, TRejecter> Create()
-                    {
-                        return new CancelablePromiseResolveReject<TResolver, TRejecter>();
-                    }
-                }
-
                 private CancelablePromiseResolveReject() { }
 
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolveReject<TResolver, TRejecter>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolveReject<TResolver, TRejecter>>()
+                        ?? new CancelablePromiseResolveReject<TResolver, TRejecter>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -497,21 +457,13 @@ namespace Proto.Promises
                 where TResolver : IDelegateResolvePromise
                 where TRejecter : IDelegateRejectPromise
             {
-                private struct Creator : ICreator<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public CancelablePromiseResolveRejectPromise<TResolver, TRejecter> Create()
-                    {
-                        return new CancelablePromiseResolveRejectPromise<TResolver, TRejecter>();
-                    }
-                }
-
                 private CancelablePromiseResolveRejectPromise() { }
 
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>>()
+                        ?? new CancelablePromiseResolveRejectPromise<TResolver, TRejecter>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -607,21 +559,13 @@ namespace Proto.Promises
             private sealed partial class CancelablePromiseContinue<TContinuer> : PromiseBranch, ITreeHandleable, ICancelDelegate
                 where TContinuer : IDelegateContinue
             {
-                private struct Creator : ICreator<CancelablePromiseContinue<TContinuer>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public CancelablePromiseContinue<TContinuer> Create()
-                    {
-                        return new CancelablePromiseContinue<TContinuer>();
-                    }
-                }
-
                 private CancelablePromiseContinue() { }
 
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseContinue<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseContinue<TContinuer>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseContinue<TContinuer>>()
+                        ?? new CancelablePromiseContinue<TContinuer>();
                     promise.Reset();
                     promise._continuer = continuer;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -675,21 +619,13 @@ namespace Proto.Promises
             private sealed partial class CancelablePromiseContinuePromise<TContinuer> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
                 where TContinuer : IDelegateContinuePromise
             {
-                private struct Creator : ICreator<CancelablePromiseContinuePromise<TContinuer>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public CancelablePromiseContinuePromise<TContinuer> Create()
-                    {
-                        return new CancelablePromiseContinuePromise<TContinuer>();
-                    }
-                }
-
                 private CancelablePromiseContinuePromise() { }
 
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseContinuePromise<TContinuer>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseContinuePromise<TContinuer>>()
+                        ?? new CancelablePromiseContinuePromise<TContinuer>();
                     promise.Reset();
                     promise._continuer = continuer;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -768,21 +704,13 @@ namespace Proto.Promises
             private sealed partial class CancelablePromiseCancel<TCanceler> : PromiseBranch, ITreeHandleable, ICancelDelegate
                 where TCanceler : IDelegateSimple
             {
-                private struct Creator : ICreator<CancelablePromiseCancel<TCanceler>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public CancelablePromiseCancel<TCanceler> Create()
-                    {
-                        return new CancelablePromiseCancel<TCanceler>();
-                    }
-                }
-
                 private CancelablePromiseCancel() { }
 
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseCancel<TCanceler> GetOrCreate(TCanceler canceler, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<CancelablePromiseCancel<TCanceler>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseCancel<TCanceler>>()
+                        ?? new CancelablePromiseCancel<TCanceler>();
                     promise.Reset();
                     promise._canceler = canceler;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.

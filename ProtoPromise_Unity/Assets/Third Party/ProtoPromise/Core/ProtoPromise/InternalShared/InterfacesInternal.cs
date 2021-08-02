@@ -60,10 +60,5 @@ namespace Proto.Promises
         {
             void Invoke(IValueContainer valueContainer);
         }
-
-        internal interface ICreator<T>
-        {
-            T Create();
-        }
     }
 }

@@ -380,15 +380,6 @@ namespace Proto.Utils
 #endif
     public sealed class ReusableValueContainer<T> : IValueContainer<T>, IDisposable, ILinked<ReusableValueContainer<T>>
     {
-        private struct Creator : Promises.Internal.ICreator<ReusableValueContainer<T>>
-        {
-            [MethodImpl(Promises.Internal.InlineOption)]
-            public ReusableValueContainer<T> Create()
-            {
-                return new ReusableValueContainer<T>();
-            }
-        }
-
         ReusableValueContainer<T> ILinked<ReusableValueContainer<T>>.Next { get; set; }
 
         public T Value { get; set; }
@@ -400,7 +391,8 @@ namespace Proto.Utils
         /// </summary>
         public static ReusableValueContainer<T> New(T value)
         {
-            var node = Promises.Internal.ObjectPool<ReusableValueContainer<T>>.GetOrCreate<ReusableValueContainer<T>, Creator>();
+            var node = Promises.Internal.ObjectPool<ReusableValueContainer<T>>.TryTake<ReusableValueContainer<T>>()
+                ?? new ReusableValueContainer<T>();
             node.Value = value;
             return node;
         }

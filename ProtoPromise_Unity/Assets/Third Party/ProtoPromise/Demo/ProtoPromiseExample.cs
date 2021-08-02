@@ -8,7 +8,7 @@ using UnityEngine.Networking;
 public class ProtoPromiseExample : MonoBehaviour
 {
     public Image image;
-    public string imageUrl = "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_816x276dp.png";
+    public string imageUrl = "https://promisesaplus.com/assets/logo-small.png";
 
     private void Awake()
     {

@@ -33,15 +33,6 @@ namespace Proto.Promises
 #endif
         internal partial class AsyncPromiseRef : PromiseRef.AsyncPromiseBase
         {
-            private struct Creator : ICreator<AsyncPromiseRef>
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                public AsyncPromiseRef Create()
-                {
-                    return new AsyncPromiseRef();
-                }
-            }
-
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal void SetResult()
             {
@@ -135,15 +126,6 @@ namespace Proto.Promises
 #endif
                 private sealed class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
                 {
-                    private struct Creator : ICreator<Continuer<TStateMachine>>
-                    {
-                        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                        public Continuer<TStateMachine> Create()
-                        {
-                            return new Continuer<TStateMachine>();
-                        }
-                    }
-
                     Continuer<TStateMachine> ILinked<Continuer<TStateMachine>>.Next { get; set; }
                     public override Action Continuation { get { return _continuation; } }
                     private readonly Action _continuation;
@@ -157,7 +139,8 @@ namespace Proto.Promises
                     [MethodImpl(MethodImplOptions.AggressiveInlining)]
                     public static Continuer<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
                     {
-                        var continuer = ObjectPool<Continuer<TStateMachine>>.GetOrCreate<Continuer<TStateMachine>, Creator>();
+                        var continuer = ObjectPool<Continuer<TStateMachine>>.TryTake<Continuer<TStateMachine>>()
+                            ?? new Continuer<TStateMachine>();
                         continuer._stateMachine = stateMachine;
                         return continuer;
                     }
@@ -195,7 +178,8 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static AsyncPromiseRef GetOrCreate()
             {
-                var promise = ObjectPool<ITreeHandleable>.GetOrCreate<AsyncPromiseRef, Creator>();
+                var promise = ObjectPool<ITreeHandleable>.TryTake<AsyncPromiseRef>()
+                    ?? new AsyncPromiseRef();
                 promise.Reset();
                 return promise;
             }
@@ -370,15 +354,6 @@ namespace Proto.Promises
 #endif
             private sealed class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef where TStateMachine : IAsyncStateMachine
             {
-                new private struct Creator : ICreator<AsyncPromiseRefMachine<TStateMachine>>
-                {
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                    public AsyncPromiseRefMachine<TStateMachine> Create()
-                    {
-                        return new AsyncPromiseRefMachine<TStateMachine>();
-                    }
-                }
-
                 // Using a promiseref object as its own continuer saves 16 bytes of object overhead (x64).
                 private TStateMachine _stateMachine;
 
@@ -387,7 +362,8 @@ namespace Proto.Promises
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 public static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<AsyncPromiseRefMachine<TStateMachine>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<AsyncPromiseRefMachine<TStateMachine>>()
+                        ?? new AsyncPromiseRefMachine<TStateMachine>();
                     promise.Reset();
                     // ORDER VERY IMPORTANT, Task must be set before copying stateMachine.
                     _ref = promise;
@@ -420,7 +396,8 @@ namespace Proto.Promises
             // For synchronous exceptions.
             internal static AsyncPromiseRef GetOrCreate()
             {
-                var promise = ObjectPool<ITreeHandleable>.GetOrCreate<AsyncPromiseRef, Creator>();
+                var promise = ObjectPool<ITreeHandleable>.TryTake<AsyncPromiseRef>()
+                    ?? new AsyncPromiseRef();
                 promise.Reset();
                 return promise;
             }

@@ -30,15 +30,6 @@ namespace Proto.Promises
 #endif
             internal partial class MergePromise : PromiseBranch, IMultiTreeHandleable
             {
-                private struct Creator : ICreator<MergePromise>
-                {
-                    [MethodImpl(InlineOption)]
-                    public MergePromise Create()
-                    {
-                        return new MergePromise();
-                    }
-                }
-
                 private MergePromise() { }
 
                 protected override void Dispose()
@@ -63,7 +54,8 @@ namespace Proto.Promises
 
                 public static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, uint totalAwaits, ulong completedProgress)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<MergePromise, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<MergePromise>()
+                        ?? new MergePromise();
                     promise.Setup(promisePassThroughs, pendingAwaits, totalAwaits, completedProgress);
                     return promise;
                 }
@@ -203,15 +195,6 @@ namespace Proto.Promises
 
                 private sealed class MergePromiseT<T> : MergePromise, IMultiTreeHandleable
                 {
-                    private struct CreatorT : ICreator<MergePromiseT<T>>
-                    {
-                        [MethodImpl(InlineOption)]
-                        public MergePromiseT<T> Create()
-                        {
-                            return new MergePromiseT<T>();
-                        }
-                    }
-
                     private Action<IValueContainer, ResolveContainer<T>, int> _onPromiseResolved;
                     private ResolveContainer<T> _valueContainer;
 
@@ -239,7 +222,8 @@ namespace Proto.Promises
 
                     public static MergePromiseT<T> GetOrCreate(ref T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved)
                     {
-                        var promise = ObjectPool<ITreeHandleable>.GetOrCreate<MergePromiseT<T>, CreatorT>();
+                        var promise = ObjectPool<ITreeHandleable>.TryTake<MergePromiseT<T>>()
+                            ?? new MergePromiseT<T>();
                         promise._onPromiseResolved = onPromiseResolved;
                         promise._valueContainer = ResolveContainer<T>.GetOrCreate(ref value, 1);
                         return promise;

@@ -579,15 +579,6 @@ namespace Proto.Promises
             internal sealed partial class PromiseProgress<TProgress> : PromiseBranch, IProgressListener, IProgressInvokable, ICancelDelegate
                 where TProgress : IProgress<float>
             {
-                private struct Creator : ICreator<PromiseProgress<TProgress>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public PromiseProgress<TProgress> Create()
-                    {
-                        return new PromiseProgress<TProgress>();
-                    }
-                }
-
                 [MethodImpl(InlineOption)]
                 protected override bool GetIsProgressSuspended()
                 {
@@ -614,7 +605,8 @@ namespace Proto.Promises
 
                 internal static PromiseProgress<TProgress> GetOrCreate(TProgress progress, CancelationToken cancelationToken = default(CancelationToken))
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseProgress<TProgress>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseProgress<TProgress>>()
+                        ?? new PromiseProgress<TProgress>();
                     promise.Reset();
                     promise._progress = progress;
                     promise.IsComplete = false;

@@ -1,10 +1,10 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+
+#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
 #endif
-
-#if CSHARP_7_3_OR_NEWER
 
 using NUnit.Framework;
 using System;

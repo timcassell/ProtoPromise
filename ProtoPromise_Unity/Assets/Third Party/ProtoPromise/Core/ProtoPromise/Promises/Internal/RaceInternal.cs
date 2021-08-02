@@ -31,15 +31,6 @@ namespace Proto.Promises
 #endif
             internal sealed partial class RacePromise : PromiseBranch, IMultiTreeHandleable
             {
-                private struct Creator : ICreator<RacePromise>
-                {
-                    [MethodImpl(InlineOption)]
-                    public RacePromise Create()
-                    {
-                        return new RacePromise();
-                    }
-                }
-
                 private RacePromise() { }
 
                 protected override void Dispose()
@@ -58,7 +49,8 @@ namespace Proto.Promises
 
                 public static RacePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<RacePromise, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<RacePromise>()
+                        ?? new RacePromise();
 
                     checked
                     {

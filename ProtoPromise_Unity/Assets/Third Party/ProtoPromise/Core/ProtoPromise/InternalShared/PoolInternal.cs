@@ -56,28 +56,21 @@ namespace Proto.Promises
                 }
             }
 
-            // `new` constraint uses reflection, too expensive. Delegate consumes memory and has indirection costs.
-            // Generic constraint for the creator allows using a struct to make a new object, so no extra memory is consumed.
-            // If the compiler/JIT is smart, it should be able to resolve the creator statically and inline it, so no indirection or function call costs.
             [MethodImpl(InlineOption)]
-            internal static T GetOrCreate<T, TCreator>()
-                where T : TLinked
-                where TCreator : struct, ICreator<T>
+            internal static T TryTake<T>() where T : class, TLinked
             {
                 TLinked obj;
                 lock (Type<T>.locker)
                 {
                     if (Type<T>.pool.IsEmpty)
                     {
-                        goto CreateNew;
+                        return null;
                     }
                     obj = Type<T>.pool.Pop();
                 }
-                // Exit lock before allocating or casting.
+                // Exit lock before casting.
                 RemoveFromTrackedObjects(obj);
                 return (T) obj;
-            CreateNew:
-                return default(TCreator).Create();
             }
 
             [MethodImpl(InlineOption)]

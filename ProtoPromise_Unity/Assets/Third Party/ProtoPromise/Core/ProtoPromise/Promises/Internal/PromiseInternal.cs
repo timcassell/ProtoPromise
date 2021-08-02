@@ -278,15 +278,6 @@ namespace Proto.Promises
 #endif
             internal sealed partial class PromiseMultiAwait : PromiseRef, IProgressListener
             {
-                private struct Creator : ICreator<PromiseMultiAwait>
-                {
-                    [MethodImpl(InlineOption)]
-                    public PromiseMultiAwait Create()
-                    {
-                        return new PromiseMultiAwait();
-                    }
-                }
-
                 private PromiseMultiAwait() { }
 
                 ~PromiseMultiAwait()
@@ -302,7 +293,8 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static PromiseMultiAwait GetOrCreate()
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseMultiAwait, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseMultiAwait>()
+                        ?? new PromiseMultiAwait();
                     promise.Reset();
                     promise.ResetProgress();
                     return promise;
@@ -516,15 +508,6 @@ namespace Proto.Promises
 #endif
             internal sealed class PromiseDuplicate : PromiseBranch
             {
-                private struct Creator : ICreator<PromiseDuplicate>
-                {
-                    [MethodImpl(InlineOption)]
-                    public PromiseDuplicate Create()
-                    {
-                        return new PromiseDuplicate();
-                    }
-                }
-
                 private PromiseDuplicate() { }
 
                 protected override void Dispose()
@@ -536,7 +519,8 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static PromiseDuplicate GetOrCreate()
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseDuplicate, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseDuplicate>()
+                        ?? new PromiseDuplicate();
                     promise.Reset();
                     return promise;
                 }
@@ -760,15 +744,6 @@ namespace Proto.Promises
 #endif
             internal class DeferredPromiseVoid : DeferredPromiseBase
             {
-                private struct Creator : ICreator<DeferredPromiseVoid>
-                {
-                    [MethodImpl(InlineOption)]
-                    public DeferredPromiseVoid Create()
-                    {
-                        return new DeferredPromiseVoid();
-                    }
-                }
-
                 protected DeferredPromiseVoid() { }
 
                 protected override void Dispose()
@@ -797,7 +772,8 @@ namespace Proto.Promises
 
                 internal static DeferredPromiseVoid GetOrCreate()
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromiseVoid, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromiseVoid>()
+                        ?? new DeferredPromiseVoid();
                     promise.Reset();
                     promise.ResetDepth();
                     return promise;
@@ -809,15 +785,6 @@ namespace Proto.Promises
 #endif
             internal class DeferredPromise<T> : DeferredPromiseBase
             {
-                private struct Creator : ICreator<DeferredPromise<T>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public DeferredPromise<T> Create()
-                    {
-                        return new DeferredPromise<T>();
-                    }
-                }
-
                 protected DeferredPromise() { }
 
                 protected override void Dispose()
@@ -846,7 +813,8 @@ namespace Proto.Promises
 
                 internal static DeferredPromise<T> GetOrCreate()
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<DeferredPromise<T>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromise<T>>()
+                        ?? new DeferredPromise<T>();
                     promise.Reset();
                     promise.ResetDepth();
                     return promise;
@@ -866,21 +834,13 @@ namespace Proto.Promises
             private sealed partial class PromiseResolve<TResolver> : PromiseBranch
                 where TResolver : IDelegateResolve
             {
-                private struct Creator : ICreator<PromiseResolve<TResolver>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public PromiseResolve<TResolver> Create()
-                    {
-                        return new PromiseResolve<TResolver>();
-                    }
-                }
-
                 private PromiseResolve() { }
 
                 [MethodImpl(InlineOption)]
                 internal static PromiseResolve<TResolver> GetOrCreate(TResolver resolver)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolve<TResolver>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolve<TResolver>>()
+                        ?? new PromiseResolve<TResolver>();
                     promise.Reset();
                     promise._resolver = resolver;
                     return promise;
@@ -914,21 +874,13 @@ namespace Proto.Promises
             private sealed partial class PromiseResolvePromise<TResolver> : PromiseWaitPromise
                 where TResolver : IDelegateResolvePromise
             {
-                private struct Creator : ICreator<PromiseResolvePromise<TResolver>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public PromiseResolvePromise<TResolver> Create()
-                    {
-                        return new PromiseResolvePromise<TResolver>();
-                    }
-                }
-
                 private PromiseResolvePromise() { }
 
                 [MethodImpl(InlineOption)]
                 internal static PromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolvePromise<TResolver>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolvePromise<TResolver>>()
+                        ?? new PromiseResolvePromise<TResolver>();
                     promise.Reset();
                     promise._resolver = resolver;
                     return promise;
@@ -970,21 +922,13 @@ namespace Proto.Promises
                 where TResolver : IDelegateResolve
                 where TRejecter : IDelegateReject
             {
-                private struct Creator : ICreator<PromiseResolveReject<TResolver, TRejecter>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public PromiseResolveReject<TResolver, TRejecter> Create()
-                    {
-                        return new PromiseResolveReject<TResolver, TRejecter>();
-                    }
-                }
-
                 private PromiseResolveReject() { }
 
                 [MethodImpl(InlineOption)]
                 internal static PromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolveReject<TResolver, TRejecter>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolveReject<TResolver, TRejecter>>()
+                        ?? new PromiseResolveReject<TResolver, TRejecter>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -1028,21 +972,13 @@ namespace Proto.Promises
                 where TResolver : IDelegateResolvePromise
                 where TRejecter : IDelegateRejectPromise
             {
-                private struct Creator : ICreator<PromiseResolveRejectPromise<TResolver, TRejecter>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public PromiseResolveRejectPromise<TResolver, TRejecter> Create()
-                    {
-                        return new PromiseResolveRejectPromise<TResolver, TRejecter>();
-                    }
-                }
-
                 private PromiseResolveRejectPromise() { }
 
                 [MethodImpl(InlineOption)]
                 internal static PromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseResolveRejectPromise<TResolver, TRejecter>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolveRejectPromise<TResolver, TRejecter>>()
+                        ?? new PromiseResolveRejectPromise<TResolver, TRejecter>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -1092,21 +1028,13 @@ namespace Proto.Promises
             private sealed partial class PromiseContinue<TContinuer> : PromiseBranch
                 where TContinuer : IDelegateContinue
             {
-                private struct Creator : ICreator<PromiseContinue<TContinuer>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public PromiseContinue<TContinuer> Create()
-                    {
-                        return new PromiseContinue<TContinuer>();
-                    }
-                }
-
                 private PromiseContinue() { }
 
                 [MethodImpl(InlineOption)]
                 internal static PromiseContinue<TContinuer> GetOrCreate(TContinuer continuer)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseContinue<TContinuer>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseContinue<TContinuer>>()
+                        ?? new PromiseContinue<TContinuer>();
                     promise.Reset();
                     promise._continuer = continuer;
                     return promise;
@@ -1132,21 +1060,13 @@ namespace Proto.Promises
             private sealed partial class PromiseContinuePromise<TContinuer> : PromiseWaitPromise
                 where TContinuer : IDelegateContinuePromise
             {
-                private struct Creator : ICreator<PromiseContinuePromise<TContinuer>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public PromiseContinuePromise<TContinuer> Create()
-                    {
-                        return new PromiseContinuePromise<TContinuer>();
-                    }
-                }
-
                 private PromiseContinuePromise() { }
 
                 [MethodImpl(InlineOption)]
                 internal static PromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseContinuePromise<TContinuer>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseContinuePromise<TContinuer>>()
+                        ?? new PromiseContinuePromise<TContinuer>();
                     promise.Reset();
                     promise._continuer = continuer;
                     return promise;
@@ -1179,21 +1099,13 @@ namespace Proto.Promises
             private sealed partial class PromiseFinally<TFinalizer> : PromiseBranch
                 where TFinalizer : IDelegateSimple
             {
-                private struct Creator : ICreator<PromiseFinally<TFinalizer>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public PromiseFinally<TFinalizer> Create()
-                    {
-                        return new PromiseFinally<TFinalizer>();
-                    }
-                }
-
                 private PromiseFinally() { }
 
                 [MethodImpl(InlineOption)]
                 internal static PromiseFinally<TFinalizer> GetOrCreate(TFinalizer finalizer)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseFinally<TFinalizer>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseFinally<TFinalizer>>()
+                        ?? new PromiseFinally<TFinalizer>();
                     promise.Reset();
                     promise._finalizer = finalizer;
                     return promise;
@@ -1220,21 +1132,13 @@ namespace Proto.Promises
             private sealed partial class PromiseCancel<TCanceler> : PromiseBranch, ITreeHandleable
                 where TCanceler : IDelegateSimple
             {
-                private struct Creator : ICreator<PromiseCancel<TCanceler>>
-                {
-                    [MethodImpl(InlineOption)]
-                    public PromiseCancel<TCanceler> Create()
-                    {
-                        return new PromiseCancel<TCanceler>();
-                    }
-                }
-
                 private PromiseCancel() { }
 
                 [MethodImpl(InlineOption)]
                 internal static PromiseCancel<TCanceler> GetOrCreate(TCanceler canceler)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.GetOrCreate<PromiseCancel<TCanceler>, Creator>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseCancel<TCanceler>>()
+                        ?? new PromiseCancel<TCanceler>();
                     promise.Reset();
                     promise._canceler = canceler;
                     return promise;
@@ -1279,15 +1183,6 @@ namespace Proto.Promises
 #endif
             internal sealed partial class PromisePassThrough : ITreeHandleable, ILinked<PromisePassThrough>, IProgressListener
             {
-                private struct Creator : ICreator<PromisePassThrough>
-                {
-                    [MethodImpl(InlineOption)]
-                    public PromisePassThrough Create()
-                    {
-                        return new PromisePassThrough();
-                    }
-                }
-
                 internal PromiseRef Owner
                 {
                     [MethodImpl(InlineOption)]
@@ -1321,7 +1216,8 @@ namespace Proto.Promises
                 {
                     // owner._ref is checked for nullity before passing into this.
                     owner._ref.MarkAwaited(owner._id);
-                    var passThrough = ObjectPool<PromisePassThrough>.GetOrCreate<PromisePassThrough, Creator>();
+                    var passThrough = ObjectPool<PromisePassThrough>.TryTake<PromisePassThrough>()
+                        ?? new PromisePassThrough();
                     passThrough._owner = owner._ref;
                     passThrough._smallFields._index = index;
                     passThrough._smallFields._retainCounter = 2;

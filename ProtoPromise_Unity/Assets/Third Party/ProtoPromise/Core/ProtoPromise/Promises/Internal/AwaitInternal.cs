@@ -42,15 +42,6 @@ namespace Proto.Promises
         {
             private const int ID_BITSHIFT = 16;
 
-            private struct Creator : ICreator<AwaiterRef>
-            {
-                [MethodImpl(InlineOption)]
-                public AwaiterRef Create()
-                {
-                    return new AwaiterRef();
-                }
-            }
-
             ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
             private Action _continuation;
@@ -76,7 +67,8 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal static AwaiterRef GetOrCreate()
             {
-                var awaiter = ObjectPool<ITreeHandleable>.GetOrCreate<AwaiterRef, Creator>();
+                var awaiter = ObjectPool<ITreeHandleable>.TryTake<AwaiterRef>()
+                    ?? new AwaiterRef();
                 awaiter._state = Promise.State.Pending;
                 return awaiter;
             }
