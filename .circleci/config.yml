@@ -1,14 +1,18 @@
-version: 2.1 # Use version 2.1 to enable orb usage.
+version: 2.1
 
 orbs:
   win: circleci/windows@2.4.0
 
 jobs:
-  build: # name of your job
+  build-and-test:  
     executor:
-      name: win/default # executor type
-
+      name: win/default
     steps:
-      # Commands are run in a Windows virtual machine environment
       - checkout
-      - run: Write-Host 'Hello, Windows'
+      - run: dotnet test 
+            
+
+workflows:
+  unit-tests: 
+    jobs:
+      - build-and-test
