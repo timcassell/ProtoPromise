@@ -176,8 +176,6 @@ namespace Proto.Promises
             partial class PromiseWaitPromise : PromiseBranch
             {
 #if PROMISE_PROGRESS
-                // TODO: handle suspended progress via _currentProgress (current implementation isn't bullet-proof, progress can still be invoked from a previous even after a promise is canceled).
-                //internal Fixed32 _currentProgress;
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
 #endif
