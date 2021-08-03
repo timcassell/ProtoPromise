@@ -38,8 +38,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\ProtoPromise_Unity\Assets\Third Party\ProtoPromise\Core\ProtoPromise\**/*.cs" />
-    <Compile Remove="..\ProtoPromise_Unity\Assets\Third Party\ProtoPromise\Core\ProtoPromise\Promises\Unity\**/*" />
+    <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\ProtoPromise\**/*.cs" />
+    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\ProtoPromise\Promises\Unity\**/*" />
   </ItemGroup>
 
 </Project>
