@@ -36,7 +36,7 @@ namespace Proto.Promises
                 protected override void Dispose()
                 {
                     base.Dispose();
-                    // Release all passthroughs.
+#if PROMISE_DEBUG
                     lock (_locker)
                     {
                         while (_passThroughs.IsNotEmpty)
@@ -44,6 +44,7 @@ namespace Proto.Promises
                             _passThroughs.Pop().Release();
                         }
                     }
+#endif
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
@@ -68,22 +69,21 @@ namespace Proto.Promises
                     {
                         var passThrough = promisePassThroughs.Pop();
                         passThrough.Owner.SuppressRejection = true;
-                        lock (promise._locker)
-                        {
-                            promise._passThroughs.Push(passThrough);
-                        }
+#if PROMISE_DEBUG
+                        passThrough.Retain();
+                        promise._passThroughs.Push(passThrough);
+#endif
                         passThrough.SetTargetAndAddToOwner(promise);
                         if (promise._valueOrPrevious != null)
                         {
-                            // This was completed potentially before all passthroughs were hooked up.
-                            // Try to unhook current passthrough (in case of thread race condition), and release all remaining passthroughs.
-                            int addCount = passThrough.TryRemoveFromOwner() ? -1 : 0;
+                            // This was completed potentially before all passthroughs were hooked up. Release all remaining passthroughs.
+                            int addCount = 0;
                             while (promisePassThroughs.IsNotEmpty)
                             {
                                 var p = promisePassThroughs.Pop();
                                 p.Owner.SuppressRejection = true;
                                 p.Owner.MaybeDispose();
-                                p.Release(-2);
+                                p.Release();
                                 --addCount;
                             }
                             if (addCount != 0 && Interlocked.Add(ref promise._waitCount, addCount) == 0)
@@ -91,7 +91,6 @@ namespace Proto.Promises
                                 promise.MaybeDispose();
                             }
                         }
-                        passThrough.Release();
                     }
 
                     return promise;
@@ -141,34 +140,7 @@ namespace Proto.Promises
                         }
                         addWaitCount = -1;
                     }
-
                     valueContainer.Retain();
-
-                    // Try to unhook and release all passthroughs.
-                    ValueLinkedStack<PromisePassThrough> removedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
-                    ValueLinkedStack<PromisePassThrough> unRemovedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
-                    lock (_locker)
-                    {
-                        while (_passThroughs.IsNotEmpty)
-                        {
-                            var p = _passThroughs.Pop();
-                            if (p.TryRemoveFromOwner())
-                            {
-                                removedPassThroughs.Push(p);
-                            }
-                            else
-                            {
-                                unRemovedPassThroughs.Push(p);
-                            }
-                        }
-                        _passThroughs = unRemovedPassThroughs;
-                    }
-
-                    while (removedPassThroughs.IsNotEmpty)
-                    {
-                        removedPassThroughs.Pop().Release();
-                        --addWaitCount;
-                    }
                     Interlocked.Add(ref _waitCount, addWaitCount);
                     return true;
                 }

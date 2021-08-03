@@ -35,7 +35,7 @@ namespace Proto.Promises
                 protected override void Dispose()
                 {
                     base.Dispose();
-                    // Release all passthroughs.
+#if PROMISE_DEBUG
                     lock (_locker)
                     {
                         while (_passThroughs.IsNotEmpty)
@@ -43,6 +43,7 @@ namespace Proto.Promises
                             _passThroughs.Pop().Release();
                         }
                     }
+#endif
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
@@ -85,21 +86,20 @@ namespace Proto.Promises
                     while (promisePassThroughs.IsNotEmpty)
                     {
                         var passThrough = promisePassThroughs.Pop();
-                        lock (_locker)
-                        {
-                            _passThroughs.Push(passThrough);
-                        }
+#if PROMISE_DEBUG
+                        passThrough.Retain();
+                        _passThroughs.Push(passThrough);
+#endif
                         passThrough.SetTargetAndAddToOwner(this);
                         if (_valueOrPrevious != null)
                         {
-                            // This was rejected or canceled potentially before all passthroughs were hooked up.
-                            // Try to unhook current passthrough (in case of thread race condition), and release all remaining passthroughs.
-                            int addCount = passThrough.TryRemoveFromOwner() ? -1 : 0;
+                            // This was rejected or canceled potentially before all passthroughs were hooked up. Release all remaining passthroughs.
+                            int addCount = 0;
                             while (promisePassThroughs.IsNotEmpty)
                             {
                                 var p = promisePassThroughs.Pop();
                                 p.Owner.MaybeDispose();
-                                p.Release(-2);
+                                p.Release();
                                 --addCount;
                             }
                             if (addCount != 0 && Interlocked.Add(ref _waitCount, addCount) == 0)
@@ -107,7 +107,6 @@ namespace Proto.Promises
                                 MaybeDispose();
                             }
                         }
-                        passThrough.Release();
                     }
                 }
 
@@ -141,34 +140,7 @@ namespace Proto.Promises
                             return false;
                         }
                         valueContainer.Retain();
-
-                        // Try to unhook and release all passthroughs.
-                        ValueLinkedStack<PromisePassThrough> removedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
-                        ValueLinkedStack<PromisePassThrough> unRemovedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
-                        lock (_locker)
-                        {
-                            while (_passThroughs.IsNotEmpty)
-                            {
-                                var p = _passThroughs.Pop();
-                                if (p.TryRemoveFromOwner())
-                                {
-                                    removedPassThroughs.Push(p);
-                                }
-                                else
-                                {
-                                    unRemovedPassThroughs.Push(p);
-                                }
-                            }
-                            _passThroughs = unRemovedPassThroughs;
-                        }
-
-                        int addWaitCount = -1;
-                        while (removedPassThroughs.IsNotEmpty)
-                        {
-                            removedPassThroughs.Pop().Release();
-                            --addWaitCount;
-                        }
-                        Interlocked.Add(ref _waitCount, addWaitCount);
+                        Interlocked.Decrement(ref _waitCount);
                         return true;
                     }
                     else // Resolved
@@ -209,7 +181,7 @@ namespace Proto.Promises
                             _valueContainer.Release();
                             _valueContainer = null;
                         }
-                        // Release all passthroughs.
+#if PROMISE_DEBUG
                         lock (_locker)
                         {
                             while (_passThroughs.IsNotEmpty)
@@ -217,6 +189,7 @@ namespace Proto.Promises
                                 _passThroughs.Pop().Release();
                             }
                         }
+#endif
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
 
@@ -245,34 +218,7 @@ namespace Proto.Promises
                                 return false;
                             }
                             valueContainer.Retain();
-
-                            // Try to unhook and release all passthroughs.
-                            ValueLinkedStack<PromisePassThrough> removedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
-                            ValueLinkedStack<PromisePassThrough> unRemovedPassThroughs = new ValueLinkedStack<PromisePassThrough>();
-                            lock (_locker)
-                            {
-                                while (_passThroughs.IsNotEmpty)
-                                {
-                                    var p = _passThroughs.Pop();
-                                    if (p.TryRemoveFromOwner())
-                                    {
-                                        removedPassThroughs.Push(p);
-                                    }
-                                    else
-                                    {
-                                        unRemovedPassThroughs.Push(p);
-                                    }
-                                }
-                                _passThroughs = unRemovedPassThroughs;
-                            }
-
-                            int addWaitCount = -1;
-                            while (removedPassThroughs.IsNotEmpty)
-                            {
-                                removedPassThroughs.Pop().Release();
-                                --addWaitCount;
-                            }
-                            Interlocked.Add(ref _waitCount, addWaitCount);
+                            Interlocked.Decrement(ref _waitCount);
                             return true;
                         }
                         else // Resolved

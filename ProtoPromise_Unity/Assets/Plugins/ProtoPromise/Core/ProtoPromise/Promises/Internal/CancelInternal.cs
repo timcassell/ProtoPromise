@@ -137,28 +137,18 @@ namespace Proto.Promises
                     owner.State = Promise.State.Canceled;
 
 #if CSHARP_7_3_OR_NEWER
-                    if (currentValue is PromiseRef previous)
+                    if (currentValue is IValueContainer previousValue)
 #else
-                    PromiseRef previous = currentValue as PromiseRef;
-                    if (previous != null)
+                    IValueContainer previousValue = currentValue as IValueContainer;
+                    if (previousValue != null)
 #endif
                     {
-                        // Try to remove owner from previous' next branches.
-                        if (previous.TryRemoveWaiter(owner))
-                        {
-                            Release();
-                        }
-                    }
-                    else if (currentValue != null)
-                    {
                         // Rejection maybe wasn't caught.
-                        ((IValueContainer) currentValue).ReleaseAndMaybeAddToUnhandledStack(true);
+                        previousValue.ReleaseAndMaybeAddToUnhandledStack(true);
                     }
 
                     owner.HandleWaiter(valueContainer);
-#if PROMISE_PROGRESS
-                    owner.UnsubscribeProgressListener(currentValue);
-#endif
+                    owner.CancelProgressListener();
                     if (Release())
                     {
                         owner.MaybeDispose();

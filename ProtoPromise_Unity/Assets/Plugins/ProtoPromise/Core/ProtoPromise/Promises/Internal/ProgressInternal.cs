@@ -40,7 +40,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 protected void ResolveProgressListener() { ResolveProgressListenerPartial(); }
                 [MethodImpl(InlineOption)]
-                protected void CancelProgressListener() { CancelProgressListenerPartial(); }
+                internal void CancelProgressListener() { CancelProgressListenerPartial(); }
                 [MethodImpl(InlineOption)]
                 protected void HandleProgressListener(Promise.State state) { HandleProgressListenerPartial(state); }
 
@@ -177,7 +177,6 @@ namespace Proto.Promises
             }
 
             private int NextWholeProgress { get { return _smallFields._waitDepthAndProgress.PositiveWholePart + 1; } }
-            protected abstract void UnsubscribeProgressListener(IProgressListener progressListener, out PromiseRef previous);
 
             partial void ResetDepth()
             {
@@ -807,16 +806,6 @@ namespace Proto.Promises
                     _progressListener = progressListener;
                     return null;
                 }
-
-                protected override void UnsubscribeProgressListener(IProgressListener progressListener, out PromiseRef previous)
-                {
-                    if (Interlocked.CompareExchange(ref _progressListener, null, progressListener) == progressListener)
-                    {
-                        WaitWhileProgressFlags(ProgressFlags.Reporting | ProgressFlags.SettingInitial);
-                        progressListener.CancelProgress();
-                    }
-                    previous = null;
-                }
             } // PromiseProgress<TProgress>
 
             partial class PromiseSingleAwait
@@ -885,20 +874,6 @@ namespace Proto.Promises
                     else
                     {
                         CancelProgressListenerPartial();
-                    }
-                }
-
-                protected override void UnsubscribeProgressListener(IProgressListener progressListener, out PromiseRef previous)
-                {
-                    if (Interlocked.CompareExchange(ref _progressListener, null, progressListener) == progressListener)
-                    {
-                        WaitWhileProgressFlags(ProgressFlags.Reporting | ProgressFlags.SettingInitial);
-                        progressListener.CancelProgress();
-                        previous = _valueOrPrevious as PromiseRef;
-                    }
-                    else
-                    {
-                        previous = null;
                     }
                 }
 
@@ -1030,23 +1005,6 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void UnsubscribeProgressListener(IProgressListener progressListener, out PromiseRef previous)
-                {
-                    if (State == Promise.State.Pending)
-                    {
-                        bool removed;
-                        lock (_progressCollectionLocker)
-                        {
-                            removed = _progressListeners.TryRemove(progressListener);
-                        }
-                        if (removed)
-                        {
-                            progressListener.CancelProgress();
-                        }
-                    }
-                    previous = null;
-                }
-
                 private void SetProgress(Fixed32 progress)
                 {
                     if (_currentProgress.InterlockedTrySetIfNotNegativeAndWholeIsGreater(progress)
@@ -1152,27 +1110,6 @@ namespace Proto.Promises
                     return _currentProgress.IsNegative;
                 }
             } // PromiseMultiAwait
-
-            partial class PromiseBranch
-            {
-                internal void UnsubscribeProgressListener(object previous)
-                {
-                    ThrowIfInPool(this);
-                    IProgressListener progressListener = Interlocked.Exchange(ref _progressListener, null);
-                    if (progressListener != null)
-                    {
-                        WaitWhileProgressFlags(ProgressFlags.Reporting | ProgressFlags.SettingInitial);
-                        progressListener.CancelProgress();
-
-                        // Remove progressListener from chain.
-                        PromiseRef promise = previous as PromiseRef;
-                        while (promise != null)
-                        {
-                            promise.UnsubscribeProgressListener(progressListener, out promise);
-                        }
-                    }
-                }
-            }
 
             partial class AsyncPromiseBase
             {
@@ -1451,16 +1388,6 @@ namespace Proto.Promises
                 partial void ResetProgress()
                 {
                     _smallFields._currentProgress = default(Fixed32);
-                }
-
-                [MethodImpl(InlineOption)]
-                partial void TryUnsubscribeProgressAndRelease(PromiseRef owner)
-                {
-                    // Don't need to check for null on the first pass becaues it is checked for null on the caller's side.
-                    do
-                    {
-                        owner.UnsubscribeProgressListener(this, out owner);
-                    } while (owner != null);
                 }
             } // PromisePassThrough
 #endif // PROMISE_PROGRESS

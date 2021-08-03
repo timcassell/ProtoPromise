@@ -257,8 +257,6 @@ namespace Proto.Promises
 
             internal abstract PromiseRef GetDuplicate(short promiseId);
 
-            protected abstract bool TryRemoveWaiter(ITreeHandleable treeHandleable);
-
             internal abstract void AddWaiter(ITreeHandleable waiter);
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -326,18 +324,6 @@ namespace Proto.Promises
                     return newPromise;
                 }
 
-                protected override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
-                {
-                    if (State != Promise.State.Pending)
-                    {
-                        return false;
-                    }
-                    lock (_branchLocker)
-                    {
-                        return _nextBranches.TryRemove(treeHandleable);
-                    }
-                }
-
                 internal override void AddWaiter(ITreeHandleable waiter)
                 {
                     ThrowIfInPool(this);
@@ -398,11 +384,6 @@ namespace Proto.Promises
 #endif
             internal abstract partial class PromiseBranch : PromiseSingleAwait
             {
-                protected sealed override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
-                {
-                    return Interlocked.CompareExchange(ref _waiter, null, treeHandleable) == treeHandleable;
-                }
-
                 internal sealed override void AddWaiter(ITreeHandleable waiter)
                 {
                     ThrowIfInPool(this);
@@ -580,11 +561,6 @@ namespace Proto.Promises
 #endif
             internal abstract partial class AsyncPromiseBase : PromiseSingleAwait
             {
-                protected sealed override bool TryRemoveWaiter(ITreeHandleable treeHandleable)
-                {
-                    return Interlocked.CompareExchange(ref _next, null, treeHandleable) == treeHandleable;
-                }
-
                 internal sealed override void AddWaiter(ITreeHandleable waiter)
                 {
                     ThrowIfInPool(this);
@@ -1220,7 +1196,7 @@ namespace Proto.Promises
                         ?? new PromisePassThrough();
                     passThrough._owner = owner._ref;
                     passThrough._smallFields._index = index;
-                    passThrough._smallFields._retainCounter = 2;
+                    passThrough._smallFields._retainCounter = 1;
                     passThrough.ResetProgress();
                     return passThrough;
                 }
@@ -1231,25 +1207,18 @@ namespace Proto.Promises
                 internal void SetTargetAndAddToOwner(IMultiTreeHandleable target)
                 {
                     ThrowIfInPool(this);
-                    var owner = _owner;
-                    // Check for null in case of race condition with TryRemoveFromOwner().
-                    if (owner == null)
-                    {
-                        return;
-                    }
-                    Retain();
                     _target = target;
-                    // Unfortunately, we have to eagerly subscribe progress. Lazy algorithm would be much more expensive with thread safety, requiring allocations.
+                    // Unfortunately, we have to eagerly subscribe progress. Lazy algorithm would be much more expensive with thread safety, requiring allocations. (see ValidateReturn)
                     // But it's not so bad, because it doesn't allocate any memory (just uses CPU cycles to set it up).
-                    owner.AddWaiterWithProgress(this);
+                    _owner.AddWaiterWithProgress(this);
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
                 {
                     ThrowIfInPool(this);
-                    bool isValid = Interlocked.Exchange(ref _owner, null) != null;
+                    _owner = null;
                     WaitWhileProgressIsBusy();
-                    if (isValid && _target.Handle(owner, valueContainer, this, _smallFields._index))
+                    if (_target.Handle(owner, valueContainer, this, _smallFields._index))
                     {
                         AddToHandleQueueFront(_target);
                     }
@@ -1259,9 +1228,9 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(this);
-                    bool isValid = Interlocked.Exchange(ref _owner, null) != null;
+                    _owner = null;
                     WaitWhileProgressIsBusy();
-                    if (isValid && _target.Handle(owner, valueContainer, this, _smallFields._index))
+                    if (_target.Handle(owner, valueContainer, this, _smallFields._index))
                     {
                         AddToHandleQueueBack(_target);
                     }
@@ -1280,34 +1249,15 @@ namespace Proto.Promises
                     }
                 }
 
-                internal void Release(int addRetains = -1)
+                internal void Release()
                 {
                     ThrowIfInPool(this);
-                    if (Interlocked.Add(ref _smallFields._retainCounter, addRetains) == 0)
+                    if (Interlocked.Decrement(ref _smallFields._retainCounter) == 0)
                     {
                         _target = null;
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
                 }
-
-                internal bool TryRemoveFromOwner()
-                {
-                    ThrowIfInPool(this);
-                    PromiseRef owner = Interlocked.Exchange(ref _owner, null);
-                    if (owner == null)
-                    {
-                        return false;
-                    }
-                    WaitWhileProgressIsBusy();
-                    TryUnsubscribeProgressAndRelease(owner);
-                    if (owner.TryRemoveWaiter(this))
-                    {
-                        Release();
-                    }
-                    return true;
-                }
-
-                partial void TryUnsubscribeProgressAndRelease(PromiseRef owner);
 
                 void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
             } // PromisePassThrough

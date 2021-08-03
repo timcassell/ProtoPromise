@@ -309,9 +309,11 @@ namespace Proto.Promises
             #region Multi Promises
             partial class MergePromise : PromiseBranch
             {
+                private int _waitCount;
+#if PROMISE_DEBUG
                 private readonly object _locker = new object();
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
-                private int _waitCount;
+#endif
 
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
@@ -325,22 +327,26 @@ namespace Proto.Promises
 
             partial class RacePromise : PromiseBranch
             {
+                private int _waitCount;
+#if PROMISE_DEBUG
                 private readonly object _locker = new object();
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
-                private int _waitCount;
+#endif
 
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-
+                // TODO: optimize memory
                 private Fixed32 _currentAmount;
 #endif
             }
 
             partial class FirstPromise : PromiseBranch
             {
+                private int _waitCount;
+#if PROMISE_DEBUG
                 private readonly object _locker = new object();
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
-                private int _waitCount;
+#endif
 
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }

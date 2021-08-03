@@ -207,7 +207,7 @@ namespace Proto.Promises
                 }
             }
         }
-#endif
+#endif // PROMISE_DEBUG
     }
 
     partial struct Promise
