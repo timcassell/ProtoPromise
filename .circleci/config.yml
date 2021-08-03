@@ -4,15 +4,39 @@ orbs:
   win: circleci/windows@2.4.0
 
 jobs:
-  build-and-test:  
+  test-release:  
     executor:
       name: win/default
     steps:
       - checkout
-      - run: dotnet test 
+      - run: dotnet test -c Release
+
+  test-release-no-progress:  
+    executor:
+      name: win/default
+    steps:
+      - checkout
+      - run: dotnet test -c Release_NoProgress
+
+  test-debug:  
+    executor:
+      name: win/default
+    steps:
+      - checkout
+      - run: dotnet test -c Debug
+
+  test-debug-no-progress:  
+    executor:
+      name: win/default
+    steps:
+      - checkout
+      - run: dotnet test -c Debug_NoProgress
             
 
 workflows:
   unit-tests: 
     jobs:
-      - build-and-test
+      - test-release
+      - test-release-no-progress
+      - test-debug
+      - test-debug-no-progress

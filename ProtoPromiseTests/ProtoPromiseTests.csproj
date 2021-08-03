@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <DefineConstants>TRACE;CSHARP_7_3_OR_NEWER</DefineConstants>
     <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
