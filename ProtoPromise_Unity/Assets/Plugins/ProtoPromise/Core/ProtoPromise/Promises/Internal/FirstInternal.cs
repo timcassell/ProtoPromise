@@ -9,14 +9,10 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable RECS0001 // Class is declared partial but has only one part
-#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using Proto.Utils;
 
@@ -60,7 +56,7 @@ namespace Proto.Promises
                     }
                     unchecked
                     {
-                        promise._waitCount = (int) pendingAwaits;
+                        promise._firstSmallFields._waitCount = (int) pendingAwaits;
                     }
                     promise.Reset();
                     promise.SetupProgress(promisePassThroughs);
@@ -86,7 +82,7 @@ namespace Proto.Promises
                                 p.Release();
                                 --addCount;
                             }
-                            if (addCount != 0 && Interlocked.Add(ref promise._waitCount, addCount) == 0)
+                            if (addCount != 0 && Interlocked.Add(ref promise._firstSmallFields._waitCount, addCount) == 0)
                             {
                                 promise.MaybeDispose();
                             }
@@ -104,7 +100,7 @@ namespace Proto.Promises
                     HandleWaiter(valueContainer);
                     HandleProgressListener(state);
 
-                    if (Interlocked.Decrement(ref _waitCount) == 0)
+                    if (Interlocked.Decrement(ref _firstSmallFields._waitCount) == 0)
                     {
                         MaybeDispose();
                     }
@@ -117,7 +113,7 @@ namespace Proto.Promises
                     int addWaitCount;
                     if (owner.State != Promise.State.Resolved) // Rejected/Canceled
                     {
-                        int remaining = Interlocked.Decrement(ref _waitCount);
+                        int remaining = Interlocked.Decrement(ref _firstSmallFields._waitCount);
                         if (remaining != 1 || Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
                         {
                             if (remaining == 0)
@@ -132,7 +128,7 @@ namespace Proto.Promises
                     {
                         if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
                         {
-                            if (Interlocked.Decrement(ref _waitCount) == 0)
+                            if (Interlocked.Decrement(ref _firstSmallFields._waitCount) == 0)
                             {
                                 MaybeDispose();
                             }
@@ -141,7 +137,7 @@ namespace Proto.Promises
                         addWaitCount = -1;
                     }
                     valueContainer.Retain();
-                    Interlocked.Add(ref _waitCount, addWaitCount);
+                    Interlocked.Add(ref _firstSmallFields._waitCount, addWaitCount);
                     return true;
                 }
 
@@ -160,7 +156,7 @@ namespace Proto.Promises
 
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs)
                 {
-                    _currentAmount = default(Fixed32);
+                    _firstSmallFields._currentAmount = default(Fixed32);
 
                     // Expect the shortest chain to finish first.
                     int minWaitDepth = int.MaxValue;
@@ -175,7 +171,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
-                    return _currentAmount;
+                    return _firstSmallFields._currentAmount;
                 }
 
                 void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, bool shouldReport)
@@ -184,7 +180,7 @@ namespace Proto.Promises
 
                     // Use double for better precision.
                     var newAmount = new Fixed32(senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
-                    if (shouldReport & _currentAmount.InterlockedTrySetIfGreater(newAmount))
+                    if (shouldReport & _firstSmallFields._currentAmount.InterlockedTrySetIfGreater(newAmount))
                     {
                         if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                         {

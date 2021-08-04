@@ -12,7 +12,6 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0090 // Use 'new(...)'
 
 using Proto.Utils;
 using System;
@@ -327,31 +326,45 @@ namespace Proto.Promises
 
             partial class RacePromise : PromiseBranch
             {
-                private int _waitCount;
+                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+                private struct RaceSmallFields
+                {
+                    internal int _waitCount;
+#if PROMISE_PROGRESS
+                    internal Fixed32 _currentAmount;
+#endif
+                }
+
+                private RaceSmallFields _raceSmallFields;
 #if PROMISE_DEBUG
                 private readonly object _locker = new object();
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
 #endif
-
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-                // TODO: optimize memory
-                private Fixed32 _currentAmount;
 #endif
             }
 
             partial class FirstPromise : PromiseBranch
             {
-                private int _waitCount;
+                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+                private struct FirstSmallFields
+                {
+                    internal int _waitCount;
+#if PROMISE_PROGRESS
+                    internal Fixed32 _currentAmount;
+#endif
+                }
+
+                private FirstSmallFields _firstSmallFields;
 #if PROMISE_DEBUG
                 private readonly object _locker = new object();
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
 #endif
-
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-
-                private Fixed32 _currentAmount;
 #endif
             }
 
