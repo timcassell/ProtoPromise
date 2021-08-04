@@ -126,8 +126,16 @@ namespace Proto.Promises
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
             foreach (StackTrace st in stackTraces)
             {
-                string stackTrace = st.ToString().Substring(1);
-                foreach (var trace in stackTrace.Split(separator, StringSplitOptions.RemoveEmptyEntries))
+                if (st == null)
+                {
+                    continue;
+                }
+                string stackTrace = st.ToString();
+                if (string.IsNullOrEmpty(stackTrace))
+                {
+                    continue;
+                }
+                foreach (var trace in stackTrace.Substring(1).Split(separator, StringSplitOptions.RemoveEmptyEntries))
                 {
                     if (!trace.Contains("Proto.Promises"))
                     {

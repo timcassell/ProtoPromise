@@ -75,7 +75,7 @@ namespace Proto.Promises
 
 
         partial void Validate();
-#if PROMISE_DEBUG || !CSHARP_7_3_OR_NEWER
+#if PROMISE_DEBUG
         partial void Validate()
         {
             if (
@@ -197,7 +197,7 @@ namespace Proto.Promises
             partial void ValidateCall();
             partial void ValidateRejected();
             partial void ValidateCanceled();
-#if PROMISE_DEBUG || !CSHARP_7_3_OR_NEWER
+#if PROMISE_DEBUG
             partial void ValidateCall()
             {
                 if (
@@ -350,7 +350,7 @@ namespace Proto.Promises
             partial void ValidateResolved();
             partial void ValidateRejected();
             partial void ValidateCanceled();
-#if PROMISE_DEBUG || !CSHARP_7_3_OR_NEWER
+#if PROMISE_DEBUG
             partial void ValidateCall()
             {
                 if (
