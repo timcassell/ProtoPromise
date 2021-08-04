@@ -4,39 +4,56 @@ orbs:
   win: circleci/windows@2.4.0
 
 jobs:
-  test-release:  
+  run-tests:
+    parameters:
+      config:
+        type: string
+      runtime:
+        type: string
     executor:
       name: win/default
     steps:
       - checkout
-      - run: dotnet test -c Release
-
-  test-release-no-progress:  
-    executor:
-      name: win/default
-    steps:
-      - checkout
-      - run: dotnet test -c Release_NoProgress
-
-  test-debug:  
-    executor:
-      name: win/default
-    steps:
-      - checkout
-      - run: dotnet test -c Debug
-
-  test-debug-no-progress:  
-    executor:
-      name: win/default
-    steps:
-      - checkout
-      - run: dotnet test -c Debug_NoProgress
-            
+      #-nodereuse:false to try to fix hang (see https://github.com/dotnet/sdk/issues/9452)
+      - run:
+          command: dotnet test -c <<parameters.config>> --framework <<parameters.runtime>> -nodereuse:false
+          no_output_timeout: 60m
 
 workflows:
-  unit-tests: 
+  net5-tests:
     jobs:
-      - test-release
-      - test-release-no-progress
-      - test-debug
-      - test-debug-no-progress
+      - run-tests:
+          name: Net5 Release
+          config: Release
+          runtime: net5.0
+      - run-tests:
+          name: Net5 Release Without Progress
+          config: Release_NoProgress
+          runtime: net5.0
+      - run-tests:
+          name: Net5 Debug
+          config: Debug
+          runtime: net5.0
+      - run-tests:
+          name: Net5 Debug Without Progress
+          config: Debug_NoProgress
+          runtime: net5.0
+         
+  netframework-tests:
+    jobs: 
+      - run-tests:
+          name: NetFramework Release
+          config: Release
+          runtime: net472
+      - run-tests:
+          name: NetFramework Release Without Progress
+          config: Release_NoProgress
+          runtime: net472
+      - run-tests:
+          name: NetFramework Debug
+          config: Debug
+          runtime: net472
+      - run-tests:
+          name: NetFramework Debug Without Progress
+          config: Debug_NoProgress
+          runtime: net472
