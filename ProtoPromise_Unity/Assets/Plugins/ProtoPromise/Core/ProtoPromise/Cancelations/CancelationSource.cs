@@ -21,8 +21,8 @@ namespace Proto.Promises
         struct CancelationSource : ICancelableAny, IDisposable, IEquatable<CancelationSource>
     {
         private readonly Internal.CancelationRef _ref;
-        private readonly int _sourceId;
-        private readonly int _tokenId;
+        private readonly short _sourceId;
+        private readonly short _tokenId;
 
         /// <summary>
         /// Create a new <see cref="CancelationSource"/>.
@@ -124,7 +124,7 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel()
         {
-            return _ref != null && _ref.TrySetCanceled(_sourceId, _tokenId);
+            return _ref != null && _ref.TrySetCanceled(_sourceId);
         }
 
         /// <summary>
@@ -133,7 +133,7 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel<TCancel>(TCancel reason)
         {
-            return _ref != null && _ref.TrySetCanceled(ref reason, _sourceId, _tokenId);
+            return _ref != null && _ref.TrySetCanceled(ref reason, _sourceId);
         }
 
         /// <summary>

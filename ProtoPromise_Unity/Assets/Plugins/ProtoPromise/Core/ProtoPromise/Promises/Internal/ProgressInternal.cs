@@ -80,6 +80,7 @@ namespace Proto.Promises
                     [MethodImpl(InlineOption)]
                     internal ProgressFlags InterlockedSetSubscribedIfSecondPrevious()
                     {
+                        Thread.MemoryBarrier();
                         StateAndFlags initialValue = default(StateAndFlags), newValue;
                         do
                         {
@@ -93,6 +94,7 @@ namespace Proto.Promises
 
                     internal ProgressFlags InterlockedSetProgressFlags(ProgressFlags progressFlags)
                     {
+                        Thread.MemoryBarrier();
                         StateAndFlags initialValue = default(StateAndFlags), newValue;
                         do
                         {
@@ -105,6 +107,7 @@ namespace Proto.Promises
 
                     internal ProgressFlags InterlockedUnsetProgressFlags(ProgressFlags progressFlags)
                     {
+                        Thread.MemoryBarrier();
                         StateAndFlags initialValue = default(StateAndFlags), newValue;
                         ProgressFlags unsetFlags = ~progressFlags;
                         do
@@ -325,6 +328,7 @@ namespace Proto.Promises
 
                 internal bool InterlockedTrySetIfGreater(Fixed32 other)
                 {
+                    Thread.MemoryBarrier();
                     int otherValue = other._value;
                     int current;
                     do
@@ -341,6 +345,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal bool InterlockedTrySetAndGetDifferenceIfNotNegativeAndWholeIsGreater(Fixed32 other, out uint dif)
                 {
+                    Thread.MemoryBarrier();
                     int otherValue = other._value;
                     int otherWholePart = other.WholePart;
                     int current;
@@ -375,6 +380,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void InterlockedSetNewDecimalPartIfNotNegativeAndDecimalIsGreater(double decimalPart)
                 {
+                    Thread.MemoryBarrier();
                     // Don't bother rounding, we don't want to accidentally round to 1.0.
                     int newDecimalPart = (int) (decimalPart * DecimalMax);
                     int current, newValue;
@@ -393,6 +399,7 @@ namespace Proto.Promises
 
                 internal bool InterlockedTrySetIfNotNegativeAndWholeIsGreater(Fixed32 other)
                 {
+                    Thread.MemoryBarrier();
                     int otherValue = other._value;
                     int otherWholePart = other.WholePart;
                     int current;

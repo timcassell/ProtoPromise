@@ -113,7 +113,8 @@ namespace Proto.Promises
                 {
                     _longValue = 0;
                     _retains = 0;
-                    _promiseId = _deferredId = initialId;
+                    _promiseId = initialId;
+                    _deferredId = initialId;
                 }
             } // IdRetain
 

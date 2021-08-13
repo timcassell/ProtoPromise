@@ -21,13 +21,13 @@ namespace Proto.Promises
         struct CancelationRegistration : IEquatable<CancelationRegistration>
     {
         private readonly Internal.CancelationRef _ref;
-        private readonly int _id;
+        private readonly short _id;
         private readonly uint _order;
 
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal CancelationRegistration(Internal.CancelationRef cancelationRef, int tokenId, uint registrationPosition)
+        internal CancelationRegistration(Internal.CancelationRef cancelationRef, short tokenId, uint registrationPosition)
         {
             _ref = cancelationRef;
             _id = tokenId;

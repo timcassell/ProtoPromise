@@ -24,7 +24,7 @@ namespace Proto.Promises
         partial struct CancelationToken : IRetainable, IEquatable<CancelationToken>
     {
         private readonly Internal.CancelationRef _ref;
-        private readonly int _id;
+        private readonly short _id;
 
         /// <summary>
         /// Returns an empty <see cref="CancelationToken"/>.
@@ -34,7 +34,7 @@ namespace Proto.Promises
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal CancelationToken(Internal.CancelationRef cancelationRef, int tokenId)
+        internal CancelationToken(Internal.CancelationRef cancelationRef, short tokenId)
         {
             _ref = cancelationRef;
             _id = tokenId;
@@ -234,7 +234,7 @@ namespace Proto.Promises
         /// </summary>
         public bool TryRetain()
         {
-            return _ref != null && _ref.TryRetain(_id);
+            return _ref != null && _ref.TryRetainUser(_id);
         }
 
         /// <summary>
@@ -257,7 +257,7 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public void Release()
         {
-            if (_ref == null || !_ref.TryRelease(_id))
+            if (_ref == null || !_ref.TryReleaseUser(_id))
             {
                 throw new InvalidOperationException("CancelationToken.Release: you must call Retain before you call Release.", Internal.GetFormattedStacktrace(1));
             }

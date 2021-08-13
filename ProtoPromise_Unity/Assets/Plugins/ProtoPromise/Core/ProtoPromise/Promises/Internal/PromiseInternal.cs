@@ -1250,7 +1250,17 @@ namespace Proto.Promises
                 internal void Release()
                 {
                     ThrowIfInPool(this);
-                    if (Interlocked.Decrement(ref _smallFields._retainCounter) == 0)
+                    int newValue;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    // Don't let counter go below 0.
+                    if (!InterlockedAddIfNotEqual(ref _smallFields._retainCounter, -1, 0, out newValue))
+                    {
+                        throw new OverflowException(); // This should never happen, but checking just in case.
+                    }
+#else
+                    newValue = Interlocked.Decrement(ref _smallFields._retainCounter);
+#endif
+                    if (newValue == 0)
                     {
                         _target = null;
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
@@ -1265,6 +1275,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal bool InterlockedTryIncrementPromiseId(short promiseId)
                 {
+                    Thread.MemoryBarrier();
                     IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
@@ -1286,6 +1297,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal bool InterlockedTryIncrementDeferredId(short deferredId)
                 {
+                    Thread.MemoryBarrier();
                     IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
@@ -1307,6 +1319,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void InterlockedIncrementDeferredId()
                 {
+                    Thread.MemoryBarrier();
                     IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
@@ -1322,6 +1335,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal bool InterlockedTryRetain(short promiseId)
                 {
+                    Thread.MemoryBarrier();
                     IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
@@ -1348,6 +1362,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal bool InterlockedTryRetainWithDeferredId(short deferredId)
                 {
+                    Thread.MemoryBarrier();
                     IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
@@ -1375,6 +1390,7 @@ namespace Proto.Promises
                 internal bool InterlockedTryReleaseComplete()
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    Thread.MemoryBarrier();
                     IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {
@@ -1396,6 +1412,7 @@ namespace Proto.Promises
 
                 internal uint InterlockedRetainDisregardId(uint retains = 1)
                 {
+                    Thread.MemoryBarrier();
                     IdRetain initialValue = default(IdRetain), newValue;
                     do
                     {

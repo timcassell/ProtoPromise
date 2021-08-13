@@ -404,6 +404,7 @@ namespace Proto.Promises
 
         internal static bool InterlockedAddIfNotEqual(ref int location, int value, int comparand, out int newValue)
         {
+            Thread.MemoryBarrier();
             int initialValue;
             do
             {
