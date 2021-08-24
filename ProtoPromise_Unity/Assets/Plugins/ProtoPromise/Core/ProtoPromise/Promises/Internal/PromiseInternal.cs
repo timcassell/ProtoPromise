@@ -608,6 +608,7 @@ namespace Proto.Promises
                     MaybeDispose();
                 }
 
+                [MethodImpl(InlineOption)]
                 protected void ResolveDirect()
                 {
                     ThrowIfInPool(this);
@@ -626,6 +627,7 @@ namespace Proto.Promises
                     RejectOrCancelInternal(CreateRejectContainer(ref reason, rejectSkipFrames + 1, this));
                 }
 
+                [MethodImpl(InlineOption)]
                 protected void CancelDirect()
                 {
                     ThrowIfInPool(this);

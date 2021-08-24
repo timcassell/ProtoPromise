@@ -348,6 +348,7 @@ namespace Proto.Promises
 
             Type IValueContainer.ValueType { get { return null; } }
 
+            [MethodImpl(InlineOption)]
             public static CancelContainerVoid GetOrCreate()
             {
                 return _instance;
@@ -508,6 +509,7 @@ namespace Proto.Promises
 
             Type IValueContainer.ValueType { get { return null; } }
 
+            [MethodImpl(InlineOption)]
             public static ResolveContainerVoid GetOrCreate()
             {
                 return _instance;

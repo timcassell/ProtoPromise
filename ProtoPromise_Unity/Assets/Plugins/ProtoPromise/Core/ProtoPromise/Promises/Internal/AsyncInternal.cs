@@ -4,35 +4,386 @@
 #undef PROMISE_DEBUG
 #endif
 
-#if CSHARP_7_3_OR_NEWER // Custom async builders only available after C# 7.2.
-
 #pragma warning disable IDE0060 // Remove unused parameter
 
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security;
 using Proto.Promises.Async.CompilerServices;
 using Proto.Utils;
 
+namespace System.Runtime.CompilerServices
+{
+#pragma warning disable CS0436 // Type conflicts with imported type
+    internal sealed class AsyncMethodBuilderAttribute : Attribute
+    {
+        public Type BuilderType { get; }
+
+        public AsyncMethodBuilderAttribute(Type builderType)
+        {
+            BuilderType = builderType;
+        }
+    }
+#pragma warning restore CS0436 // Type conflicts with imported type
+}
+
 namespace Proto.Promises
 {
+#if CSHARP_7_3_OR_NEWER // Custom async builders only available after C# 7.2.
     [AsyncMethodBuilder(typeof(PromiseMethodBuilder))]
     partial struct Promise { }
 
     [AsyncMethodBuilder(typeof(PromiseMethodBuilder<>))]
     partial struct Promise<T> { }
+#endif // CSHARP_7_3_OR_NEWER
 
+    namespace Async.CompilerServices
+    {
+#if CSHARP_7_3_OR_NEWER // Custom async builders only available after C# 7.2.
+        /// <summary>
+        /// This type and its members are intended for use by the compiler.
+        /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        public struct PromiseMethodBuilder
+        {
+            private struct VoidResult { }
+
+            private Internal.PromiseMethodBuilderInternal<VoidResult> _builder;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private PromiseMethodBuilder(Internal.PromiseMethodBuilderInternal<VoidResult> builder)
+            {
+                _builder = builder;
+            }
+
+            public Promise Task
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get { return _builder.Task; }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static PromiseMethodBuilder Create()
+            {
+                return new PromiseMethodBuilder(Internal.PromiseMethodBuilderInternal<VoidResult>.Create());
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetException(Exception exception)
+            {
+                _builder.SetException(exception);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetResult()
+            {
+                _builder.SetResult();
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+                where TAwaiter : INotifyCompletion
+                where TStateMachine : IAsyncStateMachine
+            {
+                _builder.AwaitOnCompleted(ref awaiter, ref stateMachine);
+            }
+
+            [SecuritySafeCritical]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+                where TAwaiter : ICriticalNotifyCompletion
+                where TStateMachine : IAsyncStateMachine
+            {
+                _builder.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Start<TStateMachine>(ref TStateMachine stateMachine)
+                where TStateMachine : IAsyncStateMachine
+            {
+                _builder.Start(ref stateMachine);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetStateMachine(IAsyncStateMachine stateMachine)
+            {
+                _builder.SetStateMachine(stateMachine);
+            }
+        }
+
+        /// <summary>
+        /// This type and its members are intended for use by the compiler.
+        /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        public struct PromiseMethodBuilder<T>
+        {
+            private Internal.PromiseMethodBuilderInternal<T> _builder;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private PromiseMethodBuilder(Internal.PromiseMethodBuilderInternal<T> builder)
+            {
+                _builder = builder;
+            }
+
+            public Promise<T> Task
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get { return _builder.Task; }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static PromiseMethodBuilder<T> Create()
+            {
+                return new PromiseMethodBuilder<T>(Internal.PromiseMethodBuilderInternal<T>.Create());
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetException(Exception exception)
+            {
+                _builder.SetException(exception);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetResult(T result)
+            {
+                _builder.SetResult(result);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+                where TAwaiter : INotifyCompletion
+                where TStateMachine : IAsyncStateMachine
+            {
+                _builder.AwaitOnCompleted(ref awaiter, ref stateMachine);
+            }
+
+            [SecuritySafeCritical]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+                where TAwaiter : ICriticalNotifyCompletion
+                where TStateMachine : IAsyncStateMachine
+            {
+                _builder.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Start<TStateMachine>(ref TStateMachine stateMachine)
+                where TStateMachine : IAsyncStateMachine
+            {
+                _builder.Start(ref stateMachine);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetStateMachine(IAsyncStateMachine stateMachine)
+            {
+                _builder.SetStateMachine(stateMachine);
+            }
+        }
+#endif // CSHARP_7_3_OR_NEWER
+    } // namespace Async.CompilerServices
+} // namespace Proto.Promises
+
+namespace Proto.Promises
+{
+#if CSHARP_7_3_OR_NEWER // Custom async builders only available after C# 7.2.
     partial class Internal
     {
-        /// <summary>
-        /// This type and its members are intended for use by the compiler (async Promise functions).
-        /// </summary>
+#if PROMISE_DEBUG || ENABLE_IL2CPP
+        // Fix for IL2CPP compile bug. https://issuetracker.unity3d.com/issues/il2cpp-incorrect-results-when-calling-a-method-from-outside-class-in-a-struct
+        // Also use this in DEBUG mode for causality traces.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        public struct PromiseMethodBuilderInternal<T>
+        {
+            private AsyncPromiseRef _promise;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private PromiseMethodBuilderInternal(AsyncPromiseRef promise)
+            {
+                _promise = promise;
+            }
+
+            public Promise<T> Task
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get { return new Promise<T>(_promise, _promise.Id); }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static PromiseMethodBuilderInternal<T> Create()
+            {
+                return new PromiseMethodBuilderInternal<T>(AsyncPromiseRef.GetOrCreate());
+            }
+
+            public void SetException(Exception exception)
+            {
+                _promise.SetException(exception);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetResult()
+            {
+                _promise.SetResult();
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetResult(T result)
+            {
+                _promise.SetResult(ref result);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+                where TAwaiter : INotifyCompletion
+                where TStateMachine : IAsyncStateMachine
+            {
+                // TODO: check for circular awaits (promise waiting on itself)
+                awaiter.OnCompleted(_promise.GetContinuation(ref stateMachine));
+            }
+
+            [SecuritySafeCritical]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+                where TAwaiter : ICriticalNotifyCompletion
+                where TStateMachine : IAsyncStateMachine
+            {
+                awaiter.UnsafeOnCompleted(_promise.GetContinuation(ref stateMachine));
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Start<TStateMachine>(ref TStateMachine stateMachine)
+                where TStateMachine : IAsyncStateMachine
+            {
+                // TODO: to support ExecutionContext for AsyncLocal
+                //new AsyncTaskMethodBuilder().Start(ref stateMachine);
+                stateMachine.MoveNext();
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetStateMachine(IAsyncStateMachine stateMachine) { }
+        }
+
+#else // PROMISE_DEBUG || ENABLE_IL2CPP
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        [StructLayout(LayoutKind.Auto)]
+        internal struct PromiseMethodBuilderInternal<T>
+        {
+            private AsyncPromiseRef _ref;
+            private short _id;
+            private T _result;
+
+            public Promise<T> Task
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get { return new Promise<T>(_ref, _id, ref _result); }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static PromiseMethodBuilderInternal<T> Create()
+            {
+                return new PromiseMethodBuilderInternal<T>();
+            }
+
+            public void SetException(Exception exception)
+            {
+                if (_ref is null)
+                {
+                    _ref = AsyncPromiseRef.GetOrCreate();
+                    _id = _ref.Id;
+                }
+                _ref.SetException(exception);
+            }
+
+            public void SetResult()
+            {
+                if (_ref is null)
+                {
+                    _id = ValidIdFromApi;
+                }
+                else
+                {
+                    _ref.SetResult();
+                }
+            }
+
+            public void SetResult(T result)
+            {
+                if (_ref is null)
+                {
+                    _result = result;
+                    _id = ValidIdFromApi;
+                }
+                else
+                {
+                    _ref.SetResult(ref result);
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+                where TAwaiter : INotifyCompletion
+                where TStateMachine : IAsyncStateMachine
+            {
+                awaiter.OnCompleted(GetContinuation(ref stateMachine));
+            }
+
+            [SecuritySafeCritical]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+                where TAwaiter : ICriticalNotifyCompletion
+                where TStateMachine : IAsyncStateMachine
+            {
+                awaiter.UnsafeOnCompleted(GetContinuation(ref stateMachine));
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Start<TStateMachine>(ref TStateMachine stateMachine)
+                where TStateMachine : IAsyncStateMachine
+            {
+                stateMachine.MoveNext();
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetStateMachine(IAsyncStateMachine stateMachine) { }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private Action GetContinuation<TStateMachine>(ref TStateMachine stateMachine)
+                where TStateMachine : IAsyncStateMachine
+            {
+                if (_ref is null)
+                {
+                    AsyncPromiseRef.SetStateMachine(ref stateMachine, ref _ref);
+                    _id = _ref.Id;
+                }
+                return _ref.continuation;
+            }
+        }
+#endif // DEBUG or IL2CPP
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
         internal partial class AsyncPromiseRef : PromiseRef.AsyncPromiseBase
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static AsyncPromiseRef GetOrCreate()
+            {
+                var promise = ObjectPool<ITreeHandleable>.TryTake<AsyncPromiseRef>()
+                    ?? new AsyncPromiseRef();
+                promise.Reset();
+                return promise;
+            }
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal void SetResult()
             {
@@ -67,31 +418,9 @@ namespace Proto.Promises
             }
         }
 
-    }
-}
-
-namespace System.Runtime.CompilerServices
-{
-#pragma warning disable CS0436 // Type conflicts with imported type
-    internal sealed class AsyncMethodBuilderAttribute : Attribute
-    {
-        public Type BuilderType { get; }
-
-        public AsyncMethodBuilderAttribute(Type builderType)
-        {
-            BuilderType = builderType;
-        }
-    }
-#pragma warning restore CS0436 // Type conflicts with imported type
-}
-
 #if PROMISE_DEBUG || ENABLE_IL2CPP
-// Fix for IL2CPP compile bug. https://issuetracker.unity3d.com/issues/il2cpp-incorrect-results-when-calling-a-method-from-outside-class-in-a-struct
-// Also use this in DEBUG mode for cleaner causality traces.
-namespace Proto.Promises
-{
-    partial class Internal
-    {
+        // Fix for IL2CPP compile bug. https://issuetracker.unity3d.com/issues/il2cpp-incorrect-results-when-calling-a-method-from-outside-class-in-a-struct
+        // Also use this in DEBUG mode for causality traces.
         sealed partial class AsyncPromiseRef
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -176,15 +505,6 @@ namespace Proto.Promises
             private PromiseMethodContinuer _continuer;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static AsyncPromiseRef GetOrCreate()
-            {
-                var promise = ObjectPool<ITreeHandleable>.TryTake<AsyncPromiseRef>()
-                    ?? new AsyncPromiseRef();
-                promise.Reset();
-                return promise;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public Action GetContinuation<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
             {
                 if (_continuer is null)
@@ -204,149 +524,10 @@ namespace Proto.Promises
                 }
                 ObjectPool<ITreeHandleable>.MaybeRepool(this);
             }
-        }
-    }
-}
+        } // class AsyncPromiseRef
 
-namespace Proto.Promises.Async.CompilerServices
-{
-    /// <summary>
-    /// This type and its members are intended for use by the compiler.
-    /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
-#endif
-    public struct PromiseMethodBuilder
-    {
-        private Internal.AsyncPromiseRef _promise;
+#else // PROMISE_DEBUG || ENABLE_IL2CPP
 
-        public Promise Task
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return new Promise(_promise, _promise.Id); }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PromiseMethodBuilder Create()
-        {
-            return new PromiseMethodBuilder()
-            {
-                _promise = Internal.AsyncPromiseRef.GetOrCreate()
-            };
-        }
-
-        public void SetException(Exception exception)
-        {
-            _promise.SetException(exception);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetResult()
-        {
-            _promise.SetResult();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
-            where TAwaiter : INotifyCompletion
-            where TStateMachine : IAsyncStateMachine
-        {
-            // TODO: check for circular awaits (promise waiting on itself)
-            awaiter.OnCompleted(_promise.GetContinuation(ref stateMachine));
-        }
-
-        [SecuritySafeCritical]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
-            where TAwaiter : ICriticalNotifyCompletion
-            where TStateMachine : IAsyncStateMachine
-        {
-            awaiter.UnsafeOnCompleted(_promise.GetContinuation(ref stateMachine));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Start<TStateMachine>(ref TStateMachine stateMachine)
-            where TStateMachine : IAsyncStateMachine
-        {
-            // TODO: to support ExecutionContext for AsyncLocal
-            //new AsyncTaskMethodBuilder().Start(ref stateMachine);
-            stateMachine.MoveNext();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
-    }
-
-    /// <summary>
-    /// This type and its members are intended for use by the compiler.
-    /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
-#endif
-    public struct PromiseMethodBuilder<T>
-    {
-        private Internal.AsyncPromiseRef _promise;
-
-        public Promise<T> Task
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return new Promise<T>(_promise, _promise.Id); }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PromiseMethodBuilder<T> Create()
-        {
-            return new PromiseMethodBuilder<T>()
-            {
-                _promise = Internal.AsyncPromiseRef.GetOrCreate()
-            };
-        }
-
-        public void SetException(Exception exception)
-        {
-            _promise.SetException(exception);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetResult(T result)
-        {
-            _promise.SetResult(ref result);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
-            where TAwaiter : INotifyCompletion
-            where TStateMachine : IAsyncStateMachine
-        {
-            awaiter.OnCompleted(_promise.GetContinuation(ref stateMachine));
-        }
-
-        [SecuritySafeCritical]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
-            where TAwaiter : ICriticalNotifyCompletion
-            where TStateMachine : IAsyncStateMachine
-        {
-            awaiter.UnsafeOnCompleted(_promise.GetContinuation(ref stateMachine));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Start<TStateMachine>(ref TStateMachine stateMachine)
-            where TStateMachine : IAsyncStateMachine
-        {
-            stateMachine.MoveNext();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
-    }
-
-#else // DEBUG or IL2CPP
-
-namespace Proto.Promises
-{
-    partial class Internal
-    {
         partial class AsyncPromiseRef
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -393,15 +574,6 @@ namespace Proto.Promises
 
             protected virtual void ContinueMethod() { }
 
-            // For synchronous exceptions.
-            internal static AsyncPromiseRef GetOrCreate()
-            {
-                var promise = ObjectPool<ITreeHandleable>.TryTake<AsyncPromiseRef>()
-                    ?? new AsyncPromiseRef();
-                promise.Reset();
-                return promise;
-            }
-
             internal static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref) where TStateMachine : IAsyncStateMachine
             {
                 AsyncPromiseRefMachine<TStateMachine>.SetStateMachine(ref stateMachine, ref _ref);
@@ -421,184 +593,8 @@ namespace Proto.Promises
                 base.Dispose();
             }
         }
-    }
-}
-
-namespace Proto.Promises.Async.CompilerServices
-{
-    /// <summary>
-    /// This type and its members are intended for use by the compiler.
-    /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
-#endif
-    public struct PromiseMethodBuilder
-    {
-        private Internal.AsyncPromiseRef _ref;
-        private short _id;
-
-        public Promise Task
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return new Promise(_ref, _id); }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PromiseMethodBuilder Create()
-        {
-            return new PromiseMethodBuilder();
-        }
-
-        public void SetException(Exception exception)
-        {
-            if (_ref is null)
-            {
-                _ref = Internal.AsyncPromiseRef.GetOrCreate();
-                _id = _ref.Id;
-            }
-            _ref.SetException(exception);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetResult()
-        {
-            if (_ref is null)
-            {
-                _id = Internal.ValidIdFromApi;
-            }
-            else
-            {
-                _ref.SetResult();
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
-            where TAwaiter : INotifyCompletion
-            where TStateMachine : IAsyncStateMachine
-        {
-            awaiter.OnCompleted(GetContinuation(ref stateMachine));
-        }
-
-        [SecuritySafeCritical]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
-            where TAwaiter : ICriticalNotifyCompletion
-            where TStateMachine : IAsyncStateMachine
-        {
-            awaiter.UnsafeOnCompleted(GetContinuation(ref stateMachine));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Start<TStateMachine>(ref TStateMachine stateMachine)
-            where TStateMachine : IAsyncStateMachine
-        {
-            stateMachine.MoveNext();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private Action GetContinuation<TStateMachine>(ref TStateMachine stateMachine)
-            where TStateMachine : IAsyncStateMachine
-        {
-            if (_ref is null)
-            {
-                Internal.AsyncPromiseRef.SetStateMachine(ref stateMachine, ref _ref);
-                _id = _ref.Id;
-            }
-            return _ref.continuation;
-        }
-    }
-
-    /// <summary>
-    /// This type and its members are intended for use by the compiler.
-    /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
-#endif
-    public struct PromiseMethodBuilder<T>
-    {
-        private Internal.AsyncPromiseRef _ref;
-        private short _id;
-        private T _result;
-
-        public Promise<T> Task
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return new Promise<T>(_ref, _id, ref _result); }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PromiseMethodBuilder<T> Create()
-        {
-            return new PromiseMethodBuilder<T>();
-        }
-
-        public void SetException(Exception exception)
-        {
-            if (_ref is null)
-            {
-                _ref = Internal.AsyncPromiseRef.GetOrCreate();
-                _id = _ref.Id;
-            }
-            _ref.SetException(exception);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetResult(T result)
-        {
-            if (_ref is null)
-            {
-                _result = result;
-                _id = Internal.ValidIdFromApi;
-            }
-            else
-            {
-                _ref.SetResult(ref result);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
-            where TAwaiter : INotifyCompletion
-            where TStateMachine : IAsyncStateMachine
-        {
-            awaiter.OnCompleted(GetContinuation(ref stateMachine));
-        }
-
-        [SecuritySafeCritical]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
-            where TAwaiter : ICriticalNotifyCompletion
-            where TStateMachine : IAsyncStateMachine
-        {
-            awaiter.UnsafeOnCompleted(GetContinuation(ref stateMachine));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Start<TStateMachine>(ref TStateMachine stateMachine)
-            where TStateMachine : IAsyncStateMachine
-        {
-            stateMachine.MoveNext();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private Action GetContinuation<TStateMachine>(ref TStateMachine stateMachine)
-            where TStateMachine : IAsyncStateMachine
-        {
-            if (_ref is null)
-            {
-                Internal.AsyncPromiseRef.SetStateMachine(ref stateMachine, ref _ref);
-                _id = _ref.Id;
-            }
-            return _ref.continuation;
-        }
-    }
 #endif // DEBUG or IL2CPP
-}
-#endif // C#7
+
+    } // class Internal
+#endif // CSHARP_7_3_OR_NEWER
+    } // namespace Proto.Promises
