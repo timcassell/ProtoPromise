@@ -132,6 +132,14 @@ namespace Proto.Promises
         public UnreleasedObjectException(string message) : base(message) { }
     }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode]
+#endif
+    public class UnobservedPromiseException : Exception
+    {
+        public UnobservedPromiseException(string message) : base(message) { }
+    }
+
 
     /// <summary>
     /// Exception that is thrown if a promise is rejected and that rejection is never handled.

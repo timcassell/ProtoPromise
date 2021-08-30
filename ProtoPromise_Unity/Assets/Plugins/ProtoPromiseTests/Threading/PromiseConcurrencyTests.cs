@@ -376,6 +376,138 @@ namespace Proto.Promises.Tests.Threading
 #endif
 
         [Test]
+        public void PromiseReturnedInCallbackMayBeCompletedConcurrently_void(
+            [Values] CompleteType completeType)
+        {
+            var returnDeferred = default(Promise.Deferred);
+            var returnPromise = default(Promise);
+            var cancelationSource = default(CancelationSource);
+            Action threadBarrier = null;
+            var tryCompleter = TestHelper.GetTryCompleterVoid(completeType, rejectValue);
+
+            Promise.State result = Promise.State.Pending;
+
+            var actions = TestHelper.ActionsReturningPromiseVoid(() =>
+            {
+                threadBarrier();
+                return returnPromise;
+            });
+            var threadHelper = new ThreadHelper();
+            foreach (var action in actions)
+            {
+                threadHelper.ExecuteParallelActionsWithOffsetsAndSetup(
+                    setup: () =>
+                    {
+                        result = Promise.State.Pending;
+                        returnDeferred = TestHelper.GetNewDeferredVoid(completeType, out cancelationSource);
+                        returnPromise = returnDeferred.Promise;
+                    },
+                    parallelActionsSetup: new Action<Action>[]
+                    {
+                        barrierAction =>
+                        {
+                            threadBarrier = barrierAction;
+                            action.Invoke()
+                                .ContinueWith(r => result = r.State)
+                                .Forget();
+                            Promise.Manager.HandleCompletesAndProgress();
+                        }
+                    },
+                    parallelActions: new Action[]
+                    {
+                        () => tryCompleter(returnDeferred, cancelationSource)
+                    },
+                    teardown: () =>
+                    {
+                        cancelationSource.TryDispose();
+                        Promise.Manager.HandleCompletesAndProgress();
+                        
+                        Assert.AreNotEqual(Promise.State.Pending, result);
+                        switch (completeType)
+                        {
+                            case CompleteType.Resolve:
+                                Assert.AreEqual(Promise.State.Resolved, result);
+                                break;
+                            case CompleteType.Reject:
+                                Assert.AreEqual(Promise.State.Rejected, result);
+                                break;
+                            case CompleteType.Cancel:
+                            case CompleteType.CancelFromToken:
+                                Assert.AreEqual(Promise.State.Canceled, result);
+                                break;
+                        }
+                    }
+                );
+            }
+        }
+
+        [Test]
+        public void PromiseReturnedInCallbackMayBeCompletedConcurrently_T(
+            [Values] CompleteType completeType)
+        {
+            var returnDeferred = default(Promise<int>.Deferred);
+            var returnPromise = default(Promise<int>);
+            var cancelationSource = default(CancelationSource);
+            Action threadBarrier = null;
+            var tryCompleter = TestHelper.GetTryCompleterT(completeType, 1, rejectValue);
+
+            Promise.State result = Promise.State.Pending;
+
+            var actions = TestHelper.ActionsReturningPromiseVoid(() =>
+            {
+                threadBarrier();
+                return returnPromise;
+            });
+            var threadHelper = new ThreadHelper();
+            foreach (var action in actions)
+            {
+                threadHelper.ExecuteParallelActionsWithOffsetsAndSetup(
+                    setup: () =>
+                    {
+                        result = Promise.State.Pending;
+                        returnDeferred = TestHelper.GetNewDeferredT<int>(completeType, out cancelationSource);
+                        returnPromise = returnDeferred.Promise;
+                    },
+                    parallelActionsSetup: new Action<Action>[]
+                    {
+                        barrierAction =>
+                        {
+                            threadBarrier = barrierAction;
+                            action.Invoke()
+                                .ContinueWith(r => result = r.State)
+                                .Forget();
+                            Promise.Manager.HandleCompletesAndProgress();
+                        }
+                    },
+                    parallelActions: new Action[]
+                    {
+                        () => tryCompleter(returnDeferred, cancelationSource)
+                    },
+                    teardown: () =>
+                    {
+                        cancelationSource.TryDispose();
+                        Promise.Manager.HandleCompletesAndProgress();
+
+                        Assert.AreNotEqual(Promise.State.Pending, result);
+                        switch (completeType)
+                        {
+                            case CompleteType.Resolve:
+                                Assert.AreEqual(Promise.State.Resolved, result);
+                                break;
+                            case CompleteType.Reject:
+                                Assert.AreEqual(Promise.State.Rejected, result);
+                                break;
+                            case CompleteType.Cancel:
+                            case CompleteType.CancelFromToken:
+                                Assert.AreEqual(Promise.State.Canceled, result);
+                                break;
+                        }
+                    }
+                );
+            }
+        }
+
+        [Test]
         public void PreservedPromiseThenMayBeCalledConcurrently_PendingThenResolved_void()
         {
             int invokedCount = 0;

@@ -7,12 +7,15 @@
 #endif
 
 using NUnit.Framework;
+using System;
 using System.Threading;
 
 namespace Proto.Promises.Tests.Threading
 {
     public class AwaitConcurrencyTests
     {
+        const string rejectValue = "Fail";
+
         [SetUp]
         public void Setup()
         {
@@ -26,114 +29,11 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenResolved_void()
+        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenComplete_void(
+            [Values] CompleteType completeType)
         {
             int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        await promise;
-                        Interlocked.Increment(ref invokedCount);
-                    }
-                }
-            );
-
-            promise.Forget();
-            deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_Resolved_void()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Resolved().Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        await promise;
-                        Interlocked.Increment(ref invokedCount);
-                    }
-                }
-            );
-
-            promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenResolved_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        _ = await promise;
-                        Interlocked.Increment(ref invokedCount);
-                    }
-                }
-            );
-
-            promise.Forget();
-            deferred.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_Resolved_T()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Resolved(1).Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        _ = await promise;
-                        Interlocked.Increment(ref invokedCount);
-                    }
-                }
-            );
-
-            promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenRejected_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
+            var deferred = TestHelper.GetNewDeferredVoid(completeType, out var cancelationSource);
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
@@ -147,137 +47,11 @@ namespace Proto.Promises.Tests.Threading
                         try
                         {
                             await promise;
+                            Interlocked.Increment(ref invokedCount);
                         }
                         catch (UnhandledException)
                         {
                             Interlocked.Increment(ref invokedCount);
-                        }
-                    }
-                }
-            );
-
-            deferred.Reject("Reject");
-            Promise.Manager.HandleCompletesAndProgress();
-
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_Rejected_void()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Rejected("Reject").Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        try
-                        {
-                            await promise;
-                        }
-                        catch (UnhandledException)
-                        {
-                            Interlocked.Increment(ref invokedCount);
-                        }
-                    }
-                }
-            );
-
-            promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenRejected_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        try
-                        {
-                            _ = await promise;
-                        }
-                        catch (UnhandledException)
-                        {
-                            Interlocked.Increment(ref invokedCount);
-                        }
-                    }
-                }
-            );
-
-            deferred.Reject("Reject");
-            Promise.Manager.HandleCompletesAndProgress();
-
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_Rejected_T()
-        {
-            int invokedCount = 0;
-            var promise = Promise<int>.Rejected("Reject").Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        try
-                        {
-                            _ = await promise;
-                        }
-                        catch (UnhandledException)
-                        {
-                            Interlocked.Increment(ref invokedCount);
-                        }
-                    }
-                }
-            );
-
-            promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenCanceled_void()
-        {
-            int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    Await();
-
-                    async void Await()
-                    {
-                        try
-                        {
-                            await promise;
                         }
                         catch (CanceledException)
                         {
@@ -287,19 +61,23 @@ namespace Proto.Promises.Tests.Threading
                 }
             );
 
-            cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
-
             promise.Forget();
-            cancelationSource.Dispose();
+            TestHelper.GetTryCompleterVoid(completeType, rejectValue).Invoke(deferred, cancelationSource);
+            cancelationSource.TryDispose();
+            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
         [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_Canceled_void()
+        public void PreservedPromiseMayBeAwaitedConcurrently_AlreadyComplete_void(
+            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType)
         {
             int invokedCount = 0;
-            var promise = Promise.Canceled().Preserve();
+            var promise = completeType == CompleteType.Resolve
+                ? Promise.Resolved().Preserve()
+                : completeType == CompleteType.Reject
+                ? Promise.Rejected(rejectValue).Preserve()
+                : Promise.Canceled().Preserve();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(
@@ -312,6 +90,11 @@ namespace Proto.Promises.Tests.Threading
                         try
                         {
                             await promise;
+                            Interlocked.Increment(ref invokedCount);
+                        }
+                        catch (UnhandledException)
+                        {
+                            Interlocked.Increment(ref invokedCount);
                         }
                         catch (CanceledException)
                         {
@@ -327,11 +110,11 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenCanceled_T()
+        public void PreservedPromiseMayBeAwaitedConcurrently_PendingThenComplete_T(
+            [Values] CompleteType completeType)
         {
             int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = TestHelper.GetNewDeferredT<int>(completeType, out var cancelationSource);
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
@@ -344,7 +127,12 @@ namespace Proto.Promises.Tests.Threading
                     {
                         try
                         {
-                            _ = await promise;
+                            await promise;
+                            Interlocked.Increment(ref invokedCount);
+                        }
+                        catch (UnhandledException)
+                        {
+                            Interlocked.Increment(ref invokedCount);
                         }
                         catch (CanceledException)
                         {
@@ -354,19 +142,23 @@ namespace Proto.Promises.Tests.Threading
                 }
             );
 
-            cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
-
             promise.Forget();
-            cancelationSource.Dispose();
+            TestHelper.GetTryCompleterT(completeType, 1, rejectValue).Invoke(deferred, cancelationSource);
+            cancelationSource.TryDispose();
+            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
         [Test]
-        public void PreservedPromiseMayBeAwaitedConcurrently_Canceled_T()
+        public void PreservedPromiseMayBeAwaitedConcurrently_AlreadyComplete_T(
+            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType)
         {
             int invokedCount = 0;
-            var promise = Promise<int>.Canceled().Preserve();
+            var promise = completeType == CompleteType.Resolve
+                ? Promise<int>.Resolved(1).Preserve()
+                : completeType == CompleteType.Reject
+                ? Promise<int>.Rejected(rejectValue).Preserve()
+                : Promise<int>.Canceled().Preserve();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(
@@ -378,7 +170,12 @@ namespace Proto.Promises.Tests.Threading
                     {
                         try
                         {
-                            _ = await promise;
+                            await promise;
+                            Interlocked.Increment(ref invokedCount);
+                        }
+                        catch (UnhandledException)
+                        {
+                            Interlocked.Increment(ref invokedCount);
                         }
                         catch (CanceledException)
                         {
@@ -391,6 +188,148 @@ namespace Proto.Promises.Tests.Threading
             promise.Forget();
             Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
+        }
+
+        [Test]
+        public void PromiseMayBeCompletedAndAwaitedConcurrently_void(
+            [Values] CompleteType completeType)
+        {
+            var deferred = default(Promise.Deferred);
+            var promise = default(Promise);
+            var cancelationSource = default(CancelationSource);
+            var tryCompleter = TestHelper.GetTryCompleterVoid(completeType, rejectValue);
+
+            Promise.State result = Promise.State.Pending;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsetsAndSetup(
+                setup: () =>
+                {
+                    result = Promise.State.Pending;
+                    deferred = TestHelper.GetNewDeferredVoid(completeType, out cancelationSource);
+                    promise = deferred.Promise;
+                },
+                parallelActionsSetup: new Action<Action>[]
+                {
+                    barrierAction =>
+                    {
+                        Await();
+
+                        async void Await()
+                        {
+                            try
+                            {
+                                barrierAction.Invoke();
+                                await promise;
+                                result = Promise.State.Resolved;
+                            }
+                            catch (UnhandledException)
+                            {
+                                result = Promise.State.Rejected;
+                            }
+                            catch (CanceledException)
+                            {
+                                result = Promise.State.Canceled;
+                            }
+                        }
+                    }
+                },
+                parallelActions: new Action[]
+                {
+                    () => tryCompleter(deferred, cancelationSource)
+                },
+                teardown: () =>
+                {
+                    cancelationSource.TryDispose();
+                    Promise.Manager.HandleCompletesAndProgress();
+
+                    Assert.AreNotEqual(Promise.State.Pending, result);
+                    switch (completeType)
+                    {
+                        case CompleteType.Resolve:
+                            Assert.AreEqual(Promise.State.Resolved, result);
+                            break;
+                        case CompleteType.Reject:
+                            Assert.AreEqual(Promise.State.Rejected, result);
+                            break;
+                        case CompleteType.Cancel:
+                        case CompleteType.CancelFromToken:
+                            Assert.AreEqual(Promise.State.Canceled, result);
+                            break;
+                    }
+                }
+            );
+        }
+
+        [Test]
+        public void PromiseMayBeCompletedAndAwaitedConcurrently_T(
+            [Values] CompleteType completeType)
+        {
+            var deferred = default(Promise<int>.Deferred);
+            var promise = default(Promise<int>);
+            var cancelationSource = default(CancelationSource);
+            var tryCompleter = TestHelper.GetTryCompleterT(completeType, 1, rejectValue);
+
+            Promise.State result = Promise.State.Pending;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsetsAndSetup(
+                setup: () =>
+                {
+                    result = Promise.State.Pending;
+                    deferred = TestHelper.GetNewDeferredT<int>(completeType, out cancelationSource);
+                    promise = deferred.Promise;
+                },
+                parallelActionsSetup: new Action<Action>[]
+                {
+                    barrierAction =>
+                    {
+                        Await();
+
+                        async void Await()
+                        {
+                            try
+                            {
+                                barrierAction.Invoke();
+                                await promise;
+                                result = Promise.State.Resolved;
+                            }
+                            catch (UnhandledException)
+                            {
+                                result = Promise.State.Rejected;
+                            }
+                            catch (CanceledException)
+                            {
+                                result = Promise.State.Canceled;
+                            }
+                        }
+                    }
+                },
+                parallelActions: new Action[]
+                {
+                    () => tryCompleter(deferred, cancelationSource)
+                },
+                teardown: () =>
+                {
+                    cancelationSource.TryDispose();
+                    Promise.Manager.HandleCompletesAndProgress();
+
+                    Assert.AreNotEqual(Promise.State.Pending, result);
+                    switch (completeType)
+                    {
+                        case CompleteType.Resolve:
+                            Assert.AreEqual(Promise.State.Resolved, result);
+                            break;
+                        case CompleteType.Reject:
+                            Assert.AreEqual(Promise.State.Rejected, result);
+                            break;
+                        case CompleteType.Cancel:
+                        case CompleteType.CancelFromToken:
+                            Assert.AreEqual(Promise.State.Canceled, result);
+                            break;
+                    }
+                }
+            );
         }
     }
 }

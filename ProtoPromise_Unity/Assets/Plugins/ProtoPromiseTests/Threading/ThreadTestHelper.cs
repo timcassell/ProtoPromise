@@ -741,6 +741,169 @@ namespace Proto.Promises.Tests
             };
         }
     }
+
+    public static partial class TestHelper
+    {
+        public static Func<Promise>[] ActionsReturningPromiseVoid(Func<Promise> returnProvider)
+        {
+            return new Func<Promise>[]
+            {
+                () => Promise.Resolved().Then(() => returnProvider()),
+                () => Promise.Resolved().Then(1, cv => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider()),
+
+
+                () => Promise.Resolved().Then(() => returnProvider(), () => { }),
+                () => Promise.Resolved().Then(() => returnProvider(), (int r) => { }),
+                () => Promise.Resolved().Then(() => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved().Then(() => returnProvider(), (int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), () => { }),
+                () => Promise.Resolved(1).Then(v => returnProvider(), (int r) => { }),
+                () => Promise.Resolved(1).Then(v => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(() => { }, () => returnProvider()),
+                () => Promise.Rejected(2).Then(() => { }, (int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), () => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Resolved().Then(1, cv => returnProvider(), () => { }),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), (int r) => { }),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), (int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), () => { }),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), (int r) => { }),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(1, cv => { }, () => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => { }, (int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), () => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Resolved().Then(() => returnProvider(), 1, cv => { }),
+                () => Promise.Resolved().Then(() => returnProvider(), 1, (int cv, int r) => { }),
+                () => Promise.Resolved().Then(() => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved().Then(() => returnProvider(), 1, (int cv, int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, cv => { }),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, (int cv, int r) => { }),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(() => { }, 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(() => { }, 1, (int cv, int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, cv => { }),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, (int cv, int r) => { }),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, (int cv, int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, cv => { }),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, (int cv, int r) => { }),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(1, cv => { }, 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => { }, 1, (int cv, int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+
+                () => Promise.Rejected(2).Catch(() => returnProvider()),
+                () => Promise.Rejected(2).Catch((int r) => returnProvider()),
+                () => Promise.Rejected(2).Catch(1, cv => returnProvider()),
+                () => Promise.Rejected(2).Catch(1, (int cv, int r) => returnProvider()),
+
+
+                () => Promise.Resolved().ContinueWith(_ => returnProvider()),
+                () => Promise.Resolved().ContinueWith(1, (int cv, Promise.ResultContainer _) => returnProvider()),
+                () => Promise.Resolved(1).ContinueWith(_ => returnProvider()),
+                () => Promise.Resolved(1).ContinueWith(1, (int cv, Promise<int>.ResultContainer _) => returnProvider()),
+            };
+        }
+
+        public static Func<Promise<T>>[] ActionsReturningPromiseT<T>(Func<Promise<T>> returnProvider)
+        {
+            return new Func<Promise<T>>[]
+            {
+                () => Promise.Resolved().Then(() => returnProvider()),
+                () => Promise.Resolved().Then(1, cv => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider()),
+
+
+                () => Promise.Resolved().Then(() => returnProvider(), () => default(T)),
+                () => Promise.Resolved().Then(() => returnProvider(), (int r) => default(T)),
+                () => Promise.Resolved().Then(() => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved().Then(() => returnProvider(), (int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), () => default(T)),
+                () => Promise.Resolved(1).Then(v => returnProvider(), (int r) => default(T)),
+                () => Promise.Resolved(1).Then(v => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(() => default(T), () => returnProvider()),
+                () => Promise.Rejected(2).Then(() => default(T), (int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), () => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Resolved().Then(1, cv => returnProvider(), () => default(T)),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), (int r) => default(T)),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), (int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), () => default(T)),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), (int r) => default(T)),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(1, cv => default(T), () => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => default(T), (int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), () => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Resolved().Then(() => returnProvider(), 1, cv => default(T)),
+                () => Promise.Resolved().Then(() => returnProvider(), 1, (int cv, int r) => default(T)),
+                () => Promise.Resolved().Then(() => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved().Then(() => returnProvider(), 1, (int cv, int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, cv => default(T)),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, (int cv, int r) => default(T)),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(() => default(T), 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(() => default(T), 1, (int cv, int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, cv => default(T)),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, (int cv, int r) => default(T)),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, (int cv, int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, cv => default(T)),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, (int cv, int r) => default(T)),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(1, cv => default(T), 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => default(T), 1, (int cv, int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+
+                () => Promise<T>.Rejected(2).Catch(() => returnProvider()),
+                () => Promise<T>.Rejected(2).Catch((int r) => returnProvider()),
+                () => Promise<T>.Rejected(2).Catch(1, cv => returnProvider()),
+                () => Promise<T>.Rejected(2).Catch(1, (int cv, int r) => returnProvider()),
+
+
+                () => Promise.Resolved().ContinueWith(_ => returnProvider()),
+                () => Promise.Resolved().ContinueWith(1, (int cv, Promise.ResultContainer _) => returnProvider()),
+                () => Promise.Resolved(1).ContinueWith(_ => returnProvider()),
+                () => Promise.Resolved(1).ContinueWith(1, (int cv, Promise<int>.ResultContainer _) => returnProvider()),
+            };
+        }
+    }
 }
 
 #endif

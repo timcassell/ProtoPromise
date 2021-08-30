@@ -11,17 +11,41 @@ namespace Proto.Promises.Tests.Threading
     {
         private sealed class ThreadRunner
         {
-            private static readonly Queue<ThreadRunner> _pool = new Queue<ThreadRunner>();
+            private static readonly Stack<ThreadRunner> _pool = new Stack<ThreadRunner>();
 
             private readonly object _locker = new object();
-            private Action _action;
+            private Action _autoAction;
+            private Action<Action> _manualAction;
+            bool didWait = false;
             private int _offset;
             private Barrier _barrier;
             private TaskCompletionSource<bool> _taskCompletionSource;
 
-            private ThreadRunner() { }
+            private readonly Action WaitAction;
+
+            private ThreadRunner()
+            {
+                WaitAction = WaitForBarrier;
+            }
+
+            private void WaitForBarrier()
+            {
+                didWait = true;
+                _barrier.SignalAndWait(); // Try to make actions run in lock-step to increase likelihood of breaking race conditions.
+                for (int j = _offset; j > 0; --j) { } // Just spin in a loop for the offset.
+            }
 
             public static Task Run(Action action, int offset, Barrier barrier)
+            {
+                return Run(action, null, offset, barrier);
+            }
+
+            public static Task Run(Action<Action> action, int offset, Barrier barrier)
+            {
+                return Run(null, action, offset, barrier);
+            }
+
+            private static Task Run(Action autoAction, Action<Action> manualAction, int offset, Barrier barrier)
             {
                 bool reused = false;
                 ThreadRunner threadRunner = null;
@@ -30,7 +54,7 @@ namespace Proto.Promises.Tests.Threading
                     if (_pool.Count > 0)
                     {
                         reused = true;
-                        threadRunner = _pool.Dequeue();
+                        threadRunner = _pool.Pop();
                     }
                 }
                 if (!reused)
@@ -39,7 +63,8 @@ namespace Proto.Promises.Tests.Threading
                 }
                 lock (threadRunner._locker)
                 {
-                    threadRunner._action = action;
+                    threadRunner._autoAction = autoAction;
+                    threadRunner._manualAction = manualAction;
                     threadRunner._offset = offset;
                     threadRunner._barrier = barrier;
                     var taskSource = threadRunner._taskCompletionSource = new TaskCompletionSource<bool>();
@@ -58,38 +83,52 @@ namespace Proto.Promises.Tests.Threading
 
             private void ThreadAction()
             {
-                Action action = _action;
-                int offset = _offset;
-                Barrier barrier = _barrier;
-                TaskCompletionSource<bool> taskSource = _taskCompletionSource;
                 while (true)
                 {
+                    Exception exception = null;
                     try
                     {
-                        barrier.SignalAndWait(); // Try to make actions run in lock-step to increase likelihood of breaking race conditions.
-                        for (int j = offset; j > 0; --j) { } // Just spin in a loop for the offset.
-                        action.Invoke();
-                        taskSource.SetResult(true);
+                        Action autoAction = _autoAction;
+                        Action<Action> manualAction = _manualAction;
+                        if (autoAction != null)
+                        {
+                            WaitForBarrier();
+                            autoAction.Invoke();
+                        }
+                        else
+                        {
+                            didWait = false;
+                            manualAction.Invoke(WaitAction);
+                            if (!didWait)
+                            {
+                                throw new InvalidOperationException("Wait action was not invoked.");
+                            }
+                        }
                     }
                     catch (Exception e)
                     {
-                        taskSource.SetException(e);
+                        exception = e;
                     }
                     // Allow GC to reclaim memory.
-                    _action = null;
+                    TaskCompletionSource<bool> taskSource = _taskCompletionSource;
+                    _autoAction = null;
                     _barrier = null;
                     _taskCompletionSource = null;
+                    if (exception == null)
+                    {
+                        taskSource.SetResult(true);
+                    }
+                    else
+                    {
+                        taskSource.SetException(exception);
+                    }
                     lock (_locker)
                     {
                         lock (_pool)
                         {
-                            _pool.Enqueue(this);
+                            _pool.Push(this);
                         }
                         Monitor.Wait(_locker);
-                        action = _action;
-                        offset = _offset;
-                        barrier = _barrier;
-                        taskSource = _taskCompletionSource;
                     }
                 }
             }
@@ -135,6 +174,19 @@ namespace Proto.Promises.Tests.Threading
         /// Add an action to be run in parallel.
         /// </summary>
         public void AddParallelAction(Action action, int offset = 0)
+        {
+            lock (_executingTasks)
+            {
+                ++_currentParticipants;
+                _barrier.AddParticipant();
+                _executingTasks.Push(ThreadRunner.Run(action, offset, _barrier));
+            }
+        }
+
+        /// <summary>
+        /// Add an action and immediately run it in parallel. Call the Action provided to wait for the next Barrier.
+        /// </summary>
+        public void AddParallelActionSetup(Action<Action> action, int offset = 0)
         {
             lock (_executingTasks)
             {
@@ -217,12 +269,12 @@ namespace Proto.Promises.Tests.Threading
         /// <para/>Example: 2 actions with 6 processors, runs each action 3 times in parallel.</param>
         /// <param name="setup">The action to run before each parallel run.</param>
         /// <param name="teardown">The action to run after each parallel run.</param>
-        /// <param name="actions">The actions to run in parallel.</param>
-        public void ExecuteParallelActionsWithOffsets(bool expandToProcessorCount, Action setup, Action teardown, params Action[] actions)
+        /// <param name="parallelActions">The actions to run in parallel.</param>
+        public void ExecuteParallelActionsWithOffsets(bool expandToProcessorCount, Action setup, Action teardown, params Action[] parallelActions)
         {
             setup += () => { };
             teardown += () => { };
-            int actionCount = actions.Length;
+            int actionCount = parallelActions.Length;
             int expandCount = expandToProcessorCount ? Math.Max(Environment.ProcessorCount / actionCount, 1) : 1;
 
             foreach (var combo in GenerateCombinations(offsets, actionCount))
@@ -232,7 +284,36 @@ namespace Proto.Promises.Tests.Threading
                 {
                     for (int i = 0; i < actionCount; ++i)
                     {
-                        AddParallelAction(actions[i], combo[i]);
+                        AddParallelAction(parallelActions[i], combo[i]);
+                    }
+                }
+                ExecutePendingParallelActions();
+                teardown.Invoke();
+            }
+        }
+
+        /// <summary>
+        /// Add actions with parallel setup.
+        /// Call the Action sent to the parallel action setup to wait for the next Barrier.
+        /// </summary>
+        public void ExecuteParallelActionsWithOffsetsAndSetup(Action setup, Action<Action>[] parallelActionsSetup, Action[] parallelActions, Action teardown)
+        {
+            setup += () => { };
+            teardown += () => { };
+            int actionCount = parallelActionsSetup.Length + parallelActions.Length;
+
+            foreach (var combo in GenerateCombinations(offsets, actionCount))
+            {
+                setup.Invoke();
+                for (int i = 0; i < actionCount; ++i)
+                {
+                    if (i < parallelActionsSetup.Length)
+                    {
+                        AddParallelActionSetup(parallelActionsSetup[i], combo[i]);
+                    }
+                    else
+                    {
+                        AddParallelAction(parallelActions[i - parallelActionsSetup.Length], combo[i]);
                     }
                 }
                 ExecutePendingParallelActions();

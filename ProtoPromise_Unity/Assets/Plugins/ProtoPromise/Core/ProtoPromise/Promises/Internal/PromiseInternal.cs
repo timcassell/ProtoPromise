@@ -86,8 +86,7 @@ namespace Proto.Promises
                 {
                     // Promise was not awaited or forgotten.
                     string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise.";
-                    // TODO: change to UnobservedPromiseException.
-                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                    AddRejectionToUnhandledStack(new UnobservedPromiseException(message), this);
                 }
                 if (State != Promise.State.Pending & _valueOrPrevious != null)
                 {
