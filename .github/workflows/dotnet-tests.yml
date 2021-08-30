@@ -3,7 +3,7 @@ name: DotNet Tests
 on: [pull_request]
 
 jobs:
-  unity-tests:
+  dotnet-tests:
     runs-on: windows-latest
     
     strategy:
