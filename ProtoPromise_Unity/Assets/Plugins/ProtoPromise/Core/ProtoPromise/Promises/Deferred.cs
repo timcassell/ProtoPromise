@@ -7,14 +7,15 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
     partial struct Promise
     {
         /// <summary>
-        /// Deferred base. An instance of this can be used to report progress and reject the attached <see cref="Promises.Promise"/>.
-        /// <para/>You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to resolve the attached <see cref="Promises.Promise"/>.
+        /// Deferred base. An instance of this can be used to report progress and reject or cancel the attached <see cref="Promise"/>.
+        /// <para/>You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to resolve the attached <see cref="Promise"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
@@ -34,6 +35,7 @@ namespace Proto.Promises
             /// </summary>
             public Promise Promise
             {
+                [MethodImpl(Internal.InlineOption)]
                 get
                 {
                     return new Promise(_ref, _promiseId);
@@ -43,6 +45,7 @@ namespace Proto.Promises
             [Obsolete("Use IsValidAndPending.", false)]
             public bool IsValid
             {
+                [MethodImpl(Internal.InlineOption)]
                 get
                 {
                     return IsValidAndPending;
@@ -74,6 +77,7 @@ namespace Proto.Promises
             /// Cast this to <see cref="Deferred"/>. Throws an <see cref="InvalidCastException"/> if it cannot be casted.
             /// </summary>
             /// <exception cref="InvalidCastException"/>
+            [MethodImpl(Internal.InlineOption)]
             public Deferred ToDeferred()
             {
                 return new Deferred((Internal.PromiseRef.DeferredPromiseVoid) _ref, _promiseId, _deferredId);
@@ -82,6 +86,7 @@ namespace Proto.Promises
             /// <summary>
             /// Cast this to <see cref="Deferred"/>. Returns an invalid <see cref="Deferred"/> if it cannot be casted.
             /// </summary>
+            [MethodImpl(Internal.InlineOption)]
             public Deferred AsDeferred()
             {
                 return new Deferred(_ref as Internal.PromiseRef.DeferredPromiseVoid, _promiseId, _deferredId);
@@ -91,6 +96,7 @@ namespace Proto.Promises
             /// Cast this to <see cref="Promise{T}.Deferred"/>. Throws an <see cref="InvalidCastException"/> if it cannot be casted.
             /// </summary>
             /// <exception cref="InvalidCastException"/>
+            [MethodImpl(Internal.InlineOption)]
             public Promise<T>.Deferred ToDeferred<T>()
             {
                 return new Promise<T>.Deferred((Internal.PromiseRef.DeferredPromise<T>) _ref, _promiseId, _deferredId);
@@ -99,6 +105,7 @@ namespace Proto.Promises
             /// <summary>
             /// Cast this to <see cref="Promise{T}.Deferred"/>. Returns an invalid <see cref="Promise{T}.Deferred"/> if it cannot be casted.
             /// </summary>
+            [MethodImpl(Internal.InlineOption)]
             public Promise<T>.Deferred AsDeferred<T>()
             {
                 return new Promise<T>.Deferred(_ref as Internal.PromiseRef.DeferredPromise<T>, _promiseId, _deferredId);
@@ -179,6 +186,7 @@ namespace Proto.Promises
 #if !PROMISE_PROGRESS
             [System.Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
 #endif
+            // TODO: don't error if progress is disabled, just do nothing. Set Obsolete attribute to warning.
             public void ReportProgress(float progress)
             {
 #if !PROMISE_PROGRESS
@@ -210,6 +218,7 @@ namespace Proto.Promises
 #endif
             }
 
+            [MethodImpl(Internal.InlineOption)]
             public bool Equals(DeferredBase other)
             {
                 return this == other;
@@ -243,9 +252,12 @@ namespace Proto.Promises
 
             public static bool operator ==(DeferredBase lhs, DeferredBase rhs)
             {
-                return lhs._ref == rhs._ref & lhs._deferredId == rhs._deferredId & lhs._promiseId == rhs._promiseId;
+                return lhs._ref == rhs._ref
+                    & lhs._deferredId == rhs._deferredId
+                    & lhs._promiseId == rhs._promiseId;
             }
 
+            [MethodImpl(Internal.InlineOption)]
             public static bool operator !=(DeferredBase lhs, DeferredBase rhs)
             {
                 return !(lhs == rhs);
@@ -274,7 +286,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// An instance of this is used to report progress and resolve or reject the attached <see cref="Promises.Promise"/>.
+        /// An instance of this is used to report progress and resolve, reject, or cancel the attached <see cref="Promise"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
@@ -294,6 +306,7 @@ namespace Proto.Promises
             /// </summary>
             public Promise Promise
             {
+                [MethodImpl(Internal.InlineOption)]
                 get
                 {
                     return new Promise(_ref, _promiseId);
@@ -303,6 +316,7 @@ namespace Proto.Promises
             [Obsolete("Use IsValidAndPending.", false)]
             public bool IsValid
             {
+                [MethodImpl(Internal.InlineOption)]
                 get
                 {
                     return IsValidAndPending;
@@ -323,6 +337,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use.
             /// </summary>
+            [MethodImpl(Internal.InlineOption)]
             internal Deferred(Internal.PromiseRef.DeferredPromiseVoid promise, short promiseId, short deferredId)
             {
                 _ref = promise;
@@ -472,11 +487,13 @@ namespace Proto.Promises
             /// <summary>
             /// Cast to <see cref="DeferredBase"/>.
             /// </summary>
+            [MethodImpl(Internal.InlineOption)]
             public static implicit operator DeferredBase(Deferred rhs)
             {
                 return new DeferredBase(rhs._ref, rhs._promiseId, rhs._deferredId);
             }
 
+            [MethodImpl(Internal.InlineOption)]
             public bool Equals(Deferred other)
             {
                 return this == other;
@@ -491,28 +508,19 @@ namespace Proto.Promises
 #endif
             }
 
+            [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
             {
-                var temp = _ref;
-                if (temp == null)
-                {
-                    return 0;
-                }
-                unchecked
-                {
-                    int hash = 17;
-                    hash = hash * 31 + _deferredId.GetHashCode();
-                    hash = hash * 31 + _promiseId.GetHashCode();
-                    hash = hash * 31 + temp.GetHashCode();
-                    return hash;
-                }
+                return ((DeferredBase) this).GetHashCode();
             }
 
+            [MethodImpl(Internal.InlineOption)]
             public static bool operator ==(Deferred lhs, Deferred rhs)
             {
-                return lhs._ref == rhs._ref & lhs._deferredId == rhs._deferredId & lhs._promiseId == rhs._promiseId;
+                return (DeferredBase) lhs == (DeferredBase) rhs;
             }
 
+            [MethodImpl(Internal.InlineOption)]
             public static bool operator !=(Deferred lhs, Deferred rhs)
             {
                 return !(lhs == rhs);
@@ -544,7 +552,7 @@ namespace Proto.Promises
     public partial struct Promise<T>
     {
         /// <summary>
-        /// An instance of this is used to handle the state of the <see cref="Promise"/>.
+        /// An instance of this is used to report progress and resolve, reject, or cancel the attached <see cref="Promise"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
@@ -564,6 +572,7 @@ namespace Proto.Promises
             /// </summary>
             public Promise<T> Promise
             {
+                [MethodImpl(Internal.InlineOption)]
                 get
                 {
                     return new Promise<T>(_ref, _promiseId);
@@ -573,6 +582,7 @@ namespace Proto.Promises
             [Obsolete("Use IsValidAndPending.", false)]
             public bool IsValid
             {
+                [MethodImpl(Internal.InlineOption)]
                 get
                 {
                     return IsValidAndPending;
@@ -593,6 +603,7 @@ namespace Proto.Promises
             /// <summary>
             /// Internal use.
             /// </summary>
+            [MethodImpl(Internal.InlineOption)]
             internal Deferred(Internal.PromiseRef.DeferredPromise<T> promise, short promiseId, short deferredId)
             {
                 _ref = promise;
@@ -742,11 +753,13 @@ namespace Proto.Promises
             /// <summary>
             /// Cast to <see cref="Promise.DeferredBase"/>.
             /// </summary>
+            [MethodImpl(Internal.InlineOption)]
             public static implicit operator Promise.DeferredBase(Deferred rhs)
             {
                 return new Promise.DeferredBase(rhs._ref, rhs._promiseId, rhs._deferredId);
             }
 
+            [MethodImpl(Internal.InlineOption)]
             public bool Equals(Deferred other)
             {
                 return this == other;
@@ -761,28 +774,19 @@ namespace Proto.Promises
 #endif
             }
 
+            [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
             {
-                var temp = _ref;
-                if (temp == null)
-                {
-                    return 0;
-                }
-                unchecked
-                {
-                    int hash = 17;
-                    hash = hash * 31 + _deferredId.GetHashCode();
-                    hash = hash * 31 + _promiseId.GetHashCode();
-                    hash = hash * 31 + temp.GetHashCode();
-                    return hash;
-                }
+                return ((Promise.DeferredBase) this).GetHashCode();
             }
 
+            [MethodImpl(Internal.InlineOption)]
             public static bool operator ==(Deferred lhs, Deferred rhs)
             {
-                return lhs._ref == rhs._ref & lhs._deferredId == rhs._deferredId & lhs._promiseId == rhs._promiseId;
+                return (Promise.DeferredBase) lhs == (Promise.DeferredBase) rhs;
             }
 
+            [MethodImpl(Internal.InlineOption)]
             public static bool operator !=(Deferred lhs, Deferred rhs)
             {
                 return !(lhs == rhs);

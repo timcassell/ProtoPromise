@@ -24,7 +24,7 @@ namespace Proto.Promises
                     where TResolver : IDelegateResolve
                 {
                     PromiseRef promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
                         {
@@ -42,16 +42,16 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolve<TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._target._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolve<TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._target._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -62,7 +62,7 @@ namespace Proto.Promises
                     where TResolver : IDelegateResolve
                 {
                     PromiseRef promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
                         {
@@ -80,16 +80,16 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolve<TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._target._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolve<TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._target._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -100,7 +100,7 @@ namespace Proto.Promises
                     where TResolver : IDelegateResolvePromise
                 {
                     PromiseWaitPromise promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
                         {
@@ -118,16 +118,16 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._target._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolvePromise<TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._target._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -138,7 +138,7 @@ namespace Proto.Promises
                     where TResolver : IDelegateResolvePromise
                 {
                     PromiseWaitPromise promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
                         {
@@ -156,16 +156,16 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._target._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolvePromise<TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._target._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -177,7 +177,7 @@ namespace Proto.Promises
                     where TRejecter : IDelegateReject
                 {
                     PromiseRef promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
                         {
@@ -195,16 +195,16 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveReject<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._target._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolveReject<TResolver, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._target._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -216,7 +216,7 @@ namespace Proto.Promises
                     where TRejecter : IDelegateReject
                 {
                     PromiseRef promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
                         {
@@ -234,16 +234,16 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveReject<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._target._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolveReject<TResolver, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._target._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -255,7 +255,7 @@ namespace Proto.Promises
                     where TRejecter : IDelegateRejectPromise
                 {
                     PromiseWaitPromise promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
                         {
@@ -273,16 +273,16 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._target._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._target._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -294,7 +294,7 @@ namespace Proto.Promises
                     where TRejecter : IDelegateRejectPromise
                 {
                     PromiseWaitPromise promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
                         {
@@ -312,16 +312,16 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._target._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseResolveRejectPromise<TResolver, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._target._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -332,7 +332,7 @@ namespace Proto.Promises
                     where TContinuer : IDelegateContinue
                 {
                     PromiseRef promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
                         {
@@ -350,16 +350,16 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinue<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._target._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseContinue<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._target._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -370,7 +370,7 @@ namespace Proto.Promises
                     where TContinuer : IDelegateContinue
                 {
                     PromiseRef promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
                         {
@@ -388,16 +388,16 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinue<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._target._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseContinue<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._target._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -408,7 +408,7 @@ namespace Proto.Promises
                     where TContinuer : IDelegateContinuePromise
                 {
                     PromiseWaitPromise promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
                         {
@@ -426,16 +426,16 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._target._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._target._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise(promise, promise.Id);
@@ -446,7 +446,7 @@ namespace Proto.Promises
                     where TContinuer : IDelegateContinuePromise
                 {
                     PromiseWaitPromise promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         if (cancelationToken.CanBeCanceled)
                         {
@@ -464,16 +464,16 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
+                            _this._target._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
                             promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
+                            _this._target._ref.HookupNewPromise(promise);
                         }
                     }
                     newPromise = new Promise<TResult>(promise, promise.Id);
@@ -484,7 +484,7 @@ namespace Proto.Promises
                     where TFinally : IDelegateSimple
                 {
                     PromiseRef promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         promise = PromiseFinally<TFinally>.GetOrCreate(finalizer);
                         promise.SetDepth();
@@ -493,9 +493,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         promise = PromiseFinally<TFinally>.GetOrCreate(finalizer);
-                        _this._ref.HookupNewPromise(promise);
+                        _this._target._ref.HookupNewPromise(promise);
                     }
                     return new Promise(promise, promise.Id);
                 }
@@ -504,22 +504,22 @@ namespace Proto.Promises
                 internal static Promise AddCancel<TCanceler>(Promise _this, TCanceler canceler, CancelationToken cancelationToken)
                     where TCanceler : IDelegateSimple
                 {
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         return _this;
                     }
 
                     PromiseRef promise;
-                    _this._ref.MarkAwaited(_this._id);
+                    _this._target._ref.MarkAwaited(_this._target._id);
                     if (cancelationToken.CanBeCanceled)
                     {
                         promise = CancelablePromiseCancel<TCanceler>.GetOrCreate(canceler, cancelationToken);
-                        _this._ref.HookupNewCancelablePromise(promise);
+                        _this._target._ref.HookupNewCancelablePromise(promise);
                     }
                     else
                     {
                         promise = PromiseCancel<TCanceler>.GetOrCreate(canceler);
-                        _this._ref.HookupNewPromise(promise);
+                        _this._target._ref.HookupNewPromise(promise);
                     }
                     return new Promise(promise, promise.Id);
                 }
@@ -535,7 +535,7 @@ namespace Proto.Promises
                     }
 
                     PromiseProgress<TProgress> promise;
-                    if (_this._ref == null)
+                    if (_this._target._ref == null)
                     {
                         promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken);
                         promise.SetDepth();
@@ -544,9 +544,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this._id);
+                        _this._target._ref.MarkAwaited(_this._target._id);
                         promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken);
-                        _this._ref.HookupNewPromiseWithProgress(promise);
+                        _this._target._ref.HookupNewPromiseWithProgress(promise);
                     }
                     return new Promise(promise, promise.Id);
                 }

@@ -13,6 +13,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
@@ -40,6 +41,7 @@ namespace Proto.Promises
         /// <summary>
         /// Cast to <see cref="Promise"/>.
         /// </summary>
+        [MethodImpl(Internal.InlineOption)]
         public Promise AsPromise()
         {
             return new Promise(_ref, _id);
@@ -3549,6 +3551,7 @@ namespace Proto.Promises
         }
         #endregion
 
+        [MethodImpl(Internal.InlineOption)]
         public bool Equals(Promise<T> other)
         {
             return this == other;
@@ -3576,7 +3579,7 @@ namespace Proto.Promises
                 }
                 else if (_result != null)
                 {
-                    hash = hash * 31 + _result.GetHashCode();
+                    hash = hash * 31 + EqualityComparer<T>.Default.GetHashCode(_result);
                 }
                 hash = hash * 31 + typeof(T).TypeHandle.GetHashCode(); // Hashcode variance for different T types.
                 return hash;
@@ -3585,9 +3588,12 @@ namespace Proto.Promises
 
         public static bool operator ==(Promise<T> lhs, Promise<T> rhs)
         {
-            return lhs._ref == rhs._ref & lhs._id == rhs._id & System.Collections.Generic.EqualityComparer<T>.Default.Equals(lhs._result, rhs._result);
+            return lhs._ref == rhs._ref
+                & lhs._id == rhs._id
+                & EqualityComparer<T>.Default.Equals(lhs._result, rhs._result);
         }
 
+        [MethodImpl(Internal.InlineOption)]
         public static bool operator !=(Promise<T> lhs, Promise<T> rhs)
         {
             return !(lhs == rhs);

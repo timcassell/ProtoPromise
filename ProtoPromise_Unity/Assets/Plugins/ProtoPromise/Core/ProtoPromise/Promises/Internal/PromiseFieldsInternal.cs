@@ -26,11 +26,7 @@ namespace Proto.Promises
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal readonly Internal.PromiseRef _ref;
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        internal readonly short _id;
+        internal readonly Promise<Internal.VoidResult> _target;
 
         /// <summary>
         /// Internal use.
@@ -38,8 +34,7 @@ namespace Proto.Promises
         [MethodImpl(Internal.InlineOption)]
         internal Promise(Internal.PromiseRef promiseRef, short id)
         {
-            _ref = promiseRef;
-            _id = id;
+            _target = new Promise<Internal.VoidResult>(promiseRef, id);
         }
     }
 
@@ -84,6 +79,8 @@ namespace Proto.Promises
 
     partial class Internal
     {
+        internal struct VoidResult { }
+
         partial class PromiseRef
         {
 #if PROMISE_DEBUG

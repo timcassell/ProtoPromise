@@ -19,183 +19,235 @@ namespace Proto.Promises
     {
         partial class PromiseRef
         {
-            internal void AddAwaiter(ITreeHandleable awaiter, short promiseId)
+            [MethodImpl(InlineOption)]
+            internal void GetResultVoid(short promiseId)
             {
-                MarkAwaited(promiseId);
+                IncrementId(promiseId);
+#if PROMISE_DEBUG
+                if (State == Promise.State.Pending)
+                {
+                    throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+                }
+#endif
+                WasAwaitedOrForgotten = true;
+                if (State == Promise.State.Resolved)
+                {
+                    MaybeDispose();
+                    return;
+                }
+                // Throw unhandled exception or canceled exception.
                 SuppressRejection = true;
-                AddWaiter(awaiter);
+                Exception exception = ((IThrowable) _valueOrPrevious).GetException();
+                MaybeDispose();
+                throw exception;
             }
 
-            internal void MarkAwaitedAndGetResultAndMaybeDispose<T>(short promiseId, out T result)
+            [MethodImpl(InlineOption)]
+            internal T GetResult<T>(short promiseId)
             {
-                MarkAwaited(promiseId);
+                IncrementId(promiseId);
+#if PROMISE_DEBUG
+                if (State == Promise.State.Pending)
+                {
+                    throw new InvalidOperationException("PromiseAwaiter<T>.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+                }
+#endif
+                WasAwaitedOrForgotten = true;
+                if (State == Promise.State.Resolved)
+                {
+                    T result = ((ResolveContainer<T>) _valueOrPrevious).value;
+                    MaybeDispose();
+                    return result;
+                }
+                // Throw unhandled exception or canceled exception.
                 SuppressRejection = true;
-                result = ((ResolveContainer<T>) _valueOrPrevious).value;
+                Exception exception = ((IThrowable) _valueOrPrevious).GetException();
                 MaybeDispose();
+                throw exception;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void OnCompleted(Action continuation, short promiseId)
+            {
+                // TODO: handle when synchronous callbacks are implemented
+                InterlockedRetainInternal(promiseId);
+                AddWaiter(AwaiterRef.GetOrCreate(continuation));
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode]
+#endif
+            private sealed class AwaiterRef : ITreeHandleable, ITraceable
+            {
+#if PROMISE_DEBUG
+                CausalityTrace ITraceable.Trace { get; set; }
+#endif
+                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+
+                private Action _continuation;
+
+                private AwaiterRef() { }
+
+                [MethodImpl(InlineOption)]
+                internal static AwaiterRef GetOrCreate(Action continuation)
+                {
+                    var awaiter = ObjectPool<ITreeHandleable>.TryTake<AwaiterRef>()
+                        ?? new AwaiterRef();
+                    awaiter._continuation = continuation;
+                    SetCreatedStacktrace(awaiter, 3);
+                    return awaiter;
+                }
+
+                [MethodImpl(InlineOption)]
+                private void Dispose()
+                {
+                    _continuation = null;
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                void ITreeHandleable.Handle()
+                {
+                    ThrowIfInPool(this);
+                    var callback = _continuation;
+#if !PROMISE_DEBUG
+                    Dispose();
+#endif
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        callback.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        // This should never hit if the `await` keyword is used, but a user manually subscribing to OnCompleted could throw.
+                        AddRejectionToUnhandledStack(e, this);
+                    }
+                    ClearCurrentInvoker();
+#if PROMISE_DEBUG
+                    Dispose();
+#endif
+                }
+
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                {
+                    ThrowIfInPool(this);
+                    AddToHandleQueueFront(this);
+                }
+
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                {
+                    ThrowIfInPool(this);
+                    AddToHandleQueueBack(this);
+                }
             }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal sealed partial class AwaiterRef : ITreeHandleable
+        internal partial struct PromiseAwaiterInternal<T>
         {
-            private const int ID_BITSHIFT = 16;
+#if PROMISE_DEBUG
+            // To make sure this isn't reused.
+            private class IdContainer
+            {
+                volatile internal int _id;
+            }
+            private readonly IdContainer _idContainer;
+#endif
+            private readonly Promise<T> _promise;
 
-            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+            /// <summary>
+            /// Internal use.
+            /// </summary>
+            [MethodImpl(InlineOption)]
+            internal PromiseAwaiterInternal(Promise<T> promise)
+            {
+                // TODO: remove the duplicate when synchronous callbacks are implemented.
+                // Duplicate force gets a single use promise (prevents retain overflows from a preserved promise).
+                _promise = promise.Duplicate();
+#if PROMISE_DEBUG
+                _idContainer = new IdContainer() { _id = _promise._id };
+#endif
+            }
 
-            private Action _continuation;
-            private IValueContainer _valueContainer;
-            private Promise.State _state;
-            // Only using int because Interlocked does not support short.
-            volatile private int _id = 1 << ID_BITSHIFT; // Using left bits for Id instead of right bits so that we will get automatic wrapping without an extra operation.
-
-            internal short Id
+            internal bool IsCompleted
             {
                 [MethodImpl(InlineOption)]
                 get
                 {
-                    unchecked
-                    {
-                        return (short) (_id >> ID_BITSHIFT);
-                    }
-                }
-            }
-
-            private AwaiterRef() { }
-
-            [MethodImpl(InlineOption)]
-            internal static AwaiterRef GetOrCreate()
-            {
-                var awaiter = ObjectPool<ITreeHandleable>.TryTake<AwaiterRef>()
-                    ?? new AwaiterRef();
-                awaiter._state = Promise.State.Pending;
-                return awaiter;
-            }
-
-            private void Dispose()
-            {
-                var temp = _valueContainer;
-                _valueContainer = null;
-                temp.Release();
-                ObjectPool<ITreeHandleable>.MaybeRepool(this);
-            }
-
-            [MethodImpl(InlineOption)]
-            private void IncrementId(short promiseId)
-            {
-                int intComp = promiseId << ID_BITSHIFT; // Left bits are for Id.
-                unchecked
-                {
-                    if (Interlocked.CompareExchange(ref _id, intComp + (1 << ID_BITSHIFT), intComp) != intComp)
-                    {
-                        ThrowFromIdMismatch();
-                    }
+                    ValidateOperation(1);
+                    return _promise._ref == null || _promise._ref.State != Promise.State.Pending;
                 }
             }
 
             [MethodImpl(InlineOption)]
-            internal bool GetCompleted(short awaiterId)
+            internal void GetResultVoid()
             {
-                ValidateId(awaiterId);
-                ThrowIfInPool(this);
-                return _state != Promise.State.Pending;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void OnCompleted(Action continuation, short awaiterId)
-            {
-                ValidateId(awaiterId);
-                ThrowIfInPool(this);
-                _continuation = continuation;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void GetResult(short awaiterId)
-            {
-                ThrowIfInPool(this);
-#if PROMISE_DEBUG
-                if (_state == Promise.State.Pending)
+                ValidateGetResult(1);
+                if (_promise._ref != null)
                 {
-                    throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed. Use the 'await' keyword on a Promise instead of using PromiseAwaiter.", GetFormattedStacktrace(2));
+                    _promise._ref.GetResultVoid(_promise._id);
                 }
-#endif
-                IncrementId(awaiterId);
-                if (_state == Promise.State.Resolved)
+            }
+
+            [MethodImpl(InlineOption)]
+            internal T GetResult()
+            {
+                ValidateGetResult(1);
+                return _promise._ref == null
+                    ? _promise._result
+                    : _promise._ref.GetResult<T>(_promise._id);
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void OnCompleted(Action continuation)
+            {
+                ValidateArgument(continuation, "continuation", 1);
+                ValidateOperation(1);
+                if (_promise._ref == null)
                 {
-                    Dispose();
+                    continuation();
                     return;
                 }
-                // Throw unhandled exception or canceled exception.
-                Exception exception = ((IThrowable) _valueContainer).GetException();
-                Dispose();
-                throw exception;
+                _promise._ref.OnCompleted(continuation, _promise._id);
             }
 
             [MethodImpl(InlineOption)]
-            internal T GetResult<T>(short awaiterId)
+            internal void UnsafeOnCompleted(Action continuation)
             {
-                ThrowIfInPool(this);
+                OnCompleted(continuation);
+            }
+
+            partial void ValidateOperation(int skipFrames);
+            partial void ValidateGetResult(int skipFrames);
+            static partial void ValidateArgument(object arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
-                if (_state == Promise.State.Pending)
-                {
-                    throw new InvalidOperationException("PromiseAwaiter<T>.GetResult() is only valid when the promise is completed. Use the 'await' keyword on a Promise instead of using PromiseAwaiter.", GetFormattedStacktrace(2));
-                }
-#endif
-                IncrementId(awaiterId);
-                if (_state == Promise.State.Resolved)
-                {
-                    T result = ((ResolveContainer<T>) _valueContainer).value;
-                    Dispose();
-                    return result;
-                }
-                // Throw unhandled exception or canceled exception.
-                Exception exception = ((IThrowable) _valueContainer).GetException();
-                Dispose();
-                throw exception;
+            partial void ValidateOperation(int skipFrames)
+            {
+                bool isValid = _idContainer != null && _idContainer._id == _promise._id;
+                MaybeThrow(isValid, skipFrames + 1);
             }
 
-            void ITreeHandleable.Handle()
+            partial void ValidateGetResult(int skipFrames)
             {
-                ThrowIfInPool(this);
-                var callback = _continuation;
-                if (callback != null)
+                // GetResult may only be called once, set id to invalid for any future use.
+                bool isValid = _idContainer != null
+                    && Interlocked.CompareExchange(ref _idContainer._id, int.MaxValue, _promise._id) == _promise._id;
+                MaybeThrow(isValid, skipFrames + 1);
+            }
+
+            private static void MaybeThrow(bool isValid, int skipFrames)
+            {
+                if (!isValid)
                 {
-                    _continuation = null;
-                    callback.Invoke();
+                    throw new InvalidOperationException("Invalid use of PromiseAwaiter.", GetFormattedStacktrace(skipFrames + 1));
                 }
             }
 
-            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+            static partial void ValidateArgument(object arg, string argName, int skipFrames)
             {
-                ThrowIfInPool(this);
-                valueContainer.Retain();
-                _valueContainer = valueContainer;
-                _state = owner.State;
-                AddToHandleQueueFront(this);
-            }
-
-            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
-            {
-                ThrowIfInPool(this);
-                valueContainer.Retain();
-                _valueContainer = valueContainer;
-                _state = owner.State;
-            }
-
-            private void ThrowFromIdMismatch()
-            {
-                throw new InvalidOperationException("PromiseAwaiter is not valid. Use the 'await' keyword on a Promise instead of using PromiseAwaiter.", GetFormattedStacktrace(3));
-            }
-
-            partial void ValidateId(short awaiterId);
-#if PROMISE_DEBUG
-            partial void ValidateId(short awaiterId)
-            {
-                if (awaiterId != Id)
-                {
-                    ThrowFromIdMismatch();
-                }
+                Internal.ValidateArgument(arg, argName, skipFrames + 1);
             }
 #endif
         }
@@ -213,34 +265,17 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            partial struct PromiseAwaiter : ICriticalNotifyCompletion
+            partial struct PromiseAwaiterVoid : ICriticalNotifyCompletion
         {
-            private readonly Internal.AwaiterRef _ref;
-            private readonly short _id;
+            private readonly Internal.PromiseAwaiterInternal<Internal.VoidResult> _awaiter;
 
             /// <summary>
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal PromiseAwaiter(Promise promise)
+            internal PromiseAwaiterVoid(Promise promise)
             {
-                if (promise._ref == null)
-                {
-                    _ref = null;
-                    _id = promise._id;
-                }
-                else if (promise._ref.State == Promise.State.Resolved) // No need to allocate a new object if the promise is resolved.
-                {
-                    _ref = null;
-                    _id = Internal.ValidIdFromApi;
-                    promise._ref.MarkAwaitedAndMaybeDispose(promise._id, true);
-                }
-                else
-                {
-                    _ref = Internal.AwaiterRef.GetOrCreate();
-                    _id = _ref.Id;
-                    promise._ref.AddAwaiter(_ref, promise._id);
-                }
+                _awaiter = new Internal.PromiseAwaiterInternal<Internal.VoidResult>(promise._target);
             }
 
             public bool IsCompleted
@@ -248,54 +283,27 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    ValidateOperation(1);
-
-                    return _ref == null || _ref.GetCompleted(_id);
+                    return _awaiter.IsCompleted;
                 }
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void GetResult()
             {
-                ValidateOperation(1);
-
-                if (_ref != null)
-                {
-                    _ref.GetResult(_id);
-                }
+                _awaiter.GetResultVoid();
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
-                ValidateOperation(1);
-
-#if PROMISE_DEBUG
-                if (_ref == null)
-                {
-                    throw new InvalidOperationException("PromiseAwaiter.OnCompleted is not a valid operation at this time. Use the 'await' keyword on a Promise instead of using PromiseAwaiter.", Internal.GetFormattedStacktrace(1));
-                }
-#endif
-                _ref.OnCompleted(continuation, _id);
+                _awaiter.OnCompleted(continuation);
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
             {
-                OnCompleted(continuation);
+                _awaiter.UnsafeOnCompleted(continuation);
             }
-
-            partial void ValidateOperation(int skipFrames);
-#if PROMISE_DEBUG
-            partial void ValidateOperation(int skipFrames)
-            {
-                bool isValid = _id == Internal.ValidIdFromApi | (_ref != null && _id == _ref.Id);
-                if (!isValid)
-                {
-                    throw new InvalidOperationException("PromiseAwaiter is not valid. Use the 'await' keyword on a Promise instead of using PromiseAwaiter.", Internal.GetFormattedStacktrace(skipFrames + 1));
-                }
-            }
-#endif
         }
 
         /// <summary>
@@ -308,11 +316,9 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            partial struct PromiseAwaiter<T> : ICriticalNotifyCompletion
+            struct PromiseAwaiter<T> : ICriticalNotifyCompletion
         {
-            private readonly Internal.AwaiterRef _ref;
-            private readonly short _id;
-            private readonly T _result;
+            private readonly Internal.PromiseAwaiterInternal<T> _awaiter;
 
             /// <summary>
             /// Internal use.
@@ -320,25 +326,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             internal PromiseAwaiter(Promise<T> promise)
             {
-                if (promise._ref == null)
-                {
-                    _result = promise._result;
-                    _ref = null;
-                    _id = promise._id;
-                }
-                else if (promise._ref.State == Promise.State.Resolved) // No need to allocate a new object if the promise is resolved.
-                {
-                    promise._ref.MarkAwaitedAndGetResultAndMaybeDispose(promise._id, out _result);
-                    _ref = null;
-                    _id = Internal.ValidIdFromApi;
-                }
-                else
-                {
-                    _ref = Internal.AwaiterRef.GetOrCreate();
-                    promise._ref.AddAwaiter(_ref, promise._id);
-                    _result = default;
-                    _id = _ref.Id;
-                }
+                _awaiter = new Internal.PromiseAwaiterInternal<T>(promise);
             }
 
             public bool IsCompleted
@@ -346,55 +334,27 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    ValidateOperation(1);
-
-                    return _ref == null || _ref.GetCompleted(_id);
+                    return _awaiter.IsCompleted;
                 }
             }
 
             [MethodImpl(Internal.InlineOption)]
             public T GetResult()
             {
-                ValidateOperation(1);
-
-                if (_ref != null)
-                {
-                    return _ref.GetResult<T>(_id);
-                }
-                return _result;
+                return _awaiter.GetResult();
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
-                ValidateOperation(1);
-
-#if PROMISE_DEBUG
-                if (_ref == null)
-                {
-                    throw new InvalidOperationException("PromiseAwaiter.OnCompleted is not a valid operation at this time. Use the 'await' keyword on a Promise instead of using PromiseAwaiter.", Internal.GetFormattedStacktrace(1));
-                }
-#endif
-                _ref.OnCompleted(continuation, _id);
+                _awaiter.OnCompleted(continuation);
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
             {
-                OnCompleted(continuation);
+                _awaiter.UnsafeOnCompleted(continuation);
             }
-
-            partial void ValidateOperation(int skipFrames);
-#if PROMISE_DEBUG
-            partial void ValidateOperation(int skipFrames)
-            {
-                bool isValid = _id == Internal.ValidIdFromApi | (_ref != null && _id == _ref.Id);
-                if (!isValid)
-                {
-                    throw new InvalidOperationException("PromiseAwaiter is not valid. Use the 'await' keyword on a Promise instead of using PromiseAwaiter.", Internal.GetFormattedStacktrace(skipFrames + 1));
-                }
-            }
-#endif
         }
     }
 
@@ -406,11 +366,10 @@ namespace Proto.Promises
         /// Used to support the await keyword.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public PromiseAwaiter GetAwaiter()
+        public PromiseAwaiterVoid GetAwaiter()
         {
             ValidateOperation(1);
-
-            return new PromiseAwaiter(this);
+            return new PromiseAwaiterVoid(this);
         }
     }
 
@@ -423,7 +382,6 @@ namespace Proto.Promises
         public PromiseAwaiter<T> GetAwaiter()
         {
             ValidateOperation(1);
-
             return new PromiseAwaiter<T>(this);
         }
     }

@@ -127,6 +127,18 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
             }
 
+            private void InterlockedRetainInternal(short promiseId)
+            {
+                if (!_idsAndRetains.InterlockedTryRetain(promiseId))
+                {
+                    // Public APIs do a simple validation check in DEBUG mode, this is an extra thread-safe validation in case the same object is concurrently used and/or forgotten at the same time.
+                    // This is left in RELEASE mode because concurrency issues can be very difficult to track down, and might not show up in DEBUG mode.
+                    throw new InvalidOperationException("Attempted to use an invalid Promise. This may be because you are attempting to use a promise after it was forgotten.",
+                        GetFormattedStacktrace(1));
+                }
+                ThrowIfInPool(this);
+            }
+
             internal void MarkAwaitedAndMaybeDispose(short promiseId, bool suppressRejection)
             {
                 MarkAwaited(promiseId);
@@ -303,14 +315,7 @@ namespace Proto.Promises
 
                 protected override void MarkAwaited(short promiseId)
                 {
-                    if (!_idsAndRetains.InterlockedTryRetain(promiseId))
-                    {
-                        // Public APIs do a simple validation check in DEBUG mode, this is an extra thread-safe validation in case the same object is concurrently used and/or forgotten at the same time.
-                        // This is left in RELEASE mode because concurrency issues can be very difficult to track down, and might not show up in DEBUG mode.
-                        throw new InvalidOperationException("Attempted to use an invalid Promise. This may be because you are attempting to use a promise after it was forgotten.",
-                            GetFormattedStacktrace(1));
-                    }
-                    ThrowIfInPool(this);
+                    InterlockedRetainInternal(promiseId);
                 }
 
                 internal override PromiseRef GetDuplicate(short promiseId)
@@ -484,7 +489,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed class PromiseDuplicate : PromiseBranch
+            internal sealed class PromiseDuplicate : PromiseBranch, ITreeHandleable
             {
                 private PromiseDuplicate() { }
 
@@ -507,6 +512,16 @@ namespace Proto.Promises
                 {
                     HandleSelf((IValueContainer) _valueOrPrevious);
                 }
+
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
+                    valueContainer.Retain();
+                    _valueOrPrevious = valueContainer;
+                    State = valueContainer.GetState();
+                    _idsAndRetains.InterlockedTryReleaseComplete();
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -518,14 +533,14 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     ValidateReturn(other);
-                    var _ref = other._ref;
+                    var _ref = other._target._ref;
                     if (_ref == null)
                     {
                         ResolveInternal(ResolveContainerVoid.GetOrCreate());
                     }
                     else
                     {
-                        _ref.MarkAwaited(other._id);
+                        _ref.MarkAwaited(other._target._id);
                         _valueOrPrevious = _ref;
                         SubscribeProgressToOther(_ref);
                         _ref.AddWaiter(this);
@@ -1190,10 +1205,10 @@ namespace Proto.Promises
                 internal static PromisePassThrough GetOrCreate(Promise owner, int index)
                 {
                     // owner._ref is checked for nullity before passing into this.
-                    owner._ref.MarkAwaited(owner._id);
+                    owner._target._ref.MarkAwaited(owner._target._id);
                     var passThrough = ObjectPool<PromisePassThrough>.TryTake<PromisePassThrough>()
                         ?? new PromisePassThrough();
-                    passThrough._owner = owner._ref;
+                    passThrough._owner = owner._target._ref;
                     passThrough._smallFields._index = index;
                     passThrough._smallFields._retainCounter = 1;
                     passThrough.ResetProgress();
@@ -1434,16 +1449,16 @@ namespace Proto.Promises
 
             internal static void MaybeMarkAwaitedAndDispose(Promise promise, bool suppressRejection)
             {
-                if (promise._ref != null)
+                if (promise._target._ref != null)
                 {
-                    promise._ref.MarkAwaitedAndMaybeDispose(promise._id, suppressRejection);
+                    promise._target._ref.MarkAwaitedAndMaybeDispose(promise._target._id, suppressRejection);
                 }
             }
         } // PromiseRef
 
         internal static uint PrepareForMulti(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index)
         {
-            if (promise._ref != null)
+            if (promise._target._ref != null)
             {
                 passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index));
                 return 1;
@@ -1453,7 +1468,7 @@ namespace Proto.Promises
 
         internal static uint PrepareForMulti(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ulong completedProgress)
         {
-            if (promise._ref != null)
+            if (promise._target._ref != null)
             {
                 passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index));
                 return 1;

@@ -16,6 +16,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
@@ -33,9 +34,10 @@ namespace Proto.Promises
     {
         public bool IsValid
         {
+            [MethodImpl(Internal.InlineOption)]
             get
             {
-                return _id == (_ref == null ? Internal.ValidIdFromApi : _ref.Id);
+                return _target.IsValid;
             }
         }
 
@@ -43,7 +45,7 @@ namespace Proto.Promises
         {
             string state =
                 !IsValid ? "Invalid"
-                : _ref != null ? _ref.State.ToString()
+                : _target._ref != null ? _target._ref.State.ToString()
                 : State.Resolved.ToString();
             return string.Format("Type: Promise, State: {0}", state);
         }
@@ -56,9 +58,9 @@ namespace Proto.Promises
         public Promise Preserve()
         {
             ValidateOperation(1);
-            if (_ref != null)
+            if (_target._ref != null)
             {
-                var newPromise = _ref.GetPreserved(_id);
+                var newPromise = _target._ref.GetPreserved(_target._id);
                 return new Promise(newPromise, newPromise.Id);
             }
             return this;
@@ -68,13 +70,10 @@ namespace Proto.Promises
         /// Mark <see cref="this"/> as awaited and prevent any further awaits or callbacks on <see cref="this"/>.
         /// <para/>NOTE: It is imperative to terminate your promise chains with Forget so that any uncaught rejections will be reported and objects repooled (if pooling is enabled).
         /// </summary>
+        [MethodImpl(Internal.InlineOption)]
         public void Forget()
         {
-            ValidateOperation(1);
-            if (_ref != null)
-            {
-                _ref.Forget(_id);
-            }
+            _target.Forget();
         }
 
 
@@ -86,9 +85,9 @@ namespace Proto.Promises
         public Promise Duplicate()
         {
             ValidateOperation(1);
-            if (_ref != null)
+            if (_target._ref != null)
             {
-                var newPromise = _ref.GetDuplicate(_id);
+                var newPromise = _target._ref.GetDuplicate(_target._id);
                 return new Promise(newPromise, newPromise.Id);
             }
             return this;
@@ -2196,6 +2195,7 @@ namespace Proto.Promises
         }
         #endregion
 
+        [MethodImpl(Internal.InlineOption)]
         public bool Equals(Promise other)
         {
             return this == other;
@@ -2211,25 +2211,19 @@ namespace Proto.Promises
         }
 
         // Promises really shouldn't be used for lookups, but GetHashCode is overridden to complement ==.
+        [MethodImpl(Internal.InlineOption)]
         public override int GetHashCode()
         {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 31 + _id.GetHashCode();
-                if (_ref != null)
-                {
-                    hash = hash * 31 + _ref.GetHashCode();
-                }
-                return hash;
-            }
+            return _target.GetHashCode();
         }
 
+        [MethodImpl(Internal.InlineOption)]
         public static bool operator ==(Promise lhs, Promise rhs)
         {
-            return lhs._ref == rhs._ref & lhs._id == rhs._id;
+            return lhs._target == rhs._target;
         }
 
+        [MethodImpl(Internal.InlineOption)]
         public static bool operator !=(Promise lhs, Promise rhs)
         {
             return !(lhs == rhs);

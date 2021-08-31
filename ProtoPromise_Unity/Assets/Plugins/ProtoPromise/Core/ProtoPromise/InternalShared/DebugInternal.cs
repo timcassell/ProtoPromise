@@ -119,29 +119,31 @@ namespace Proto.Promises
                     throw new InvalidReturnException("An invalid promise was returned.", string.Empty);
                 }
 
+                PromiseRef _ref = other._target._ref;
+
                 // A promise cannot wait on itself.
-                if (other._ref == this)
+                if (_ref == this)
                 {
                     throw new InvalidReturnException("A Promise cannot wait on itself.", string.Empty);
                 }
-                if (other._ref == null)
+                if (_ref == null)
                 {
                     return;
                 }
                 // This allows us to check All/Race/First Promises iteratively.
                 Stack<PromisePassThrough> passThroughs = PassthroughsForIterativeAlgorithm;
-                PromiseRef prev = other._ref._valueOrPrevious as PromiseRef;
+                PromiseRef prev = _ref._valueOrPrevious as PromiseRef;
             Repeat:
                 for (; prev != null; prev = prev._valueOrPrevious as PromiseRef)
                 {
                     if (prev == this)
                     {
-                        other._ref.MarkAwaitedAndMaybeDispose(other._id, true);
+                        _ref.MarkAwaitedAndMaybeDispose(other._target._id, true);
                         while (passThroughs.Count > 0)
                         {
                             passThroughs.Pop().Release();
                         }
-                        throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(other._ref));
+                        throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(_ref));
                     }
                     prev.BorrowPassthroughs(passThroughs);
                 }

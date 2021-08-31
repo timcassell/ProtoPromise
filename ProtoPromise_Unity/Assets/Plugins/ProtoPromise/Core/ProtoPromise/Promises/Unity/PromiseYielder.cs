@@ -130,10 +130,10 @@ namespace Proto.Promises
             ValidateOperation(1);
 
             Internal.YieldInstructionVoid yieldInstruction;
-            if (_ref != null)
+            if (_target._ref != null)
             {
                 yieldInstruction = Internal.YieldInstructionVoid.GetOrCreate(null, State.Pending);
-                _ref.AddWaiter(yieldInstruction);
+                _target._ref.AddWaiter(yieldInstruction);
             }
             else
             {

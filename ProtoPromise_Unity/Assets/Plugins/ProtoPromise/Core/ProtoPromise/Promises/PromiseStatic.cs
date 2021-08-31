@@ -18,7 +18,7 @@ namespace Proto.Promises
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._ref == null | promise2._ref == null)
+            if (promise1._target._ref == null | promise2._target._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
@@ -42,7 +42,7 @@ namespace Proto.Promises
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._ref == null | promise2._ref == null | promise3._ref == null)
+            if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
@@ -69,7 +69,7 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._ref == null | promise2._ref == null | promise3._ref == null | promise4._ref == null)
+            if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null | promise4._target._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
@@ -210,7 +210,7 @@ namespace Proto.Promises
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._ref == null | promise2._ref == null)
+            if (promise1._target._ref == null | promise2._target._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
@@ -234,7 +234,7 @@ namespace Proto.Promises
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._ref == null | promise2._ref == null | promise3._ref == null)
+            if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
@@ -261,7 +261,7 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._ref == null | promise2._ref == null | promise3._ref == null | promise4._ref == null)
+            if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null | promise4._target._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);

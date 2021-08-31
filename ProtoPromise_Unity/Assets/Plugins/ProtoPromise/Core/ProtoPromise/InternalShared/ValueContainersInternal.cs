@@ -5,6 +5,7 @@
 # endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0019 // Use pattern matching
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
@@ -383,7 +384,7 @@ namespace Proto.Promises
             ResolveContainer<T> ILinked<ResolveContainer<T>>.Next { get; set; }
 
             private int _retainCounter;
-            public T value;
+            internal T value;
 
             T IValueContainer<T>.Value
             {

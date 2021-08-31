@@ -50,12 +50,10 @@ namespace Proto.Promises
 #endif
         public struct PromiseMethodBuilder
         {
-            private struct VoidResult { }
-
-            private Internal.PromiseMethodBuilderInternal<VoidResult> _builder;
+            private Internal.PromiseMethodBuilderInternal<Internal.VoidResult> _builder;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private PromiseMethodBuilder(Internal.PromiseMethodBuilderInternal<VoidResult> builder)
+            private PromiseMethodBuilder(Internal.PromiseMethodBuilderInternal<Internal.VoidResult> builder)
             {
                 _builder = builder;
             }
@@ -69,7 +67,7 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static PromiseMethodBuilder Create()
             {
-                return new PromiseMethodBuilder(Internal.PromiseMethodBuilderInternal<VoidResult>.Create());
+                return new PromiseMethodBuilder(Internal.PromiseMethodBuilderInternal<Internal.VoidResult>.Create());
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
