@@ -210,13 +210,23 @@ namespace Proto.Promises
             }
         }
 #endif // PROMISE_DEBUG
-    }
+
+        internal partial struct DeferredInternal<TDeferredRef>
+        {
+            static partial void ValidateProgress(float progress, int skipFrames);
+#if PROMISE_DEBUG
+            static partial void ValidateProgress(float progress, int skipFrames)
+            {
+                ValidateProgressValue(progress, skipFrames + 1);
+            }
+#endif
+        }
+    } // class Internal
 
     partial struct Promise
     {
         // Calls to these get compiled away in RELEASE mode
         partial void ValidateOperation(int skipFrames);
-        static partial void ValidateProgress(float progress, int skipFrames);
         static partial void ValidateArgument(object arg, string argName, int skipFrames);
         static partial void ValidateArgument(Promise arg, string argName, int skipFrames);
         static partial void ValidateElement(Promise promise, string argName, int skipFrames);
@@ -225,11 +235,6 @@ namespace Proto.Promises
         partial void ValidateOperation(int skipFrames)
         {
             Internal.ValidateOperation(this, skipFrames + 1);
-        }
-
-        static partial void ValidateProgress(float progress, int skipFrames)
-        {
-            Internal.ValidateProgressValue(progress, skipFrames + 1);
         }
 
         static partial void ValidateArgument(object arg, string argName, int skipFrames)
@@ -267,7 +272,6 @@ namespace Proto.Promises
     {
         // Calls to these get compiled away in RELEASE mode
         partial void ValidateOperation(int skipFrames);
-        static partial void ValidateProgress(float progress, int skipFrames);
         static partial void ValidateArgument(object arg, string argName, int skipFrames);
         static partial void ValidateArgument(Promise<T> arg, string argName, int skipFrames);
         static partial void ValidateElement(Promise<T> promise, string argName, int skipFrames);
@@ -275,11 +279,6 @@ namespace Proto.Promises
         partial void ValidateOperation(int skipFrames)
         {
             Internal.ValidateOperation(this, skipFrames + 1);
-        }
-
-        static partial void ValidateProgress(float progress, int skipFrames)
-        {
-            Internal.ValidateProgressValue(progress, skipFrames + 1);
         }
 
         static partial void ValidateArgument(object arg, string argName, int skipFrames)
