@@ -10,6 +10,8 @@ jobs:
         type: string
       runtime:
         type: string
+      poolType:
+        type: string
     executor:
       name: win/default
     steps:
@@ -18,8 +20,13 @@ jobs:
           name: Run Tests
           #-nodereuse:false to try to fix hang (see https://github.com/dotnet/sdk/issues/9452)
           command: |
+            if (<<parameters.runtime>> -eq Pool_Enabled) {
+              $ExtraDefine = PROTO_PROMISE_POOL_ENABLE
+            } else {
+              $ExtraDefine = PROTO_PROMISE_POOL_DISABLE
+            }
             $ResultsFile = "$pwd/dotnet-test-results-<<parameters.runtime>>-<<parameters.config>>.xml"
-            dotnet test -c <<parameters.config>> -f <<parameters.runtime>> -nodereuse:false --logger:"junit;LogFilePath=$ResultsFile"
+            dotnet test -c <<parameters.config>> -f <<parameters.runtime>> -nodereuse:false --logger:"junit;LogFilePath=$ResultsFile" -p:ExtraDefineConstants=$ExtraDefine
           no_output_timeout: 60m
 
       - store_test_results:
@@ -32,8 +39,9 @@ workflows:
   dotnet-tests:
     jobs:
       - run-tests:
-          name: <<matrix.runtime>> <<matrix.config>>
+          name: <<matrix.runtime>> <<matrix.config>> <<matrix.poolType>>
           matrix:
             parameters:
               config: [Release, Debug, Release_NoProgress, Debug_NoProgress]
               runtime: [net5.0, net472]
+              poolType: [Pool_Enabled, Pool_Disabled]

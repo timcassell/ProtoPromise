@@ -859,10 +859,6 @@ namespace Proto.Promises
             {
                 bool fullyReleased;
                 bool didRelease = _idsAndRetains.InterlockedTryReleaseUser(tokenId, out fullyReleased);
-                if (didRelease)
-                {
-                    ThrowIfInPool(this);
-                }
                 MaybeResetAndRepool(fullyReleased);
                 return didRelease;
             }
@@ -904,8 +900,10 @@ namespace Proto.Promises
                 }
             }
 
+            [MethodImpl(InlineOption)]
             private void ResetAndRepool()
             {
+                ThrowIfInPool(this);
                 var oldContainer = Interlocked.Exchange(ref _valueContainer, DisposedRef.instance);
                 if (oldContainer != null)
                 {

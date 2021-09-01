@@ -10,11 +10,17 @@ jobs:
       matrix:
         runtime: [Net5, NetFramework]
         configuration: [Release, Debug, Release_NoProgress, Debug_NoProgress]
+        pooling: [Pool_Enabled, Pool_Disabled]
         include:
           - runtime: Net5
             framework: net5.0
           - runtime: NetFramework
             framework: net472
+
+          - pooling: Pool_Disabled
+            extraDefines: PROTO_PROMISE_POOL_ENABLE
+          - pooling: Pool_Enabled
+            extraDefines: PROTO_PROMISE_POOL_DISABLE
 
     steps:
       - name: Checkout
@@ -33,13 +39,13 @@ jobs:
         #-nodereuse:false to try to fix hang (see https://github.com/dotnet/sdk/issues/9452)
         shell: pwsh
         run: |
-          $ResultsFile = "$pwd/artifacts/dotnet-test-results-${{ matrix.runtime }}-${{ matrix.configuration }}.trx"
-          dotnet test -c ${{ matrix.configuration }} -f ${{ matrix.framework }} -nodereuse:false --logger "trx;LogFileName=$ResultsFile"
+          $ResultsFile = "$pwd/artifacts/dotnet-test-results-${{ matrix.runtime }}-${{ matrix.configuration }}-${{ matrix.pooling }}.trx"
+          dotnet test -c ${{ matrix.configuration }} -f ${{ matrix.framework }} -nodereuse:false --logger "trx;LogFileName=$ResultsFile" -p:ExtraDefineConstants=${{ matrix.extraDefines }}
 
       - uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: "dotnet-test-results-${{ matrix.runtime }}-${{ matrix.configuration }}"
+          name: "dotnet-test-results-${{ matrix.runtime }}-${{ matrix.configuration }}-${{ matrix.pooling }}"
           path: "artifacts/*.trx"
           reporter: dotnet-trx
 

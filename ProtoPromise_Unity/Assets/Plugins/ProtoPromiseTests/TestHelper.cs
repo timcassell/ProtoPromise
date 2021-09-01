@@ -29,8 +29,12 @@ namespace Proto.Promises.Tests
             // Capture first exception from finalizers.
             // Only throw one exception instead of aggregate to try to avoid overloading the test error output.
             Promise.Config.UncaughtRejectionHandler = e => { throw e; };
-            Promise.Config.ObjectPoolingEnabled = true; // Make sure to test object pool.
             Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
+#if PROTO_PROMISE_POOL_DISABLE // Are we testing the pool or not? (used for command-line testing)
+            Promise.Config.ObjectPoolingEnabled = false;
+#else
+            Promise.Config.ObjectPoolingEnabled = true;
+#endif
         }
 
         // Just to make sure static constructor is ran.
