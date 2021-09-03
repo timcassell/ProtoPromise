@@ -3,34 +3,34 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30523.141
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProtoPromiseTests", "Tests\ProtoPromiseTests.csproj", "{27C1B5AC-2E73-4B91-8258-C67B4B064569}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProtoPromiseTests", "ProtoPromiseTests\ProtoPromiseTests.csproj", "{27C1B5AC-2E73-4B91-8258-C67B4B064569}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProtoPromise", "Runtime\ProtoPromise.csproj", "{2A0BBD14-FA01-467C-8A42-55C5C287F66D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProtoPromise", "ProtoPromise\ProtoPromise.csproj", "{2A0BBD14-FA01-467C-8A42-55C5C287F66D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug With Progress|Any CPU = Debug With Progress|Any CPU
-		Debug Without Progress|Any CPU = Debug Without Progress|Any CPU
-		Release With Progress|Any CPU = Release With Progress|Any CPU
-		Release Without Progress|Any CPU = Release Without Progress|Any CPU
+		Debug_NoProgress|Any CPU = Debug_NoProgress|Any CPU
+		Debug|Any CPU = Debug|Any CPU
+		Release_NoProgress|Any CPU = Release_NoProgress|Any CPU
+		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Debug With Progress|Any CPU.ActiveCfg = Debug With Progress|Any CPU
-		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Debug With Progress|Any CPU.Build.0 = Debug With Progress|Any CPU
-		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Debug Without Progress|Any CPU.ActiveCfg = Debug Without Progress|Any CPU
-		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Debug Without Progress|Any CPU.Build.0 = Debug Without Progress|Any CPU
-		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Release With Progress|Any CPU.ActiveCfg = Release With Progress|Any CPU
-		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Release With Progress|Any CPU.Build.0 = Release With Progress|Any CPU
-		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Release Without Progress|Any CPU.ActiveCfg = Release Without Progress|Any CPU
-		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Release Without Progress|Any CPU.Build.0 = Release Without Progress|Any CPU
-		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Debug With Progress|Any CPU.ActiveCfg = Debug With Progress|Any CPU
-		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Debug With Progress|Any CPU.Build.0 = Debug With Progress|Any CPU
-		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Debug Without Progress|Any CPU.ActiveCfg = Debug Without Progress|Any CPU
-		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Debug Without Progress|Any CPU.Build.0 = Debug Without Progress|Any CPU
-		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Release With Progress|Any CPU.ActiveCfg = Release With Progress|Any CPU
-		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Release With Progress|Any CPU.Build.0 = Release With Progress|Any CPU
-		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Release Without Progress|Any CPU.ActiveCfg = Release Without Progress|Any CPU
-		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Release Without Progress|Any CPU.Build.0 = Release Without Progress|Any CPU
+		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Debug_NoProgress|Any CPU.ActiveCfg = Debug_NoProgress|Any CPU
+		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Debug_NoProgress|Any CPU.Build.0 = Debug_NoProgress|Any CPU
+		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Release_NoProgress|Any CPU.ActiveCfg = Release_NoProgress|Any CPU
+		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Release_NoProgress|Any CPU.Build.0 = Release_NoProgress|Any CPU
+		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27C1B5AC-2E73-4B91-8258-C67B4B064569}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Debug_NoProgress|Any CPU.ActiveCfg = Debug_NoProgress|Any CPU
+		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Debug_NoProgress|Any CPU.Build.0 = Debug_NoProgress|Any CPU
+		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Release_NoProgress|Any CPU.ActiveCfg = Release_NoProgress|Any CPU
+		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Release_NoProgress|Any CPU.Build.0 = Release_NoProgress|Any CPU
+		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,109 @@
+name: Unity Tests
+
+on: [pull_request]
+
+jobs:
+  unity-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        # Disabled Standalone and WebGL as they do not work in a docker image.
+        buildTarget: [Editor] #, Standalone, WebGL]
+        scriptingRuntime: [Net3.5, Net4.x]
+        mode: [Release, Debug]
+        progress: [Progress_Enabled, Progress_Disabled]
+        pooling: [Pool_Enabled, Pool_Disabled]
+        include:
+          - buildTarget: Editor
+            buildTargetId: 1
+            testMode: PlayMode
+          #- buildTarget: Standalone
+          #  buildTargetId: 1
+          #  testMode: StandaloneLinux64
+          #- buildTarget: WebGL
+          #  buildTargetId: 13
+          #  testMode: WebGL
+            
+          - mode: Release
+            modeSymbol: PROTO_PROMISE_DEBUG_DISABLE
+          - mode: Debug
+            modeSymbol: PROTO_PROMISE_DEBUG_ENABLE
+
+          - progress: Progress_Enabled
+            progressSymbol: PROTO_PROMISE_PROGRESS_ENABLE
+          - progress: Progress_Disabled
+            progressSymbol: PROTO_PROMISE_PROGRESS_DISABLE
+
+          - pooling: Pool_Enabled
+            poolingSymbol: PROTO_PROMISE_POOL_ENABLE
+          - pooling: Pool_Disabled
+            poolingSymbol: PROTO_PROMISE_POOL_DISABLE
+            
+          - scriptingRuntime: Net3.5
+            scriptingRuntimeVersion: 0
+            apiCompatibilityLevel: 2
+          - scriptingRuntime: Net4.x
+            scriptingRuntimeVersion: 1
+            apiCompatibilityLevel: 6
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Rewrite ProjectSettings
+        run: |
+          DefineSymbols="${{ matrix.modeSymbol }};${{ matrix.progressSymbol }};${{ matrix.poolingSymbol }}"
+          DefineOriginal="  scriptingDefineSymbols: {}"
+          DefineReplace="  scriptingDefineSymbols: \\n    ${{ matrix.buildTargetId }}: $DefineSymbols"
+          sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
+
+          RuntimeOriginal="  scriptingRuntimeVersion: 0"
+          RuntimeReplace="  scriptingRuntimeVersion: ${{ matrix.scriptingRuntimeVersion }}"
+          sed -i "{s/$RuntimeOriginal/$RuntimeReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
+
+          ApiOriginal="  apiCompatibilityLevel: 2"
+          ApiReplace="  apiCompatibilityLevel: ${{ matrix.apiCompatibilityLevel }}"
+          sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
+
+      - name: Run tests
+        uses: game-ci/unity-test-runner@v2 #timcassell/unity-test-runner@targetPlatform
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2018_4_36F1_UBUNTU }}
+        with:
+          projectPath: ProtoPromise_Unity
+          testMode: ${{ matrix.testMode }}
+
+      # Workaround for NUnit XML (see https://github.com/dorny/test-reporter/issues/98#issuecomment-867106931)
+      - name: Install NUnit
+        run: |
+          nuget install NUnit.Console -Version 3.12.0
+
+      - name: Fetch transform code
+        run: |
+          wget https://raw.githubusercontent.com/nunit/nunit-transforms/master/nunit3-junit/nunit3-junit.xslt
+        shell: bash
+
+      - name: Transform NUnit3 to JUnit
+        run: |
+          Get-ChildItem . -Filter artifacts/*.xml | Foreach-Object {
+            $xml = Resolve-Path $_.FullName
+            $output = Join-Path ($pwd) ($_.BaseName + '_junit.xml')
+            $xslt = New-Object System.Xml.Xsl.XslCompiledTransform;
+            $xslt.Load("nunit3-junit.xslt");
+            $xslt.Transform($xml, $output);
+          }
+        shell: pwsh
+
+      - uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: "unity-test-results-${{ matrix.buildTarget }}-${{ matrix.scriptingRuntime }}-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.pooling }}"
+          path: "*_junit.xml"
+          reporter: jest-junit
+
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: Test results
+          path: artifacts
