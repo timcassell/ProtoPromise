@@ -34,7 +34,8 @@ namespace Proto.Promises
         {
             get
             {
-                return _id == (_ref == null ? Internal.ValidIdFromApi : _ref.Id);
+                var _this = GetVoidCopy();
+                return _this._id == (_this._ref == null ? Internal.ValidIdFromApi : _this._ref.Id);
             }
         }
 
@@ -57,9 +58,10 @@ namespace Proto.Promises
 
         public override string ToString()
         {
+            var _this = GetVoidCopy();
             string state =
-                !IsValid ? "Invalid"
-                : _ref != null ? _ref.State.ToString()
+                !_this.IsValid ? "Invalid"
+                : _this._ref != null ? _this._ref.State.ToString()
                 : Promise.State.Resolved.ToString();
             return string.Format("Type: Promise<{0}>, State: {1}", typeof(T), state);
         }
@@ -72,9 +74,10 @@ namespace Proto.Promises
         public Promise<T> Preserve()
         {
             ValidateOperation(1);
-            if (_ref != null)
+            var _this = GetVoidCopy();
+            if (_this._ref != null)
             {
-                var newPromise = _ref.GetPreserved(_id);
+                var newPromise = _this._ref.GetPreserved(_this._id);
                 return new Promise<T>(newPromise, newPromise.Id);
             }
             return this;
@@ -87,9 +90,10 @@ namespace Proto.Promises
         public void Forget()
         {
             ValidateOperation(1);
-            if (_ref != null)
+            var _this = GetVoidCopy();
+            if (_this._ref != null)
             {
-                _ref.Forget(_id);
+                _this._ref.Forget(_this._id);
             }
         }
 
@@ -102,9 +106,10 @@ namespace Proto.Promises
         public Promise<T> Duplicate()
         {
             ValidateOperation(1);
+            var _this = GetVoidCopy();
             if (_ref != null)
             {
-                var newPromise = _ref.GetDuplicate(_id);
+                var newPromise = _this._ref.GetDuplicate(_this._id);
                 return new Promise<T>(newPromise, newPromise.Id);
             }
             return this;
@@ -3571,15 +3576,16 @@ namespace Proto.Promises
         {
             unchecked
             {
+                Promise<T> _this = this;
                 int hash = 17;
                 hash = hash * 31 + _id.GetHashCode();
-                if (_ref != null)
+                if (_this._ref != null)
                 {
-                    hash = hash * 31 + _ref.GetHashCode();
+                    hash = hash * 31 + _this._ref.GetHashCode();
                 }
-                else if (_result != null)
+                else if (_this._result != null)
                 {
-                    hash = hash * 31 + EqualityComparer<T>.Default.GetHashCode(_result);
+                    hash = hash * 31 + EqualityComparer<T>.Default.GetHashCode(_this._result);
                 }
                 hash = hash * 31 + typeof(T).TypeHandle.GetHashCode(); // Hashcode variance for different T types.
                 return hash;
@@ -3597,6 +3603,13 @@ namespace Proto.Promises
         public static bool operator !=(Promise<T> lhs, Promise<T> rhs)
         {
             return !(lhs == rhs);
+        }
+
+        // Defensive copy for thread safety purposes.
+        [MethodImpl(Internal.InlineOption)]
+        private Promise<Internal.VoidResult> GetVoidCopy()
+        {
+            return new Promise<Internal.VoidResult>(_ref, _id);
         }
     }
 }

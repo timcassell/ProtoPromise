@@ -36,7 +36,8 @@ namespace Proto.Promises
             {
                 get
                 {
-                    return _ref != null && _deferredId == _ref.DeferredId;
+                    DeferredInternal<TDeferredRef> _this = this;
+                    return _this._ref != null && _this._deferredId == _this._ref.DeferredId;
                 }
             }
 
@@ -58,7 +59,8 @@ namespace Proto.Promises
 
             public bool TryResolveVoid()
             {
-                return _ref != null && _ref.TryResolveVoid(_deferredId);
+                DeferredInternal<TDeferredRef> _this = this;
+                return _this._ref != null && _this._ref.TryResolveVoid(_this._deferredId);
             }
 
             public void Resolve<T>(ref T value)
@@ -71,7 +73,8 @@ namespace Proto.Promises
 
             public bool TryResolve<T>(ref T value)
             {
-                return _ref != null && _ref.TryResolve(ref value, _deferredId);
+                DeferredInternal<TDeferredRef> _this = this;
+                return _this._ref != null && _this._ref.TryResolve(ref value, _this._deferredId);
             }
 
             public void Reject<TReject>(ref TReject reason)
@@ -84,7 +87,8 @@ namespace Proto.Promises
 
             public bool TryReject<TReject>(ref TReject reason)
             {
-                return _ref != null && _ref.TryReject(ref reason, _deferredId, 1);
+                DeferredInternal<TDeferredRef> _this = this;
+                return _this._ref != null && _this._ref.TryReject(ref reason, _this._deferredId, 1);
             }
 
             public void Cancel<TCancel>(ref TCancel reason)
@@ -97,7 +101,8 @@ namespace Proto.Promises
 
             public bool TryCancel<TCancel>(ref TCancel reason)
             {
-                return _ref != null && _ref.TryCancel(ref reason, _deferredId);
+                DeferredInternal<TDeferredRef> _this = this;
+                return _this._ref != null && _this._ref.TryCancel(ref reason, _this._deferredId);
             }
 
             public void Cancel()
@@ -110,14 +115,15 @@ namespace Proto.Promises
 
             public bool TryCancel()
             {
-                return _ref != null && _ref.TryCancelVoid(_deferredId);
+                DeferredInternal<TDeferredRef> _this = this;
+                return _this._ref != null && _this._ref.TryCancelVoid(_this._deferredId);
             }
 
             // TODO: don't error if progress is disabled, just do nothing.
             public void ReportProgress(float progress)
             {
 #if !PROMISE_PROGRESS
-                Internal.ThrowProgressException(1);
+                ThrowProgressException(1);
 #else
                 if (!TryReportProgress(progress))
                 {
@@ -133,23 +139,24 @@ namespace Proto.Promises
 #else
                 ValidateProgress(progress, 1);
 
-                return _ref != null && _ref.TryReportProgress(progress, _deferredId);
+                DeferredInternal<TDeferredRef> _this = this;
+                return _this._ref != null && _this._ref.TryReportProgress(progress, _this._deferredId);
 #endif
             }
 
             public override int GetHashCode()
             {
-                var temp = _ref;
-                if (temp == null)
+                DeferredInternal<TDeferredRef> _this = this;
+                if (_this._ref == null)
                 {
                     return 0;
                 }
                 unchecked
                 {
                     int hash = 17;
-                    hash = hash * 31 + _deferredId.GetHashCode();
-                    hash = hash * 31 + _promiseId.GetHashCode();
-                    hash = hash * 31 + temp.GetHashCode();
+                    hash = hash * 31 + _this._deferredId.GetHashCode();
+                    hash = hash * 31 + _this._promiseId.GetHashCode();
+                    hash = hash * 31 + _this._ref.GetHashCode();
                     return hash;
                 }
             }

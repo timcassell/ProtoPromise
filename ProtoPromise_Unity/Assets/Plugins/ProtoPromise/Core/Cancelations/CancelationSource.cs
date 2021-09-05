@@ -103,7 +103,8 @@ namespace Proto.Promises
         {
             get
             {
-                return _ref != null && _ref.SourceId == _sourceId;
+                CancelationSource _this = this;
+                return _this._ref != null && _this._ref.SourceId == _this._sourceId;
             }
         }
 
@@ -114,7 +115,8 @@ namespace Proto.Promises
         {
             get
             {
-                return _ref != null && _ref.IsSourceCanceled(_sourceId);
+                CancelationSource _this = this;
+                return _this._ref != null && _this._ref.IsSourceCanceled(_this._sourceId);
             }
         }
 
@@ -124,7 +126,8 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel()
         {
-            return _ref != null && _ref.TrySetCanceled(_sourceId);
+            CancelationSource _this = this;
+            return _this._ref != null && _this._ref.TrySetCanceled(_this._sourceId);
         }
 
         /// <summary>
@@ -133,7 +136,8 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel<TCancel>(TCancel reason)
         {
-            return _ref != null && _ref.TrySetCanceled(ref reason, _sourceId);
+            CancelationSource _this = this;
+            return _this._ref != null && _this._ref.TrySetCanceled(ref reason, _this._sourceId);
         }
 
         /// <summary>
@@ -166,7 +170,8 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already disposed, false otherwise.</returns>
         public bool TryDispose()
         {
-            return _ref != null && _ref.TryDispose(_sourceId);
+            CancelationSource _this = this;
+            return _this._ref != null && _this._ref.TryDispose(_this._sourceId);
         }
 
         /// <summary>
@@ -197,15 +202,17 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            if (_ref == null)
+            CancelationSource _this = this;
+            if (_this._ref == null)
             {
                 return 0;
             }
             unchecked
             {
                 int hash = 17;
-                hash = hash * 31 + _sourceId.GetHashCode();
-                hash = hash * 31 + _ref.GetHashCode();
+                hash = hash * 31 + _this._tokenId.GetHashCode();
+                hash = hash * 31 + _this._sourceId.GetHashCode();
+                hash = hash * 31 + _this._ref.GetHashCode();
                 return hash;
             }
         }

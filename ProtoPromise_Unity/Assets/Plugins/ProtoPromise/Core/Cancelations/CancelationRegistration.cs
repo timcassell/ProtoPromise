@@ -41,8 +41,9 @@ namespace Proto.Promises
         {
             get
             {
+                CancelationRegistration _this = this;
                 bool _;
-                return _ref != null && _ref.IsRegistered(_id, _order, out _);
+                return _this._ref != null && _this._ref.IsRegistered(_this._id, _this._order, out _);
             }
         }
 
@@ -53,13 +54,14 @@ namespace Proto.Promises
         /// <param name="isTokenCancelationRequested">true if the associated <see cref="CancelationToken"/> is requesting cancelation, false otherwise</param>
         public void GetIsRegisteredAndIsCancelationRequested(out bool isRegistered, out bool isTokenCancelationRequested)
         {
-            if (_ref == null)
+            CancelationRegistration _this = this;
+            if (_this._ref == null)
             {
                 isRegistered = isTokenCancelationRequested = false;
             }
             else
             {
-                isRegistered = _ref.IsRegistered(_id, _order, out isTokenCancelationRequested);
+                isRegistered = _this._ref.IsRegistered(_this._id, _this._order, out isTokenCancelationRequested);
             }
         }
 
@@ -82,7 +84,7 @@ namespace Proto.Promises
         public bool TryUnregister()
         {
             bool _;
-            return _ref != null && _ref.TryUnregister(_id, _order, out _);
+            return TryUnregister(out _);
         }
 
         /// <summary>
@@ -93,11 +95,12 @@ namespace Proto.Promises
         /// <returns>true if the callback was previously registered and the associated <see cref="CancelationSource"/> not yet canceled or disposed, false otherwise</returns>
         public bool TryUnregister(out bool isTokenCancelationRequested)
         {
-            if (_ref == null)
+            CancelationRegistration _this = this;
+            if (_this._ref == null)
             {
                 return isTokenCancelationRequested = false;
             }
-            return _ref.TryUnregister(_id, _order, out isTokenCancelationRequested);
+            return _this._ref.TryUnregister(_this._id, _this._order, out isTokenCancelationRequested);
         }
 
         public bool Equals(CancelationRegistration other)
@@ -116,16 +119,17 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            if (_ref == null)
+            CancelationRegistration _this = this;
+            if (_this._ref == null)
             {
                 return 0;
             }
             unchecked
             {
                 int hash = 17;
-                hash = hash * 31 + _ref.GetHashCode();
-                hash = hash * 31 + _order.GetHashCode();
-                hash = hash * 31 + _id.GetHashCode();
+                hash = hash * 31 + _this._ref.GetHashCode();
+                hash = hash * 31 + _this._order.GetHashCode();
+                hash = hash * 31 + _this._id.GetHashCode();
                 return hash;
             }
         }
