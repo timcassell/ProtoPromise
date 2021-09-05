@@ -13,7 +13,6 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
-using Proto.Utils;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -146,7 +145,7 @@ namespace Proto.Promises
                 MaybeDispose();
             }
 
-            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
             {
                 ThrowIfInPool(this);
                 owner.SuppressRejection = true;
@@ -331,17 +330,17 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (State == Promise.State.Pending)
                     {
-                        lock (_branchLocker)
+                        _branchLocker.Enter();
+                        if (State == Promise.State.Pending)
                         {
-                            if (State == Promise.State.Pending)
-                            {
-                                _nextBranches.Push(waiter);
-                                goto MaybeDisposeAndReturn;
-                            }
+                            _nextBranches.Push(waiter);
+                            _branchLocker.Exit();
+                            MaybeDispose();
+                            return;
                         }
+                        _branchLocker.Exit();
                     }
                     waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
-                MaybeDisposeAndReturn:
                     MaybeDispose();
                 }
 
@@ -360,15 +359,13 @@ namespace Proto.Promises
 
                 private void HandleBranches(IValueContainer valueContainer)
                 {
-                    ValueLinkedStack<ITreeHandleable> branches;
-                    lock (_branchLocker)
-                    {
-                        branches = _nextBranches;
-                        _nextBranches.Clear();
-                    }
+                    _branchLocker.Enter();
+                    var branches = _nextBranches;
+                    _nextBranches = new ValueLinkedStack<ITreeHandleable>();
+                    _branchLocker.Exit();
                     while (branches.IsNotEmpty)
                     {
-                        branches.Pop().MakeReady(this, valueContainer, ref _handleQueue);
+                        branches.Pop().MakeReady(this, valueContainer);
                     }
 
                     //// TODO: keeping this code around for when background threaded tasks are implemented.
@@ -409,7 +406,7 @@ namespace Proto.Promises
                     ITreeHandleable waiter = Interlocked.Exchange(ref _waiter, null);
                     if (waiter != null)
                     {
-                        waiter.MakeReady(this, valueContainer, ref _handleQueue);
+                        waiter.MakeReady(this, valueContainer);
                     }
                 }
 
@@ -596,7 +593,7 @@ namespace Proto.Promises
                     ITreeHandleable waiter = Interlocked.Exchange(ref _next, null);
                     if (waiter != null)
                     {
-                        waiter.MakeReady(this, valueContainer, ref _handleQueue);
+                        waiter.MakeReady(this, valueContainer);
                     }
                 }
 
@@ -1073,7 +1070,7 @@ namespace Proto.Promises
                     _owner.AddWaiterWithProgress(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(this);
                     _owner = null;

@@ -13,7 +13,6 @@
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
-using Proto.Utils;
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -157,13 +156,20 @@ namespace Proto.Promises
 
             partial class PromiseMultiAwait
             {
-                private readonly object _branchLocker = new object();
                 private ValueLinkedStack<ITreeHandleable> _nextBranches;
+                private SpinLocker _branchLocker;
 
 #if PROMISE_PROGRESS
-                internal Fixed32 _currentProgress;
-                private readonly object _progressCollectionLocker = new object();
+                private struct ProgressAndLocker
+                {
+                    // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+                    // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+                    internal Fixed32 _currentProgress;
+                    internal SpinLocker _progressCollectionLocker;
+                }
+
                 private ValueLinkedQueue<IProgressListener> _progressListeners; // TODO: change to ValueLinkedStack to use less memory. Make sure progress is still invoked in order.
+                private ProgressAndLocker _progressAndLocker;
 
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }

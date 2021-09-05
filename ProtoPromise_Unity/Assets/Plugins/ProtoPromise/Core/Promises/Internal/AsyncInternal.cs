@@ -12,7 +12,6 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security;
 using Proto.Promises.Async.CompilerServices;
-using Proto.Utils;
 
 namespace System.Runtime.CompilerServices
 {

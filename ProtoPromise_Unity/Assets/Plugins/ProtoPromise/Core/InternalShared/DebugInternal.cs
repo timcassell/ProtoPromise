@@ -9,7 +9,6 @@
 #undef PROMISE_PROGRESS
 #endif
 
-using Proto.Utils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

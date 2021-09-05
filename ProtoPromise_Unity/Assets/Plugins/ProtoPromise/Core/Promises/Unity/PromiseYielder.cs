@@ -4,7 +4,6 @@
 using System;
 using System.Collections;
 using System.Runtime.CompilerServices;
-using Proto.Utils;
 using UnityEngine;
 
 namespace Proto.Promises
@@ -227,7 +226,7 @@ namespace Proto.Promises
 
             ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
-            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
             {
                 Settle(valueContainer);
             }
@@ -265,7 +264,7 @@ namespace Proto.Promises
 
             ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
-            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
             {
                 Settle(valueContainer);
             }
@@ -332,9 +331,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        private class Routine : IEnumerator, ILinked<Routine>
+        private class Routine : IEnumerator, Internal.ILinked<Routine>
         {
-            Routine ILinked<Routine>.Next { get; set; }
+            Routine Internal.ILinked<Routine>.Next { get; set; }
 
             public static Routine GetOrCreate()
             {
@@ -384,9 +383,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        private class Routine<T> : IEnumerator, ILinked<Routine<T>>
+        private class Routine<T> : IEnumerator, Internal.ILinked<Routine<T>>
         {
-            Routine<T> ILinked<Routine<T>>.Next { get; set; }
+            Routine<T> Internal.ILinked<Routine<T>>.Next { get; set; }
 
             public static Routine<T> GetOrCreate()
             {

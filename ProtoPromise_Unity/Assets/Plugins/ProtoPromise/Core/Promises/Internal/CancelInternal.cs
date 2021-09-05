@@ -13,7 +13,6 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
-using Proto.Utils;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -150,7 +149,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
@@ -219,7 +218,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
                 {
                     if (_resolver.IsNull)
                     {
@@ -315,7 +314,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
@@ -394,7 +393,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
                 {
                     if (_resolver.IsNull)
                     {
@@ -494,7 +493,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
@@ -554,7 +553,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
                 {
                     if (_continuer.IsNull)
                     {
@@ -637,7 +636,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {

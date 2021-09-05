@@ -14,7 +14,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
-using Proto.Utils;
 
 namespace Proto.Promises
 {
@@ -558,7 +557,7 @@ namespace Proto.Promises
                         listener._idsAndRetains.InterlockedRetainInternal();
                         _registeredCallbacks.Add(new RegisteredDelegate(order, listener));
                     }
-                    listener._links.Push(new CancelationRegistration(this, TokenId, order));
+                    listener._links.PushUnsafe(new CancelationRegistration(this, TokenId, order));
                 }
                 goto Return;
 
@@ -839,7 +838,7 @@ namespace Proto.Promises
             {
                 while (_links.IsNotEmpty)
                 {
-                    _links.Pop().TryUnregister();
+                    _links.PopUnsafe().TryUnregister();
                 }
             }
 
