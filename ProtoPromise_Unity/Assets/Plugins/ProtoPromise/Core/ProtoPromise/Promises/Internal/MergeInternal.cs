@@ -15,7 +15,6 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using Proto.Utils;
 
 namespace Proto.Promises
 {

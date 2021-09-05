@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using Proto.Utils;
 
 namespace Proto.Promises
 {
@@ -14,7 +13,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race(Promise<T> promise1, Promise<T> promise2)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -43,7 +42,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -83,7 +82,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -159,7 +158,7 @@ namespace Proto.Promises
             {
                 throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(1));
             }
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             T value = default(T);
             uint pendingCount = 0;
             int i = 0; // Index isn't necessary for First, but might help with debugging.
@@ -197,7 +196,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First(Promise<T> promise1, Promise<T> promise2)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -226,7 +225,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -266,7 +265,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -342,7 +341,7 @@ namespace Proto.Promises
             {
                 throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(1));
             }
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             T value = default(T);
             uint pendingCount = 0;
             int i = 0; // Index isn't necessary for First, but might help with debugging.
@@ -381,7 +380,7 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -431,7 +430,7 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<T> valueContainer = null)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -485,7 +484,7 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<T> valueContainer = null)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -573,7 +572,7 @@ namespace Proto.Promises
         {
             ValidateArgument(promises, "promises", 1);
             ValidateArgument(valueContainer, "valueContainer", 1);
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint totalCount = 0;
             uint pendingCount = 0;
             ulong completedProgress = 0;

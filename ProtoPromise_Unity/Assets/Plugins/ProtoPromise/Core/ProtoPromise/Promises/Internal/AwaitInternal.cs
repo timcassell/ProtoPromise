@@ -11,7 +11,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Proto.Promises.Async.CompilerServices;
-using Proto.Utils;
 
 namespace Proto.Promises
 {
@@ -128,7 +127,7 @@ namespace Proto.Promises
 #endif
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(this);
                     AddToHandleQueueFront(this);

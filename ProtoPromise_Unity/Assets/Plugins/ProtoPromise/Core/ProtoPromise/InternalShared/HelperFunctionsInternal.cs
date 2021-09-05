@@ -13,7 +13,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using Proto.Utils;
 
 #if PROMISE_DEBUG
 using System.Linq;
@@ -283,49 +282,37 @@ namespace Proto.Promises
             return cancelValue;
         }
 
-        // Handle promises in a depth-first manner.
+        // Handle promises. These must not be readonly.
         private static ValueLinkedQueue<ITreeHandleable> _handleQueue;
-        private static readonly object _handleLocker = new object();
+        private static SpinLocker _handleLocker;
 
         internal static void AddToHandleQueueFront(ITreeHandleable handleable)
         {
-            lock (_handleLocker)
-            {
-                _handleQueue.Push(handleable);
-            }
+            _handleLocker.Enter();
+            _handleQueue.Push(handleable);
+            _handleLocker.Exit();
         }
 
         internal static void AddToHandleQueueBack(ITreeHandleable handleable)
         {
-            lock (_handleLocker)
-            {
-                _handleQueue.Enqueue(handleable);
-            }
-        }
-
-        internal static void AddToHandleQueueFront(ref ValueLinkedQueue<ITreeHandleable> handleables)
-        {
-            lock (_handleLocker)
-            {
-                _handleQueue.PushAndClear(ref handleables);
-            }
+            _handleLocker.Enter();
+            _handleQueue.Enqueue(handleable);
+            _handleLocker.Exit();
         }
 
         internal static void HandleEvents()
         {
             while (true)
             {
-                ValueLinkedQueue<ITreeHandleable> queue;
-                lock (_handleLocker)
-                {
-                    queue = _handleQueue;
-                    _handleQueue.Clear();
-                }
+                _handleLocker.Enter();
+                var queue = _handleQueue;
+                _handleQueue.Clear();
+                _handleLocker.Exit();
+
                 if (queue.IsEmpty)
                 {
                     break;
                 }
-
                 do
                 {
                     queue.DequeueRisky().Handle();
@@ -333,11 +320,13 @@ namespace Proto.Promises
             }
         }
 
+        // Handle uncaught errors. These must not be readonly.
         private static ValueLinkedStackZeroGC<UnhandledException> _unhandledExceptions;
+        private static SpinLocker _unhandledExceptionsLocker;
 
         internal static void AddUnhandledException(UnhandledException exception)
         {
-            _unhandledExceptions.Push(exception);
+            _unhandledExceptions.Push(exception, ref _unhandledExceptionsLocker);
         }
 
         internal static void AddRejectionToUnhandledStack(object unhandledValue, ITraceable traceable)
@@ -368,27 +357,28 @@ namespace Proto.Promises
 
         internal static void ThrowUnhandledRejections()
         {
-            if (_unhandledExceptions.IsEmpty)
+            var unhandledExceptions = _unhandledExceptions.ClearWithoutRepoolAndGetCopy(ref _unhandledExceptionsLocker);
+            if (unhandledExceptions.IsEmpty)
             {
                 return;
             }
 
-            var unhandledExceptions = _unhandledExceptions;
-            _unhandledExceptions.ClearAndDontRepool();
             Action<UnhandledException> handler = Promise.Config.UncaughtRejectionHandler;
             if (handler != null)
             {
+                // Purposefully using foreach and ClearWithoutRepoolUnsafe to not re-pool internal Nodes.
+                // We don't want to waste pooled memory on errors.
                 foreach (UnhandledException unhandled in unhandledExceptions)
                 {
                     handler.Invoke(unhandled);
                 }
-                unhandledExceptions.Clear();
+                unhandledExceptions.ClearWithoutRepoolUnsafe();
                 return;
             }
 
 #if CSHARP_7_3_OR_NEWER
             var ex = new AggregateException(unhandledExceptions);
-            unhandledExceptions.Clear();
+            unhandledExceptions.ClearWithoutRepoolUnsafe();
             throw ex;
 #else
             // .Net 3.5 and earlier can't convert IEnumerable<UnhandledExceptionInternal> to IEnumerable<Exception>
@@ -397,7 +387,7 @@ namespace Proto.Promises
             {
                 exceptions.Add(ex);
             }
-            unhandledExceptions.Clear();
+            unhandledExceptions.ClearWithoutRepoolUnsafe();
             throw new AggregateException(exceptions);
 #endif
         }

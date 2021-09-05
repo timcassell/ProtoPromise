@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using Proto.Utils;
 
 namespace Proto.Promises
 {
@@ -14,7 +13,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -37,7 +36,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -63,7 +62,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -115,7 +114,7 @@ namespace Proto.Promises
             {
                 throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
             }
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             int i = 0; // Index isn't necessary for Race, but might help with debugging.
 
@@ -206,7 +205,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -229,7 +228,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -255,7 +254,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
@@ -307,7 +306,7 @@ namespace Proto.Promises
             {
                 throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(1));
             }
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             int i = 0; // Index isn't necessary for First, but might help with debugging.
 
@@ -461,7 +460,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -484,7 +483,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -509,7 +508,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -555,7 +554,7 @@ namespace Proto.Promises
         public static Promise All<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, "promises", 1);
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             uint totalCount = 0;
             ulong completedProgress = 0;
@@ -650,7 +649,7 @@ namespace Proto.Promises
         public static Promise<T1> Merge<T1>(Promise<T1> promise1, Promise promise2)
         {
             T1 value = default(T1);
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -680,7 +679,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2>> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
         {
             var value = new ValueTuple<T1, T2>();
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -714,7 +713,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2>> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2, Promise promise3)
         {
             var value = new ValueTuple<T1, T2>();
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -751,7 +750,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3>> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3)
         {
             var value = new ValueTuple<T1, T2, T3>();
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -791,7 +790,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3>> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4)
         {
             var value = new ValueTuple<T1, T2, T3>();
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -833,7 +832,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4>> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4)
         {
             var value = new ValueTuple<T1, T2, T3, T4>();
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -878,7 +877,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4>> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5)
         {
             var value = new ValueTuple<T1, T2, T3, T4>();
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -925,7 +924,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4, T5>> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5)
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5>();
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -975,7 +974,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4, T5>> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6)
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5>();
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -1027,7 +1026,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6>> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6)
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6>();
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -1082,7 +1081,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6>> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise promise7)
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6>();
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -1139,7 +1138,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7)
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6, T7>();
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 
@@ -1199,7 +1198,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7, Promise promise8)
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6, T7>();
-            var passThroughs = new ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
             uint pendingCount = 0;
             ulong completedProgress = 0;
 

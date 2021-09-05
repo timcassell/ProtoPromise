@@ -10,7 +10,6 @@
 
 using System;
 using System.Runtime.CompilerServices;
-using Proto.Utils;
 
 namespace Proto.Promises
 {

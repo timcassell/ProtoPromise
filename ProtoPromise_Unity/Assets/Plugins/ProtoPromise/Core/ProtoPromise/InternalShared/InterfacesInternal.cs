@@ -1,11 +1,25 @@
 ﻿using System;
-using Proto.Utils;
 
 namespace Proto.Promises
 {
     internal static partial class Internal
     {
         internal partial interface ITraceable { }
+
+        internal interface ILinked<T> where T : class, ILinked<T>
+        {
+            T Next { get; set; }
+        }
+
+        internal interface IDoubleLinked<T> : ILinked<T> where T : class, ILinked<T>
+        {
+            T Previous { get; set; }
+        }
+
+        internal interface IValueContainer<T>
+        {
+            T Value { get; }
+        }
 
         internal interface IValueContainer
         {
@@ -22,7 +36,7 @@ namespace Proto.Promises
         internal interface ITreeHandleable : ILinked<ITreeHandleable>
         {
             void Handle();
-            void MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedQueue<ITreeHandleable> handleQueue);
+            void MakeReady(PromiseRef owner, IValueContainer valueContainer);
             void MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer);
         }
 

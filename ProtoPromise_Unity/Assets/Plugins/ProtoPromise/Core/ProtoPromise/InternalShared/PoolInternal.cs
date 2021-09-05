@@ -6,7 +6,6 @@
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
 
-using Proto.Utils;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -15,7 +14,7 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        internal static event Action OnClearPool;
+        private static event Action OnClearPool;
 
         internal static void ClearPool()
         {
@@ -32,59 +31,65 @@ namespace Proto.Promises
 #endif
         internal static partial class ObjectPool<TLinked> where TLinked : class, ILinked<TLinked>
         {
-            // TODO: This is the bottleneck across the entire library for multithreading, investigate using ConcurrentBag (not safe in Unity's WebGL).
-            // It may be worthwhile to add InterlockedTryPop and InterlockedPush to ValueLinkedStack<T> instead of using a lock or ConcurrentBag.
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private static class Type<T> where T : TLinked
+            private static class Type<T> where T : class, TLinked
             {
-                // Using ValueLinkedStack<> makes object pooling free.
+                // Using ValueLinkedStackSafe<> makes object pooling free.
                 // No array allocations or linked list node allocations are necessary (the objects have links built-in through the ILinked<> interface).
                 // Even the pool itself doesn't require a class instance (that would be necessary with a typed dictionary).
 
-                internal static ValueLinkedStack<TLinked> pool; // Must not be readonly.
-                internal static readonly object locker = new object(); // Simple lock for now.
+                // These must not be readonly.
+                private static ValueLinkedStackSafe<TLinked> _pool;
+                private static SpinLocker _locker;
 
                 // The downside to static pools instead of a Type dictionary is adding each type's clear function to the OnClearPool delegate consumes memory and is potentially more expensive than clearing a dictionary.
                 // This cost could be removed if Promise.Config.ObjectPoolingEnabled is made constant and set to false, and we add a check before accessing the pool.
                 // But as a general-purpose library, it makes more sense to leave that configurable at runtime.
                 static Type()
                 {
-                    OnClearPool += () => pool.Clear();
+                    OnClearPool += Clear;
+                }
+
+                private static void Clear()
+                {
+                    _pool.ClearUnsafe();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static TLinked TryTake()
+                {
+                    return _pool.TryPop(ref _locker);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static void Repool(TLinked obj)
+                {
+                    _pool.Push(obj, ref _locker);
                 }
             }
 
             [MethodImpl(InlineOption)]
             internal static T TryTake<T>() where T : class, TLinked
             {
-                TLinked obj;
-                lock (Type<T>.locker)
-                {
-                    if (Type<T>.pool.IsEmpty)
-                    {
-                        return null;
-                    }
-                    obj = Type<T>.pool.Pop();
-                }
-                // Exit lock before casting.
+                TLinked obj = Type<T>.TryTake();
                 RemoveFromTrackedObjects(obj);
                 return (T) obj;
             }
 
             [MethodImpl(InlineOption)]
-            internal static void MaybeRepool<T>(T obj) where T : TLinked
+            internal static void MaybeRepool<T>(T obj) where T : class, TLinked
             {
                 if (Promise.Config.ObjectPoolingEnabled)
                 {
                     AddToTrackedObjects(obj);
-                    lock (Type<T>.locker)
-                    {
-                        Type<T>.pool.Push(obj);
-                    }
+                    Type<T>.Repool(obj);
                 }
-                // else TODO: GC.SuppressFinalize
+                else
+                {
+                    GC.SuppressFinalize(obj);
+                }
             }
 
             static partial void AddToTrackedObjects(object obj);
