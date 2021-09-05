@@ -45,9 +45,10 @@ namespace Proto.Promises
         /// </summary>
         internal void MaybeLinkSourceInternal(Internal.CancelationRef cancelationRef)
         {
-            if (_ref != null)
+            CancelationToken _this = this;
+            if (_this._ref != null)
             {
-                _ref.MaybeAddLinkedCancelation(cancelationRef, _id);
+                _this._ref.MaybeAddLinkedCancelation(cancelationRef, _this._id);
             }
         }
 
@@ -58,13 +59,14 @@ namespace Proto.Promises
         internal bool TryRegisterInternal(Internal.ICancelDelegate listener, out CancelationRegistration cancelationRegistration)
         {
             // Retain for thread safety.
-            if (_ref == null || !_ref.TryRetainInternal(_id))
+            CancelationToken _this = this;
+            if (_this._ref == null || !_this._ref.TryRetainInternal(_this._id))
             {
                 cancelationRegistration = default(CancelationRegistration);
                 return false;
             }
-            bool success = _ref.TryRegister(listener, out cancelationRegistration);
-            _ref.ReleaseAfterRetainInternal();
+            bool success = _this._ref.TryRegister(listener, out cancelationRegistration);
+            _this._ref.ReleaseAfterRetainInternal();
             return success;
         }
 
@@ -76,7 +78,8 @@ namespace Proto.Promises
         {
             get
             {
-                return _ref != null && _ref.TokenId == _id;
+                CancelationToken _this = this;
+                return _this._ref != null && _this._ref.TokenId == _this._id;
             }
         }
 
@@ -87,7 +90,8 @@ namespace Proto.Promises
         {
             get
             {
-                return _ref != null && _ref.IsTokenCanceled(_id);
+                CancelationToken _this = this;
+                return _this._ref != null && _this._ref.IsTokenCanceled(_this._id);
             }
         }
 
@@ -97,9 +101,10 @@ namespace Proto.Promises
         /// <exception cref="CancelException"/>
         public void ThrowIfCancelationRequested()
         {
-            if (_ref != null)
+            CancelationToken _this = this;
+            if (_this._ref != null)
             {
-                _ref.ThrowIfCanceled(_id);
+                _this._ref.ThrowIfCanceled(_this._id);
             }
         }
 
@@ -112,8 +117,9 @@ namespace Proto.Promises
         {
             get
             {
+                CancelationToken _this = this;
                 Type type;
-                if (_ref != null && _ref.TryGetCanceledType(_id, out type))
+                if (_this._ref != null && _this._ref.TryGetCanceledType(_this._id, out type))
                 {
                     return type;
                 }
@@ -130,8 +136,9 @@ namespace Proto.Promises
         {
             get
             {
+                CancelationToken _this = this;
                 object value;
-                if (_ref != null && _ref.TryGetCanceledValue(_id, out value))
+                if (_this._ref != null && _this._ref.TryGetCanceledValue(_this._id, out value))
                 {
                     return value;
                 }
@@ -146,8 +153,9 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public bool TryGetCancelationValueAs<T>(out T value)
         {
+            CancelationToken _this = this;
             bool didConvert;
-            if (_ref != null && _ref.TryGetCanceledValueAs(_id, out didConvert, out value))
+            if (_this._ref != null && _this._ref.TryGetCanceledValueAs(_this._id, out didConvert, out value))
             {
                 return didConvert;
             }
@@ -164,12 +172,13 @@ namespace Proto.Promises
         public bool TryRegister(Promise.CanceledAction callback, out CancelationRegistration cancelationRegistration)
         {
             ValidateArgument(callback, "callback", 1);
-            if (_ref == null)
+            CancelationToken _this = this;
+            if (_this._ref == null)
             {
                 cancelationRegistration = default(CancelationRegistration);
                 return false;
             }
-            return _ref.TryRegister(callback, _id, out cancelationRegistration);
+            return _this._ref.TryRegister(callback, _this._id, out cancelationRegistration);
         }
 
         /// <summary>
@@ -183,12 +192,13 @@ namespace Proto.Promises
         public bool TryRegister<TCapture>(TCapture captureValue, Promise.CanceledAction<TCapture> callback, out CancelationRegistration cancelationRegistration)
         {
             ValidateArgument(callback, "callback", 1);
-            if (_ref == null)
+            CancelationToken _this = this;
+            if (_this._ref == null)
             {
                 cancelationRegistration = default(CancelationRegistration);
                 return false;
             }
-            return _ref.TryRegister(ref captureValue, callback, _id, out cancelationRegistration);
+            return _this._ref.TryRegister(ref captureValue, callback, _this._id, out cancelationRegistration);
         }
 
         /// <summary>
@@ -200,7 +210,6 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public CancelationRegistration Register(Promise.CanceledAction callback)
         {
-            ValidateArgument(callback, "callback", 1);
             CancelationRegistration registration;
             if (TryRegister(callback, out registration))
             {
@@ -218,7 +227,6 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public CancelationRegistration Register<TCapture>(TCapture captureValue, Promise.CanceledAction<TCapture> callback)
         {
-            ValidateArgument(callback, "callback", 1);
             CancelationRegistration registration;
             if (TryRegister(captureValue, callback, out registration))
             {
@@ -234,7 +242,8 @@ namespace Proto.Promises
         /// </summary>
         public bool TryRetain()
         {
-            return _ref != null && _ref.TryRetainUser(_id);
+            CancelationToken _this = this;
+            return _this._ref != null && _this._ref.TryRetainUser(_this._id);
         }
 
         /// <summary>
@@ -257,7 +266,8 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public void Release()
         {
-            if (_ref == null || !_ref.TryReleaseUser(_id))
+            CancelationToken _this = this;
+            if (_this._ref == null || !_this._ref.TryReleaseUser(_this._id))
             {
                 throw new InvalidOperationException("CancelationToken.Release: you must call Retain before you call Release.", Internal.GetFormattedStacktrace(1));
             }
@@ -279,15 +289,16 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            if (_ref == null)
+            CancelationToken _this = this;
+            if (_this._ref == null)
             {
                 return 0;
             }
             unchecked
             {
                 int hash = 17;
-                hash = hash * 31 + _id.GetHashCode();
-                hash = hash * 31 + _ref.GetHashCode();
+                hash = hash * 31 + _this._id.GetHashCode();
+                hash = hash * 31 + _this._ref.GetHashCode();
                 return hash;
             }
         }
