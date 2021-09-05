@@ -19,14 +19,46 @@ namespace Proto.Promises
     {
         static partial void AssertNotInCollection<T>(T item) where T : class, ILinked<T>;
 #if PROMISE_DEBUG
-        static partial void AssertNotInCollection<T>(T item) where T : class, ILinked<T>
+        private static class CollectionChecker<T> where T : class, ILinked<T>
         {
-            if (item.Next != null)
+            private static readonly HashSet<T> _itemsInACollection = new HashSet<T>();
+
+            internal static void AssertNotInCollection(T item)
             {
-                throw new System.InvalidOperationException("Item is in a collection, cannot add to a different collection.");
+                bool isInCollection;
+                lock (_itemsInACollection)
+                {
+                    isInCollection = !_itemsInACollection.Add(item);
+                }
+                if (isInCollection || item.Next != null)
+                {
+                    throw new System.InvalidOperationException("Item is in a collection, cannot add to a different collection.");
+                }
+            }
+
+            internal static void Remove(T item)
+            {
+                lock (_itemsInACollection)
+                {
+                    _itemsInACollection.Remove(item);
+                }
             }
         }
+
+        static partial void AssertNotInCollection<T>(T item) where T : class, ILinked<T>
+        {
+            CollectionChecker<T>.AssertNotInCollection(item);
+        }
 #endif
+        
+        [MethodImpl(InlineOption)]
+        static private void MarkRemovedFromCollection<T>(T item) where T : class, ILinked<T>
+        {
+            item.Next = null;
+#if PROMISE_DEBUG
+            CollectionChecker<T>.Remove(item);
+#endif
+        }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
@@ -67,10 +99,7 @@ namespace Proto.Promises
 
             object IEnumerator.Current
             {
-                get
-                {
-                    return Current;
-                }
+                get { return Current; }
             }
 
             void IEnumerator.Reset() { }
@@ -86,30 +115,17 @@ namespace Proto.Promises
 #endif
         internal struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
         {
-            private T _first;
+            private T _head;
 
             internal bool IsEmpty
             {
                 [MethodImpl(InlineOption)]
-                get { return _first == null; }
+                get { return _head == null; }
             }
             internal bool IsNotEmpty
             {
                 [MethodImpl(InlineOption)]
-                get { return _first != null; }
-            }
-
-            [MethodImpl(InlineOption)]
-            internal ValueLinkedStack(T item)
-            {
-                // No need to check item, this is only used to copy a collection to a new ValueLinkedStack.
-                _first = item;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void Clear()
-            {
-                _first = null;
+                get { return _head != null; }
             }
 
             [MethodImpl(InlineOption)]
@@ -117,16 +133,16 @@ namespace Proto.Promises
             {
                 AssertNotInCollection(item);
 
-                item.Next = _first;
-                _first = item;
+                item.Next = _head;
+                _head = item;
             }
 
             [MethodImpl(InlineOption)]
             internal T Pop()
             {
-                T temp = _first;
-                _first = _first.Next;
-                temp.Next = null;
+                T temp = _head;
+                _head = _head.Next;
+                MarkRemovedFromCollection(temp);
                 return temp;
             }
 
@@ -136,20 +152,20 @@ namespace Proto.Promises
                 {
                     return false;
                 }
-                if (item == _first)
+                if (item == _head)
                 {
-                    _first = _first.Next;
-                    item.Next = null;
+                    _head = _head.Next;
+                    MarkRemovedFromCollection(item);
                     return true;
                 }
-                T node = _first;
+                T node = _head;
                 T next = node.Next;
                 while (next != null)
                 {
                     if (next == item)
                     {
                         node.Next = next.Next;
-                        item.Next = null;
+                        MarkRemovedFromCollection(item);
                         return true;
                     }
                     node = next;
@@ -161,7 +177,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public Enumerator<T> GetEnumerator()
             {
-                return new Enumerator<T>(_first);
+                return new Enumerator<T>(_head);
             }
 
             IEnumerator<T> IEnumerable<T>.GetEnumerator()
@@ -211,14 +227,14 @@ namespace Proto.Promises
 #endif
         internal struct ValueLinkedStackSafe<T> where T : class, ILinked<T>
         {
-            volatile private T _first;
+            volatile private T _head;
 
             [MethodImpl(InlineOption)]
             internal void ClearUnsafe()
             {
                 // Worst case scenario, ClearUnsafe() is called concurrently with Push() and/or TryPop() and the objects are re-pooled.
                 // Very low probability, probably not a big deal, not worth adding an extra lock.
-                _first = null;
+                _head = null;
             }
 
             [MethodImpl(InlineOption)]
@@ -227,8 +243,8 @@ namespace Proto.Promises
                 AssertNotInCollection(item);
 
                 locker.Enter();
-                item.Next = _first;
-                _first = item;
+                item.Next = _head;
+                _head = item;
                 locker.Exit();
             }
 
@@ -236,15 +252,15 @@ namespace Proto.Promises
             internal T TryPop(ref SpinLocker locker)
             {
                 locker.Enter();
-                T obj = _first;
+                T obj = _head;
                 if (obj == null)
                 {
                     locker.Exit();
                     return null;
                 }
-                _first = obj.Next;
+                _head = obj.Next;
                 locker.Exit();
-                obj.Next = null;
+                MarkRemovedFromCollection(obj);
                 return obj;
             }
         }
@@ -257,18 +273,18 @@ namespace Proto.Promises
 #endif
         internal struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
         {
-            private T _first;
-            private T _last;
+            private T _head;
+            private T _tail;
 
             internal bool IsEmpty
             {
                 [MethodImpl(InlineOption)]
-                get { return _first == null; }
+                get { return _head == null; }
             }
             internal bool IsNotEmpty
             {
                 [MethodImpl(InlineOption)]
-                get { return _first != null; }
+                get { return _head != null; }
             }
 
             [MethodImpl(InlineOption)]
@@ -276,113 +292,48 @@ namespace Proto.Promises
             {
                 AssertNotInCollection(item);
 
-                _first = _last = item;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void Clear()
-            {
-                _first = null;
-                _last = null;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void ClearLast()
-            {
-                _last = null;
+                _head = _tail = item;
             }
 
             internal void Enqueue(T item)
             {
                 AssertNotInCollection(item);
 
-                if (_first == null)
+                if (_head == null)
                 {
-                    _first = _last = item;
+                    _head = _tail = item;
                 }
                 else
                 {
-                    _last.Next = item;
-                    _last = item;
+                    _tail.Next = item;
+                    _tail = item;
                 }
-            }
-
-            /// <summary>
-            /// Only use this if you know the queue is not empty.
-            /// </summary>
-            [MethodImpl(InlineOption)]
-            internal void EnqueueRisky(T item)
-            {
-                AssertNotInCollection(item);
-
-                _last.Next = item;
-                _last = item;
             }
 
             internal void Push(T item)
             {
                 AssertNotInCollection(item);
 
-                if (_first == null)
+                if (_head == null)
                 {
-                    _first = _last = item;
+                    _head = _tail = item;
                 }
                 else
                 {
-                    item.Next = _first;
-                    _first = item;
+                    item.Next = _head;
+                    _head = item;
                 }
             }
 
             /// <summary>
-            /// Only use this if you know the queue is not empty.
-            /// </summary>
-            [MethodImpl(InlineOption)]
-            internal void PushRisky(T item)
-            {
-                AssertNotInCollection(item);
-
-                item.Next = _first;
-                _first = item;
-            }
-
-            internal void PushAndClear(ref ValueLinkedQueue<T> other)
-            {
-                if (IsEmpty)
-                {
-                    this = other;
-                    other.Clear();
-                }
-                else if (other.IsNotEmpty)
-                {
-                    other._last.Next = _first;
-                    _first = other._first;
-                    other.Clear();
-                }
-            }
-
-            internal T Dequeue()
-            {
-                T temp = _first;
-                _first = _first.Next;
-                temp.Next = null;
-                if (_first == null)
-                {
-                    _last = null;
-                }
-                return temp;
-            }
-
-            /// <summary>
-            /// This doesn't clear _last when the last item is taken.
-            /// Only use this if you know this has 2 or more items, or if you will call ClearLast when you know this is empty.
+            /// This doesn't clear _tail when the last item is taken.
             /// </summary>
             [MethodImpl(InlineOption)]
             internal T DequeueRisky()
             {
-                T temp = _first;
-                _first = _first.Next;
-                temp.Next = null;
+                T temp = _head;
+                _head = _head.Next;
+                MarkRemovedFromCollection(temp);
                 return temp;
             }
 
@@ -392,28 +343,28 @@ namespace Proto.Promises
                 {
                     return false;
                 }
-                if (item == _first)
+                if (item == _head)
                 {
-                    _first = _first.Next;
-                    item.Next = null;
-                    if (item == _last)
+                    _head = _head.Next;
+                    if (item == _tail)
                     {
-                        _last = null;
+                        _tail = null;
                     }
+                    MarkRemovedFromCollection(item);
                     return true;
                 }
-                T node = _first;
+                T node = _head;
                 T next = node.Next;
                 while (next != null)
                 {
                     if (next == item)
                     {
                         node.Next = next.Next;
-                        item.Next = null;
-                        if (item == _last)
+                        if (item == _tail)
                         {
-                            _last = node;
+                            _tail = node;
                         }
+                        MarkRemovedFromCollection(item);
                         return true;
                     }
                     node = next;
@@ -424,7 +375,7 @@ namespace Proto.Promises
 
             internal bool Contains(T item)
             {
-                if (item == _first)
+                if (item == _head)
                 {
                     return true;
                 }
@@ -432,7 +383,7 @@ namespace Proto.Promises
                 {
                     return false;
                 }
-                T node = _first;
+                T node = _head;
                 T next = node.Next;
                 while (next != null)
                 {
@@ -449,7 +400,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public Enumerator<T> GetEnumerator()
             {
-                return new Enumerator<T>(_first);
+                return new Enumerator<T>(_head);
             }
 
             IEnumerator<T> IEnumerable<T>.GetEnumerator()
@@ -480,7 +431,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static Node GetOrCreate(T value)
                 {
-                    var node = Promises.Internal.ObjectPool<Node>.TryTake<Node>()
+                    var node = ObjectPool<Node>.TryTake<Node>()
                         ?? new Node();
                     node._value = value;
                     return node;
@@ -490,7 +441,7 @@ namespace Proto.Promises
                 internal void Dispose()
                 {
                     _value = default(T);
-                    Promises.Internal.ObjectPool<Node>.MaybeRepool(this);
+                    ObjectPool<Node>.MaybeRepool(this);
                 }
             }
 
@@ -516,18 +467,12 @@ namespace Proto.Promises
                 public T Current
                 {
                     [MethodImpl(InlineOption)]
-                    get
-                    {
-                        return _enumerator.Current._value;
-                    }
+                    get { return _enumerator.Current._value; }
                 }
 
                 object IEnumerator.Current
                 {
-                    get
-                    {
-                        return Current;
-                    }
+                    get { return Current; }
                 }
 
                 void IEnumerator.Reset() { }
@@ -556,7 +501,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void ClearWithoutRepoolUnsafe()
             {
-                _stack.Clear();
+                _stack = new ValueLinkedStack<Node>();
             }
 
             [MethodImpl(InlineOption)]
@@ -564,7 +509,7 @@ namespace Proto.Promises
             {
                 locker.Enter();
                 ValueLinkedStack<Node> newStack = _stack;
-                _stack.Clear();
+                ClearWithoutRepoolUnsafe();
                 locker.Exit();
                 return new ValueLinkedStackZeroGC<T>(newStack);
             }

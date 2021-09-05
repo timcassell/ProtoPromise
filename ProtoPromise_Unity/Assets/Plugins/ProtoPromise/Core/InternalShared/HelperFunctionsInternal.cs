@@ -306,7 +306,7 @@ namespace Proto.Promises
             {
                 _handleLocker.Enter();
                 var queue = _handleQueue;
-                _handleQueue.Clear();
+                _handleQueue = new ValueLinkedQueue<ITreeHandleable>();
                 _handleLocker.Exit();
 
                 if (queue.IsEmpty)

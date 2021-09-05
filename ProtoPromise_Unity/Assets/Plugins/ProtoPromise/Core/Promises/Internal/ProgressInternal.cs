@@ -228,7 +228,7 @@ namespace Proto.Promises
                 {
                     _progressLocker.Enter();
                     var queue = _progressQueue;
-                    _progressQueue.Clear();
+                    _progressQueue = new ValueLinkedQueue<IProgressInvokable>();
                     _progressLocker.Exit();
                     
                     if (queue.IsEmpty)
@@ -966,7 +966,7 @@ namespace Proto.Promises
                 {
                     _progressAndLocker._progressCollectionLocker.Enter();
                     var progressListeners = _progressListeners;
-                    _progressListeners.Clear();
+                    _progressListeners = new ValueLinkedQueue<IProgressListener>();
                     _progressAndLocker._progressCollectionLocker.Exit();
 
                     Fixed32 progress = _smallFields._waitDepthAndProgress.GetIncrementedWholeTruncated();
@@ -980,7 +980,7 @@ namespace Proto.Promises
                 {
                     _progressAndLocker._progressCollectionLocker.Enter();
                     var progressListeners = _progressListeners;
-                    _progressListeners.Clear();
+                    _progressListeners = new ValueLinkedQueue<IProgressListener>();
                     _progressAndLocker._progressCollectionLocker.Exit();
 
                     while (progressListeners.IsNotEmpty)

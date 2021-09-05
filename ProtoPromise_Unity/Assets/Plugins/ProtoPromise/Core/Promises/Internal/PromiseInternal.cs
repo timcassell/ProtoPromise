@@ -361,7 +361,7 @@ namespace Proto.Promises
                 {
                     _branchLocker.Enter();
                     var branches = _nextBranches;
-                    _nextBranches.Clear();
+                    _nextBranches = new ValueLinkedStack<ITreeHandleable>();
                     _branchLocker.Exit();
                     while (branches.IsNotEmpty)
                     {
