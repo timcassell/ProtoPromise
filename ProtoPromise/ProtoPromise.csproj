@@ -39,8 +39,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\ProtoPromise\**/*.cs" />
-    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\ProtoPromise\Promises\Unity\**/*" />
+    <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\**/*.cs" />
+    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\Promises\Unity\**/*" />
+    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\ForOldRuntime\**/*" />
   </ItemGroup>
 
 </Project>
