@@ -482,9 +482,9 @@ namespace Proto.Promises
     }
 }
 
-#if !UNITY_5_3_OR_NEWER
 namespace UnityEngine
 {
+#if !UNITY_5_3_OR_NEWER
     /// <summary>
     /// Custom yield instruction. Use yield return StartCoroutine(customYieldInstruction)
     /// </summary>
@@ -504,5 +504,5 @@ namespace UnityEngine
             throw new NotImplementedException();
         }
     }
-}
 #endif
+}
