@@ -16,6 +16,7 @@
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
@@ -55,7 +56,6 @@ namespace Proto.Promises
 #endif
         public static class Config
         {
-#if PROMISE_PROGRESS
             /// <summary>
             /// If you need to support longer promise chains, decrease decimalBits. If you need higher precision, increase decimalBits.
             /// <para/>
@@ -65,8 +65,10 @@ namespace Proto.Promises
             /// NOTE: promises that don't wait (.Then with an onResolved that simply returns a value or void) don't count towards the promise chain limit.
             /// The limit is removed when progress is disabled (this is compiled with the symbol PROTO_PROMISE_PROGRESS_DISABLE defined).
             /// </summary>
-            public const int ProgressDecimalBits = 13;
+#if !PROMISE_PROGRESS
+            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
+            public const int ProgressDecimalBits = 13; // Must be const. Allowing this to change at runtime could mess up progress in flight.
 
             [Obsolete("Use ObjectPoolingEnabled instead.")]
             public static PoolType ObjectPooling { get { return _objectPoolingEnabled ? PoolType.All : PoolType.None; } set { _objectPoolingEnabled = value != PoolType.None; } }
@@ -86,6 +88,21 @@ namespace Proto.Promises
             /// </summary>
             public static TraceLevel DebugCausalityTracer { get { return default(TraceLevel); } set { } }
 #endif
+
+            // Used so that libraries can have a ProtoPromise dependency without forcing progress enabled/disabled on those libraries' users.
+            // e.g. a library depends on ProtoPromise v2.0.0 or higher, a user of that library could opt to use ProtoPromise v2.0.0.0 (no progress) or v2.0.0.1 (with progress)
+            public static bool IsProgressEnabled
+            {
+                [MethodImpl(MethodImplOptions.NoInlining)] // Don't allow inlining, otherwise it could break library code that functions depending on if progress is enabled or not.
+                get
+                {
+#if PROMISE_PROGRESS
+                    return true;
+#else
+                    return false;
+#endif
+                }
+            }
 
             /// <summary>
             /// If this is not null, uncaught rejections get routed through this instead of being thrown.

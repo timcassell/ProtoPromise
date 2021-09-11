@@ -9,7 +9,6 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#if PROMISE_PROGRESS
 using System;
 using NUnit.Framework;
 
@@ -29,8 +28,25 @@ namespace Proto.Promises.Tests
             TestHelper.Cleanup();
         }
 
+        private class ProgressListener : IProgress<float>
+        {
+            public float CurrentProgress { get; private set; }
+
+            void IProgress<float>.Report(float value)
+            {
+                CurrentProgress = value;
+            }
+
+            public ProgressListener(float initialProgress)
+            {
+                CurrentProgress = initialProgress;
+            }
+        }
+
+#if PROMISE_PROGRESS
+
         [Test]
-        public void OnProgressMayBeInvokedWhenThePromisesProgressHasChanged0()
+        public void OnProgressMayBeInvokedWhenThePromisesProgressHasChanged_void0()
         {
             var deferred = Promise.NewDeferred();
 
@@ -56,33 +72,7 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void OnProgressMayBeInvokedWhenThePromisesProgressHasChanged1()
-        {
-            var deferred = Promise.NewDeferred<int>();
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
-                .Forget();
-
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.25f);
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve(1);
-        }
-
-        [Test]
-        public void OnProgressMayBeInvokedWhenThePromisesProgressHasChanged2()
+        public void OnProgressMayBeInvokedWhenThePromisesProgressHasChanged_void1()
         {
             var cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
@@ -111,7 +101,33 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void OnProgressMayBeInvokedWhenThePromisesProgressHasChanged3()
+        public void OnProgressMayBeInvokedWhenThePromisesProgressHasChanged_T0()
+        {
+            var deferred = Promise.NewDeferred<int>();
+
+            float progress = float.NaN;
+
+            deferred.Promise
+                .Progress(p => progress = p)
+                .Forget();
+
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
+
+            deferred.ReportProgress(0.25f);
+            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
+
+            deferred.ReportProgress(0.5f);
+            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
+
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
+
+            deferred.Resolve(1);
+        }
+
+        [Test]
+        public void OnProgressMayBeInvokedWhenThePromisesProgressHasChanged_T1()
         {
             var cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
@@ -169,6 +185,37 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve();
             Promise.Manager.HandleCompletesAndProgress();
+        }
+
+        [Test]
+        public void ProgressListenerMayBeReportedWhenThePromisesProgressHasChanged()
+        {
+            var deferred = Promise.NewDeferred();
+
+            var progressListener = new ProgressListener(float.NaN);
+
+            deferred.Promise
+                .Progress(progressListener)
+                .Forget();
+
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
+
+            deferred.ReportProgress(0.25f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.25f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
+
+            deferred.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.5f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
+
+            deferred.ReportProgress(0.75f);
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(0.75f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
+
+            deferred.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+            Assert.AreEqual(1f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
         }
 
         [Test]
@@ -1553,6 +1600,67 @@ namespace Proto.Promises.Tests
             Promise.Manager.HandleCompletesAndProgress();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
         }
+
+#else // PROMISE_PROGRESS
+
+#pragma warning disable CS0618 // Type or member is obsolete
+        [Test]
+        public void ProgressDisabled_OnProgressWillNotBeInvoked_void()
+        {
+            var deferred = Promise.NewDeferred();
+
+            float progress = float.NaN;
+
+            var progressListener = new ProgressListener(progress);
+
+            deferred.Promise
+                .Progress(p => progress = p)
+                .Progress(50, (cv, p) => progress = p)
+                .Progress(progressListener)
+                .Forget();
+
+            deferred.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+
+            Assert.IsNaN(progress);
+            Assert.IsNaN(progressListener.CurrentProgress);
+
+            deferred.Resolve();
+            Promise.Manager.HandleCompletesAndProgress();
+
+            Assert.IsNaN(progress);
+            Assert.IsNaN(progressListener.CurrentProgress);
+        }
+
+        [Test]
+        public void ProgressDisabled_OnProgressWillNotBeInvoked_T()
+        {
+            var deferred = Promise<int>.NewDeferred();
+
+            float progress = float.NaN;
+
+            var progressListener = new ProgressListener(progress);
+
+            deferred.Promise
+                .Progress(p => progress = p)
+                .Progress(50, (cv, p) => progress = p)
+                .Progress(progressListener)
+                .Forget();
+
+            deferred.ReportProgress(0.5f);
+            Promise.Manager.HandleCompletesAndProgress();
+
+            Assert.IsNaN(progress);
+            Assert.IsNaN(progressListener.CurrentProgress);
+
+            deferred.Resolve(1);
+            Promise.Manager.HandleCompletesAndProgress();
+
+            Assert.IsNaN(progress);
+            Assert.IsNaN(progressListener.CurrentProgress);
+        }
+#pragma warning restore CS0618 // Type or member is obsolete
+
+#endif // PROMISE_PROGRESS
     }
 }
-#endif

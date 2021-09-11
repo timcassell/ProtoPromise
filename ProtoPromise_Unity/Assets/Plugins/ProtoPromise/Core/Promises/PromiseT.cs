@@ -117,6 +117,32 @@ namespace Proto.Promises
 
         /// <summary>
         /// Add a progress listener. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
+        /// <para/><paramref name="progressListener"/> will be reported with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
+        /// 
+        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, progress will stop being reported.
+        /// </summary>
+#if !PROMISE_PROGRESS
+        [Obsolete("Progress is disabled, progress will not be reported. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+#endif
+        public Promise<T> Progress<TProgress>(TProgress progressListener, CancelationToken cancelationToken = default(CancelationToken)) where TProgress : IProgress<float>
+        {
+            ValidateArgument(progressListener, "progressListener", 1);
+
+#if !PROMISE_PROGRESS
+            return Duplicate();
+#else
+            ValidateOperation(1);
+
+            return Internal.PromiseRef.CallbackHelper.AddProgress(this, progressListener, cancelationToken);
+#endif
+        }
+
+        /// <summary>
+        /// Add a progress listener. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
         /// 
         /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
@@ -126,19 +152,14 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
 #if !PROMISE_PROGRESS
-        [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
+        [Obsolete("Progress is disabled, onProgress will not be invoked. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
+        [MethodImpl(Internal.InlineOption)]
         public Promise<T> Progress(Action<float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
-#if !PROMISE_PROGRESS
-            Internal.ThrowProgressException(1);
-            return default(Promise<T>);
-#else
-            ValidateOperation(1);
             ValidateArgument(onProgress, "onProgress", 1);
 
-            return Internal.PromiseRef.CallbackHelper.AddProgress(this, new Internal.PromiseRef.DelegateProgress(onProgress), cancelationToken);
-#endif
+            return Progress(new Internal.PromiseRef.DelegateProgress(onProgress), cancelationToken);
         }
 
         /// <summary>
@@ -756,19 +777,14 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
 #if !PROMISE_PROGRESS
-        [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
+        [Obsolete("Progress is disabled, onProgress will not be invoked. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
+        [MethodImpl(Internal.InlineOption)]
         public Promise<T> Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress, CancelationToken cancelationToken = default(CancelationToken))
         {
-#if !PROMISE_PROGRESS
-            Internal.ThrowProgressException(1);
-            return default(Promise<T>);
-#else
-            ValidateOperation(1);
             ValidateArgument(onProgress, "onProgress", 1);
 
-            return Internal.PromiseRef.CallbackHelper.AddProgress(this, new Internal.PromiseRef.DelegateCaptureProgress<TCaptureProgress>(ref progressCaptureValue, onProgress), cancelationToken);
-#endif
+            return Progress(new Internal.PromiseRef.DelegateCaptureProgress<TCaptureProgress>(ref progressCaptureValue, onProgress), cancelationToken);
         }
 
         /// <summary>
