@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 using System;
 using System.Collections.Generic;
@@ -22,13 +17,6 @@ namespace Proto.Promises
         internal const MethodImplOptions InlineOption = MethodImplOptions.NoInlining;
 #else
         internal const MethodImplOptions InlineOption = (MethodImplOptions) 256; // AggressiveInlining
-#endif
-
-#if !PROMISE_PROGRESS
-        internal static void ThrowProgressException(int skipFrames)
-        {
-            throw new InvalidOperationException("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", GetFormattedStacktrace(skipFrames + 1));
-        }
 #endif
 
         // Calls to these get compiled away in RELEASE mode
@@ -46,7 +34,7 @@ namespace Proto.Promises
 
         partial interface IRejectValueContainer
         {
-            void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, CausalityTrace createdStacktraces);
+            void SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

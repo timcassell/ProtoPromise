@@ -4,7 +4,8 @@
 #undef PROMISE_PROGRESS
 #endif
 
-using System;
+#pragma warning disable IDE0034 // Simplify 'default' expression
+
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
@@ -53,7 +54,7 @@ namespace Proto.Promises
             {
                 if (!TryResolveVoid())
                 {
-                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid.", GetFormattedStacktrace(1));
                 }
             }
 
@@ -67,7 +68,7 @@ namespace Proto.Promises
             {
                 if (!TryResolve(ref value))
                 {
-                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid.", GetFormattedStacktrace(1));
                 }
             }
 
@@ -81,7 +82,7 @@ namespace Proto.Promises
             {
                 if (!TryReject(ref reason))
                 {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", GetFormattedStacktrace(1));
                 }
             }
 
@@ -95,7 +96,7 @@ namespace Proto.Promises
             {
                 if (!TryCancel(ref reason))
                 {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", GetFormattedStacktrace(1));
                 }
             }
 
@@ -109,7 +110,7 @@ namespace Proto.Promises
             {
                 if (!TryCancel())
                 {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", GetFormattedStacktrace(1));
                 }
             }
 
@@ -119,26 +120,20 @@ namespace Proto.Promises
                 return _this._ref != null && _this._ref.TryCancelVoid(_this._deferredId);
             }
 
-            // TODO: don't error if progress is disabled, just do nothing.
             public void ReportProgress(float progress)
             {
-#if !PROMISE_PROGRESS
-                ThrowProgressException(1);
-#else
                 if (!TryReportProgress(progress))
                 {
-                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid.", GetFormattedStacktrace(1));
                 }
-#endif
             }
 
             public bool TryReportProgress(float progress)
             {
-#if !PROMISE_PROGRESS
-                return false;
-#else
                 ValidateProgress(progress, 1);
-
+#if !PROMISE_PROGRESS
+                return IsValidAndPending;
+#else
                 DeferredInternal<TDeferredRef> _this = this;
                 return _this._ref != null && _this._ref.TryReportProgress(progress, _this._deferredId);
 #endif

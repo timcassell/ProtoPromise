@@ -24,9 +24,14 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            struct DeferredBase : IEquatable<DeferredBase>
+            struct DeferredBase : IProgress<float>, IEquatable<DeferredBase>
         {
             private readonly Internal.DeferredInternal<Internal.PromiseRef.DeferredPromiseBase> _target;
+
+            void IProgress<float>.Report(float value)
+            {
+                ReportProgress(value);
+            }
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -179,7 +184,7 @@ namespace Proto.Promises
             /// <exception cref="InvalidOperationException"/>
             /// <exception cref="ArgumentOutOfRangeException"/>
 #if !PROMISE_PROGRESS
-            [System.Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
+            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
             // TODO: don't error if progress is disabled, just do nothing. Set Obsolete attribute to warning.
@@ -194,7 +199,7 @@ namespace Proto.Promises
             /// </summary>
             /// <exception cref="ArgumentOutOfRangeException"/>
 #if !PROMISE_PROGRESS
-            [System.Obsolete("Progress is disabled, this will always return false. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
             public bool TryReportProgress(float progress)
@@ -267,9 +272,14 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            struct Deferred : IEquatable<Deferred>
+            struct Deferred : IProgress<float>, IEquatable<Deferred>
         {
             private readonly Internal.DeferredInternal<Internal.PromiseRef.DeferredPromiseVoid> _target;
+
+            void IProgress<float>.Report(float value)
+            {
+                ReportProgress(value);
+            }
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -416,7 +426,7 @@ namespace Proto.Promises
             /// <exception cref="InvalidOperationException"/>
             /// <exception cref="ArgumentOutOfRangeException"/>
 #if !PROMISE_PROGRESS
-            [System.Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
+            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
             public void ReportProgress(float progress)
@@ -430,7 +440,7 @@ namespace Proto.Promises
             /// </summary>
             /// <exception cref="ArgumentOutOfRangeException"/>
 #if !PROMISE_PROGRESS
-            [System.Obsolete("Progress is disabled, this will always return false. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
             public bool TryReportProgress(float progress)
@@ -439,12 +449,12 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Cast to <see cref="Promise.DeferredBase"/>.
+            /// Cast to <see cref="DeferredBase"/>.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            public static implicit operator Promise.DeferredBase(Deferred rhs)
+            public static implicit operator DeferredBase(Deferred rhs)
             {
-                return new Promise.DeferredBase(rhs._target._ref, rhs._target._promiseId, rhs._target._deferredId);
+                return new DeferredBase(rhs._target._ref, rhs._target._promiseId, rhs._target._deferredId);
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -481,7 +491,7 @@ namespace Proto.Promises
             }
 
             [Obsolete("Deferred.State is no longer valid. Use IsValidAndPending.", true)]
-            public Promise.State State
+            public State State
             {
                 get
                 {
@@ -515,9 +525,14 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            struct Deferred : IEquatable<Deferred>
+            struct Deferred : IProgress<float>, IEquatable<Deferred>
         {
             private readonly Internal.DeferredInternal<Internal.PromiseRef.DeferredPromise<T>> _target;
+
+            void IProgress<float>.Report(float value)
+            {
+                ReportProgress(value);
+            }
 
             /// <summary>
             /// The attached <see cref="Promise{T}"/> that this controls.
@@ -664,7 +679,7 @@ namespace Proto.Promises
             /// <exception cref="InvalidOperationException"/>
             /// <exception cref="ArgumentOutOfRangeException"/>
 #if !PROMISE_PROGRESS
-            [System.Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", true)]
+            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
             public void ReportProgress(float progress)
@@ -678,7 +693,7 @@ namespace Proto.Promises
             /// </summary>
             /// <exception cref="ArgumentOutOfRangeException"/>
 #if !PROMISE_PROGRESS
-            [System.Obsolete("Progress is disabled, this will always return false. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
             public bool TryReportProgress(float progress)
