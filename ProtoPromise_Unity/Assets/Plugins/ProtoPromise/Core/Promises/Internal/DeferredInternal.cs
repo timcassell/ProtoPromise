@@ -24,13 +24,13 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public Promise GetPromiseVoid()
             {
-                return new Promise(_ref, _promiseId);
+                return new Promise(_ref, _promiseId, 0);
             }
 
             [MethodImpl(InlineOption)]
             public Promise<T> GetPromise<T>()
             {
-                return new Promise<T>(_ref, _promiseId);
+                return new Promise<T>(_ref, _promiseId, 0);
             }
 
             public bool IsValidAndPending

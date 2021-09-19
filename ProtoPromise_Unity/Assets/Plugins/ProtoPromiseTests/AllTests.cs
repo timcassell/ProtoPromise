@@ -35,15 +35,12 @@ namespace Proto.Promises.Tests
                 .Then(() => { invoked = true; })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(invoked);
 
             deferred1.Resolve();
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(invoked);
 
             deferred2.Resolve();
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -65,17 +62,14 @@ namespace Proto.Promises.Tests
                 })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(invoked);
 
             deferred1.Resolve(10);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(invoked);
 
             deferred2.Resolve(20);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -88,7 +82,6 @@ namespace Proto.Promises.Tests
                 .Then(() => { invoked = true; })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -105,7 +98,6 @@ namespace Proto.Promises.Tests
                 })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -119,7 +111,6 @@ namespace Proto.Promises.Tests
                 .Then(() => { invoked = true; })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -132,7 +123,6 @@ namespace Proto.Promises.Tests
                 .Then(v => { invoked = true; })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -152,12 +142,10 @@ namespace Proto.Promises.Tests
 
             deferred1.Reject("Error!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(errored);
 
             deferred2.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(errored);
         }
 
@@ -177,12 +165,10 @@ namespace Proto.Promises.Tests
 
             deferred1.Reject("Error!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(errored);
 
             deferred2.Resolve(2);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(errored);
         }
 
@@ -202,12 +188,10 @@ namespace Proto.Promises.Tests
 
             deferred1.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(errored);
 
             deferred2.Reject("Error!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(errored);
         }
 
@@ -227,12 +211,10 @@ namespace Proto.Promises.Tests
 
             deferred1.Resolve(2);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(errored);
 
             deferred2.Reject("Error!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(errored);
         }
 
@@ -258,12 +240,10 @@ namespace Proto.Promises.Tests
 
             deferred1.Reject("Error!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(errored);
 
             deferred2.Reject("Error!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(errored);
 
             promise1.Forget();
@@ -292,12 +272,10 @@ namespace Proto.Promises.Tests
 
             deferred1.Reject("Error!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(errored);
 
             deferred2.Reject("Error!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(errored);
 
             promise1.Forget();
@@ -314,8 +292,6 @@ namespace Proto.Promises.Tests
             var promise1 = deferred.Promise.Preserve();
             var promise2 = Promise.Rejected(rejection).Preserve();
 
-            Promise.Manager.HandleCompletes();
-
             Promise.All(promise1, promise2)
                 .Then(
                     () => Assert.Fail("Promise was resolved when it should have been rejected."),
@@ -336,12 +312,10 @@ namespace Proto.Promises.Tests
                     })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, rejectCount);
 
             deferred.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, rejectCount);
 
             promise1.Forget();
@@ -358,8 +332,6 @@ namespace Proto.Promises.Tests
             var promise1 = deferred.Promise.Preserve();
             var promise2 = Promise<int>.Rejected(rejection).Preserve();
 
-            Promise.Manager.HandleCompletes();
-
             Promise.All(promise1, promise2)
                 .Then(
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
@@ -380,12 +352,10 @@ namespace Proto.Promises.Tests
                     })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, rejectCount);
 
             deferred.Resolve(1);
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, rejectCount);
 
             promise1.Forget();
@@ -409,12 +379,10 @@ namespace Proto.Promises.Tests
 
             cancelationSource.Cancel("Cancel!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
 
             deferred2.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
 
             cancelationSource.Dispose();
@@ -437,12 +405,10 @@ namespace Proto.Promises.Tests
 
             cancelationSource.Cancel("Cancel!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
 
             deferred2.Resolve(2);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
 
             cancelationSource.Dispose();
@@ -464,12 +430,10 @@ namespace Proto.Promises.Tests
 
             deferred1.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(canceled);
 
             cancelationSource.Cancel("Cancel!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
 
             cancelationSource.Dispose();
@@ -491,12 +455,10 @@ namespace Proto.Promises.Tests
 
             deferred1.Resolve(2);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(canceled);
 
             cancelationSource.Cancel("Cancel!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
 
             cancelationSource.Dispose();
@@ -520,12 +482,10 @@ namespace Proto.Promises.Tests
 
             cancelationSource1.Cancel("Cancel!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
 
             cancelationSource2.Cancel("Cancel!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
 
             cancelationSource1.Dispose();
@@ -550,12 +510,10 @@ namespace Proto.Promises.Tests
 
             cancelationSource1.Cancel("Cancel!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
 
             cancelationSource2.Cancel("Cancel!");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
 
             cancelationSource1.Dispose();
@@ -571,8 +529,6 @@ namespace Proto.Promises.Tests
             var deferred = Promise.NewDeferred();
             var promise1 = deferred.Promise.Preserve();
             var promise2 = Promise.Canceled(cancelation).Preserve();
-
-            Promise.Manager.HandleCompletes();
 
             Promise.All(promise1, promise2)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
@@ -594,7 +550,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, cancelCount);
 
             promise1.Forget();
@@ -610,8 +565,6 @@ namespace Proto.Promises.Tests
             var deferred = Promise.NewDeferred<int>();
             var promise1 = deferred.Promise.Preserve();
             var promise2 = Promise<int>.Canceled(cancelation).Preserve();
-
-            Promise.Manager.HandleCompletes();
 
             Promise.All(promise1, promise2)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
@@ -633,7 +586,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve(1);
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, cancelCount);
 
             promise1.Forget();

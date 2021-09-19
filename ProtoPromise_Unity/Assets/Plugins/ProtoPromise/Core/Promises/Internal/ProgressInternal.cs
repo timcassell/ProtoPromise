@@ -28,6 +28,7 @@ namespace Proto.Promises
             // Calls to these get compiled away when PROGRESS is undefined.
             partial void SetDepth(PromiseRef previous);
             partial void SetDepth();
+            partial void SetDepth(int depth);
             partial void ResetDepth();
 
             partial void WaitWhileProgressFlags(ProgressFlags progressFlags);
@@ -70,7 +71,19 @@ namespace Proto.Promises
                 All = byte.MaxValue
             }
 
-#if PROMISE_PROGRESS
+#if !PROMISE_PROGRESS
+            internal int Depth
+            {
+                [MethodImpl(InlineOption)]
+                get { return 0; }
+            }
+#else
+            internal int Depth
+            {
+                [MethodImpl(InlineOption)]
+                get { return _smallFields._waitDepthAndProgress.PositiveWholePart; }
+            }
+     
             partial struct SmallFields
             {
                 partial struct StateAndFlags
@@ -170,27 +183,41 @@ namespace Proto.Promises
                     | _smallFields._waitDepthAndProgress.IsNegative;
             }
 
+            [MethodImpl(InlineOption)]
             protected void InterlockedRetainDisregardId()
             {
                 ThrowIfInPool(this);
                 _idsAndRetains.InterlockedRetainDisregardId();
             }
 
-            private int NextWholeProgress { get { return _smallFields._waitDepthAndProgress.PositiveWholePart + 1; } }
+            private int NextWholeProgress
+            {
+                [MethodImpl(InlineOption)]
+                get { return Depth + 1; }
+            }
 
+            [MethodImpl(InlineOption)]
             partial void ResetDepth()
             {
                 _smallFields._waitDepthAndProgress = default(Fixed32);
             }
 
+            [MethodImpl(InlineOption)]
             partial void SetDepth(PromiseRef previous)
             {
                 SetDepth(previous._smallFields._waitDepthAndProgress);
             }
 
+            [MethodImpl(InlineOption)]
             partial void SetDepth()
             {
                 SetDepth(default(Fixed32));
+            }
+
+            [MethodImpl(InlineOption)]
+            partial void SetDepth(int depth)
+            {
+                SetDepth(new Fixed32(depth));
             }
 
             protected virtual void SetDepth(Fixed32 previousDepth)
@@ -489,26 +516,13 @@ namespace Proto.Promises
 
                 internal Fixed32 GetIncrementedWholeTruncated()
                 {
-                    int newValue = (_value & WholeMask & PositiveMask) + (1 << Promise.Config.ProgressDecimalBits);
 #if PROMISE_DEBUG
-                    if (newValue < 0)
-                    {
-                        throw new OverflowException();
-                    }
+                    checked
 #endif
-                    return new Fixed32(newValue, true);
-                }
-
-                [MethodImpl(InlineOption)]
-                public static bool operator >(Fixed32 lhs, Fixed32 rhs)
-                {
-                    return lhs._value > rhs._value;
-                }
-
-                [MethodImpl(InlineOption)]
-                public static bool operator <(Fixed32 lhs, Fixed32 rhs)
-                {
-                    return lhs._value < rhs._value;
+                    {
+                        int newValue = (_value & WholeMask & PositiveMask) + (1 << Promise.Config.ProgressDecimalBits);
+                        return new Fixed32(newValue, true);
+                    }
                 }
             }
 
@@ -623,20 +637,6 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                private void InvokeAndCatch(float progress)
-                {
-                    SetCurrentInvoker(this);
-                    try
-                    {
-                        _progress.Report(progress);
-                    }
-                    catch (Exception e)
-                    {
-                        AddRejectionToUnhandledStack(e, this);
-                    }
-                    ClearCurrentInvoker();
-                }
-
                 void IProgressInvokable.Invoke()
                 {
                     ThrowIfInPool(this);
@@ -647,7 +647,7 @@ namespace Proto.Promises
                     _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
                     if (value >= 0 & !IsComplete & !IsCanceled)
                     {
-                        InvokeAndCatch(value);
+                        CallbackHelper.InvokeAndCatchProgress(_progress, value, this);
                     }
                     MaybeDispose();
                 }
@@ -759,7 +759,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public override void Handle()
+                public override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
                     bool notCanceled = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !IsCanceled;
@@ -773,14 +773,14 @@ namespace Proto.Promises
                     {
                         if (notCanceled)
                         {
-                            InvokeAndCatch(1f);
+                            CallbackHelper.InvokeAndCatchProgress(_progress, 1f, this);
                         }
-                        HandleWaiter(valueContainer);
+                        HandleWaiter(valueContainer, ref executionStack);
                         ResolveProgressListener();
                     }
                     else
                     {
-                        HandleWaiter(valueContainer);
+                        HandleWaiter(valueContainer, ref executionStack);
                         CancelProgressListener();
                     }
 

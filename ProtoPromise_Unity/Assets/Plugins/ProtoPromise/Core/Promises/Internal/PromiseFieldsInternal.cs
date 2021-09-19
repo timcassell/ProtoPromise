@@ -31,48 +31,113 @@ namespace Proto.Promises
         /// Internal use.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRef promiseRef, short id)
+        internal Promise(Internal.PromiseRef promiseRef, short id, int depth)
         {
-            _target = new Promise<Internal.VoidResult>(promiseRef, id);
+            _target = new Promise<Internal.VoidResult>(promiseRef, id, depth);
+        }
+
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        internal Promise(Promise<Internal.VoidResult> target)
+        {
+            _target = target;
         }
     }
 
-    [StructLayout(LayoutKind.Auto)]
     partial struct Promise<T>
     {
+        // This is used so that _result will be packed efficiently and not padded with extra bytes (only relevant for small, non-primitive struct T types).
+        // Otherwise, if all fields are on the same level as _ref, because it is a class type, it will pad T up to IntPtr.Size if T is not primitive, causing the Promise<T> struct to be larger than necessary.
+        // This is especially needed for Promise, which has an internal Promise<Internal.VoidResult> field (and sadly, the runtime does not allow 0-sized structs, minimum size is 1 byte).
+        // See https://stackoverflow.com/questions/24742325/why-does-struct-alignment-depend-on-whether-a-field-type-is-primitive-or-user-de
+        private
+#if CSHARP_7_3_OR_NEWER
+            readonly
+#endif
+            struct SmallFields
+        {
+#if PROMISE_PROGRESS
+            internal readonly int _depth;
+#endif
+            internal readonly short _id;
+            internal readonly T _result;
+
+            [MethodImpl(Internal.InlineOption)]
+            internal SmallFields(short id, int depth,
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T result)
+            {
+#if PROMISE_PROGRESS
+                _depth = depth;
+#endif
+                _id = id;
+                _result = result;
+            }
+        }
+
         /// <summary>
         /// Internal use.
         /// </summary>
         internal readonly Internal.PromiseRef _ref;
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        internal readonly short _id;
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        internal readonly T _result;
+        private readonly SmallFields _smallFields;
 
         /// <summary>
         /// Internal use.
         /// </summary>
-        [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRef promiseRef, short id)
+        internal short Id
         {
-            _ref = promiseRef;
-            _id = id;
-            _result = default(T);
+            [MethodImpl(Internal.InlineOption)]
+            get { return _smallFields._id; }
+        }
+
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        internal T Result
+        {
+            [MethodImpl(Internal.InlineOption)]
+            get { return _smallFields._result; }
+        }
+
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        internal int Depth
+        {
+            [MethodImpl(Internal.InlineOption)]
+#if PROMISE_PROGRESS
+            get { return _smallFields._depth; }
+#else
+            get { return 0; }
+#endif
         }
 
         /// <summary>
         /// Internal use.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRef promiseRef, short id, ref T value)
+        internal Promise(Internal.PromiseRef promiseRef, short id, int depth)
         {
             _ref = promiseRef;
-            _id = id;
-            _result = value;
+            _smallFields = new SmallFields(id, depth, default(T));
+        }
+
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        internal Promise(Internal.PromiseRef promiseRef, short id, int depth,
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T value)
+        {
+            _ref = promiseRef;
+            _smallFields = new SmallFields(id, depth, value);
         }
     }
 
@@ -129,9 +194,9 @@ namespace Proto.Promises
                     [FieldOffset(0)]
                     volatile internal Promise.State _state;
                     [FieldOffset(1)]
-                    internal bool _suppressRejection;
+                    volatile internal bool _suppressRejection;
                     [FieldOffset(2)]
-                    internal bool _wasAwaitedOrForgotten;
+                    volatile internal bool _wasAwaitedOrForgotten;
 #if PROMISE_PROGRESS
                     [FieldOffset(3)]
                     volatile private ProgressFlags _progressFlags;
@@ -185,29 +250,29 @@ namespace Proto.Promises
             }
 
             #region Non-cancelable Promises
-            partial class PromiseResolve<TResolver> : PromiseBranch
-                where TResolver : IDelegateResolve
+            partial class PromiseResolve<TArg, TResult, TResolver> : PromiseBranch
+                where TResolver : IDelegate<TArg, TResult>
             {
                 private TResolver _resolver;
             }
 
-            partial class PromiseResolvePromise<TResolver> : PromiseWaitPromise
-                where TResolver : IDelegateResolvePromise
+            partial class PromiseResolvePromise<TArg, TResult, TResolver> : PromiseWaitPromise
+                where TResolver : IDelegate<TArg, Promise<TResult>>
             {
                 private TResolver _resolver;
             }
 
-            partial class PromiseResolveReject<TResolver, TRejecter> : PromiseBranch
-                where TResolver : IDelegateResolve
-                where TRejecter : IDelegateReject
+            partial class PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseBranch
+                where TResolver : IDelegate<TArgResolve, TResult>
+                where TRejecter : IDelegate<TArgReject, TResult>
             {
                 private TResolver _resolver;
                 private TRejecter _rejecter;
             }
 
-            partial class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
-                where TResolver : IDelegateResolvePromise
-                where TRejecter : IDelegateRejectPromise
+            partial class PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseWaitPromise
+                where TResolver : IDelegate<TArgResolve, Promise<TResult>>
+                where TRejecter : IDelegate<TArgReject, Promise<TResult>>
             {
                 private TResolver _resolver;
                 private TRejecter _rejecter;
@@ -255,32 +320,32 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
             }
 
-            partial class CancelablePromiseResolve<TResolver> : PromiseBranch
-                where TResolver : IDelegateResolve
+            partial class CancelablePromiseResolve<TArg, TResult, TResolver> : PromiseBranch
+                where TResolver : IDelegate<TArg, TResult>
             {
                 private CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
             }
 
-            partial class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise
-                where TResolver : IDelegateResolvePromise
+            partial class CancelablePromiseResolvePromise<TArg, TResult, TResolver> : PromiseWaitPromise
+                where TResolver : IDelegate<TArg, Promise<TResult>>
             {
                 private CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
             }
 
-            partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseBranch
-                where TResolver : IDelegateResolve
-                where TRejecter : IDelegateReject
+            partial class CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseBranch
+                where TResolver : IDelegate<TArgResolve, TResult>
+                where TRejecter : IDelegate<TArgReject, TResult>
             {
                 private CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
                 private TRejecter _rejecter;
             }
 
-            partial class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
-                where TResolver : IDelegateResolvePromise
-                where TRejecter : IDelegateRejectPromise
+            partial class CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseWaitPromise
+                where TResolver : IDelegate<TArgResolve, Promise<TResult>>
+                where TRejecter : IDelegate<TArgReject, Promise<TResult>>
             {
                 private CancelationHelper _cancelationHelper;
                 private TResolver _resolver;

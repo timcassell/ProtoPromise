@@ -46,6 +46,7 @@ namespace Proto.Promises
         static partial void SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable);
         static partial void SetCurrentInvoker(ITraceable current);
         static partial void ClearCurrentInvoker();
+        static partial void IncrementInvokeId();
 #if PROMISE_DEBUG
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames)
         {
@@ -66,9 +67,16 @@ namespace Proto.Promises
 #if !CSHARP_7_3_OR_NEWER
         // This is only needed in older language versions that don't support ref structs.
         [ThreadStatic]
-        private static ulong _invokeId;
-        internal static ulong InvokeId { get { return _invokeId; } }
-#endif
+        private static long _invokeId;
+        internal static long InvokeId { get { return _invokeId; } }
+
+        static partial void IncrementInvokeId()
+        {
+            ++_invokeId;
+        }
+#else
+        internal static long InvokeId { get { return ValidIdFromApi; } }
+#endif // !CSHARP_7_3_OR_NEWER
 
         [ThreadStatic]
         private static CausalityTrace _currentTrace;
@@ -88,9 +96,7 @@ namespace Proto.Promises
         static partial void ClearCurrentInvoker()
         {
             _currentTrace = _traces.Pop();
-#if !CSHARP_7_3_OR_NEWER
-            ++_invokeId;
-#endif
+            IncrementInvokeId();
         }
 
         private static StackTrace GetStackTrace(int skipFrames)
@@ -153,7 +159,7 @@ namespace Proto.Promises
             }
             sb.Append(" ");
             return sb.ToString();
-#else
+#else // !CSHARP_7_3_OR_NEWER
             // StackTrace.ToString() format issue was fixed in the new runtime.
             List<StackFrame> stackFrames = new List<StackFrame>();
             foreach (StackTrace stackTrace in stackTraces)
@@ -176,9 +182,15 @@ namespace Proto.Promises
                 .ToArray();
 
             return string.Join(Environment.NewLine, trace);
-#endif
+#endif // !CSHARP_7_3_OR_NEWER
         }
-#else
+#else // PROMISE_DEBUG
+        internal static long InvokeId
+        {
+            [MethodImpl(InlineOption)]
+            get { return ValidIdFromApi; }
+        }
+
         internal static string GetFormattedStacktrace(int skipFrames)
         {
             return null;
@@ -188,13 +200,41 @@ namespace Proto.Promises
         {
             return null;
         }
-#endif
+#endif // PROMISE_DEBUG
 
-        internal static bool TryConvert<TConvert>(IValueContainer valueContainer, out TConvert converted)
+        [MethodImpl(InlineOption)]
+        internal static IValueContainer CreateResolveContainer<TValue>(TValue value, int retainCount)
         {
+            if (typeof(TValue) == typeof(VoidResult))
+            {
+                return ResolveContainerVoid.GetOrCreate();
+            }
+            return ResolveContainer<TValue>.GetOrCreate(ref value, retainCount);
+        }
+
+        // IValueContainer.(Try)GetValue<TValue>() must be implemented as extensions instead of interface members, because AOT might not compile the virtual methods when TValue is a value-type.
+        [MethodImpl(InlineOption)]
+        internal static TValue GetValue<TValue>(this IValueContainer valueContainer)
+        {
+            if (typeof(TValue) == typeof(VoidResult))
+            {
+                return default(TValue);
+            }
+            // TODO: check typeof(TValue).IsValueType == false and use the PromiseRef as the value container for reference types.
+            return ((ResolveContainer<TValue>) valueContainer).value;
+        }
+
+        internal static bool TryGetValue<TValue>(this IValueContainer valueContainer, out TValue converted)
+        {
+            if (typeof(TValue) == typeof(VoidResult))
+            {
+                converted = default(TValue);
+                return true;
+            }
+
             // Try to avoid boxing value types.
 #if CSHARP_7_3_OR_NEWER
-            if (valueContainer is IValueContainer<TConvert> directContainer)
+            if (valueContainer is IValueContainer<TValue> directContainer)
 #else
             var directContainer = valueContainer as IValueContainer<TConvert>;
             if (directContainer != null)
@@ -204,15 +244,16 @@ namespace Proto.Promises
                 return true;
             }
 
-            if (typeof(TConvert).IsAssignableFrom(valueContainer.ValueType))
+            if (typeof(TValue).IsAssignableFrom(valueContainer.ValueType))
             {
                 // Unfortunately, this will box if converting from a non-nullable value type to nullable.
                 // I couldn't find any way around that without resorting to Expressions (which won't work for this purpose with the IL2CPP AOT compiler).
-                converted = (TConvert) valueContainer.Value;
+                // Also, this will only occur when catching rejections, so the performance concern is negated.
+                converted = (TValue) valueContainer.Value;
                 return true;
             }
 
-            converted = default(TConvert);
+            converted = default(TValue);
             return false;
         }
 
@@ -305,18 +346,17 @@ namespace Proto.Promises
             while (true)
             {
                 _handleLocker.Enter();
-                var queue = _handleQueue;
-                _handleQueue = new ValueLinkedQueue<ITreeHandleable>();
+                var stack = _handleQueue.MoveElementsToStack();
                 _handleLocker.Exit();
 
-                if (queue.IsEmpty)
+                if (stack.IsEmpty)
                 {
                     break;
                 }
                 do
                 {
-                    queue.DequeueRisky().Handle();
-                } while (queue.IsNotEmpty);
+                    stack.Pop().Handle(ref stack);
+                } while (stack.IsNotEmpty);
             }
         }
 

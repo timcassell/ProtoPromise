@@ -129,6 +129,12 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
+            internal ValueLinkedStack(T head)
+            {
+                _head = head;
+            }
+
+            [MethodImpl(InlineOption)]
             internal void Push(T item)
             {
                 AssertNotInCollection(item);
@@ -287,14 +293,6 @@ namespace Proto.Promises
                 get { return _head != null; }
             }
 
-            [MethodImpl(InlineOption)]
-            internal ValueLinkedQueue(T item)
-            {
-                AssertNotInCollection(item);
-
-                _head = _tail = item;
-            }
-
             internal void Enqueue(T item)
             {
                 AssertNotInCollection(item);
@@ -395,6 +393,14 @@ namespace Proto.Promises
                     next = node.Next;
                 }
                 return false;
+            }
+
+            internal ValueLinkedStack<T> MoveElementsToStack()
+            {
+                ValueLinkedStack<T> newStack = new ValueLinkedStack<T>(_head);
+                _head = null;
+                _tail = null;
+                return newStack;
             }
 
             [MethodImpl(InlineOption)]

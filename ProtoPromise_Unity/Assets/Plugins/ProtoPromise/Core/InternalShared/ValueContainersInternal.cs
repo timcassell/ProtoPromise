@@ -24,18 +24,12 @@ namespace Proto.Promises
 
             public T Value
             {
-                get
-                {
-                    return _value;
-                }
+                get { return _value; }
             }
 
             object IValueContainer.Value
             {
-                get
-                {
-                    return _value;
-                }
+                get { return _value; }
             }
 
             Type IValueContainer.ValueType
@@ -80,7 +74,7 @@ namespace Proto.Promises
                 }
             }
 
-            public static RejectionContainer<T> GetOrCreate(ref T value, int retainCount)
+            internal static RejectionContainer<T> GetOrCreate(ref T value, int retainCount)
             {
                 var container = ObjectPool<RejectionContainer<T>>.TryTake<RejectionContainer<T>>()
                     ?? new RejectionContainer<T>();
@@ -218,18 +212,12 @@ namespace Proto.Promises
             private T _value;
             public T Value
             {
-                get
-                {
-                    return _value;
-                }
+                get { return _value; }
             }
 
             object IValueContainer.Value
             {
-                get
-                {
-                    return _value;
-                }
+                get { return _value; }
             }
 
             Type IValueContainer.ValueType
@@ -260,7 +248,7 @@ namespace Proto.Promises
             }
 #endif
 
-            public static CancelContainer<T> GetOrCreate(ref T value, int retainCount)
+            internal static CancelContainer<T> GetOrCreate(ref T value, int retainCount)
             {
                 var container = ObjectPool<CancelContainer<T>>.TryTake<CancelContainer<T>>()
                     ?? new CancelContainer<T>();
@@ -349,7 +337,7 @@ namespace Proto.Promises
             Type IValueContainer.ValueType { get { return null; } }
 
             [MethodImpl(InlineOption)]
-            public static CancelContainerVoid GetOrCreate()
+            internal static CancelContainerVoid GetOrCreate()
             {
                 return _instance;
             }
@@ -387,18 +375,12 @@ namespace Proto.Promises
 
             T IValueContainer<T>.Value
             {
-                get
-                {
-                    return value;
-                }
+                get { return value; }
             }
 
             object IValueContainer.Value
             {
-                get
-                {
-                    return value;
-                }
+                get { return value; }
             }
 
             Type IValueContainer.ValueType
@@ -429,8 +411,7 @@ namespace Proto.Promises
             }
 #endif
 
-            // TODO: check typeof(T).IsValueType == false and use the PromiseRef as the value container for reference types.
-            public static ResolveContainer<T> GetOrCreate(ref T value, int retainCount)
+            internal static ResolveContainer<T> GetOrCreate(ref T value, int retainCount)
             {
                 var container = ObjectPool<ResolveContainer<T>>.TryTake<ResolveContainer<T>>()
                     ?? new ResolveContainer<T>();
@@ -440,7 +421,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            public static ResolveContainer<T> GetOrCreate(T value, int retainCount)
+            internal static ResolveContainer<T> GetOrCreate(T value, int retainCount)
             {
                 return GetOrCreate(ref value, retainCount);
             }
@@ -510,7 +491,7 @@ namespace Proto.Promises
             Type IValueContainer.ValueType { get { return null; } }
 
             [MethodImpl(InlineOption)]
-            public static ResolveContainerVoid GetOrCreate()
+            internal static ResolveContainerVoid GetOrCreate()
             {
                 return _instance;
             }

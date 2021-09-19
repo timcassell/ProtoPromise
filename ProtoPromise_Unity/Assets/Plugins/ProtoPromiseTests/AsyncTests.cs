@@ -42,11 +42,9 @@ namespace Proto.Promises.Tests
             Func()
                 .Then(() => resolved = true)
                 .Forget();
-            Promise.Manager.HandleCompletes();
-            Assert.IsFalse(resolved);
 
+            Assert.IsFalse(resolved);
             deferred.Resolve();
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(resolved);
         }
 
@@ -70,11 +68,9 @@ namespace Proto.Promises.Tests
                     resolved = true;
                 })
                 .Forget();
-            Promise.Manager.HandleCompletes();
-            Assert.IsFalse(resolved);
 
+            Assert.IsFalse(resolved);
             deferred.Resolve(expected);
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(resolved);
         }
 
@@ -93,9 +89,7 @@ namespace Proto.Promises.Tests
             Func()
                 .Then(() => resolved = true)
                 .Forget();
-            Assert.IsFalse(resolved);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(resolved);
         }
 
@@ -119,9 +113,7 @@ namespace Proto.Promises.Tests
                     resolved = true;
                 })
                 .Forget();
-            Assert.IsFalse(resolved);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(resolved);
         }
 
@@ -145,11 +137,9 @@ namespace Proto.Promises.Tests
                     rejected = true;
                 })
                 .Forget();
-            Promise.Manager.HandleCompletes();
-            Assert.IsFalse(rejected);
 
+            Assert.IsFalse(rejected);
             deferred.Reject(expected);
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(rejected);
         }
 
@@ -173,11 +163,9 @@ namespace Proto.Promises.Tests
                     rejected = true;
                 })
                 .Forget();
-            Promise.Manager.HandleCompletes();
-            Assert.IsFalse(rejected);
 
+            Assert.IsFalse(rejected);
             deferred.Reject(expected);
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(rejected);
         }
 
@@ -201,9 +189,7 @@ namespace Proto.Promises.Tests
                     rejected = true;
                 })
                 .Forget();
-            Assert.IsFalse(rejected);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(rejected);
         }
 
@@ -227,9 +213,7 @@ namespace Proto.Promises.Tests
                     rejected = true;
                 })
                 .Forget();
-            Assert.IsFalse(rejected);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(rejected);
         }
 
@@ -252,9 +236,7 @@ namespace Proto.Promises.Tests
                     rejected = true;
                 })
                 .Forget();
-            Assert.IsFalse(rejected);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(rejected);
         }
 
@@ -277,9 +259,7 @@ namespace Proto.Promises.Tests
                     rejected = true;
                 })
                 .Forget();
-            Assert.IsFalse(rejected);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(rejected);
         }
 
@@ -304,11 +284,9 @@ namespace Proto.Promises.Tests
                     canceled = true;
                 })
                 .Forget();
-            Promise.Manager.HandleCompletes();
-            Assert.IsFalse(canceled);
 
+            Assert.IsFalse(canceled);
             cancelationSource.Cancel(expected);
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
 
             cancelationSource.Dispose();
@@ -335,11 +313,9 @@ namespace Proto.Promises.Tests
                     canceled = true;
                 })
                 .Forget();
-            Promise.Manager.HandleCompletes();
-            Assert.IsFalse(canceled);
 
+            Assert.IsFalse(canceled);
             cancelationSource.Cancel(expected);
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
 
             cancelationSource.Dispose();
@@ -364,9 +340,7 @@ namespace Proto.Promises.Tests
                     canceled = true;
                 })
                 .Forget();
-            Assert.IsFalse(canceled);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
         }
 
@@ -389,9 +363,7 @@ namespace Proto.Promises.Tests
                     canceled = true;
                 })
                 .Forget();
-            Assert.IsFalse(canceled);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
         }
 
@@ -415,9 +387,7 @@ namespace Proto.Promises.Tests
                     canceled = true;
                 })
                 .Forget();
-            Assert.IsFalse(canceled);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
         }
 
@@ -441,9 +411,7 @@ namespace Proto.Promises.Tests
                     canceled = true;
                 })
                 .Forget();
-            Assert.IsFalse(canceled);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
         }
 
@@ -465,9 +433,7 @@ namespace Proto.Promises.Tests
                     canceled = true;
                 })
                 .Forget();
-            Assert.IsFalse(canceled);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
         }
 
@@ -489,9 +455,7 @@ namespace Proto.Promises.Tests
                     canceled = true;
                 })
                 .Forget();
-            Assert.IsFalse(canceled);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
         }
 
@@ -514,9 +478,7 @@ namespace Proto.Promises.Tests
                     canceled = true;
                 })
                 .Forget();
-            Assert.IsFalse(canceled);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
         }
 
@@ -539,9 +501,7 @@ namespace Proto.Promises.Tests
                     canceled = true;
                 })
                 .Forget();
-            Assert.IsFalse(canceled);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
         }
 
@@ -566,19 +526,17 @@ namespace Proto.Promises.Tests
             Func()
                 .Then(() => resolved = true)
                 .Forget();
-            Promise.Manager.HandleCompletes();
+
             Assert.IsFalse(continued1);
             Assert.IsFalse(continued2);
             Assert.IsFalse(resolved);
 
             deferred1.Resolve();
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued1);
             Assert.IsFalse(continued2);
             Assert.IsFalse(resolved);
 
             deferred2.Resolve();
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued1);
             Assert.IsTrue(continued2);
             Assert.IsTrue(resolved);
@@ -611,19 +569,17 @@ namespace Proto.Promises.Tests
                     resolved = true;
                 })
                 .Forget();
-            Promise.Manager.HandleCompletes();
+
             Assert.IsFalse(continued1);
             Assert.IsFalse(continued2);
             Assert.IsFalse(resolved);
 
             deferred1.Resolve();
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued1);
             Assert.IsFalse(continued2);
             Assert.IsFalse(resolved);
 
             deferred2.Resolve("Some string");
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued1);
             Assert.IsTrue(continued2);
             Assert.IsTrue(resolved);

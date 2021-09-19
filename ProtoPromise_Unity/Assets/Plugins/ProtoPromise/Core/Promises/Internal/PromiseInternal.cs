@@ -101,6 +101,14 @@ namespace Proto.Promises
                 }
             }
 
+            private static void ExecuteHandlers(ValueLinkedStack<ITreeHandleable> executionStack)
+            {
+                while (executionStack.IsNotEmpty)
+                {
+                    executionStack.Pop().Handle(ref executionStack);
+                }
+            }
+
             protected virtual void MarkAwaited(short promiseId)
             {
                 IncrementId(promiseId);
@@ -145,23 +153,25 @@ namespace Proto.Promises
                 MaybeDispose();
             }
 
-            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
             {
                 ThrowIfInPool(this);
                 owner.SuppressRejection = true;
                 valueContainer.Retain();
                 _valueOrPrevious = valueContainer;
-                AddToHandleQueueFront(this);
+                executionStack.Push(this);
+                //AddToHandleQueueFront(this);
                 WaitWhileProgressFlags(ProgressFlags.Subscribing);
             }
 
-            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
             {
                 ThrowIfInPool(this);
                 owner.SuppressRejection = true;
                 valueContainer.Retain();
                 _valueOrPrevious = valueContainer;
-                AddToHandleQueueBack(this);
+                executionStack.Push(this);
+                //AddToHandleQueueBack(this);
                 WaitWhileProgressFlags(ProgressFlags.Subscribing);
             }
 
@@ -210,7 +220,9 @@ namespace Proto.Promises
                 newPromise.SetDepth(this);
                 if (Interlocked.CompareExchange(ref newPromise._valueOrPrevious, this, null) == null)
                 {
-                    AddWaiter(newPromise);
+                    ValueLinkedStack<ITreeHandleable> executionStack = new ValueLinkedStack<ITreeHandleable>();
+                    AddWaiter(newPromise, ref executionStack);
+                    ExecuteHandlers(executionStack);
                 }
                 else
                 {
@@ -222,7 +234,14 @@ namespace Proto.Promises
             {
                 newPromise.SetDepth(this);
                 newPromise._valueOrPrevious = this;
-                AddWaiter(newPromise);
+                HookupNewWaiter(newPromise);
+            }
+
+            private void HookupNewWaiter(ITreeHandleable newWaiter)
+            {
+                ValueLinkedStack<ITreeHandleable> executionStack = new ValueLinkedStack<ITreeHandleable>();
+                AddWaiter(newWaiter, ref executionStack);
+                ExecuteHandlers(executionStack);
             }
 
 #if PROMISE_PROGRESS
@@ -230,25 +249,19 @@ namespace Proto.Promises
             {
                 newPromise.SetDepth(this);
                 newPromise._valueOrPrevious = this;
-                AddWaiterWithProgress(newPromise);
+                HookupNewWaiterWithProgress(newPromise);
             }
 
-            private void AddWaiterWithProgress<TWaiter>(TWaiter waiter) where TWaiter : ITreeHandleable, IProgressListener
+            private void HookupNewWaiterWithProgress<TWaiter>(TWaiter waiter) where TWaiter : ITreeHandleable, IProgressListener
             {
                 SubscribeListener(waiter);
-                AddWaiter(waiter);
+                HookupNewWaiter(waiter);
             }
 #else
             [MethodImpl(InlineOption)]
-            private void HookupNewPromiseWithProgress<TPromiseRef>(TPromiseRef newPromise) where TPromiseRef : PromiseRef, IProgressListener
+            private void HookupNewWaiterWithProgress<TWaiter>(TWaiter waiter) where TWaiter : ITreeHandleable, IProgressListener
             {
-                HookupNewPromise(newPromise);
-            }
-
-            [MethodImpl(InlineOption)]
-            private void AddWaiterWithProgress<TWaiter>(TWaiter waiter) where TWaiter : ITreeHandleable, IProgressListener
-            {
-                AddWaiter(waiter);
+                HookupNewWaiter(waiter);
             }
 #endif
 
@@ -261,11 +274,11 @@ namespace Proto.Promises
                 return newPromise;
             }
 
-            public abstract void Handle(); // ITreeHandleable.Handle()
+            public abstract void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack); // ITreeHandleable.Handle()
 
             internal abstract PromiseRef GetDuplicate(short promiseId);
 
-            internal abstract void AddWaiter(ITreeHandleable waiter);
+            internal abstract void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack);
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
@@ -325,7 +338,7 @@ namespace Proto.Promises
                     return newPromise;
                 }
 
-                internal override void AddWaiter(ITreeHandleable waiter)
+                internal override void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
                     if (State == Promise.State.Pending)
@@ -340,24 +353,24 @@ namespace Proto.Promises
                         }
                         _branchLocker.Exit();
                     }
-                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
+                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionStack);
                     MaybeDispose();
                 }
 
-                public override void Handle()
+                public override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     Promise.State state = valueContainer.GetState();
                     State = state;
 
-                    HandleBranches(valueContainer);
+                    HandleBranches(valueContainer, ref executionStack);
                     HandleProgressListeners(state);
 
                     MaybeDispose();
                 }
 
-                private void HandleBranches(IValueContainer valueContainer)
+                private void HandleBranches(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     _branchLocker.Enter();
                     var branches = _nextBranches;
@@ -365,7 +378,7 @@ namespace Proto.Promises
                     _branchLocker.Exit();
                     while (branches.IsNotEmpty)
                     {
-                        branches.Pop().MakeReady(this, valueContainer);
+                        branches.Pop().MakeReady(this, valueContainer, ref executionStack);
                     }
 
                     //// TODO: keeping this code around for when background threaded tasks are implemented.
@@ -383,34 +396,34 @@ namespace Proto.Promises
 #endif
             internal abstract partial class PromiseBranch : PromiseSingleAwait
             {
-                internal sealed override void AddWaiter(ITreeHandleable waiter)
+                internal sealed override void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
-                    // When this is completed, _state is set then _next is swapped, so we must reverse that process here.
+                    // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
                     _waiter = waiter;
-                    Thread.MemoryBarrier(); // Make sure _state is read after _waiter is written.
+                    Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
                     if (State != Promise.State.Pending)
                     {
                         // Exchange and check for null to handle race condition with HandleWaiter on another thread.
                         waiter = Interlocked.Exchange(ref _waiter, null);
                         if (waiter != null)
                         {
-                            waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
+                            waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionStack);
                         }
                     }
                     MaybeDispose();
                 }
 
-                internal void HandleWaiter(IValueContainer valueContainer)
+                internal void HandleWaiter(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ITreeHandleable waiter = Interlocked.Exchange(ref _waiter, null);
                     if (waiter != null)
                     {
-                        waiter.MakeReady(this, valueContainer);
+                        waiter.MakeReady(this, valueContainer, ref executionStack);
                     }
                 }
 
-                public override void Handle()
+                public override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
@@ -420,63 +433,63 @@ namespace Proto.Promises
                     {
                         // valueContainer is released deeper in the call stack, so we only release it in this method if an exception is thrown.
                         // (This is in case it is canceled, the valueContainer will be released from the cancelation.)
-                        Execute(valueContainer, ref invokingRejected);
+                        Execute(ref executionStack, valueContainer, ref invokingRejected);
                     }
                     catch (RethrowException e)
                     {
                         if (invokingRejected || (e is ForcedRethrowException && valueContainer.GetState() != Promise.State.Resolved))
                         {
-                            RejectOrCancelInternal(valueContainer);
+                            RejectOrCancelInternal(valueContainer, ref executionStack);
                             valueContainer.Release(); // Must release since RejectOrCancelInternal adds an extra retain.
                         }
                         else
                         {
                             valueContainer.ReleaseAndMaybeAddToUnhandledStack(true);
-                            RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this));
+                            RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this), ref executionStack);
                         }
                     }
                     catch (OperationCanceledException e)
                     {
                         valueContainer.ReleaseAndMaybeAddToUnhandledStack(!invokingRejected);
-                        RejectOrCancelInternal(CreateCancelContainer(ref e));
+                        RejectOrCancelInternal(CreateCancelContainer(ref e), ref executionStack);
                     }
                     catch (Exception e)
                     {
                         valueContainer.ReleaseAndMaybeAddToUnhandledStack(!invokingRejected);
-                        RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this));
+                        RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this), ref executionStack);
                     }
                     ClearCurrentInvoker();
                 }
 
-                protected virtual void Execute(IValueContainer valueContainer, ref bool invokingRejected) { }
+                protected virtual void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected) { }
 
-                internal void ResolveInternal(IValueContainer valueContainer)
+                internal void ResolveInternal(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     State = Promise.State.Resolved;
-                    HandleWaiter(valueContainer);
+                    HandleWaiter(valueContainer, ref executionStack);
                     ResolveProgressListener();
 
                     MaybeDispose();
                 }
 
-                internal void RejectOrCancelInternal(IValueContainer valueContainer)
+                internal void RejectOrCancelInternal(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     State = valueContainer.GetState();
-                    HandleWaiter(valueContainer);
+                    HandleWaiter(valueContainer, ref executionStack);
                     CancelProgressListener();
 
                     MaybeDispose();
                 }
 
-                internal void HandleSelf(IValueContainer valueContainer)
+                internal void HandleSelf(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     Promise.State state = valueContainer.GetState();
                     State = state;
-                    HandleWaiter(valueContainer);
+                    HandleWaiter(valueContainer, ref executionStack);
                     HandleProgressListener(state);
 
                     MaybeDispose();
@@ -505,12 +518,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                public override void Handle()
+                public override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
-                    HandleSelf((IValueContainer) _valueOrPrevious);
+                    HandleSelf((IValueContainer) _valueOrPrevious, ref executionStack);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
                     owner.SuppressRejection = true;
@@ -526,39 +539,22 @@ namespace Proto.Promises
 #endif
             internal abstract partial class PromiseWaitPromise : PromiseBranch, IProgressListener
             {
-                internal void WaitFor(Promise other)
-                {
-                    ThrowIfInPool(this);
-                    ValidateReturn(other);
-                    var _ref = other._target._ref;
-                    if (_ref == null)
-                    {
-                        ResolveInternal(ResolveContainerVoid.GetOrCreate());
-                    }
-                    else
-                    {
-                        _ref.MarkAwaited(other._target._id);
-                        _valueOrPrevious = _ref;
-                        SubscribeProgressToOther(_ref);
-                        _ref.AddWaiter(this);
-                    }
-                }
-
-                internal void WaitFor<T>(Promise<T> other)
+                [MethodImpl(InlineOption)]
+                internal void WaitFor<T>(Promise<T> other, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
                     ValidateReturn(other);
                     var _ref = other._ref;
                     if (_ref == null)
                     {
-                        ResolveInternal(ResolveContainer<T>.GetOrCreate(other._result, 0));
+                        ResolveInternal(CreateResolveContainer(other.Result, 0), ref executionStack);
                     }
                     else
                     {
-                        _ref.MarkAwaited(other._id);
+                        _ref.MarkAwaited(other.Id);
                         _valueOrPrevious = _ref;
                         SubscribeProgressToOther(_ref);
-                        _ref.AddWaiter(this);
+                        _ref.AddWaiter(this, ref executionStack);
                     }
                 }
 
@@ -570,31 +566,33 @@ namespace Proto.Promises
 #endif
             internal abstract partial class AsyncPromiseBase : PromiseSingleAwait
             {
-                internal sealed override void AddWaiter(ITreeHandleable waiter)
+                internal sealed override void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
-                    // When this is completed, _state is set then _next is swapped, so we must reverse that process here.
+                    // When this is completed, State is set then _next is swapped, so we must reverse that process here.
                     _next = waiter;
-                    Thread.MemoryBarrier(); // Make sure _state is read after _next is written.
+                    Thread.MemoryBarrier(); // Make sure State is read after _next is written.
                     if (State != Promise.State.Pending)
                     {
                         // Exchange and check for null to handle race condition with HandleWaiter on another thread.
                         waiter = Interlocked.Exchange(ref _next, null);
                         if (waiter != null)
                         {
-                            waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious);
+                            waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionStack);
                         }
                     }
                     MaybeDispose();
                 }
 
-                private void HandleWaiter(IValueContainer valueContainer)
+                private ValueLinkedStack<ITreeHandleable> HandleWaiter(IValueContainer valueContainer)
                 {
+                    ValueLinkedStack<ITreeHandleable> executionStack = new ValueLinkedStack<ITreeHandleable>();
                     ITreeHandleable waiter = Interlocked.Exchange(ref _next, null);
                     if (waiter != null)
                     {
-                        waiter.MakeReady(this, valueContainer);
+                        waiter.MakeReady(this, valueContainer, ref executionStack);
                     }
+                    return executionStack;
                 }
 
                 private void ResolveInternal(IValueContainer valueContainer)
@@ -602,10 +600,12 @@ namespace Proto.Promises
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     State = Promise.State.Resolved;
-                    HandleWaiter(valueContainer);
+                    ValueLinkedStack<ITreeHandleable> executionStack = HandleWaiter(valueContainer);
                     ResolveProgressListener();
 
                     MaybeDispose();
+
+                    ExecuteHandlers(executionStack);
                 }
 
                 protected void RejectOrCancelInternal(IValueContainer valueContainer)
@@ -613,10 +613,12 @@ namespace Proto.Promises
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     State = valueContainer.GetState();
-                    HandleWaiter(valueContainer);
+                    ValueLinkedStack<ITreeHandleable> executionStack = HandleWaiter(valueContainer);
                     CancelProgressListener();
 
                     MaybeDispose();
+
+                    ExecuteHandlers(executionStack);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -651,7 +653,7 @@ namespace Proto.Promises
                     RejectOrCancelInternal(CreateCancelContainer(ref reason));
                 }
 
-                public sealed override void Handle() { throw new System.InvalidOperationException(); }
+                public sealed override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack) { throw new System.InvalidOperationException(); }
             }
 
             // IDelegate to reduce the amount of classes I would have to write (Composition Over Inheritance).
@@ -664,16 +666,16 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseResolve<TResolver> : PromiseBranch
-                where TResolver : IDelegateResolve
+            private sealed partial class PromiseResolve<TArg, TResult, TResolver> : PromiseBranch
+                where TResolver : IDelegate<TArg, TResult>
             {
                 private PromiseResolve() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolve<TResolver> GetOrCreate(TResolver resolver)
+                internal static PromiseResolve<TArg, TResult, TResolver> GetOrCreate(TResolver resolver)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolve<TResolver>>()
-                        ?? new PromiseResolve<TResolver>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolve<TArg, TResult, TResolver>>()
+                        ?? new PromiseResolve<TArg, TResult, TResolver>();
                     promise.Reset();
                     promise._resolver = resolver;
                     return promise;
@@ -685,35 +687,37 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     var resolveCallback = _resolver;
                     _resolver = default(TResolver);
                     if (valueContainer.GetState() == Promise.State.Resolved)
                     {
-                        resolveCallback.InvokeResolver(valueContainer, this);
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
+                        //resolveCallback.InvokeResolver(valueContainer, this, ref executionStack);
+                        TArg arg = valueContainer.GetValue<TArg>();
+                        TResult result = resolveCallback.Invoke(arg);
                         valueContainer.Release();
+                        ResolveInternal(CreateResolveContainer(result, 0), ref executionStack);
+                        return;
                     }
+                    RejectOrCancelInternal(valueContainer, ref executionStack);
+                    valueContainer.Release();
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseResolvePromise<TResolver> : PromiseWaitPromise
-                where TResolver : IDelegateResolvePromise
+            private sealed partial class PromiseResolvePromise<TArg, TResult, TResolver> : PromiseWaitPromise
+                where TResolver : IDelegate<TArg, Promise<TResult>>
             {
                 private PromiseResolvePromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver)
+                internal static PromiseResolvePromise<TArg, TResult, TResolver> GetOrCreate(TResolver resolver)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolvePromise<TResolver>>()
-                        ?? new PromiseResolvePromise<TResolver>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolvePromise<TArg, TResult, TResolver>>()
+                        ?? new PromiseResolvePromise<TArg, TResult, TResolver>();
                     promise.Reset();
                     promise._resolver = resolver;
                     return promise;
@@ -725,12 +729,12 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(valueContainer);
+                        HandleSelf(valueContainer, ref executionStack);
                         return;
                     }
 
@@ -738,30 +742,32 @@ namespace Proto.Promises
                     _resolver = default(TResolver);
                     if (valueContainer.GetState() == Promise.State.Resolved)
                     {
-                        resolveCallback.InvokeResolver(valueContainer, this);
-                    }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
+                        //resolveCallback.InvokeResolver(valueContainer, this, ref executionStack);
+                        TArg arg = valueContainer.GetValue<TArg>();
+                        Promise<TResult> result = resolveCallback.Invoke(arg);
+                        WaitFor(result, ref executionStack);
                         valueContainer.Release();
+                        return;
                     }
+                    RejectOrCancelInternal(valueContainer, ref executionStack);
+                    valueContainer.Release();
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseResolveReject<TResolver, TRejecter> : PromiseBranch
-                where TResolver : IDelegateResolve
-                where TRejecter : IDelegateReject
+            private sealed partial class PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseBranch
+                where TResolver : IDelegate<TArgResolve, TResult>
+                where TRejecter : IDelegate<TArgReject, TResult>
             {
                 private PromiseResolveReject() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
+                internal static PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolveReject<TResolver, TRejecter>>()
-                        ?? new PromiseResolveReject<TResolver, TRejecter>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter>>()
+                        ?? new PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -774,7 +780,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     var resolveCallback = _resolver;
                     _resolver = default(TResolver);
@@ -783,35 +789,45 @@ namespace Proto.Promises
                     Promise.State state = valueContainer.GetState();
                     if (state == Promise.State.Resolved)
                     {
-                        resolveCallback.InvokeResolver(valueContainer, this);
+                        //resolveCallback.InvokeResolver(valueContainer, this, ref executionStack);
+                        TArgResolve arg = valueContainer.GetValue<TArgResolve>();
+                        TResult result = resolveCallback.Invoke(arg);
+                        valueContainer.Release();
+                        ResolveInternal(CreateResolveContainer(result, 0), ref executionStack);
+                        return;
                     }
-                    else if (state == Promise.State.Rejected)
+                    if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
-                        rejectCallback.InvokeRejecter(valueContainer, this);
+                        //rejectCallback.InvokeRejecter(valueContainer, this, ref executionStack);
+                        TArgReject arg;
+                        if (valueContainer.TryGetValue(out arg))
+                        {
+                            TResult result = rejectCallback.Invoke(arg);
+                            valueContainer.Release();
+                            ResolveInternal(CreateResolveContainer(result, 0), ref executionStack);
+                            return;
+                        }
                     }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                        valueContainer.Release();
-                    }
+                    RejectOrCancelInternal(valueContainer, ref executionStack);
+                    valueContainer.Release();
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
-                where TResolver : IDelegateResolvePromise
-                where TRejecter : IDelegateRejectPromise
+            private sealed partial class PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseWaitPromise
+                where TResolver : IDelegate<TArgResolve, Promise<TResult>>
+                where TRejecter : IDelegate<TArgReject, Promise<TResult>>
             {
                 private PromiseResolveRejectPromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
+                internal static PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolveRejectPromise<TResolver, TRejecter>>()
-                        ?? new PromiseResolveRejectPromise<TResolver, TRejecter>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>>()
+                        ?? new PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -824,12 +840,12 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(valueContainer);
+                        HandleSelf(valueContainer, ref executionStack);
                         return;
                     }
 
@@ -840,18 +856,28 @@ namespace Proto.Promises
                     Promise.State state = valueContainer.GetState();
                     if (state == Promise.State.Resolved)
                     {
-                        resolveCallback.InvokeResolver(valueContainer, this);
+                        //resolveCallback.InvokeResolver(valueContainer, this, ref executionStack);
+                        TArgResolve arg = valueContainer.GetValue<TArgResolve>();
+                        Promise<TResult> result = resolveCallback.Invoke(arg);
+                        WaitFor(result, ref executionStack);
+                        valueContainer.Release();
+                        return;
                     }
-                    else if (state == Promise.State.Rejected)
+                    if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
-                        rejectCallback.InvokeRejecter(valueContainer, this);
+                        //rejectCallback.InvokeRejecter(valueContainer, this, ref executionStack);
+                        TArgReject arg;
+                        if (valueContainer.TryGetValue(out arg))
+                        {
+                            Promise<TResult> result = rejectCallback.Invoke(arg);
+                            WaitFor(result, ref executionStack);
+                            valueContainer.Release();
+                            return;
+                        }
                     }
-                    else
-                    {
-                        RejectOrCancelInternal(valueContainer);
-                        valueContainer.Release();
-                    }
+                    RejectOrCancelInternal(valueContainer, ref executionStack);
+                    valueContainer.Release();
                 }
             }
 
@@ -879,11 +905,11 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     var callback = _continuer;
                     _continuer = default(TContinuer);
-                    callback.Invoke(valueContainer, this);
+                    callback.Invoke(valueContainer, this, ref executionStack);
                 }
             }
 
@@ -911,18 +937,18 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     if (_continuer.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(valueContainer);
+                        HandleSelf(valueContainer, ref executionStack);
                         return;
                     }
 
                     var callback = _continuer;
                     _continuer = default(TContinuer);
-                    callback.Invoke(valueContainer, this);
+                    callback.Invoke(valueContainer, this, ref executionStack);
                 }
             }
 
@@ -950,12 +976,12 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     var callback = _finalizer;
                     _finalizer = default(TFinalizer);
                     callback.Invoke(valueContainer);
-                    HandleSelf(valueContainer);
+                    HandleSelf(valueContainer, ref executionStack);
                 }
             }
 
@@ -983,14 +1009,14 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                public override void Handle()
+                public override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
 
                     if (valueContainer.GetState() != Promise.State.Canceled)
                     {
-                        HandleSelf(valueContainer);
+                        HandleSelf(valueContainer, ref executionStack);
                         return;
                     }
 
@@ -1007,7 +1033,7 @@ namespace Proto.Promises
                     }
                     ClearCurrentInvoker();
 
-                    HandleSelf(valueContainer);
+                    HandleSelf(valueContainer, ref executionStack);
                 }
             }
 
@@ -1048,7 +1074,7 @@ namespace Proto.Promises
                 internal static PromisePassThrough GetOrCreate(Promise owner, int index)
                 {
                     // owner._ref is checked for nullity before passing into this.
-                    owner._target._ref.MarkAwaited(owner._target._id);
+                    owner._target._ref.MarkAwaited(owner._target.Id);
                     var passThrough = ObjectPool<PromisePassThrough>.TryTake<PromisePassThrough>()
                         ?? new PromisePassThrough();
                     passThrough._owner = owner._target._ref;
@@ -1067,29 +1093,31 @@ namespace Proto.Promises
                     _target = target;
                     // Unfortunately, we have to eagerly subscribe progress. Lazy algorithm would be much more expensive with thread safety, requiring allocations. (see ValidateReturn)
                     // But it's not so bad, because it doesn't allocate any memory (just uses CPU cycles to set it up).
-                    _owner.AddWaiterWithProgress(this);
+                    _owner.HookupNewWaiterWithProgress(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
                     _owner = null;
                     WaitWhileProgressIsBusy();
                     if (_target.Handle(owner, valueContainer, this, _smallFields._index))
                     {
-                        AddToHandleQueueFront(_target);
+                        executionStack.Push(_target);
+                        //AddToHandleQueueFront(_target);
                     }
                     Release();
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
                     _owner = null;
                     WaitWhileProgressIsBusy();
                     if (_target.Handle(owner, valueContainer, this, _smallFields._index))
                     {
-                        AddToHandleQueueBack(_target);
+                        executionStack.Push(_target);
+                        //AddToHandleQueueBack(_target);
                     }
                     Release();
                 }
@@ -1126,7 +1154,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
+                void ITreeHandleable.Handle(ref ValueLinkedStack<ITreeHandleable> executionStack) { throw new System.InvalidOperationException(); }
             } // PromisePassThrough
 
             private partial struct IdRetain
@@ -1294,7 +1322,7 @@ namespace Proto.Promises
             {
                 if (promise._target._ref != null)
                 {
-                    promise._target._ref.MarkAwaitedAndMaybeDispose(promise._target._id, suppressRejection);
+                    promise._target._ref.MarkAwaitedAndMaybeDispose(promise._target.Id, suppressRejection);
                 }
             }
         } // PromiseRef
@@ -1328,7 +1356,7 @@ namespace Proto.Promises
                 passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index));
                 return 1;
             }
-            value = promise._result;
+            value = promise.Result;
             return 0;
         }
 
@@ -1341,7 +1369,7 @@ namespace Proto.Promises
             }
             // TODO: store depthAndProgress in Promise structs.
             ++completedProgress;
-            value = promise._result;
+            value = promise.Result;
             return 0;
         }
 
@@ -1355,12 +1383,16 @@ namespace Proto.Promises
             return deferred.Promise;
 #else
             // Make a promise on the stack for efficiency.
-            return new Promise(null, ValidIdFromApi);
+            return new Promise(null, ValidIdFromApi, 0);
 #endif
         }
 
         [MethodImpl(InlineOption)]
-        internal static Promise<T> CreateResolved<T>(ref T value)
+        internal static Promise<T> CreateResolved<T>(
+#if CSHARP_7_3_OR_NEWER
+            in
+#endif
+            T value)
         {
 #if PROMISE_DEBUG
             // Make a promise on the heap to capture causality trace and help with debugging in the finalizer.
@@ -1369,7 +1401,7 @@ namespace Proto.Promises
             return deferred.Promise;
 #else
             // Make a promise on the stack for efficiency.
-            return new Promise<T>(null, ValidIdFromApi, ref value);
+            return new Promise<T>(null, ValidIdFromApi, 0, value);
 #endif
         }
     } // Internal

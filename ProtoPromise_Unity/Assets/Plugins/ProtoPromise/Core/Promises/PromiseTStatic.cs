@@ -20,20 +20,20 @@ namespace Proto.Promises
             if (promise1._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
-                T value = promise1._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise1.Result;
+                return Internal.CreateResolved(value);
             }
             if (promise2._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
-                T value = promise2._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise2.Result;
+                return Internal.CreateResolved(value);
             }
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 2);
-            return new Promise<T>(promise, promise.Id);
+            return new Promise<T>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -51,29 +51,29 @@ namespace Proto.Promises
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
-                T value = promise1._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise1.Result;
+                return Internal.CreateResolved(value);
             }
             if (promise2._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
-                T value = promise2._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise2.Result;
+                return Internal.CreateResolved(value);
             }
             if (promise3._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
-                T value = promise3._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise3.Result;
+                return Internal.CreateResolved(value);
             }
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 3);
-            return new Promise<T>(promise, promise.Id);
+            return new Promise<T>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -93,32 +93,32 @@ namespace Proto.Promises
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, false);
-                T value = promise1._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise1.Result;
+                return Internal.CreateResolved(value);
             }
             if (promise2._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, false);
-                T value = promise2._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise2.Result;
+                return Internal.CreateResolved(value);
             }
             if (promise3._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, false);
-                T value = promise3._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise3.Result;
+                return Internal.CreateResolved(value);
             }
             if (promise4._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
-                T value = promise4._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise4.Result;
+                return Internal.CreateResolved(value);
             }
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
@@ -126,7 +126,7 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 4);
-            return new Promise<T>(promise, promise.Id);
+            return new Promise<T>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -181,13 +181,13 @@ namespace Proto.Promises
                     {
                         passthrough.Release();
                     }
-                    return Internal.CreateResolved(ref value);
+                    return Internal.CreateResolved(value);
                 }
                 ++pendingCount;
             } while (promises.MoveNext());
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, pendingCount);
-            return new Promise<T>(promise, promise.Id);
+            return new Promise<T>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -203,20 +203,20 @@ namespace Proto.Promises
             if (promise1._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
-                T value = promise1._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise1.Result;
+                return Internal.CreateResolved(value);
             }
             if (promise2._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
-                T value = promise2._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise2.Result;
+                return Internal.CreateResolved(value);
             }
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 2);
-            return new Promise<T>(promise, promise.Id);
+            return new Promise<T>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -234,29 +234,29 @@ namespace Proto.Promises
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
-                T value = promise1._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise1.Result;
+                return Internal.CreateResolved(value);
             }
             if (promise2._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
-                T value = promise2._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise2.Result;
+                return Internal.CreateResolved(value);
             }
             if (promise3._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
-                T value = promise3._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise3.Result;
+                return Internal.CreateResolved(value);
             }
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 3);
-            return new Promise<T>(promise, promise.Id);
+            return new Promise<T>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -276,32 +276,32 @@ namespace Proto.Promises
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, true);
-                T value = promise1._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise1.Result;
+                return Internal.CreateResolved(value);
             }
             if (promise2._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, true);
-                T value = promise2._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise2.Result;
+                return Internal.CreateResolved(value);
             }
             if (promise3._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, true);
-                T value = promise3._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise3.Result;
+                return Internal.CreateResolved(value);
             }
             if (promise4._ref == null)
             {
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
                 Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
-                T value = promise4._result;
-                return Internal.CreateResolved(ref value);
+                T value = promise4.Result;
+                return Internal.CreateResolved(value);
             }
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
@@ -309,7 +309,7 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 4);
-            return new Promise<T>(promise, promise.Id);
+            return new Promise<T>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -364,13 +364,13 @@ namespace Proto.Promises
                     {
                         passthrough.Release();
                     }
-                    return Internal.CreateResolved(ref value);
+                    return Internal.CreateResolved(value);
                 }
                 ++pendingCount;
             } while (promises.MoveNext());
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, pendingCount);
-            return new Promise<T>(promise, promise.Id);
+            return new Promise<T>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -413,14 +413,14 @@ namespace Proto.Promises
             }
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref valueContainer);
+                return Internal.CreateResolved(valueContainer);
             }
 
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
             {
                 target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, 2, completedProgress);
-            return new Promise<IList<T>>(promise, promise.Id);
+            return new Promise<IList<T>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -467,14 +467,14 @@ namespace Proto.Promises
             }
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref valueContainer);
+                return Internal.CreateResolved(valueContainer);
             }
 
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
             {
                 target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, 3, completedProgress);
-            return new Promise<IList<T>>(promise, promise.Id);
+            return new Promise<IList<T>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -525,14 +525,14 @@ namespace Proto.Promises
             }
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref valueContainer);
+                return Internal.CreateResolved(valueContainer);
             }
 
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
             {
                 target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, 4, completedProgress);
-            return new Promise<IList<T>>(promise, promise.Id);
+            return new Promise<IList<T>>(promise, promise.Id, promise.Depth);
         }
 
         // TODO: optional `IList<T> valueContainer = null` parameter
@@ -604,14 +604,14 @@ namespace Proto.Promises
             }
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref valueContainer);
+                return Internal.CreateResolved(valueContainer);
             }
 
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
             {
                 target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, totalCount, completedProgress);
-            return new Promise<IList<T>>(promise, promise.Id);
+            return new Promise<IList<T>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -676,7 +676,7 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Resolved(T value)
         {
-            return Internal.CreateResolved(ref value);
+            return Internal.CreateResolved(value);
         }
 
         /// <summary>

@@ -70,7 +70,7 @@ namespace Proto.Promises
             {
                 // TODO: handle when synchronous callbacks are implemented
                 InterlockedRetainInternal(promiseId);
-                AddWaiter(AwaiterRef.GetOrCreate(continuation));
+                HookupNewWaiter(AwaiterRef.GetOrCreate(continuation));
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -104,7 +104,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.Handle()
+                void ITreeHandleable.Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
                     var callback = _continuation;
@@ -127,16 +127,18 @@ namespace Proto.Promises
 #endif
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
-                    AddToHandleQueueFront(this);
+                    executionStack.Push(this);
+                    //AddToHandleQueueFront(this);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
-                    AddToHandleQueueBack(this);
+                    executionStack.Push(this);
+                    //AddToHandleQueueBack(this);
                 }
             }
         }
@@ -166,7 +168,7 @@ namespace Proto.Promises
                 // Duplicate force gets a single use promise (prevents retain overflows from a preserved promise).
                 _promise = promise.Duplicate();
 #if PROMISE_DEBUG
-                _idContainer = new IdContainer() { _id = _promise._id };
+                _idContainer = new IdContainer() { _id = _promise.Id };
 #endif
             }
 
@@ -186,7 +188,7 @@ namespace Proto.Promises
                 ValidateGetResult(1);
                 if (_promise._ref != null)
                 {
-                    _promise._ref.GetResultVoid(_promise._id);
+                    _promise._ref.GetResultVoid(_promise.Id);
                 }
             }
 
@@ -195,8 +197,8 @@ namespace Proto.Promises
             {
                 ValidateGetResult(1);
                 return _promise._ref == null
-                    ? _promise._result
-                    : _promise._ref.GetResult<T>(_promise._id);
+                    ? _promise.Result
+                    : _promise._ref.GetResult<T>(_promise.Id);
             }
 
             [MethodImpl(InlineOption)]
@@ -209,7 +211,7 @@ namespace Proto.Promises
                     continuation();
                     return;
                 }
-                _promise._ref.OnCompleted(continuation, _promise._id);
+                _promise._ref.OnCompleted(continuation, _promise.Id);
             }
 
             [MethodImpl(InlineOption)]
@@ -224,7 +226,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             partial void ValidateOperation(int skipFrames)
             {
-                bool isValid = _idContainer != null && _idContainer._id == _promise._id;
+                bool isValid = _idContainer != null && _idContainer._id == _promise.Id;
                 MaybeThrow(isValid, skipFrames + 1);
             }
 
@@ -232,7 +234,7 @@ namespace Proto.Promises
             {
                 // GetResult may only be called once, set id to invalid for any future use.
                 bool isValid = _idContainer != null
-                    && Interlocked.CompareExchange(ref _idContainer._id, int.MaxValue, _promise._id) == _promise._id;
+                    && Interlocked.CompareExchange(ref _idContainer._id, int.MaxValue, _promise.Id) == _promise.Id;
                 MaybeThrow(isValid, skipFrames + 1);
             }
 

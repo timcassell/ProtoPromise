@@ -60,8 +60,8 @@ namespace Proto.Promises
             ValidateOperation(1);
             if (_target._ref != null)
             {
-                var newPromise = _target._ref.GetPreserved(_target._id);
-                return new Promise(newPromise, newPromise.Id);
+                var newPromise = _target._ref.GetPreserved(_target.Id);
+                return new Promise(newPromise, newPromise.Id, newPromise.Depth);
             }
             return this;
         }
@@ -87,8 +87,8 @@ namespace Proto.Promises
             ValidateOperation(1);
             if (_target._ref != null)
             {
-                var newPromise = _target._ref.GetDuplicate(_target._id);
-                return new Promise(newPromise, newPromise.Id);
+                var newPromise = _target._ref.GetDuplicate(_target.Id);
+                return new Promise(newPromise, newPromise.Id, newPromise.Depth);
             }
             return this;
         }
@@ -116,7 +116,7 @@ namespace Proto.Promises
 #else
             ValidateOperation(1);
 
-            return Internal.PromiseRef.CallbackHelper.AddProgress(this, progressListener, cancelationToken);
+            return Internal.PromiseRef.CallbackHelper.AddProgress(_target, progressListener, cancelationToken);
 #endif
         }
 
@@ -152,7 +152,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
-            return Internal.PromiseRef.CallbackHelper.AddCancel(this, new Internal.PromiseRef.DelegateCancel(onCanceled), cancelationToken);
+            return Internal.PromiseRef.CallbackHelper.AddCancel(_target, new Internal.PromiseRef.DelegateCancel(onCanceled), cancelationToken);
         }
 
         /// <summary>
@@ -166,7 +166,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            return Internal.PromiseRef.CallbackHelper.AddFinally(this, new Internal.PromiseRef.DelegateFinally(onFinally));
+            return Internal.PromiseRef.CallbackHelper.AddFinally(_target, new Internal.PromiseRef.DelegateFinally<Internal.VoidResult>(onFinally));
         }
 
         #region Resolve Callbacks
@@ -184,9 +184,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolve(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult>.AddResolve(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken);
         }
 
         /// <summary>
@@ -203,9 +201,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolve(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TResult>.AddResolve(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken);
         }
 
         /// <summary>
@@ -223,7 +219,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
 
             Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken, out newPromise);
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult>.AddResolveWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken);
             return newPromise;
         }
 
@@ -242,7 +238,7 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
 
             Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken, out newPromise);
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TResult>.AddResolveWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken);
             return newPromise;
         }
         #endregion
@@ -262,9 +258,8 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this, Internal.PromiseRef.DelegateWrapper.CreatePassthrough(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>
+                .AddResolveReject(_target, Internal.PromiseRef.DelegateWrapper.CreatePassthrough<Internal.VoidResult>(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -282,9 +277,8 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this, Internal.PromiseRef.DelegateWrapper.CreatePassthrough(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>
+                .AddResolveReject(_target, Internal.PromiseRef.DelegateWrapper.CreatePassthrough<Internal.VoidResult>(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -301,9 +295,8 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.CreatePassthrough(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.CreatePassthrough<Internal.VoidResult>(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -321,9 +314,8 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.CreatePassthrough(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.CreatePassthrough<Internal.VoidResult>(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
         #endregion
 
@@ -344,9 +336,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>
+                .AddResolveReject(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -366,9 +357,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>
+                .AddResolveReject(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -387,9 +377,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>
+                .AddResolveReject(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -409,9 +398,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>
+                .AddResolveReject(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -430,9 +418,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -452,9 +439,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -473,9 +459,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -495,9 +480,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -516,9 +500,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -538,9 +521,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -559,9 +541,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -581,9 +562,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -602,9 +582,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -624,9 +603,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -645,9 +623,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
 
         /// <summary>
@@ -667,9 +644,8 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>
+                .AddResolveRejectWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
         #endregion
 
@@ -686,9 +662,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddContinue(this, new Internal.PromiseRef.DelegateContinueVoidVoid(onContinue), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult>.AddContinue(_target, new Internal.PromiseRef.DelegateContinueVoidVoid(onContinue), cancelationToken);
         }
 
         /// <summary>
@@ -703,9 +677,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddContinue(this, new Internal.PromiseRef.DelegateContinueVoidResult<TResult>(onContinue), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TResult>.AddContinue(_target, new Internal.PromiseRef.DelegateContinueVoidResult<TResult>(onContinue), cancelationToken);
         }
 
         /// <summary>
@@ -720,9 +692,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddContinueWait(this, new Internal.PromiseRef.DelegateContinueVoidPromise(onContinue), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult>.AddContinueWait(_target, new Internal.PromiseRef.DelegateContinueVoidPromise(onContinue), cancelationToken);
         }
 
         /// <summary>
@@ -737,9 +707,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddContinueWait(this, new Internal.PromiseRef.DelegateContinueVoidPromiseT<TResult>(onContinue), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TResult>.AddContinueWait(_target, new Internal.PromiseRef.DelegateContinueVoidPromiseT<TResult>(onContinue), cancelationToken);
         }
         #endregion
 
@@ -777,7 +745,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onCanceled, "onCanceled", 1);
 
-            return Internal.PromiseRef.CallbackHelper.AddCancel(this, new Internal.PromiseRef.DelegateCaptureCancel<TCaptureCancel>(ref cancelCaptureValue, onCanceled), cancelationToken);
+            return Internal.PromiseRef.CallbackHelper.AddCancel(_target, new Internal.PromiseRef.DelegateCaptureCancel<TCaptureCancel>(ref cancelCaptureValue, onCanceled), cancelationToken);
         }
 
         /// <summary>
@@ -791,7 +759,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onFinally, "onFinally", 1);
 
-            return Internal.PromiseRef.CallbackHelper.AddFinally(this, new Internal.PromiseRef.DelegateCaptureFinally<TCaptureFinally>(ref finallyCaptureValue, onFinally));
+            return Internal.PromiseRef.CallbackHelper.AddFinally(_target, new Internal.PromiseRef.DelegateCaptureFinally<Internal.VoidResult, TCaptureFinally>(ref finallyCaptureValue, onFinally));
         }
 
         #region Resolve Callbacks
@@ -809,9 +777,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolve(this, Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult>.AddResolve(_target, Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved), cancelationToken);
         }
 
         /// <summary>
@@ -828,9 +794,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolve(this, Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TResult>.AddResolve(_target, Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved), cancelationToken);
         }
 
         /// <summary>
@@ -847,9 +811,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveWait(this, Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult>.AddResolveWait(_target, Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved), cancelationToken);
         }
 
         /// <summary>
@@ -866,9 +828,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onResolved, "onResolved", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveWait(this, Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TResult>.AddResolveWait(_target, Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved), cancelationToken);
         }
         #endregion
 
@@ -887,12 +847,10 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
-                Internal.PromiseRef.DelegateWrapper.CreatePassthrough(),
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveReject(_target,
+                Internal.PromiseRef.DelegateWrapper.CreatePassthrough<Internal.VoidResult>(),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -910,12 +868,10 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
-                Internal.PromiseRef.DelegateWrapper.CreatePassthrough(),
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveReject(_target,
+                Internal.PromiseRef.DelegateWrapper.CreatePassthrough<Internal.VoidResult>(),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -932,12 +888,10 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
-                Internal.PromiseRef.DelegateWrapper.CreatePassthrough(),
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveRejectWait(_target,
+                Internal.PromiseRef.DelegateWrapper.CreatePassthrough<Internal.VoidResult>(),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -955,12 +909,10 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
-                Internal.PromiseRef.DelegateWrapper.CreatePassthrough(),
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveRejectWait(_target,
+                Internal.PromiseRef.DelegateWrapper.CreatePassthrough<Internal.VoidResult>(),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
         #endregion
 
@@ -981,12 +933,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveReject(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1005,12 +955,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveReject(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1029,12 +977,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveReject(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1054,12 +1000,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveReject(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1079,12 +1023,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveReject(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1104,12 +1046,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveReject(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1128,12 +1068,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>.AddResolveReject(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1152,12 +1090,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>.AddResolveReject(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1176,12 +1112,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>.AddResolveReject(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1201,12 +1135,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>.AddResolveReject(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1226,12 +1158,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>.AddResolveReject(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1251,12 +1181,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveReject(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>.AddResolveReject(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1275,12 +1203,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1299,12 +1225,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1323,12 +1247,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1348,12 +1270,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1373,12 +1293,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1398,12 +1316,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1422,12 +1338,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1446,12 +1360,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1470,12 +1382,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1495,12 +1405,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1520,12 +1428,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1545,12 +1451,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1569,12 +1473,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1593,12 +1495,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1617,12 +1517,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1642,12 +1540,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1667,12 +1563,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1692,12 +1586,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1716,12 +1608,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1740,12 +1630,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1764,12 +1652,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1789,12 +1675,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1814,12 +1698,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1839,12 +1721,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1863,12 +1743,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1887,12 +1765,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1911,12 +1787,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1936,12 +1810,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1961,12 +1833,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -1986,12 +1856,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, Internal.VoidResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -2010,12 +1878,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -2034,12 +1900,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -2058,12 +1922,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -2083,12 +1945,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -2108,12 +1968,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
 
         /// <summary>
@@ -2133,12 +1991,10 @@ namespace Proto.Promises
             ValidateArgument(onResolved, "onResolved", 1);
             ValidateArgument(onRejected, "onRejected", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddResolveRejectWait(this,
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TReject, TResult>.AddResolveRejectWait(_target,
                 Internal.PromiseRef.DelegateWrapper.Create(ref resolveCaptureValue, onResolved),
                 Internal.PromiseRef.DelegateWrapper.Create(ref rejectCaptureValue, onRejected),
-                cancelationToken, out newPromise);
-            return newPromise;
+                cancelationToken);
         }
         #endregion
 
@@ -2155,9 +2011,8 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddContinue(this, new Internal.PromiseRef.DelegateContinueCaptureVoidVoid<TCapture>(ref continueCaptureValue, onContinue), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult>
+                .AddContinue(_target, new Internal.PromiseRef.DelegateContinueCaptureVoidVoid<TCapture>(ref continueCaptureValue, onContinue), cancelationToken);
         }
 
         /// <summary>
@@ -2172,9 +2027,8 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddContinue(this, new Internal.PromiseRef.DelegateContinueCaptureVoidResult<TCapture, TResult>(ref continueCaptureValue, onContinue), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TResult>
+                .AddContinue(_target, new Internal.PromiseRef.DelegateContinueCaptureVoidResult<TCapture, TResult>(ref continueCaptureValue, onContinue), cancelationToken);
         }
 
         /// <summary>
@@ -2189,9 +2043,8 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            Promise newPromise;
-            Internal.PromiseRef.CallbackHelper.AddContinueWait(this, new Internal.PromiseRef.DelegateContinueCaptureVoidPromise<TCapture>(ref continueCaptureValue, onContinue), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, Internal.VoidResult>
+                .AddContinueWait(_target, new Internal.PromiseRef.DelegateContinueCaptureVoidPromise<TCapture>(ref continueCaptureValue, onContinue), cancelationToken);
         }
 
         /// <summary>
@@ -2206,9 +2059,8 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, "onContinue", 1);
 
-            Promise<TResult> newPromise;
-            Internal.PromiseRef.CallbackHelper.AddContinueWait(this, new Internal.PromiseRef.DelegateContinueCaptureVoidPromiseT<TCapture, TResult>(ref continueCaptureValue, onContinue), cancelationToken, out newPromise);
-            return newPromise;
+            return Internal.PromiseRef.CallbackHelper<Internal.VoidResult, TResult>
+                .AddContinueWait(_target, new Internal.PromiseRef.DelegateContinueCaptureVoidPromiseT<TCapture, TResult>(ref continueCaptureValue, onContinue), cancelationToken);
         }
         #endregion
 
@@ -2261,7 +2113,7 @@ namespace Proto.Promises
         [Obsolete("Release is no longer valid, use Forget instead.", true)]
         public void Release()
         {
-            throw new InvalidOperationException("Release is no longer valid, use Preserve instead.", Internal.GetFormattedStacktrace(1));
+            throw new InvalidOperationException("Release is no longer valid, use Forget instead.", Internal.GetFormattedStacktrace(1));
         }
     }
 }

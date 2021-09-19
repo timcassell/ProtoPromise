@@ -36,7 +36,6 @@ namespace Proto.Promises.Tests
 
                 deferred.Resolve();
                 Assert.IsFalse(deferred.IsValidAndPending);
-                Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Resolved, state);
 
@@ -51,7 +50,6 @@ namespace Proto.Promises.Tests
 
                 deferred.Reject("Fail Value");
                 Assert.IsFalse(deferred.IsValidAndPending);
-                Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Rejected, state);
             }
@@ -72,7 +70,6 @@ namespace Proto.Promises.Tests
 
                 deferred.Resolve(1);
                 Assert.IsFalse(deferred.IsValidAndPending);
-                Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Resolved, state);
 
@@ -87,7 +84,6 @@ namespace Proto.Promises.Tests
 
                 deferred.Reject("Fail Value");
                 Assert.IsFalse(deferred.IsValidAndPending);
-                Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(Rejected, state);
             }
@@ -121,7 +117,6 @@ namespace Proto.Promises.Tests
                     .Forget();
 
                 deferred.Resolve();
-                Promise.Manager.HandleCompletes();
                 Assert.IsTrue(voidResolved);
                 Assert.IsFalse(voidRejected);
 
@@ -133,7 +128,6 @@ namespace Proto.Promises.Tests
                 promise
                     .Then(() => voidResolved = true, () => voidRejected = true)
                     .Forget();
-                Promise.Manager.HandleCompletes();
                 Assert.IsTrue(voidResolved);
                 Assert.IsFalse(voidRejected);
 
@@ -153,7 +147,6 @@ namespace Proto.Promises.Tests
                     .Forget();
 
                 deferred.Resolve(1);
-                Promise.Manager.HandleCompletes();
                 Assert.IsTrue(intResolved);
                 Assert.IsFalse(intRejected);
 
@@ -165,7 +158,6 @@ namespace Proto.Promises.Tests
                 promise
                     .Then(_ => intResolved = true, () => intRejected = true)
                     .Forget();
-                Promise.Manager.HandleCompletes();
                 Assert.IsTrue(intResolved);
                 Assert.IsFalse(intRejected);
 
@@ -187,7 +179,6 @@ namespace Proto.Promises.Tests
                     onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved.")
                 );
                 deferred.Resolve(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(expected, result);
 
@@ -199,7 +190,6 @@ namespace Proto.Promises.Tests
                 Assert.IsFalse(deferred.TryResolve(100));
                 Assert.Throws<InvalidOperationException>(() => deferred.Resolve(100));
 
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expected, result);
 
                 promise.Forget();
@@ -234,7 +224,6 @@ namespace Proto.Promises.Tests
                     .Forget();
 
                 deferred.Reject(RejectValue);
-                Promise.Manager.HandleCompletes();
                 Assert.IsFalse(voidResolved);
                 Assert.IsTrue(voidRejected);
 
@@ -246,7 +235,6 @@ namespace Proto.Promises.Tests
                 promise
                     .Then(() => voidResolved = true, () => voidRejected = true)
                     .Forget();
-                Promise.Manager.HandleCompletes();
                 Assert.IsFalse(voidResolved);
                 Assert.IsTrue(voidRejected);
 
@@ -266,7 +254,6 @@ namespace Proto.Promises.Tests
                     .Forget();
 
                 deferred.Reject(RejectValue);
-                Promise.Manager.HandleCompletes();
                 Assert.IsFalse(intResolved);
                 Assert.IsTrue(intRejected);
 
@@ -278,7 +265,6 @@ namespace Proto.Promises.Tests
                 promise
                     .Then(_ => intResolved = true, () => intRejected = true)
                     .Forget();
-                Promise.Manager.HandleCompletes();
                 Assert.IsFalse(intResolved);
                 Assert.IsTrue(intRejected);
 
@@ -302,7 +288,6 @@ namespace Proto.Promises.Tests
                     });
                 deferred.Reject(expected);
 
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expected, rejection);
 
                 Assert.IsFalse(deferred.TryReject("Different Fail Value"));
@@ -315,7 +300,6 @@ namespace Proto.Promises.Tests
                         rejection = failValue;
                     });
 
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expected, rejection);
 
                 promise.Forget();
@@ -338,7 +322,6 @@ namespace Proto.Promises.Tests
                     });
                 deferred.Reject(expected);
 
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expected, rejection);
 
                 Assert.IsFalse(deferred.TryReject("Different Fail Value"));
@@ -351,7 +334,6 @@ namespace Proto.Promises.Tests
                         rejection = failValue;
                     });
 
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expected, rejection);
 
                 promise.Forget();

@@ -22,12 +22,12 @@ namespace Proto.Promises
 
                 // Invoke funcs async and normalize the progress.
                 PromiseRef rootPromise = cancelationToken.CanBeCanceled
-                    ? CancelablePromiseResolvePromise<DelegateVoidPromise>.GetOrCreate(DelegateWrapper.Create(promiseFuncs.Current), cancelationToken)
-                    : (PromiseRef) PromiseResolvePromise<DelegateVoidPromise>.GetOrCreate(DelegateWrapper.Create(promiseFuncs.Current));
+                    ? CancelablePromiseResolvePromise<VoidResult, VoidResult, DelegateVoidPromise>.GetOrCreate(DelegateWrapper.Create(promiseFuncs.Current), cancelationToken)
+                    : (PromiseRef) PromiseResolvePromise<VoidResult, VoidResult, DelegateVoidPromise>.GetOrCreate(DelegateWrapper.Create(promiseFuncs.Current));
                 rootPromise.ResetDepth();
                 Interlocked.CompareExchange(ref rootPromise._valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null);
 
-                Promise promise = new Promise(rootPromise, rootPromise.Id);
+                Promise promise = new Promise(rootPromise, rootPromise.Id, rootPromise.Depth);
                 while (promiseFuncs.MoveNext())
                 {
                     promise = promise.Then(promiseFuncs.Current, cancelationToken);

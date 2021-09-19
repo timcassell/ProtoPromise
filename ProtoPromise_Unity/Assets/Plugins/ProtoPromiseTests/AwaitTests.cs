@@ -38,11 +38,9 @@ namespace Proto.Promises.Tests
             }
 
             Func();
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(continued);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
         }
 
@@ -62,11 +60,9 @@ namespace Proto.Promises.Tests
             }
 
             Func();
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(continued);
 
             deferred.Resolve(expected);
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
         }
 
@@ -85,7 +81,6 @@ namespace Proto.Promises.Tests
             Func();
             Assert.IsTrue(continued);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
         }
 
@@ -106,7 +101,6 @@ namespace Proto.Promises.Tests
             Func();
             Assert.IsTrue(continued);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
         }
 
@@ -132,11 +126,9 @@ namespace Proto.Promises.Tests
             }
 
             Func();
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(continued);
 
             deferred.Reject(rejectValue);
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
         }
 
@@ -162,11 +154,9 @@ namespace Proto.Promises.Tests
             }
 
             Func();
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(continued);
 
             deferred.Reject(rejectValue);
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
         }
 
@@ -193,7 +183,6 @@ namespace Proto.Promises.Tests
             Func();
             Assert.IsTrue(continued);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
         }
 
@@ -220,7 +209,6 @@ namespace Proto.Promises.Tests
             Func();
             Assert.IsTrue(continued);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
         }
 
@@ -247,11 +235,9 @@ namespace Proto.Promises.Tests
             }
 
             Func();
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(continued);
 
             cancelationSource.Cancel(cancelValue);
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
 
             cancelationSource.Dispose();
@@ -280,11 +266,9 @@ namespace Proto.Promises.Tests
             }
 
             Func();
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(continued);
 
             cancelationSource.Cancel(cancelValue);
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
 
             cancelationSource.Dispose();
@@ -313,7 +297,6 @@ namespace Proto.Promises.Tests
             Func();
             Assert.IsTrue(continued);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
         }
 
@@ -340,7 +323,6 @@ namespace Proto.Promises.Tests
             Func();
             Assert.IsTrue(continued);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(continued);
         }
 
@@ -361,11 +343,9 @@ namespace Proto.Promises.Tests
             Func();
             Func();
             promise.Forget();
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, continuedCount);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, continuedCount);
         }
 
@@ -388,11 +368,9 @@ namespace Proto.Promises.Tests
             Func();
             Func();
             promise.Forget();
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, continuedCount);
 
             deferred.Resolve(expected);
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, continuedCount);
         }
 
@@ -400,7 +378,6 @@ namespace Proto.Promises.Tests
         public void DoubleAwaitAlreadyResolvedPromiseContinuesExecution()
         {
             var promise = Promise.Resolved().Preserve();
-            Promise.Manager.HandleCompletes();
             int continuedCount = 0;
 
             async void Func()
@@ -415,7 +392,6 @@ namespace Proto.Promises.Tests
             promise.Forget();
             Assert.AreEqual(2, continuedCount);
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, continuedCount);
         }
 
@@ -424,7 +400,6 @@ namespace Proto.Promises.Tests
         {
             int expected = 50;
             var promise = Promise.Resolved(expected).Preserve();
-            Promise.Manager.HandleCompletes();
             int continuedCount = 0;
 
             async void Func()
@@ -440,7 +415,6 @@ namespace Proto.Promises.Tests
             promise.Forget();
             Assert.AreEqual(2, continuedCount);
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, continuedCount);
         }
 
@@ -469,11 +443,9 @@ namespace Proto.Promises.Tests
             Func();
             Func();
             promise.Forget();
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, continuedCount);
 
             deferred.Reject(rejectValue);
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, continuedCount);
         }
 
@@ -502,11 +474,9 @@ namespace Proto.Promises.Tests
             Func();
             Func();
             promise.Forget();
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, continuedCount);
 
             deferred.Reject(rejectValue);
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, continuedCount);
         }
 
@@ -515,7 +485,6 @@ namespace Proto.Promises.Tests
         {
             string rejectValue = "Reject";
             var promise = Promise.Rejected(rejectValue).Preserve();
-            Promise.Manager.HandleCompletes();
             int continuedCount = 0;
 
             async void Func()
@@ -537,7 +506,6 @@ namespace Proto.Promises.Tests
             promise.Forget();
             Assert.AreEqual(2, continuedCount);
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, continuedCount);
         }
 
@@ -546,7 +514,6 @@ namespace Proto.Promises.Tests
         {
             string rejectValue = "Reject";
             var promise = Promise<int>.Rejected(rejectValue).Preserve();
-            Promise.Manager.HandleCompletes();
             int continuedCount = 0;
 
             async void Func()
@@ -568,7 +535,6 @@ namespace Proto.Promises.Tests
             promise.Forget();
             Assert.AreEqual(2, continuedCount);
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, continuedCount);
         }
 
@@ -598,11 +564,9 @@ namespace Proto.Promises.Tests
             Func();
             Func();
             promise.Forget();
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, continuedCount);
 
             cancelationSource.Cancel(cancelValue);
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, continuedCount);
 
             cancelationSource.Dispose();
@@ -634,11 +598,9 @@ namespace Proto.Promises.Tests
             Func();
             Func();
             promise.Forget();
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(0, continuedCount);
 
             cancelationSource.Cancel(cancelValue);
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, continuedCount);
 
             cancelationSource.Dispose();
@@ -649,7 +611,6 @@ namespace Proto.Promises.Tests
         {
             string cancelValue = "Cancel";
             var promise = Promise.Canceled(cancelValue).Preserve();
-            Promise.Manager.HandleCompletes();
             int continuedCount = 0;
 
             async void Func()
@@ -671,7 +632,6 @@ namespace Proto.Promises.Tests
             promise.Forget();
             Assert.AreEqual(2, continuedCount);
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, continuedCount);
         }
 
@@ -680,7 +640,6 @@ namespace Proto.Promises.Tests
         {
             string cancelValue = "Cancel";
             var promise = Promise<int>.Canceled(cancelValue).Preserve();
-            Promise.Manager.HandleCompletes();
             int continuedCount = 0;
 
             async void Func()
@@ -702,7 +661,6 @@ namespace Proto.Promises.Tests
             promise.Forget();
             Assert.AreEqual(2, continuedCount);
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(2, continuedCount);
         }
     }

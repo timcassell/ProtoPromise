@@ -490,7 +490,6 @@ namespace Proto.Promises.Tests
                     }
                 );
                 deferred.Resolve(promisedValue);
-                Promise.Manager.HandleCompletes();
 
                 Assert.True(resolved);
 
@@ -512,12 +511,10 @@ namespace Proto.Promises.Tests
                     s => Assert.Fail("Promise was rejected when it should have been resolved."),
                     () => Assert.Fail("Promise was rejected when it should have been resolved.")
                 );
-                Promise.Manager.HandleCompletes();
 
                 Assert.False(resolved);
 
                 deferred.Resolve();
-                Promise.Manager.HandleCompletes();
 
                 Assert.True(resolved);
 
@@ -539,12 +536,10 @@ namespace Proto.Promises.Tests
                     s => Assert.Fail("Promise was rejected when it should have been resolved."),
                     () => Assert.Fail("Promise was rejected when it should have been resolved.")
                 );
-                Promise.Manager.HandleCompletes();
 
                 Assert.False(resolved);
 
                 deferred.Resolve(100);
-                Promise.Manager.HandleCompletes();
 
                 Assert.True(resolved);
 
@@ -567,11 +562,9 @@ namespace Proto.Promises.Tests
                     () => Assert.Fail("Promise was rejected when it should have been resolved.")
                 );
                 deferred.Resolve();
-                Promise.Manager.HandleCompletes();
 
                 Assert.IsFalse(deferred.TryResolve());
                 Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     (TestHelper.resolveVoidVoidCallbacks + TestHelper.resolveVoidConvertCallbacks +
@@ -598,11 +591,9 @@ namespace Proto.Promises.Tests
                     () => Assert.Fail("Promise was rejected when it should have been resolved.")
                 );
                 deferred.Resolve(1);
-                Promise.Manager.HandleCompletes();
 
                 Assert.IsFalse(deferred.TryResolve(1));
                 Assert.Throws<InvalidOperationException>(() => deferred.Resolve(100));
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     (TestHelper.resolveTVoidCallbacks + TestHelper.resolveTConvertCallbacks +
@@ -644,7 +635,6 @@ namespace Proto.Promises.Tests
                     }
                 );
                 deferred.Reject(rejectReason);
-                Promise.Manager.HandleCompletes();
 
                 Assert.True(errored);
             }
@@ -665,7 +655,6 @@ namespace Proto.Promises.Tests
                     }
                 );
                 deferred.Reject(rejectReason);
-                Promise.Manager.HandleCompletes();
 
                 Assert.True(errored);
             }
@@ -680,12 +669,10 @@ namespace Proto.Promises.Tests
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     reason => errored = true
                 );
-                Promise.Manager.HandleCompletes();
 
                 Assert.False(errored);
 
                 deferred.Reject("Fail value");
-                Promise.Manager.HandleCompletes();
 
                 Assert.True(errored);
             }
@@ -700,12 +687,10 @@ namespace Proto.Promises.Tests
                     () => Assert.Fail("Promise was resolved when it should have been rejected."),
                     reason => errored = true
                 );
-                Promise.Manager.HandleCompletes();
 
                 Assert.False(errored);
 
                 deferred.Reject("Fail value");
-                Promise.Manager.HandleCompletes();
 
                 Assert.True(errored);
             }
@@ -722,11 +707,9 @@ namespace Proto.Promises.Tests
                     () => ++errorCount
                 );
                 deferred.Reject("Fail value");
-                Promise.Manager.HandleCompletes();
 
                 Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     (TestHelper.rejectVoidVoidCallbacks + TestHelper.rejectVoidConvertCallbacks +
@@ -747,11 +730,9 @@ namespace Proto.Promises.Tests
                     () => ++errorCount
                 );
                 deferred.Reject("Fail value");
-                Promise.Manager.HandleCompletes();
 
                 Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     (TestHelper.rejectTVoidCallbacks + TestHelper.rejectTConvertCallbacks + TestHelper.rejectTTCallbacks +
@@ -890,7 +871,6 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCallbacks<bool, object, string>(promise, () => callback(2), s => Assert.Fail("Promise was rejected when it should have been resolved."));
 
                 deferred.Resolve();
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(3, order);
 
@@ -926,7 +906,6 @@ namespace Proto.Promises.Tests
                 TestHelper.AddCallbacks<int, bool, object, string>(promise, v => callbackT(2), s => Assert.Fail("Promise was rejected when it should have been resolved."));
 
                 deferred.Resolve(100);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(3, orderT);
 
@@ -971,7 +950,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject("Fail value");
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(3, order);
 
@@ -1016,7 +994,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject("Fail value");
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(3, orderT);
 
@@ -1072,7 +1049,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Resolve();
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     (TestHelper.resolveVoidVoidCallbacks + TestHelper.resolveVoidConvertCallbacks +
@@ -1116,7 +1092,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Resolve(100);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     (TestHelper.resolveTVoidCallbacks + TestHelper.resolveTConvertCallbacks +
@@ -1153,7 +1128,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject("Fail value");
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     (TestHelper.rejectVoidVoidCallbacks + TestHelper.rejectVoidConvertCallbacks +
@@ -1189,7 +1163,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject("Fail value");
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     (TestHelper.rejectTVoidCallbacks + TestHelper.rejectTConvertCallbacks + TestHelper.rejectTTCallbacks +
@@ -1218,7 +1191,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Resolve();
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     TestHelper.resolveVoidCallbacks * 2,
@@ -1248,7 +1220,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Resolve();
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     TestHelper.resolveVoidCallbacks * 2,
@@ -1279,7 +1250,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Resolve(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     TestHelper.resolveTCallbacks * 2,
@@ -1310,7 +1280,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Resolve(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     TestHelper.resolveTCallbacks * 2,
@@ -1338,7 +1307,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     TestHelper.rejectVoidCallbacks * 2,
@@ -1364,7 +1332,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     TestHelper.rejectVoidCallbacks * 2,
@@ -1390,7 +1357,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     TestHelper.rejectVoidCallbacks * 2,
@@ -1416,7 +1382,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     TestHelper.rejectVoidCallbacks * 2,
@@ -1442,7 +1407,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     TestHelper.rejectTCallbacks * 2,
@@ -1468,7 +1432,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     TestHelper.rejectTCallbacks * 2,
@@ -1494,7 +1457,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     TestHelper.rejectTCallbacks * 2,
@@ -1520,7 +1482,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     TestHelper.rejectTCallbacks * 2,
@@ -1543,7 +1504,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject(100);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(0, counter);
             }
@@ -1564,7 +1524,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject(100);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(0, counter);
             }
@@ -1593,7 +1552,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     (TestHelper.rejectVoidVoidCallbacks + TestHelper.rejectVoidConvertCallbacks +
@@ -1628,7 +1586,6 @@ namespace Proto.Promises.Tests
                 );
 
                 deferred.Reject(expected);
-                Promise.Manager.HandleCompletes();
 
                 Assert.AreEqual(
                     (TestHelper.rejectTVoidCallbacks + TestHelper.rejectTConvertCallbacks + TestHelper.rejectTTCallbacks +

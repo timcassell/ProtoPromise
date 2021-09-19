@@ -11,11 +11,6 @@ namespace Proto.Promises
             T Next { get; set; }
         }
 
-        internal interface IDoubleLinked<T> : ILinked<T> where T : class, ILinked<T>
-        {
-            T Previous { get; set; }
-        }
-
         internal interface IValueContainer<T>
         {
             T Value { get; }
@@ -35,9 +30,9 @@ namespace Proto.Promises
 
         internal interface ITreeHandleable : ILinked<ITreeHandleable>
         {
-            void Handle();
-            void MakeReady(PromiseRef owner, IValueContainer valueContainer);
-            void MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer);
+            void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack);
+            void MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack);
+            void MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack);
         }
 
         internal interface IRejectionToContainer

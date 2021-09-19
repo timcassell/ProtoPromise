@@ -40,7 +40,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(IValueContainer valueContainer)
                 {
-                    _callback.Invoke(new ReasonContainer(valueContainer));
+                    _callback.Invoke(new ReasonContainer(valueContainer, InvokeId));
                 }
             }
 
@@ -62,7 +62,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(IValueContainer valueContainer)
                 {
-                    _callback.Invoke(_capturedValue, new ReasonContainer(valueContainer));
+                    _callback.Invoke(_capturedValue, new ReasonContainer(valueContainer, InvokeId));
                 }
             }
 
@@ -177,7 +177,9 @@ namespace Proto.Promises
                 internal ushort _userRetains;
                 // internal and user retains are combined to know when the ref can be repooled (FieldOffset is free vs adding them together).
                 [FieldOffset(4)]
+#pragma warning disable IDE0044 // Add readonly modifier
                 private uint _totalRetains;
+#pragma warning restore IDE0044 // Add readonly modifier
                 [FieldOffset(0)]
                 private long _longValue; // For interlocked
 
@@ -518,7 +520,7 @@ namespace Proto.Promises
                     ReleaseAfterRetainInternal();
                     return didConvert = false;
                 }
-                didConvert = TryConvert(ValueContainer, out value);
+                didConvert = TryGetValue(ValueContainer, out value);
                 ReleaseAfterRetainInternal();
                 return true;
             }
@@ -618,7 +620,7 @@ namespace Proto.Promises
                         if (temp != DisposedRef.instance)
                         {
                             registration = new CancelationRegistration(this, TokenId, 0);
-                            callback.Invoke(new ReasonContainer(temp));
+                            callback.Invoke(new ReasonContainer(temp, InvokeId));
                             return true;
                         }
                         registration = default(CancelationRegistration);
@@ -650,7 +652,7 @@ namespace Proto.Promises
                         if (temp != DisposedRef.instance)
                         {
                             registration = new CancelationRegistration(this, TokenId, 0);
-                            callback.Invoke(capturedValue, new ReasonContainer(temp));
+                            callback.Invoke(capturedValue, new ReasonContainer(temp, InvokeId));
                             return true;
                         }
                         registration = default(CancelationRegistration);

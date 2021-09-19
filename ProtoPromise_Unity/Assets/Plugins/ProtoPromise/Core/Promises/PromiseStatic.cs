@@ -27,7 +27,7 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 2);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -53,7 +53,7 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 3);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 4);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -142,7 +142,7 @@ namespace Proto.Promises
             } while (promises.MoveNext());
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, pendingCount);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -219,7 +219,7 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 2);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -245,7 +245,7 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 3);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -274,7 +274,7 @@ namespace Proto.Promises
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 4);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -334,7 +334,7 @@ namespace Proto.Promises
             } while (promises.MoveNext());
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, pendingCount);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -474,7 +474,7 @@ namespace Proto.Promises
                 return Internal.CreateResolved();
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, pendingCount, 2, completedProgress);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -499,7 +499,7 @@ namespace Proto.Promises
                 return Internal.CreateResolved();
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, pendingCount, 3, completedProgress);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -526,7 +526,7 @@ namespace Proto.Promises
                 return Internal.CreateResolved();
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, pendingCount, 4, completedProgress);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -573,7 +573,7 @@ namespace Proto.Promises
                 return Internal.CreateResolved();
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, pendingCount, totalCount, completedProgress);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -660,7 +660,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -669,7 +669,7 @@ namespace Proto.Promises
                     target.value = ((Internal.ResolveContainer<T1>) feed).value;
                 }
             }, pendingCount, 2, completedProgress);
-            return new Promise<T1>(promise, promise.Id);
+            return new Promise<T1>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -690,7 +690,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -703,7 +703,7 @@ namespace Proto.Promises
                     target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
                 }
             }, pendingCount, 2, completedProgress);
-            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -726,7 +726,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -740,7 +740,7 @@ namespace Proto.Promises
                         break;
                 }
             }, pendingCount, 3, completedProgress);
-            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -763,7 +763,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -780,7 +780,7 @@ namespace Proto.Promises
                         break;
                 }
             }, pendingCount, 3, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -805,7 +805,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -822,7 +822,7 @@ namespace Proto.Promises
                         break;
                 }
             }, pendingCount, 4, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -847,7 +847,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -867,7 +867,7 @@ namespace Proto.Promises
                         break;
                 }
             }, pendingCount, 4, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -894,7 +894,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -914,7 +914,7 @@ namespace Proto.Promises
                         break;
                 }
             }, pendingCount, 5, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -941,7 +941,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -964,7 +964,7 @@ namespace Proto.Promises
                         break;
                 }
             }, pendingCount, 5, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -993,7 +993,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -1016,7 +1016,7 @@ namespace Proto.Promises
                         break;
                 }
             }, pendingCount, 6, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -1045,7 +1045,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -1071,7 +1071,7 @@ namespace Proto.Promises
                         break;
                 }
             }, pendingCount, 6, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -1102,7 +1102,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -1128,7 +1128,7 @@ namespace Proto.Promises
                         break;
                 }
             }, pendingCount, 7, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -1159,7 +1159,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -1188,7 +1188,7 @@ namespace Proto.Promises
                         break;
                 }
             }, pendingCount, 7, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -1221,7 +1221,7 @@ namespace Proto.Promises
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
             {
@@ -1250,7 +1250,7 @@ namespace Proto.Promises
                         break;
                 }
             }, pendingCount, 8, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -1343,7 +1343,7 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Resolved<T>(T value)
         {
-            return Internal.CreateResolved(ref value);
+            return Internal.CreateResolved(value);
         }
 
         /// <summary>

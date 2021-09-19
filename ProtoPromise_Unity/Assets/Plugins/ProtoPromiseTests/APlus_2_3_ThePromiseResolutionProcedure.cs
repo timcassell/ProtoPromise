@@ -100,8 +100,6 @@ namespace Proto.Promises.Tests
             resolveDeferred.Resolve();
             rejectDeferred.Reject("Fail value");
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(
                 (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
                 TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
@@ -190,8 +188,6 @@ namespace Proto.Promises.Tests
 
             resolveDeferred.Resolve(1);
             rejectDeferred.Reject("Fail value");
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
@@ -352,7 +348,6 @@ namespace Proto.Promises.Tests
                 );
 
                 resolveDeferred.Resolve();
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
@@ -417,12 +412,10 @@ namespace Proto.Promises.Tests
                 );
 
                 rejectDeferred.Reject("Fail outer");
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
                 resolveWaitDeferred.Resolve();
-                Promise.Manager.HandleCompletes();
                 expectedCompleteCount +=
                     (TestHelper.resolveVoidPromiseVoidCallbacks +
                     TestHelper.rejectVoidPromiseVoidCallbacks +
@@ -431,7 +424,6 @@ namespace Proto.Promises.Tests
 
 
                 resolveWaitDeferredInt.Resolve(1);
-                Promise.Manager.HandleCompletes();
                 expectedCompleteCount +=
                     (TestHelper.resolveVoidPromiseConvertCallbacks +
                     TestHelper.rejectVoidPromiseConvertCallbacks +
@@ -440,7 +432,6 @@ namespace Proto.Promises.Tests
 
 
                 rejectWaitDeferred.Reject("Fail inner");
-                Promise.Manager.HandleCompletes();
                 expectedCompleteCount +=
                     (TestHelper.resolveVoidPromiseVoidCallbacks +
                     TestHelper.rejectVoidPromiseVoidCallbacks +
@@ -449,7 +440,6 @@ namespace Proto.Promises.Tests
 
 
                 rejectWaitDeferredInt.Reject("Fail inner");
-                Promise.Manager.HandleCompletes();
                 expectedCompleteCount +=
                     (TestHelper.resolveVoidPromiseConvertCallbacks +
                     TestHelper.rejectVoidPromiseConvertCallbacks +
@@ -602,7 +592,6 @@ namespace Proto.Promises.Tests
                 );
 
                 resolveDeferredInt.Resolve(1);
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
@@ -679,12 +668,10 @@ namespace Proto.Promises.Tests
                 );
 
                 rejectDeferredInt.Reject("Fail outer");
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
                 resolveWaitDeferred.Resolve();
-                Promise.Manager.HandleCompletes();
                 expectedCompleteCount +=
                     (TestHelper.resolveTPromiseVoidCallbacks +
                     TestHelper.rejectTPromiseVoidCallbacks +
@@ -693,7 +680,6 @@ namespace Proto.Promises.Tests
 
 
                 resolveWaitDeferredInt.Resolve(1);
-                Promise.Manager.HandleCompletes();
                 expectedCompleteCount +=
                     (TestHelper.resolveTPromiseConvertCallbacks +
                     TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
@@ -702,7 +688,6 @@ namespace Proto.Promises.Tests
 
 
                 rejectWaitDeferred.Reject("Fail inner");
-                Promise.Manager.HandleCompletes();
                 expectedCompleteCount +=
                     (TestHelper.resolveTPromiseVoidCallbacks +
                     TestHelper.rejectTPromiseVoidCallbacks +
@@ -711,7 +696,6 @@ namespace Proto.Promises.Tests
 
 
                 rejectWaitDeferredInt.Reject("Fail inner");
-                Promise.Manager.HandleCompletes();
                 expectedCompleteCount +=
                     (TestHelper.resolveTPromiseConvertCallbacks +
                     TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
@@ -747,29 +731,24 @@ namespace Proto.Promises.Tests
                 Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
                 Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
-                TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-                {
-                    var preserved = p.Preserve();
-                    p = preserved;
-                    p.Finally(() => preserved.Forget())
-                    .Forget();
-                };
-
                 int resolveValue = 100;
                 int resolveCounter = 0;
+
+                TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                {
+                    p.Then(v =>
+                    {
+                        if (resolveValue == v)
+                        {
+                            ++resolveCounter;
+                        }
+                    }).Forget();
+                };
 
                 var resolveWaitDeferredInt = Promise.NewDeferred<int>();
                 var resolveWaitPromiseInt = resolveWaitDeferredInt.Promise.Preserve();
 
-                Func<Promise<int>, Promise<int>> promiseToPromiseConvert = p =>
-                {
-                    p.Then(v =>
-                    {
-                        Assert.AreEqual(resolveValue, v);
-                        ++resolveCounter;
-                    }).Forget();
-                    return resolveWaitPromiseInt;
-                };
+                Func<Promise<int>, Promise<int>> promiseToPromiseConvert = p => resolveWaitPromiseInt;
 
                 // Test pending -> resolved and already resolved.
                 bool firstRun = true;
@@ -829,15 +808,13 @@ namespace Proto.Promises.Tests
                     onCallbackAddedConvert: onCallbackAddedConvert
                 );
 
-                Assert.AreEqual(0, resolveCounter);
-
 
                 if (firstRun)
                 {
+                    Assert.AreEqual(0, resolveCounter);
                     resolveWaitDeferredInt.Resolve(resolveValue);
                 }
 
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(
                     (TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                     TestHelper.rejectVoidPromiseConvertCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
@@ -874,25 +851,29 @@ namespace Proto.Promises.Tests
                 Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
                 Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
+                string rejectValue = "Waited Rejection";
+                int rejectCounter = 0;
+
                 TestAction<Promise> onCallbackAdded = (ref Promise p) =>
                 {
-                    var preserved = p = p.Preserve();
-                    preserved
-                        .Catch(() => { })
-                        .Finally(() => preserved.Forget())
-                        .Forget();
+                    p.Catch((string rej) =>
+                    {
+                        if (rejectValue == rej)
+                        {
+                            ++rejectCounter;
+                        }
+                    }).Forget();
                 };
                 TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
                 {
-                    var preserved = p = p.Preserve();
-                    preserved
-                        .Catch(() => { })
-                        .Finally(() => preserved.Forget())
-                        .Forget();
+                    p.Catch((string rej) =>
+                    {
+                        if (rejectValue == rej)
+                        {
+                            ++rejectCounter;
+                        }
+                    }).Forget();
                 };
-
-                string rejectValue = "Waited Rejection";
-                int rejectCounter = 0;
 
                 var rejectWaitDeferred = Promise.NewDeferred();
                 var rejectWaitDeferredInt = Promise.NewDeferred<int>();
@@ -900,24 +881,8 @@ namespace Proto.Promises.Tests
                 var rejectWaitPromise = rejectWaitDeferred.Promise.Preserve();
                 var rejectWaitPromiseInt = rejectWaitDeferredInt.Promise.Preserve();
 
-                Func<Promise, Promise> promiseToPromise = p =>
-                {
-                    p.Catch((string rej) =>
-                    {
-                        Assert.AreEqual(rejectValue, rej);
-                        ++rejectCounter;
-                    }).Forget();
-                    return rejectWaitPromise;
-                };
-                Func<Promise<int>, Promise<int>> promiseToPromiseConvert = p =>
-                {
-                    p.Catch((string rej) =>
-                    {
-                        Assert.AreEqual(rejectValue, rej);
-                        ++rejectCounter;
-                    }).Forget();
-                    return rejectWaitPromiseInt;
-                };
+                Func<Promise, Promise> promiseToPromise = p => rejectWaitPromise;
+                Func<Promise<int>, Promise<int>> promiseToPromiseConvert = p => rejectWaitPromiseInt;
 
                 // Test pending -> rejected and already rejected.
                 bool firstRun = true;
@@ -959,16 +924,14 @@ namespace Proto.Promises.Tests
                     onCallbackAddedConvert: onCallbackAddedConvert
                 );
 
-                Assert.AreEqual(0, rejectCounter);
-
 
                 if (firstRun)
                 {
+                    Assert.AreEqual(0, rejectCounter);
                     rejectWaitDeferred.Reject(rejectValue);
                     rejectWaitDeferredInt.Reject(rejectValue);
                 }
 
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(
                     (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
                     TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
@@ -1004,25 +967,29 @@ namespace Proto.Promises.Tests
                 Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
                 Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
+                string rejectValue = "Waited Rejection";
+                int rejectCounter = 0;
+
                 TestAction<Promise> onCallbackAdded = (ref Promise p) =>
                 {
-                    var preserved = p = p.Preserve();
-                    preserved
-                        .Catch(() => { })
-                        .Finally(() => preserved.Forget())
-                        .Forget();
+                    p.Catch((string rej) =>
+                    {
+                        if (rejectValue == rej)
+                        {
+                            ++rejectCounter;
+                        }
+                    }).Forget();
                 };
                 TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
                 {
-                    var preserved = p = p.Preserve();
-                    preserved
-                        .Catch(() => { })
-                        .Finally(() => preserved.Forget())
-                        .Forget();
+                    p.Catch((string rej) =>
+                    {
+                        if (rejectValue == rej)
+                        {
+                            ++rejectCounter;
+                        }
+                    }).Forget();
                 };
-
-                string rejectValue = "Waited Rejection";
-                int rejectCounter = 0;
 
                 var rejectWaitDeferred = Promise.NewDeferred();
                 var rejectWaitDeferredInt = Promise.NewDeferred<int>();
@@ -1030,24 +997,9 @@ namespace Proto.Promises.Tests
                 var rejectWaitPromise = rejectWaitDeferred.Promise.Preserve();
                 var rejectWaitPromiseInt = rejectWaitDeferredInt.Promise.Preserve();
 
-                Func<Promise, Promise> promiseToPromise = p =>
-                {
-                    p.Catch((string rej) =>
-                    {
-                        Assert.AreEqual(rejectValue, rej);
-                        ++rejectCounter;
-                    }).Forget();
-                    return rejectWaitPromise;
-                };
-                Func<Promise<int>, Promise<int>> promiseToPromiseConvert = p =>
-                {
-                    p.Catch((string rej) =>
-                    {
-                        Assert.AreEqual(rejectValue, rej);
-                        ++rejectCounter;
-                    }).Forget();
-                    return rejectWaitPromiseInt;
-                };
+
+                Func<Promise, Promise> promiseToPromise = p => rejectWaitPromise;
+                Func<Promise<int>, Promise<int>> promiseToPromiseConvert = p => rejectWaitPromiseInt;
 
                 // Test pending -> rejected and already rejected.
                 bool firstRun = true;
@@ -1093,16 +1045,14 @@ namespace Proto.Promises.Tests
                     onCallbackAddedConvert: onCallbackAddedConvert
                 );
 
-                Assert.AreEqual(0, rejectCounter);
-
 
                 if (firstRun)
                 {
+                    Assert.AreEqual(0, rejectCounter);
                     rejectWaitDeferred.Reject(rejectValue);
                     rejectWaitDeferredInt.Reject(rejectValue);
                 }
 
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(
                     (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                     TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
@@ -1172,8 +1122,6 @@ namespace Proto.Promises.Tests
             resolveDeferred.Resolve();
             rejectDeferred.Reject("Fail value");
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(
                 (TestHelper.resolveOnlyVoidCallbacks + TestHelper.resolveVoidCallbacks +
                 TestHelper.rejectVoidCallbacks +
@@ -1231,8 +1179,6 @@ namespace Proto.Promises.Tests
 
             resolveDeferredInt.Resolve(1);
             rejectDeferredInt.Reject("Fail value");
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.resolveOnlyTCallbacks + TestHelper.resolveTCallbacks +
@@ -1295,8 +1241,6 @@ namespace Proto.Promises.Tests
 
             resolveDeferred.Resolve();
             rejectDeferred.Reject("Fail value");
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.resolveVoidConvertCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
@@ -1361,8 +1305,6 @@ namespace Proto.Promises.Tests
 
             resolveDeferredInt.Resolve(1);
             rejectDeferredInt.Reject("Fail value");
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.resolveTConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
@@ -1467,8 +1409,6 @@ namespace Proto.Promises.Tests
             resolveDeferred.Resolve();
             rejectDeferred.Reject("Fail value");
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(
                 (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
                 TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
@@ -1567,8 +1507,6 @@ namespace Proto.Promises.Tests
 
             resolveDeferredInt.Resolve(1);
             rejectDeferredInt.Reject("Fail value");
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
@@ -1669,8 +1607,6 @@ namespace Proto.Promises.Tests
 
             resolveDeferred.Resolve();
             rejectDeferred.Reject("Fail value");
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
@@ -1776,8 +1712,6 @@ namespace Proto.Promises.Tests
             resolveDeferredInt.Resolve(1);
             rejectDeferredInt.Reject("Fail value");
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(
                 (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                 TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
@@ -1879,8 +1813,6 @@ namespace Proto.Promises.Tests
 
             resolveDeferred.Resolve();
             rejectDeferred.Reject("Fail value");
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
@@ -1986,8 +1918,6 @@ namespace Proto.Promises.Tests
             resolveDeferredInt.Resolve(1);
             rejectDeferredInt.Reject("Fail value");
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(
                 (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
                 TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
@@ -2091,8 +2021,6 @@ namespace Proto.Promises.Tests
 
             resolveDeferred.Resolve();
             rejectDeferred.Reject("Fail value");
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
@@ -2200,8 +2128,6 @@ namespace Proto.Promises.Tests
 
             resolveDeferredInt.Resolve(1);
             rejectDeferredInt.Reject("Fail value");
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +

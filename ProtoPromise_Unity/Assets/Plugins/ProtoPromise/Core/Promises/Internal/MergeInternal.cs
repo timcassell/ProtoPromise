@@ -107,12 +107,12 @@ namespace Proto.Promises
                     }
                 }
 
-                public override void Handle()
+                public override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     Promise.State state = valueContainer.GetState();
                     State = state;
-                    HandleWaiter(valueContainer);
+                    HandleWaiter(valueContainer, ref executionStack);
                     HandleProgressListener(state);
 
                     if (Interlocked.Decrement(ref _waitCount) == 0)
