@@ -51,7 +51,7 @@ namespace Proto.Promises
                     return Interlocked.Decrement(ref _retainAndCanceled) == 0; // If all bits are 0, canceled was set and all calls are complete.
                 }
 
-                internal void SetCanceled(PromiseBranch owner, IValueContainer valueContainer)
+                internal void SetCanceled(PromiseSingleAwait owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(owner);
                     RetainAndSetCanceled();
@@ -72,7 +72,7 @@ namespace Proto.Promises
 
                     ValueLinkedStack<ITreeHandleable> executionStack = new ValueLinkedStack<ITreeHandleable>();
                     owner.HandleWaiter(valueContainer, ref executionStack);
-                    owner.CancelProgressListener();
+                    owner.HandleProgressListener(Promise.State.Canceled);
                     if (Release())
                     {
                         owner.MaybeDispose();
@@ -81,7 +81,7 @@ namespace Proto.Promises
                     ExecuteHandlers(executionStack);
                 }
 
-                internal bool TryMakeReady(PromiseBranch owner, IValueContainer valueContainer)
+                internal bool TryMakeReady(PromiseSingleAwait owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(owner);
                     Thread.MemoryBarrier();
@@ -128,7 +128,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolve<TArg, TResult, TResolver> : PromiseBranch, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseResolve<TArg, TResult, TResolver> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
                 where TResolver : IDelegate<TArg, TResult>
             {
                 private CancelablePromiseResolve() { }
@@ -213,11 +213,11 @@ namespace Proto.Promises
                 private CancelablePromiseResolvePromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolvePromise<TArg, TResult, TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
+                internal static CancelablePromiseResolvePromise<TArg, TResult, TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken, int depth)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolvePromise<TArg, TResult, TResolver>>()
                         ?? new CancelablePromiseResolvePromise<TArg, TResult, TResolver>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
@@ -310,7 +310,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseBranch, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
                 where TResolver : IDelegate<TArgResolve, TResult>
                 where TRejecter : IDelegate<TArgReject, TResult>
             {
@@ -417,11 +417,11 @@ namespace Proto.Promises
                 private CancelablePromiseResolveRejectPromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
+                internal static CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken, int depth)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>>()
                         ?? new CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -534,7 +534,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseContinue<TContinuer> : PromiseBranch, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseContinue<TContinuer> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
                 where TContinuer : IDelegateContinue
             {
                 private CancelablePromiseContinue() { }
@@ -602,11 +602,11 @@ namespace Proto.Promises
                 private CancelablePromiseContinuePromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
+                internal static CancelablePromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken, int depth)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseContinuePromise<TContinuer>>()
                         ?? new CancelablePromiseContinuePromise<TContinuer>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._continuer = continuer;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
@@ -683,7 +683,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseCancel<TCanceler> : PromiseBranch, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseCancel<TCanceler> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
                 where TCanceler : IDelegateSimple
             {
                 private CancelablePromiseCancel() { }

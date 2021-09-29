@@ -122,8 +122,6 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => deferred.Resolve());
 
-            Assert.IsFalse(invoked); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -140,8 +138,6 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => deferred.Resolve());
 
-            Assert.IsFalse(invoked); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             cancelationSource.Dispose();
         }
@@ -158,8 +154,6 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => deferred.Resolve(1));
 
-            Assert.IsFalse(invoked); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -176,8 +170,6 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => deferred.Resolve(1));
 
-            Assert.IsFalse(invoked); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             cancelationSource.Dispose();
         }
@@ -194,8 +186,6 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => deferred.Reject("Reject"));
 
-            Assert.IsFalse(invoked); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -212,8 +202,6 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => deferred.Reject("Reject"));
 
-            Assert.IsFalse(invoked); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             cancelationSource.Dispose();
         }
@@ -230,8 +218,6 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => deferred.Reject("Reject"));
 
-            Assert.IsFalse(invoked); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -248,8 +234,6 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => deferred.Reject("Reject"));
 
-            Assert.IsFalse(invoked); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             cancelationSource.Dispose();
         }
@@ -267,8 +251,6 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => cancelationSource.Cancel());
 
-            Assert.IsFalse(invoked); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             cancelationSource.Dispose();
         }
@@ -286,8 +268,6 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => cancelationSource.Cancel("Cancel"));
 
-            Assert.IsFalse(invoked); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             cancelationSource.Dispose();
         }
@@ -305,8 +285,6 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => cancelationSource.Cancel());
 
-            Assert.IsFalse(invoked); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             cancelationSource.Dispose();
         }
@@ -324,8 +302,6 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => cancelationSource.Cancel("Cancel"));
 
-            Assert.IsFalse(invoked); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             cancelationSource.Dispose();
         }

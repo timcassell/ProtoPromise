@@ -25,7 +25,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal partial class MergePromise : PromiseBranch, IMultiTreeHandleable
+            internal partial class MergePromise : PromiseSingleAwaitWithProgress, IMultiTreeHandleable
             {
                 private MergePromise() { }
 
@@ -85,7 +85,10 @@ namespace Proto.Promises
                         var passThrough = promisePassThroughs.Pop();
 #if PROMISE_DEBUG
                         passThrough.Retain();
-                        _passThroughs.Push(passThrough);
+                        lock (_locker)
+                        {
+                            _passThroughs.Push(passThrough);
+                        }
 #endif
                         passThrough.SetTargetAndAddToOwner(this);
                         if (_valueOrPrevious != null)
@@ -153,13 +156,24 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            IncrementProgress(owner, passThrough);
+                            IncrementProgress(passThrough);
                         }
                     }
                     return false;
                 }
 
-                partial void IncrementProgress(PromiseRef owner, PromisePassThrough passThrough);
+                internal int Depth
+                {
+#if PROMISE_PROGRESS
+                    [MethodImpl(InlineOption)]
+                    get { return _maxWaitDepth; }
+#else
+                    [MethodImpl(InlineOption)]
+                    get { return 0; }
+#endif
+                }
+
+                partial void IncrementProgress(PromisePassThrough passThrough);
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress);
 
                 private sealed class MergePromiseT<T> : MergePromise, IMultiTreeHandleable
@@ -237,7 +251,7 @@ namespace Proto.Promises
                             }
                             else
                             {
-                                IncrementProgress(owner, passThrough);
+                                IncrementProgress(passThrough);
                             }
                         }
                         return false;
@@ -248,11 +262,23 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class MergePromise : IProgressInvokable
             {
-                protected override PromiseRef AddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener)
+                internal override void HandleProgressListener(Promise.State state)
                 {
+                    HandleProgressListener(state, new Fixed32(_maxWaitDepth + 1));
+                }
+
+                protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
+                {
+                    // Unnecessary to set last known since we know SetInitialProgress will be called on this.
                     ThrowIfInPool(this);
+                    progressListener.Retain();
                     _progressListener = progressListener;
                     return null;
+                }
+
+                protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, bool shouldReport)
+                {
+                    SetInitialProgress(progressListener, shouldReport, CurrentProgress(), new Fixed32(_maxWaitDepth + 1));
                 }
 
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress)
@@ -267,23 +293,23 @@ namespace Proto.Promises
                         int maxWaitDepth = 0;
                         foreach (var passThrough in promisePassThroughs)
                         {
-                            int waitDepth = passThrough.Owner._smallFields._waitDepthAndProgress.WholePart;
+                            int waitDepth = passThrough.Depth;
                             expectedProgressCounter += waitDepth;
                             maxWaitDepth = Math.Max(maxWaitDepth, waitDepth);
                         }
 
                         // Use the longest chain as this depth.
-                        _smallFields._waitDepthAndProgress = new Fixed32(maxWaitDepth);
-                        _progressScaler = (double) NextWholeProgress / (double) expectedProgressCounter;
+                        _maxWaitDepth = maxWaitDepth;
+                        _progressScaler = (double) (_maxWaitDepth + 1) / (double) expectedProgressCounter;
                     }
                 }
 
-                partial void IncrementProgress(PromiseRef owner, PromisePassThrough passThrough)
+                partial void IncrementProgress(PromisePassThrough passThrough)
                 {
-                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion(owner), true);
+                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion(), true);
                 }
 
-                protected override Fixed32 CurrentProgress()
+                private Fixed32 CurrentProgress()
                 {
                     ThrowIfInPool(this);
                     return new Fixed32(_unscaledProgress.ToDouble() * _progressScaler);

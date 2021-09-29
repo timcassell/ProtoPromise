@@ -1548,7 +1548,7 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void _Resolved_void()
+        public void ProgressChainSubscribedWillBeInvokedInOrder_Resolved_void()
         {
             Promise promise = Promise.Resolved();
             int[] results = new int[600];

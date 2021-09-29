@@ -9,6 +9,8 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0034 // Simplify 'default' expression
+
 using System;
 using System.Runtime.CompilerServices;
 
@@ -21,31 +23,21 @@ namespace Proto.Promises
             private static class Invoker<TArg, TResult>
             {
                 [MethodImpl(InlineOption)]
-                private static Promise<TResult> AdoptDirect(Promise<TResult> promise, int currentDepth)
-                {
-#if !PROMISE_PROGRESS
-                    return promise;
-#else
-                    // TODO: normalize progress
-                    return promise;
-#endif
-                }
-
-                [MethodImpl(InlineOption)]
                 internal static Promise<TResult> InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, Promise<TArg> resolved) where TDelegate : IDelegate<TArg, Promise<TResult>>
                 {
                     try
                     {
-                        return AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
+                        return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
                     }
-                    // TODO: depth
                     catch (OperationCanceledException e)
                     {
-                        return Promise<TResult>.Canceled(e);
+                        var promise = Promise<TResult>.Canceled(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
                     }
                     catch (Exception e)
                     {
-                        return Promise<TResult>.Rejected(e);
+                        var promise = Promise<TResult>.Rejected(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
                     }
                 }
 
@@ -55,16 +47,17 @@ namespace Proto.Promises
                     try
                     {
                         TResult result = resolver.Invoke(resolved.Result);
-                        return new Promise<TResult>(null, ValidIdFromApi, resolved.Depth);
+                        return new Promise<TResult>(null, ValidIdFromApi, resolved.Depth, result);
                     }
-                    // TODO: depth
                     catch (OperationCanceledException e)
                     {
-                        return Promise<TResult>.Canceled(e);
+                        var promise = Promise<TResult>.Canceled(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
                     }
                     catch (Exception e)
                     {
-                        return Promise<TResult>.Rejected(e);
+                        var promise = Promise<TResult>.Rejected(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
                     }
                 }
             }
@@ -74,6 +67,33 @@ namespace Proto.Promises
 #endif
             internal static class CallbackHelper
             {
+#if !PROMISE_PROGRESS
+                [MethodImpl(InlineOption)]
+#endif
+                internal static Promise<TResult> AdoptDirect<TResult>(Promise<TResult> promise, int currentDepth)
+                {
+#if !PROMISE_PROGRESS
+                    return promise;
+#else
+                    if (promise._ref == null)
+                    {
+                        return new Promise<TResult>(null, ValidIdFromApi, currentDepth + 1, promise.Result);
+                    }
+#if !PROMISE_DEBUG
+                    if (promise._ref.State == Promise.State.Resolved)
+                    {
+                        TResult result = ((IValueContainer) promise._ref._valueOrPrevious).GetValue<TResult>();
+                        promise.Forget();
+                        return new Promise<TResult>(null, ValidIdFromApi, currentDepth + 1, result);
+                    }
+#endif
+                    // Normalize progress. Passing a default resolver makes the Execute method adopt the promise's state without attempting to invoke.
+                    var newRef = PromiseResolvePromise<TResult, TResult, DelegateResolvePassthrough<TResult>>.GetOrCreate(default(DelegateResolvePassthrough<TResult>), currentDepth + 1);
+                    newRef.WaitForWithprogress(promise);
+                    return new Promise<TResult>(newRef, newRef.Id, currentDepth + 1);
+#endif
+                }
+
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddFinally<TFinally, TResult>(Promise<TResult> _this, TFinally finalizer)
                     where TFinally : IDelegateSimple, IDelegate<TResult, TResult>
@@ -85,7 +105,7 @@ namespace Proto.Promises
                     _this._ref.MarkAwaited(_this.Id);
                     PromiseRef promise = PromiseFinally<TFinally>.GetOrCreate(finalizer);
                     _this._ref.HookupNewPromise(promise);
-                    return new Promise<TResult>(promise, promise.Id, promise.Depth);
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -109,11 +129,11 @@ namespace Proto.Promises
                         promise = PromiseCancel<TCanceler>.GetOrCreate(canceler);
                         _this._ref.HookupNewPromise(promise);
                     }
-                    return new Promise<TResult>(promise, promise.Id, promise.Depth);
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }
 
                 [MethodImpl(InlineOption)]
-                private static int GetNextDepth(int depth)
+                internal static int GetNextDepth(int depth)
                 {
 #if !PROMISE_PROGRESS
                     return 0;
@@ -151,14 +171,14 @@ namespace Proto.Promises
 
                     if (_this._ref == null)
                     {
-                        CallbackHelper.InvokeAndCatchProgress(progress, 1, null);
+                        InvokeAndCatchProgress(progress, 1, null);
                         return new Promise<TResult>(null, ValidIdFromApi, _this.Depth);
                     }
 
                     _this._ref.MarkAwaited(_this.Id);
-                    PromiseProgress<TProgress> promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken);
-                    _this._ref.HookupNewPromiseWithProgress(promise);
-                    return new Promise<TResult>(promise, promise.Id, promise.Depth);
+                    PromiseProgress<TProgress> promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken, _this.Depth);
+                    _this._ref.HookupNewPromiseWithProgress(promise, _this.Depth);
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }
 #endif
             }
@@ -168,8 +188,8 @@ namespace Proto.Promises
 #endif
             // This helps reduce typed out generics.
             // The C# compiler does not use generic constraints for automatic type inference, so the class must be made generic instead.
-            // <TArg, TResult, TDelegate>() where TDelegate : IDelegate<TArg, TResult>
-            internal static class CallbackHelper<TArg, TResult>
+            // <TArg, TResult, TDelegate>(TDelegate arg) where TDelegate : IDelegate<TArg, TResult>
+            internal static class CallbackHelper2<TArg, TResult>
             {
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddResolve<TResolver>(Promise<TArg> _this, TResolver resolver, CancelationToken cancelationToken)
@@ -181,7 +201,6 @@ namespace Proto.Promises
                         if (cancelationToken.IsCancelationRequested)
                         {
                             promise = CancelablePromiseResolve<TArg, TResult, TResolver>.GetOrCreate(resolver, cancelationToken);
-                            promise.SetDepth(_this.Depth);
                             //Interlocked.CompareExchange(ref promise._valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null);
                             //AddToHandleQueueBack(promise);
                         }
@@ -204,20 +223,20 @@ namespace Proto.Promises
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
-                    return new Promise<TResult>(promise, promise.Id, promise.Depth);
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddResolveWait<TResolver>(Promise<TArg> _this, TResolver resolver, CancelationToken cancelationToken)
                     where TResolver : IDelegate<TArg, Promise<TResult>>
                 {
+                    int nextDepth = CallbackHelper.GetNextDepth(_this.Depth);
                     PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         if (cancelationToken.IsCancelationRequested)
                         {
-                            promise = CancelablePromiseResolvePromise<TArg, TResult, TResolver>.GetOrCreate(resolver, cancelationToken);
-                            promise.SetDepth();
+                            promise = CancelablePromiseResolvePromise<TArg, TResult, TResolver>.GetOrCreate(resolver, cancelationToken, nextDepth);
                         }
                         else
                         {
@@ -229,16 +248,16 @@ namespace Proto.Promises
                         _this._ref.MarkAwaited(_this.Id);
                         if (cancelationToken.CanBeCanceled)
                         {
-                            promise = CancelablePromiseResolvePromise<TArg, TResult, TResolver>.GetOrCreate(resolver, cancelationToken);
+                            promise = CancelablePromiseResolvePromise<TArg, TResult, TResolver>.GetOrCreate(resolver, cancelationToken, nextDepth);
                             _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
-                            promise = PromiseResolvePromise<TArg, TResult, TResolver>.GetOrCreate(resolver);
+                            promise = PromiseResolvePromise<TArg, TResult, TResolver>.GetOrCreate(resolver, nextDepth);
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
-                    return new Promise<TResult>(promise, promise.Id, promise.Depth);
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -251,7 +270,6 @@ namespace Proto.Promises
                         if (cancelationToken.IsCancelationRequested)
                         {
                             promise = CancelablePromiseContinue<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            promise.SetDepth();
                         }
                         else
                         {
@@ -272,20 +290,20 @@ namespace Proto.Promises
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
-                    return new Promise<TResult>(promise, promise.Id, promise.Depth);
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinueWait<TContinuer>(Promise<TArg> _this, TContinuer resolver, CancelationToken cancelationToken)
                     where TContinuer : IDelegateContinuePromise, IDelegate<TArg, Promise<TResult>>
                 {
+                    int nextDepth = CallbackHelper.GetNextDepth(_this.Depth);
                     PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         if (cancelationToken.IsCancelationRequested)
                         {
-                            promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            promise.SetDepth();
+                            promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken, nextDepth);
                         }
                         else
                         {
@@ -297,20 +315,20 @@ namespace Proto.Promises
                         _this._ref.MarkAwaited(_this.Id);
                         if (cancelationToken.CanBeCanceled)
                         {
-                            promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken);
+                            promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken, nextDepth);
                             _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
-                            promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver);
+                            promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver, nextDepth);
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
-                    return new Promise<TResult>(promise, promise.Id, promise.Depth);
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
                 }
             } // CallbackHelper<TArg, TResult>
 
-            internal static class CallbackHelper<TArgResolve, TArgReject, TResult>
+            internal static class CallbackHelper3<TArgResolve, TArgReject, TResult>
             {
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddResolveReject<TResolver, TRejecter>(Promise<TArgResolve> _this, TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
@@ -323,7 +341,6 @@ namespace Proto.Promises
                         if (cancelationToken.IsCancelationRequested)
                         {
                             promise = CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            promise.SetDepth();
                         }
                         else
                         {
@@ -344,7 +361,7 @@ namespace Proto.Promises
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
-                    return new Promise<TResult>(promise, promise.Id, promise.Depth);
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -352,13 +369,13 @@ namespace Proto.Promises
                     where TResolver : IDelegate<TArgResolve, Promise<TResult>>
                     where TRejecter : IDelegate<TArgReject, Promise<TResult>>
                 {
+                    int nextDepth = CallbackHelper.GetNextDepth(_this.Depth);
                     PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
                         if (cancelationToken.IsCancelationRequested)
                         {
-                            promise = CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            promise.SetDepth();
+                            promise = CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
                         }
                         else
                         {
@@ -370,16 +387,16 @@ namespace Proto.Promises
                         _this._ref.MarkAwaited(_this.Id);
                         if (cancelationToken.CanBeCanceled)
                         {
-                            promise = CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            promise = CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
                             _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
-                            promise = PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter);
+                            promise = PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, nextDepth);
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
-                    return new Promise<TResult>(promise, promise.Id, promise.Depth);
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
                 }
             } // CallbackHelper<TArgResolve, TArgReject, TResult>
         } // PromiseRef

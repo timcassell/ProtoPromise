@@ -236,7 +236,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             if (valueContainer is IValueContainer<TValue> directContainer)
 #else
-            var directContainer = valueContainer as IValueContainer<TConvert>;
+            var directContainer = valueContainer as IValueContainer<TValue>;
             if (directContainer != null)
 #endif
             {

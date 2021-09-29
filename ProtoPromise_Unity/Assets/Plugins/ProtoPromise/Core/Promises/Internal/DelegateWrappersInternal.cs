@@ -344,7 +344,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -352,7 +352,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -387,7 +387,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     TResult result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -395,7 +395,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -431,7 +431,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -439,7 +439,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -474,7 +474,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     TResult result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -482,7 +482,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -518,7 +518,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     var result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result._target, ref executionStack);
@@ -526,7 +526,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -561,7 +561,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     var result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result, ref executionStack);
@@ -569,7 +569,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -604,7 +604,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     var result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result._target, ref executionStack);
@@ -612,7 +612,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -647,7 +647,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     var result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result, ref executionStack);
@@ -655,7 +655,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -962,7 +962,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -970,7 +970,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1007,7 +1007,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -1015,7 +1015,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1053,7 +1053,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -1061,7 +1061,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1098,7 +1098,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
@@ -1106,7 +1106,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1144,7 +1144,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     var result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result._target, ref executionStack);
@@ -1152,7 +1152,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1189,7 +1189,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     var result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result, ref executionStack);
@@ -1197,7 +1197,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1234,7 +1234,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     var result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result._target, ref executionStack);
@@ -1242,7 +1242,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1279,7 +1279,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     var result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     ((PromiseWaitPromise) owner).WaitFor(result, ref executionStack);
@@ -1287,7 +1287,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {

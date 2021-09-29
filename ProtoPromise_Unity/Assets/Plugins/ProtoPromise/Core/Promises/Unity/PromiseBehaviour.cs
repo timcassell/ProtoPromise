@@ -4,19 +4,21 @@ using UnityEngine;
 
 namespace Proto.Promises
 {
-    partial struct Promise
-    {
-        static Promise()
-        {
-            Unity.PromiseBehaviour.Init();
-        }
-    }
-
     partial struct Promise<T>
     {
+        // Promise is backed by Promise<Internal.VoidResult>, so we don't need a static constructor for it.
         static Promise()
         {
-            Unity.PromiseBehaviour.Init();
+            // Set default rejection and warning handlers to route to UnityEngine.Debug.
+            Promise.Config.UncaughtRejectionHandler = Debug.LogException;
+            Promise.Config.WarningHandler = Debug.LogWarning;
+#if UNITY_EDITOR
+            if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
+#endif
+            {
+                // Create a PromiseBehaviour instance before any promise actions are made.
+                new GameObject("Proto.Promises.Unity.PromiseBehaviour").AddComponent<Unity.PromiseBehaviour>();
+            }
         }
     }
 
@@ -27,37 +29,7 @@ namespace Proto.Promises
 #endif
         public sealed class PromiseBehaviour : MonoBehaviour
         {
-            // To prevent error:
-			// UnityException: get_isPlayingOrWillChangePlaymode is not allowed to be called from a MonoBehaviour constructor (or instance field initializer),
-			// call it in Awake or Start instead.
-            private static class Dummy
-            {
-                // NoInlining is to ensure that the static constructor runs.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                public static void Init() { }
-
-                static Dummy()
-                {
-                    // Set default rejection and warning handlers to route to UnityEngine.Debug.
-                    Promises.Promise.Config.UncaughtRejectionHandler = Debug.LogException;
-                    Promises.Promise.Config.WarningHandler = Debug.LogWarning;
-#if UNITY_EDITOR
-                    if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
-#endif
-                    {
-                        // Create a PromiseBehaviour instance before any promise actions are made.
-                        new GameObject("Proto.Promises.Unity.PromiseBehaviour").AddComponent<PromiseBehaviour>();
-                    }
-                }
-            }
-
             private static PromiseBehaviour _instance;
-
-            [MethodImpl(Promises.Internal.InlineOption)]
-            public static void Init()
-            {
-                Dummy.Init();
-            }
 
             private void Start()
             {

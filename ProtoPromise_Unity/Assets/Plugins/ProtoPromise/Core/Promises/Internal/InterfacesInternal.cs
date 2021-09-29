@@ -17,14 +17,14 @@
 
             internal interface IDelegateContinue
             {
-                void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack);
-                void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack);
+                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack);
+                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack);
             }
 
             internal interface IDelegateContinuePromise
             {
-                void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref ValueLinkedStack<ITreeHandleable> executionStack);
-                void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack);
+                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack);
+                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack);
                 bool IsNull { get; }
             }
         }

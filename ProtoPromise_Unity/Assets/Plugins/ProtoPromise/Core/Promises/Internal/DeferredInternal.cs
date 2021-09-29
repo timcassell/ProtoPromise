@@ -302,7 +302,6 @@ namespace Proto.Promises
                     var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromiseVoid>()
                         ?? new DeferredPromiseVoid();
                     promise.Reset();
-                    promise.ResetDepth();
                     return promise;
                 }
             }
@@ -333,7 +332,6 @@ namespace Proto.Promises
                     var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromise<T>>()
                         ?? new DeferredPromise<T>();
                     promise.Reset();
-                    promise.ResetDepth();
                     return promise;
                 }
             }
@@ -357,7 +355,6 @@ namespace Proto.Promises
                     var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromiseVoidCancel>()
                         ?? new DeferredPromiseVoidCancel();
                     promise.Reset();
-                    promise.ResetDepth();
                     cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
                     return promise;
                 }
@@ -395,7 +392,6 @@ namespace Proto.Promises
                     var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromiseCancel<T>>()
                         ?? new DeferredPromiseCancel<T>();
                     promise.Reset();
-                    promise.ResetDepth();
                     cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
                     return promise;
                 }

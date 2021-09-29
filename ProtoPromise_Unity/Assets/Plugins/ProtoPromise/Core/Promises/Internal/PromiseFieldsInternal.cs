@@ -120,21 +120,11 @@ namespace Proto.Promises
         /// Internal use.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRef promiseRef, short id, int depth)
-        {
-            _ref = promiseRef;
-            _smallFields = new SmallFields(id, depth, default(T));
-        }
-
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        [MethodImpl(Internal.InlineOption)]
         internal Promise(Internal.PromiseRef promiseRef, short id, int depth,
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
-                T value)
+                T value = default(T))
         {
             _ref = promiseRef;
             _smallFields = new SmallFields(id, depth, value);
@@ -184,9 +174,6 @@ namespace Proto.Promises
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
                 internal StateAndFlags _stateAndFlags;
-#if PROMISE_PROGRESS
-                internal Fixed32 _waitDepthAndProgress;
-#endif
 
                 [StructLayout(LayoutKind.Explicit)]
                 internal partial struct StateAndFlags
@@ -209,48 +196,67 @@ namespace Proto.Promises
 
             partial class PromiseSingleAwait : PromiseRef
             {
+                private ITreeHandleable _waiter;
+            }
+
+            internal abstract partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait
+            {
 #if PROMISE_PROGRESS
                 volatile protected IProgressListener _progressListener;
 #endif
             }
 
-            partial class PromiseBranch : PromiseSingleAwait
+            partial class PromiseMultiAwait : PromiseRef
             {
-                private ITreeHandleable _waiter;
-            }
-
-            partial class PromiseMultiAwait
-            {
-                private ValueLinkedStack<ITreeHandleable> _nextBranches;
-                private SpinLocker _branchLocker;
-
-#if PROMISE_PROGRESS
-                private struct ProgressAndLocker
+                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+                private partial struct ProgressAndLocker
                 {
-                    // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
-                    // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-                    internal Fixed32 _currentProgress;
+                    internal SpinLocker _branchLocker;
+#if PROMISE_PROGRESS
                     internal SpinLocker _progressCollectionLocker;
+                    internal Fixed32 _depthAndProgress;
+                    internal Fixed32 _currentProgress;
+#endif
                 }
 
-                private ValueLinkedQueue<IProgressListener> _progressListeners; // TODO: change to ValueLinkedStack to use less memory. Make sure progress is still invoked in order.
+                private ValueLinkedStack<ITreeHandleable> _nextBranches;
                 private ProgressAndLocker _progressAndLocker;
+
+#if PROMISE_PROGRESS
+                private ValueLinkedQueue<IProgressListener> _progressListeners; // TODO: change to ValueLinkedStack to use less memory. Make sure progress is still invoked in order.
 
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
 #endif
             }
 
-            partial class PromiseWaitPromise : PromiseBranch
+            partial class AsyncPromiseBase : PromiseSingleAwaitWithProgress
             {
 #if PROMISE_PROGRESS
+                protected Fixed32 _currentProgress;
+#endif
+            }
+
+            partial class PromiseWaitPromise : PromiseSingleAwaitWithProgress
+            {
+#if PROMISE_PROGRESS
+                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+                private struct PromiseWaitSmallFields
+                {
+                    internal int _previousDepthPlusOne;
+                    internal Fixed32 _depthAndProgress;
+                }
+                private PromiseWaitSmallFields _progressFields;
+
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
 #endif
             }
 
             #region Non-cancelable Promises
-            partial class PromiseResolve<TArg, TResult, TResolver> : PromiseBranch
+            partial class PromiseResolve<TArg, TResult, TResolver> : PromiseSingleAwait
                 where TResolver : IDelegate<TArg, TResult>
             {
                 private TResolver _resolver;
@@ -262,7 +268,7 @@ namespace Proto.Promises
                 private TResolver _resolver;
             }
 
-            partial class PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseBranch
+            partial class PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseSingleAwait
                 where TResolver : IDelegate<TArgResolve, TResult>
                 where TRejecter : IDelegate<TArgReject, TResult>
             {
@@ -278,7 +284,7 @@ namespace Proto.Promises
                 private TRejecter _rejecter;
             }
 
-            partial class PromiseContinue<TContinuer> : PromiseBranch
+            partial class PromiseContinue<TContinuer> : PromiseSingleAwait
                 where TContinuer : IDelegateContinue
             {
                 private TContinuer _continuer;
@@ -290,13 +296,13 @@ namespace Proto.Promises
                 private TContinuer _continuer;
             }
 
-            partial class PromiseFinally<TFinalizer> : PromiseBranch
+            partial class PromiseFinally<TFinalizer> : PromiseSingleAwait
                 where TFinalizer : IDelegateSimple
             {
                 private TFinalizer _finalizer;
             }
 
-            partial class PromiseCancel<TCanceler> : PromiseBranch
+            partial class PromiseCancel<TCanceler> : PromiseSingleAwait
                 where TCanceler : IDelegateSimple
             {
                 private TCanceler _canceler;
@@ -320,7 +326,7 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
             }
 
-            partial class CancelablePromiseResolve<TArg, TResult, TResolver> : PromiseBranch
+            partial class CancelablePromiseResolve<TArg, TResult, TResolver> : PromiseSingleAwait
                 where TResolver : IDelegate<TArg, TResult>
             {
                 private CancelationHelper _cancelationHelper;
@@ -334,7 +340,7 @@ namespace Proto.Promises
                 private TResolver _resolver;
             }
 
-            partial class CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseBranch
+            partial class CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseSingleAwait
                 where TResolver : IDelegate<TArgResolve, TResult>
                 where TRejecter : IDelegate<TArgReject, TResult>
             {
@@ -352,7 +358,7 @@ namespace Proto.Promises
                 private TRejecter _rejecter;
             }
 
-            partial class CancelablePromiseContinue<TContinuer> : PromiseBranch
+            partial class CancelablePromiseContinue<TContinuer> : PromiseSingleAwait
                 where TContinuer : IDelegateContinue
             {
                 private CancelationHelper _cancelationHelper;
@@ -366,7 +372,7 @@ namespace Proto.Promises
                 private TContinuer _continuer;
             }
 
-            partial class CancelablePromiseCancel<TCanceler> : PromiseBranch
+            partial class CancelablePromiseCancel<TCanceler> : PromiseSingleAwait
                 where TCanceler : IDelegateSimple
             {
                 private CancelationHelper _cancelationHelper;
@@ -375,7 +381,7 @@ namespace Proto.Promises
             #endregion
 
             #region Multi Promises
-            partial class MergePromise : PromiseBranch
+            partial class MergePromise : PromiseSingleAwaitWithProgress
             {
                 private int _waitCount;
 #if PROMISE_DEBUG
@@ -390,10 +396,11 @@ namespace Proto.Promises
                 // Use 64 bits to allow combining many promises with very deep chains.
                 private double _progressScaler;
                 private UnsignedFixed64 _unscaledProgress;
+                private int _maxWaitDepth;
 #endif
             }
 
-            partial class RacePromise : PromiseBranch
+            partial class RacePromise : PromiseSingleAwaitWithProgress
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
@@ -401,7 +408,8 @@ namespace Proto.Promises
                 {
                     internal int _waitCount;
 #if PROMISE_PROGRESS
-                    internal Fixed32 _currentAmount;
+                    internal Fixed32 _depthAndProgress;
+                    internal Fixed32 _currentProgress;
 #endif
                 }
 
@@ -415,7 +423,7 @@ namespace Proto.Promises
 #endif
             }
 
-            partial class FirstPromise : PromiseBranch
+            partial class FirstPromise : PromiseSingleAwaitWithProgress
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
@@ -423,7 +431,8 @@ namespace Proto.Promises
                 {
                     internal int _waitCount;
 #if PROMISE_PROGRESS
-                    internal Fixed32 _currentAmount;
+                    internal Fixed32 _depthAndProgress;
+                    internal Fixed32 _currentProgress;
 #endif
                 }
 
@@ -446,6 +455,7 @@ namespace Proto.Promises
                     internal int _index;
                     internal int _retainCounter;
 #if PROMISE_PROGRESS
+                    internal Fixed32 _depth;
                     internal Fixed32 _currentProgress;
                     internal volatile bool _settingInitialProgress;
                     internal volatile bool _reportingProgress;
@@ -466,13 +476,14 @@ namespace Proto.Promises
             #endregion
 
 #if PROMISE_PROGRESS
-            partial class PromiseProgress<TProgress> : PromiseBranch, IProgressListener, IProgressInvokable
+            partial class PromiseProgress<TProgress> : PromiseSingleAwaitWithProgress, IProgressListener, IProgressInvokable
                 where TProgress : IProgress<float>
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
                 private struct ProgressSmallFields
                 {
+                    internal Fixed32 _depthAndProgress;
                     internal Fixed32 _currentProgress;
                     volatile internal bool _complete;
                     volatile internal bool _canceled;

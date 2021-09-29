@@ -207,8 +207,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -233,8 +231,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -260,8 +256,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -286,8 +280,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -313,8 +305,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -339,8 +329,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -366,8 +354,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -392,8 +378,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -419,8 +403,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -445,8 +427,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -472,8 +452,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -498,8 +476,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -525,8 +501,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -551,8 +525,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -578,8 +550,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -604,8 +574,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();

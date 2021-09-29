@@ -13,6 +13,7 @@
 #pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -24,7 +25,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class FirstPromise : PromiseBranch, IMultiTreeHandleable
+            internal sealed partial class FirstPromise : PromiseSingleAwaitWithProgress, IMultiTreeHandleable
             {
                 private FirstPromise() { }
 
@@ -66,7 +67,10 @@ namespace Proto.Promises
                         passThrough.Owner.SuppressRejection = true;
 #if PROMISE_DEBUG
                         passThrough.Retain();
-                        promise._passThroughs.Push(passThrough);
+                        lock (promise._locker)
+                        {
+                            promise._passThroughs.Push(passThrough);
+                        }
 #endif
                         passThrough.SetTargetAndAddToOwner(promise);
                         if (promise._valueOrPrevious != null)
@@ -140,37 +144,53 @@ namespace Proto.Promises
                     return true;
                 }
 
+                internal int Depth
+                {
+#if PROMISE_PROGRESS
+                    [MethodImpl(InlineOption)]
+                    get { return _firstSmallFields._depthAndProgress.WholePart; }
+#else
+                    [MethodImpl(InlineOption)]
+                    get { return 0; }
+#endif
+                }
+
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs);
             }
 
 #if PROMISE_PROGRESS
             partial class FirstPromise : IProgressInvokable
             {
-                protected override PromiseRef AddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener)
+                internal override void HandleProgressListener(Promise.State state)
                 {
+                    HandleProgressListener(state, _firstSmallFields._depthAndProgress.GetIncrementedWholeTruncated());
+                }
+
+                protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
+                {
+                    // Unnecessary to set last known since we know SetInitialProgress will be called on this.
                     ThrowIfInPool(this);
+                    progressListener.Retain();
                     _progressListener = progressListener;
                     return null;
                 }
 
+                protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, bool shouldReport)
+                {
+                    SetInitialProgress(progressListener, shouldReport, _firstSmallFields._currentProgress, _firstSmallFields._depthAndProgress.GetIncrementedWholeTruncated());
+                }
+
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs)
                 {
-                    _firstSmallFields._currentAmount = default(Fixed32);
+                    _firstSmallFields._currentProgress = default(Fixed32);
 
                     // Expect the shortest chain to finish first.
                     int minWaitDepth = int.MaxValue;
                     foreach (var passThrough in promisePassThroughs)
                     {
-                        minWaitDepth = Math.Min(minWaitDepth, passThrough.Owner._smallFields._waitDepthAndProgress.WholePart);
+                        minWaitDepth = Math.Min(minWaitDepth, passThrough.Depth);
                     }
-                    _smallFields._waitDepthAndProgress = new Fixed32(minWaitDepth);
-                }
-
-                protected override Fixed32 CurrentProgress()
-                {
-                    ThrowIfInPool(this);
-                    Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
-                    return _firstSmallFields._currentAmount;
+                    _firstSmallFields._depthAndProgress = new Fixed32(minWaitDepth);
                 }
 
                 void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, bool shouldReport)
@@ -178,8 +198,8 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
 
                     // Use double for better precision.
-                    var newAmount = new Fixed32(senderAmount.ToDouble() * NextWholeProgress / (double) (ownerAmount.WholePart + 1u));
-                    if (shouldReport & _firstSmallFields._currentAmount.InterlockedTrySetIfGreater(newAmount))
+                    var newAmount = new Fixed32(senderAmount.ToDouble() * (_firstSmallFields._depthAndProgress.WholePart + 1) / (double) (ownerAmount.WholePart + 1));
+                    if (shouldReport & _firstSmallFields._currentProgress.InterlockedTrySetIfGreater(newAmount))
                     {
                         if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                         {
@@ -191,7 +211,9 @@ namespace Proto.Promises
 
                 void IProgressInvokable.Invoke()
                 {
-                    var progress = CurrentProgress();
+                    ThrowIfInPool(this);
+                    Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
+                    var progress = _firstSmallFields._currentProgress;
                     _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
                     ReportProgress(progress);
                     MaybeDispose();

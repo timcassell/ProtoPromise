@@ -217,7 +217,6 @@ namespace Proto.Promises
 
             private void HookupNewCancelablePromise(PromiseRef newPromise)
             {
-                newPromise.SetDepth(this);
                 if (Interlocked.CompareExchange(ref newPromise._valueOrPrevious, this, null) == null)
                 {
                     ValueLinkedStack<ITreeHandleable> executionStack = new ValueLinkedStack<ITreeHandleable>();
@@ -232,7 +231,6 @@ namespace Proto.Promises
 
             private void HookupNewPromise(PromiseRef newPromise)
             {
-                newPromise.SetDepth(this);
                 newPromise._valueOrPrevious = this;
                 HookupNewWaiter(newPromise);
             }
@@ -245,31 +243,24 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            private void HookupNewPromiseWithProgress<TPromiseRef>(TPromiseRef newPromise) where TPromiseRef : PromiseRef, IProgressListener
+            private void HookupNewPromiseWithProgress<TPromiseRef>(TPromiseRef newPromise, int depth) where TPromiseRef : PromiseRef, IProgressListener
             {
-                newPromise.SetDepth(this);
                 newPromise._valueOrPrevious = this;
-                HookupNewWaiterWithProgress(newPromise);
+                HookupNewWaiterWithProgress(newPromise, depth);
             }
 
-            private void HookupNewWaiterWithProgress<TWaiter>(TWaiter waiter) where TWaiter : ITreeHandleable, IProgressListener
+            private void HookupNewWaiterWithProgress<TWaiter>(TWaiter waiter, int depth) where TWaiter : ITreeHandleable, IProgressListener
             {
-                SubscribeListener(waiter);
-                HookupNewWaiter(waiter);
-            }
-#else
-            [MethodImpl(InlineOption)]
-            private void HookupNewWaiterWithProgress<TWaiter>(TWaiter waiter) where TWaiter : ITreeHandleable, IProgressListener
-            {
+                SubscribeListener(waiter, new Fixed32(depth));
                 HookupNewWaiter(waiter);
             }
 #endif
 
-            internal PromiseRef GetPreserved(short promiseId)
+            internal PromiseRef GetPreserved(short promiseId, int depth)
             {
                 MarkAwaited(promiseId);
                 SuppressRejection = true;
-                var newPromise = PromiseMultiAwait.GetOrCreate();
+                var newPromise = PromiseMultiAwait.GetOrCreate(depth);
                 HookupNewPromise(newPromise);
                 return newPromise;
             }
@@ -290,112 +281,7 @@ namespace Proto.Promises
                     IncrementId(promiseId);
                     return this;
                 }
-            }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal sealed partial class PromiseMultiAwait : PromiseRef, IProgressListener
-            {
-                private PromiseMultiAwait() { }
-
-                ~PromiseMultiAwait()
-                {
-                    if (!WasAwaitedOrForgotten)
-                    {
-                        WasAwaitedOrForgotten = true; // Stop base finalizer from adding an extra exception.
-                        string message = "A preserved Promise's resources were garbage collected without it being forgotten. You must call Forget() on each preserved promise when you are finished with it.";
-                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseMultiAwait GetOrCreate()
-                {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseMultiAwait>()
-                        ?? new PromiseMultiAwait();
-                    promise.Reset();
-                    promise.ResetProgress();
-                    return promise;
-                }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
-                }
-
-                protected override void MarkAwaited(short promiseId)
-                {
-                    InterlockedRetainInternal(promiseId);
-                }
-
-                internal override PromiseRef GetDuplicate(short promiseId)
-                {
-                    MarkAwaited(promiseId);
-                    var newPromise = PromiseDuplicate.GetOrCreate();
-                    HookupNewPromise(newPromise);
-                    return newPromise;
-                }
-
-                internal override void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack)
-                {
-                    ThrowIfInPool(this);
-                    if (State == Promise.State.Pending)
-                    {
-                        _branchLocker.Enter();
-                        if (State == Promise.State.Pending)
-                        {
-                            _nextBranches.Push(waiter);
-                            _branchLocker.Exit();
-                            MaybeDispose();
-                            return;
-                        }
-                        _branchLocker.Exit();
-                    }
-                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionStack);
-                    MaybeDispose();
-                }
-
-                public override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
-                {
-                    ThrowIfInPool(this);
-                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
-                    Promise.State state = valueContainer.GetState();
-                    State = state;
-
-                    HandleBranches(valueContainer, ref executionStack);
-                    HandleProgressListeners(state);
-
-                    MaybeDispose();
-                }
-
-                private void HandleBranches(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
-                {
-                    _branchLocker.Enter();
-                    var branches = _nextBranches;
-                    _nextBranches = new ValueLinkedStack<ITreeHandleable>();
-                    _branchLocker.Exit();
-                    while (branches.IsNotEmpty)
-                    {
-                        branches.Pop().MakeReady(this, valueContainer, ref executionStack);
-                    }
-
-                    //// TODO: keeping this code around for when background threaded tasks are implemented.
-                    //ValueLinkedQueue<ITreeHandleable> handleQueue = new ValueLinkedQueue<ITreeHandleable>();
-                    //while (_nextBranches.IsNotEmpty)
-                    //{
-                    //    _nextBranches.Pop().MakeReady(this, valueContainer, ref handleQueue);
-                    //}
-                    //AddToHandleQueueFront(ref handleQueue);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal abstract partial class PromiseBranch : PromiseSingleAwait
-            {
                 internal sealed override void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
@@ -463,29 +349,163 @@ namespace Proto.Promises
 
                 protected virtual void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected) { }
 
-                internal void ResolveInternal(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                internal virtual void ResolveInternal(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     State = Promise.State.Resolved;
                     HandleWaiter(valueContainer, ref executionStack);
-                    ResolveProgressListener();
 
                     MaybeDispose();
                 }
 
-                internal void RejectOrCancelInternal(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                internal virtual void RejectOrCancelInternal(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     State = valueContainer.GetState();
                     HandleWaiter(valueContainer, ref executionStack);
-                    CancelProgressListener();
 
                     MaybeDispose();
                 }
 
-                internal void HandleSelf(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                internal virtual void HandleSelf(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                {
+                    Promise.State state = valueContainer.GetState();
+                    State = state;
+                    HandleWaiter(valueContainer, ref executionStack);
+
+                    MaybeDispose();
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal sealed partial class PromiseMultiAwait : PromiseRef, IProgressListener
+            {
+                private PromiseMultiAwait() { }
+
+                ~PromiseMultiAwait()
+                {
+                    if (!WasAwaitedOrForgotten)
+                    {
+                        WasAwaitedOrForgotten = true; // Stop base finalizer from adding an extra exception.
+                        string message = "A preserved Promise's resources were garbage collected without it being forgotten. You must call Forget() on each preserved promise when you are finished with it.";
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static PromiseMultiAwait GetOrCreate(int depth)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseMultiAwait>()
+                        ?? new PromiseMultiAwait();
+                    promise.Reset(depth);
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                protected override void MarkAwaited(short promiseId)
+                {
+                    InterlockedRetainInternal(promiseId);
+                }
+
+                internal override PromiseRef GetDuplicate(short promiseId)
+                {
+                    MarkAwaited(promiseId);
+                    var newPromise = PromiseDuplicate.GetOrCreate();
+                    HookupNewPromise(newPromise);
+                    return newPromise;
+                }
+
+                internal override void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                {
+                    ThrowIfInPool(this);
+                    if (State == Promise.State.Pending)
+                    {
+                        _progressAndLocker._branchLocker.Enter();
+                        if (State == Promise.State.Pending)
+                        {
+                            _nextBranches.Push(waiter);
+                            _progressAndLocker._branchLocker.Exit();
+                            MaybeDispose();
+                            return;
+                        }
+                        _progressAndLocker._branchLocker.Exit();
+                    }
+                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionStack);
+                    MaybeDispose();
+                }
+
+                public override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
+                {
+                    ThrowIfInPool(this);
+                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
+                    Promise.State state = valueContainer.GetState();
+                    State = state;
+
+                    HandleBranches(valueContainer, ref executionStack);
+                    HandleProgressListeners(state);
+
+                    MaybeDispose();
+                }
+
+                private void HandleBranches(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                {
+                    _progressAndLocker._branchLocker.Enter();
+                    var branches = _nextBranches;
+                    _nextBranches = new ValueLinkedStack<ITreeHandleable>();
+                    _progressAndLocker._branchLocker.Exit();
+                    while (branches.IsNotEmpty)
+                    {
+                        branches.Pop().MakeReady(this, valueContainer, ref executionStack);
+                    }
+
+                    //// TODO: keeping this code around for when background threaded tasks are implemented.
+                    //ValueLinkedQueue<ITreeHandleable> handleQueue = new ValueLinkedQueue<ITreeHandleable>();
+                    //while (_nextBranches.IsNotEmpty)
+                    //{
+                    //    _nextBranches.Pop().MakeReady(this, valueContainer, ref handleQueue);
+                    //}
+                    //AddToHandleQueueFront(ref handleQueue);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal abstract partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait
+            {
+                internal override sealed void ResolveInternal(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                {
+                    valueContainer.Retain();
+                    _valueOrPrevious = valueContainer;
+                    State = Promise.State.Resolved;
+                    HandleWaiter(valueContainer, ref executionStack);
+                    HandleProgressListener(Promise.State.Resolved);
+
+                    MaybeDispose();
+                }
+
+                internal override sealed void RejectOrCancelInternal(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                {
+                    valueContainer.Retain();
+                    _valueOrPrevious = valueContainer;
+                    var state = valueContainer.GetState();
+                    State = state;
+                    HandleWaiter(valueContainer, ref executionStack);
+                    HandleProgressListener(state);
+
+                    MaybeDispose();
+                }
+
+                internal override sealed void HandleSelf(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     Promise.State state = valueContainer.GetState();
                     State = state;
@@ -499,7 +519,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed class PromiseDuplicate : PromiseBranch, ITreeHandleable
+            internal sealed partial class PromiseDuplicate : PromiseSingleAwait, ITreeHandleable
             {
                 private PromiseDuplicate() { }
 
@@ -537,7 +557,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal abstract partial class PromiseWaitPromise : PromiseBranch, IProgressListener
+            internal abstract partial class PromiseWaitPromise : PromiseSingleAwaitWithProgress, IProgressListener
             {
                 [MethodImpl(InlineOption)]
                 internal void WaitFor<T>(Promise<T> other, ref ValueLinkedStack<ITreeHandleable> executionStack)
@@ -553,71 +573,30 @@ namespace Proto.Promises
                     {
                         _ref.MarkAwaited(other.Id);
                         _valueOrPrevious = _ref;
-                        SubscribeProgressToOther(_ref);
+                        SubscribeProgressToOther(_ref, other.Depth);
                         _ref.AddWaiter(this, ref executionStack);
                     }
                 }
 
-                partial void SubscribeProgressToOther(PromiseRef other);
+                partial void SubscribeProgressToOther(PromiseRef other, int depth);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal abstract partial class AsyncPromiseBase : PromiseSingleAwait
+            internal abstract partial class AsyncPromiseBase : PromiseSingleAwaitWithProgress
             {
-                internal sealed override void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack)
-                {
-                    ThrowIfInPool(this);
-                    // When this is completed, State is set then _next is swapped, so we must reverse that process here.
-                    _next = waiter;
-                    Thread.MemoryBarrier(); // Make sure State is read after _next is written.
-                    if (State != Promise.State.Pending)
-                    {
-                        // Exchange and check for null to handle race condition with HandleWaiter on another thread.
-                        waiter = Interlocked.Exchange(ref _next, null);
-                        if (waiter != null)
-                        {
-                            waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionStack);
-                        }
-                    }
-                    MaybeDispose();
-                }
-
-                private ValueLinkedStack<ITreeHandleable> HandleWaiter(IValueContainer valueContainer)
-                {
-                    ValueLinkedStack<ITreeHandleable> executionStack = new ValueLinkedStack<ITreeHandleable>();
-                    ITreeHandleable waiter = Interlocked.Exchange(ref _next, null);
-                    if (waiter != null)
-                    {
-                        waiter.MakeReady(this, valueContainer, ref executionStack);
-                    }
-                    return executionStack;
-                }
-
                 private void ResolveInternal(IValueContainer valueContainer)
                 {
-                    valueContainer.Retain();
-                    _valueOrPrevious = valueContainer;
-                    State = Promise.State.Resolved;
-                    ValueLinkedStack<ITreeHandleable> executionStack = HandleWaiter(valueContainer);
-                    ResolveProgressListener();
-
-                    MaybeDispose();
-
+                    ValueLinkedStack<ITreeHandleable> executionStack = new ValueLinkedStack<ITreeHandleable>();
+                    ResolveInternal(valueContainer, ref executionStack);
                     ExecuteHandlers(executionStack);
                 }
 
                 protected void RejectOrCancelInternal(IValueContainer valueContainer)
                 {
-                    valueContainer.Retain();
-                    _valueOrPrevious = valueContainer;
-                    State = valueContainer.GetState();
-                    ValueLinkedStack<ITreeHandleable> executionStack = HandleWaiter(valueContainer);
-                    CancelProgressListener();
-
-                    MaybeDispose();
-
+                    ValueLinkedStack<ITreeHandleable> executionStack = new ValueLinkedStack<ITreeHandleable>();
+                    RejectOrCancelInternal(valueContainer, ref executionStack);
                     ExecuteHandlers(executionStack);
                 }
 
@@ -628,10 +607,11 @@ namespace Proto.Promises
                     ResolveInternal(ResolveContainerVoid.GetOrCreate());
                 }
 
+                [MethodImpl(InlineOption)]
                 protected void ResolveDirect<T>(ref T value)
                 {
                     ThrowIfInPool(this);
-                    ResolveInternal(ResolveContainer<T>.GetOrCreate(ref value, 0));
+                    ResolveInternal(CreateResolveContainer(value, 0));
                 }
 
                 protected void RejectDirect<TReject>(ref TReject reason, int rejectSkipFrames)
@@ -666,7 +646,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseResolve<TArg, TResult, TResolver> : PromiseBranch
+            private sealed partial class PromiseResolve<TArg, TResult, TResolver> : PromiseSingleAwait
                 where TResolver : IDelegate<TArg, TResult>
             {
                 private PromiseResolve() { }
@@ -714,11 +694,11 @@ namespace Proto.Promises
                 private PromiseResolvePromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolvePromise<TArg, TResult, TResolver> GetOrCreate(TResolver resolver)
+                internal static PromiseResolvePromise<TArg, TResult, TResolver> GetOrCreate(TResolver resolver, int depth)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolvePromise<TArg, TResult, TResolver>>()
                         ?? new PromiseResolvePromise<TArg, TResult, TResolver>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._resolver = resolver;
                     return promise;
                 }
@@ -757,7 +737,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseBranch
+            private sealed partial class PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseSingleAwait
                 where TResolver : IDelegate<TArgResolve, TResult>
                 where TRejecter : IDelegate<TArgReject, TResult>
             {
@@ -824,11 +804,11 @@ namespace Proto.Promises
                 private PromiseResolveRejectPromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
+                internal static PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, int depth)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>>()
                         ?? new PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     return promise;
@@ -884,7 +864,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseContinue<TContinuer> : PromiseBranch
+            private sealed partial class PromiseContinue<TContinuer> : PromiseSingleAwait
                 where TContinuer : IDelegateContinue
             {
                 private PromiseContinue() { }
@@ -922,11 +902,11 @@ namespace Proto.Promises
                 private PromiseContinuePromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer)
+                internal static PromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, int depth)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseContinuePromise<TContinuer>>()
                         ?? new PromiseContinuePromise<TContinuer>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._continuer = continuer;
                     return promise;
                 }
@@ -955,7 +935,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseFinally<TFinalizer> : PromiseBranch
+            private sealed partial class PromiseFinally<TFinalizer> : PromiseSingleAwait
                 where TFinalizer : IDelegateSimple
             {
                 private PromiseFinally() { }
@@ -988,7 +968,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseCancel<TCanceler> : PromiseBranch, ITreeHandleable
+            private sealed partial class PromiseCancel<TCanceler> : PromiseSingleAwait, ITreeHandleable
                 where TCanceler : IDelegateSimple
             {
                 private PromiseCancel() { }
@@ -1080,20 +1060,24 @@ namespace Proto.Promises
                     passThrough._owner = owner._target._ref;
                     passThrough._smallFields._index = index;
                     passThrough._smallFields._retainCounter = 1;
-                    passThrough.ResetProgress();
+                    passThrough.ResetProgress(owner._target.Depth);
                     return passThrough;
                 }
 
-                partial void ResetProgress();
+                partial void ResetProgress(int depth);
                 partial void WaitWhileProgressIsBusy();
 
                 internal void SetTargetAndAddToOwner(IMultiTreeHandleable target)
                 {
                     ThrowIfInPool(this);
                     _target = target;
+#if PROMISE_PROGRESS
                     // Unfortunately, we have to eagerly subscribe progress. Lazy algorithm would be much more expensive with thread safety, requiring allocations. (see ValidateReturn)
                     // But it's not so bad, because it doesn't allocate any memory (just uses CPU cycles to set it up).
-                    _owner.HookupNewWaiterWithProgress(this);
+                    _owner.HookupNewWaiterWithProgress(this, _smallFields._depth.WholePart);
+#else
+                    _owner.HookupNewWaiter(this);
+#endif
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)

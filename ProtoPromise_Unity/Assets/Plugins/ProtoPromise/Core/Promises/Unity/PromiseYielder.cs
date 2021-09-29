@@ -132,7 +132,8 @@ namespace Proto.Promises
             if (_target._ref != null)
             {
                 yieldInstruction = Internal.YieldInstructionVoid.GetOrCreate(null, State.Pending);
-                _target._ref.AddWaiter(yieldInstruction);
+                var executionStack = new Internal.ValueLinkedStack<Internal.ITreeHandleable>();
+                _target._ref.AddWaiter(yieldInstruction, ref executionStack);
             }
             else
             {
@@ -189,7 +190,8 @@ namespace Proto.Promises
             if (_ref != null)
             {
                 yieldInstruction = Internal.YieldInstruction<T>.GetOrCreate(null, Promise.State.Pending);
-                _ref.AddWaiter(yieldInstruction);
+                var executionStack = new Internal.ValueLinkedStack<Internal.ITreeHandleable>();
+                _ref.AddWaiter(yieldInstruction, ref executionStack);
             }
             else
             {
@@ -226,17 +228,17 @@ namespace Proto.Promises
 
             ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
-            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
             {
                 Settle(valueContainer);
             }
 
-            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
             {
                 Settle(valueContainer);
             }
 
-            void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
+            void ITreeHandleable.Handle(ref ValueLinkedStack<ITreeHandleable> executionStack) { throw new System.InvalidOperationException(); }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -264,17 +266,17 @@ namespace Proto.Promises
 
             ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
-            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
             {
                 Settle(valueContainer);
             }
 
-            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
             {
                 Settle(valueContainer);
             }
 
-            void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
+            void ITreeHandleable.Handle(ref ValueLinkedStack<ITreeHandleable> executionStack) { throw new System.InvalidOperationException(); }
         }
     }
 
