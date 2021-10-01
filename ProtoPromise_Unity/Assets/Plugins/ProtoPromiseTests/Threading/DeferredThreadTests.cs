@@ -37,12 +37,9 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => deferred.ReportProgress(0.1f));
 
-            Assert.IsNaN(progress); // Progress isn't reported until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.1f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
         }
 
         [Test]
@@ -58,13 +55,10 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => deferred.ReportProgress(0.1f));
 
-            Assert.IsNaN(progress); // Progress isn't reported until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.1f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
             cancelationSource.Dispose();
-            Promise.Manager.HandleCompletesAndProgress();
         }
 
         [Test]
@@ -79,12 +73,9 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => deferred.ReportProgress(0.1f));
 
-            Assert.IsNaN(progress); // Progress isn't reported until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.1f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
         }
 
         [Test]
@@ -100,13 +91,10 @@ namespace Proto.Promises.Tests.Threading
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteSingleAction(() => deferred.ReportProgress(0.1f));
 
-            Assert.IsNaN(progress); // Progress isn't reported until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.1f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve(1);
             cancelationSource.Dispose();
-            Promise.Manager.HandleCompletesAndProgress();
         }
 #endif
 

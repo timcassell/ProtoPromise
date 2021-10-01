@@ -90,7 +90,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(TestHelper.continueVoidCallbacks * 2, finallyCount);
 
             promise.Forget();
@@ -110,7 +109,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve(50);
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(TestHelper.continueTCallbacks * 2, finallyCount);
 
             promise.Forget();
@@ -127,8 +125,6 @@ namespace Proto.Promises.Tests
             );
 
             deferred.Resolve();
-
-            Promise.Manager.HandleCompletes();
 
             promise.Forget();
         }
@@ -151,8 +147,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve(expected);
 
-            Promise.Manager.HandleCompletes();
-
             promise.Forget();
         }
 
@@ -169,7 +163,6 @@ namespace Proto.Promises.Tests
             );
 
             deferred.Reject("Reject");
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(TestHelper.continueVoidCallbacks * 2, finallyCount);
 
             promise.Forget();
@@ -188,7 +181,6 @@ namespace Proto.Promises.Tests
             );
 
             deferred.Reject("Reject");
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(TestHelper.continueTCallbacks * 2, finallyCount);
 
             promise.Forget();
@@ -211,7 +203,6 @@ namespace Proto.Promises.Tests
             );
 
             deferred.Reject(rejection);
-            Promise.Manager.HandleCompletes();
 
             promise.Forget();
         }
@@ -233,7 +224,6 @@ namespace Proto.Promises.Tests
             );
 
             deferred.Reject(rejection);
-            Promise.Manager.HandleCompletes();
 
             promise.Forget();
         }
@@ -254,8 +244,6 @@ namespace Proto.Promises.Tests
             );
 
             deferred.Reject(rejection);
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 TestHelper.continueVoidCallbacks * 2,
@@ -281,8 +269,6 @@ namespace Proto.Promises.Tests
             );
 
             deferred.Reject(rejection);
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 TestHelper.continueTCallbacks * 2,
@@ -316,7 +302,6 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel("Cancel");
             }
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(TestHelper.continueVoidCallbacks * 2, finallyCount);
 
             cancelationSource.Dispose();
@@ -353,7 +338,6 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel("Cancel");
             }
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(TestHelper.continueTCallbacks * 2, finallyCount);
 
             cancelationSource.Dispose();
@@ -382,7 +366,6 @@ namespace Proto.Promises.Tests
             );
 
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletes();
 
             cancelationSource.Dispose();
             promise.Forget();
@@ -405,7 +388,6 @@ namespace Proto.Promises.Tests
             );
 
             cancelationSource.Cancel(cancelation);
-            Promise.Manager.HandleCompletes();
 
             cancelationSource.Dispose();
             promise.Forget();
@@ -427,7 +409,6 @@ namespace Proto.Promises.Tests
             );
 
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletes();
 
             cancelationSource.Dispose();
             promise.Forget();
@@ -450,7 +431,6 @@ namespace Proto.Promises.Tests
             );
 
             cancelationSource.Cancel(cancelation);
-            Promise.Manager.HandleCompletes();
 
             cancelationSource.Dispose();
             promise.Forget();
@@ -472,7 +452,6 @@ namespace Proto.Promises.Tests
 
             cancelationSource.Cancel();
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(
                 TestHelper.continueVoidCallbacks * 2,
                 cancelCount
@@ -499,7 +478,6 @@ namespace Proto.Promises.Tests
 
             cancelationSource.Cancel(cancelation);
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(
                 TestHelper.continueVoidCallbacks * 2,
                 cancelCount
@@ -525,7 +503,6 @@ namespace Proto.Promises.Tests
 
             cancelationSource.Cancel();
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(
                 TestHelper.continueTCallbacks * 2,
                 cancelCount
@@ -552,7 +529,6 @@ namespace Proto.Promises.Tests
 
             cancelationSource.Cancel(cancelation);
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(
                 TestHelper.continueTCallbacks * 2,
                 cancelCount

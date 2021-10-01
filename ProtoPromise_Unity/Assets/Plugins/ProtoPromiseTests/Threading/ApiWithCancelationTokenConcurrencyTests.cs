@@ -49,18 +49,16 @@ namespace Proto.Promises.Tests.Threading
                         action(deferred.Promise, cancelationSource.Token)
                             .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
                             .Forget();
-                        deferred.Resolve();
                     },
                     // Teardown
                     () =>
                     {
                         cancelationSource.Dispose();
-                        Promise.Manager.HandleCompletes();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => Promise.Manager.HandleCompletes()
+                    () => deferred.Resolve()
                 );
             }
         }
@@ -88,18 +86,16 @@ namespace Proto.Promises.Tests.Threading
                         action(deferred.Promise, cancelationSource.Token)
                             .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
                             .Forget();
-                        deferred.Resolve(1);
                     },
                     // Teardown
                     () =>
                     {
                         cancelationSource.Dispose();
-                        Promise.Manager.HandleCompletes();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => Promise.Manager.HandleCompletes()
+                    () => deferred.Resolve(1)
                 );
             }
         }
@@ -141,18 +137,16 @@ namespace Proto.Promises.Tests.Threading
                             action(deferred.Promise, cancelationSource.Token)
                                 .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
                                 .Forget();
-                            deferred.Reject(rejection);
                         },
                         // Teardown
                         () =>
                         {
                             cancelationSource.Dispose();
-                            Promise.Manager.HandleCompletes();
                             Assert.IsTrue(completed);
                         },
                         // Parallel actions
                         () => cancelationSource.Cancel(),
-                        () => Promise.Manager.HandleCompletes()
+                        () => deferred.Reject(rejection)
                     );
                 }
             }
@@ -199,18 +193,16 @@ namespace Proto.Promises.Tests.Threading
                             action(deferred.Promise, cancelationSource.Token)
                                 .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
                                 .Forget();
-                            deferred.Reject(rejection);
                         },
                         // Teardown
                         () =>
                         {
                             cancelationSource.Dispose();
-                            Promise.Manager.HandleCompletes();
                             Assert.IsTrue(completed);
                         },
                         // Parallel actions
                         () => cancelationSource.Cancel(),
-                        () => Promise.Manager.HandleCompletes()
+                        () => deferred.Reject(rejection)
                     );
                 }
             }
@@ -243,18 +235,16 @@ namespace Proto.Promises.Tests.Threading
                         action(deferred.Promise, cancelationSource.Token)
                             .Finally(() => completed = true) // Make sure it completes.
                             .Forget();
-                        deferred.Cancel(1);
                     },
                     // Teardown
                     () =>
                     {
                         cancelationSource.Dispose();
-                        Promise.Manager.HandleCompletes();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => Promise.Manager.HandleCompletes()
+                    () => deferred.Cancel(1)
                 );
             }
         }
@@ -282,18 +272,16 @@ namespace Proto.Promises.Tests.Threading
                         action(deferred.Promise, cancelationSource.Token)
                             .Finally(() => completed = true) // Make sure it completes.
                             .Forget();
-                        deferred.Cancel(1);
                     },
                     // Teardown
                     () =>
                     {
                         cancelationSource.Dispose();
-                        Promise.Manager.HandleCompletes();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => Promise.Manager.HandleCompletes()
+                    () => deferred.Cancel(1)
                 );
             }
         }
@@ -322,18 +310,16 @@ namespace Proto.Promises.Tests.Threading
                         cancelationToken = cancelationSource.Token;
                         promise = deferred.Promise;
                         completed = false;
-                        deferred.Resolve();
                     },
                     // Teardown
                     () =>
                     {
                         cancelationSource.Dispose();
-                        Promise.Manager.HandleCompletes();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => Promise.Manager.HandleCompletes(),
+                    () => deferred.Resolve(),
                     () => action(promise, cancelationToken)
                         .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
                         .Forget()
@@ -365,18 +351,16 @@ namespace Proto.Promises.Tests.Threading
                         cancelationToken = cancelationSource.Token;
                         promise = deferred.Promise;
                         completed = false;
-                        deferred.Resolve(1);
                     },
                     // Teardown
                     () =>
                     {
                         cancelationSource.Dispose();
-                        Promise.Manager.HandleCompletes();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => Promise.Manager.HandleCompletes(),
+                    () => deferred.Resolve(1),
                     () => action(promise, cancelationToken)
                         .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
                         .Forget()
@@ -422,18 +406,16 @@ namespace Proto.Promises.Tests.Threading
                             cancelationToken = cancelationSource.Token;
                             promise = deferred.Promise;
                             completed = false;
-                            deferred.Reject(rejection);
                         },
                         // Teardown
                         () =>
                         {
                             cancelationSource.Dispose();
-                            Promise.Manager.HandleCompletes();
                             Assert.IsTrue(completed);
                         },
                         // Parallel actions
                         () => cancelationSource.Cancel(),
-                        () => Promise.Manager.HandleCompletes(),
+                        () => deferred.Reject(rejection),
                         () => action(promise, cancelationToken)
                             .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
                             .Forget()
@@ -484,18 +466,16 @@ namespace Proto.Promises.Tests.Threading
                             cancelationToken = cancelationSource.Token;
                             promise = deferred.Promise;
                             completed = false;
-                            deferred.Reject(rejection);
                         },
                         // Teardown
                         () =>
                         {
                             cancelationSource.Dispose();
-                            Promise.Manager.HandleCompletes();
                             Assert.IsTrue(completed);
                         },
                         // Parallel actions
                         () => cancelationSource.Cancel(),
-                        () => Promise.Manager.HandleCompletes(),
+                        () => deferred.Reject(rejection),
                         () => action(promise, cancelationToken)
                             .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
                             .Forget()
@@ -532,18 +512,16 @@ namespace Proto.Promises.Tests.Threading
                         deferred = Promise.NewDeferred();
                         cancelationToken = cancelationSource.Token;
                         promise = deferred.Promise;
-                        deferred.Cancel(1);
                     },
                     // Teardown
                     () =>
                     {
                         cancelationSource.Dispose();
-                        Promise.Manager.HandleCompletes();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => Promise.Manager.HandleCompletes(),
+                    () => deferred.Cancel(1),
                     () => action(promise, cancelationToken)
                         .Finally(() => completed = true) // Make sure it completes.
                         .Forget()
@@ -575,18 +553,16 @@ namespace Proto.Promises.Tests.Threading
                         deferred = Promise.NewDeferred<int>();
                         cancelationToken = cancelationSource.Token;
                         promise = deferred.Promise;
-                        deferred.Cancel(1);
                     },
                     // Teardown
                     () =>
                     {
                         cancelationSource.Dispose();
-                        Promise.Manager.HandleCompletes();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => Promise.Manager.HandleCompletes(),
+                    () => deferred.Cancel(1),
                     () => action(promise, cancelationToken)
                         .Finally(() => completed = true) // Make sure it completes.
                         .Forget()
@@ -625,7 +601,6 @@ namespace Proto.Promises.Tests.Threading
                     {
                         cancelationSource.Dispose();
                         deferred.Resolve();
-                        Promise.Manager.HandleCompletesAndProgress();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -665,7 +640,6 @@ namespace Proto.Promises.Tests.Threading
                     {
                         cancelationSource.Dispose();
                         deferred.Resolve(1);
-                        Promise.Manager.HandleCompletesAndProgress();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -705,7 +679,6 @@ namespace Proto.Promises.Tests.Threading
                     {
                         cancelationSource.Dispose();
                         deferred.Resolve();
-                        Promise.Manager.HandleCompletesAndProgress();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -748,7 +721,6 @@ namespace Proto.Promises.Tests.Threading
                     {
                         cancelationSource.Dispose();
                         deferred.Resolve(1);
-                        Promise.Manager.HandleCompletesAndProgress();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -794,7 +766,6 @@ namespace Proto.Promises.Tests.Threading
                         cancelationSource1.Dispose();
                         cancelationSource2.Dispose();
                         deferred.Resolve();
-                        Promise.Manager.HandleCompletesAndProgress();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions
@@ -838,7 +809,6 @@ namespace Proto.Promises.Tests.Threading
                         cancelationSource1.Dispose();
                         cancelationSource2.Dispose();
                         deferred.Resolve(1);
-                        Promise.Manager.HandleCompletesAndProgress();
                         Assert.IsTrue(completed);
                     },
                     // Parallel actions

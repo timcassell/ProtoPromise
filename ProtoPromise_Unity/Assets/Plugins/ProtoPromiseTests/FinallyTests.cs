@@ -70,7 +70,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -87,7 +86,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve(1);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -106,7 +104,6 @@ namespace Proto.Promises.Tests
 
             deferred.Reject(rejection);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -125,7 +122,6 @@ namespace Proto.Promises.Tests
 
             deferred.Reject(rejection);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -152,7 +148,6 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel("Cancel");
             }
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
@@ -187,7 +182,6 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel("Cancel");
             }
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
@@ -218,7 +212,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -241,7 +234,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve(1);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -275,7 +267,6 @@ namespace Proto.Promises.Tests
 
             deferred.Reject(rejectValue);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             Assert.IsTrue(uncaughtHandled);
             Promise.Config.UncaughtRejectionHandler = currentHandler;
@@ -311,7 +302,6 @@ namespace Proto.Promises.Tests
 
             deferred.Reject(rejectValue);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             Assert.IsTrue(uncaughtHandled);
             Promise.Config.UncaughtRejectionHandler = currentHandler;
@@ -346,7 +336,6 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel("Cancel");
             }
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
@@ -387,7 +376,6 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel("Cancel");
             }
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();

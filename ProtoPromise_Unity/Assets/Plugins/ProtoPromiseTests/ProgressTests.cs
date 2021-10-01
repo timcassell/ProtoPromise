@@ -56,7 +56,6 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.25f);
@@ -65,7 +64,6 @@ namespace Proto.Promises.Tests
             deferred.ReportProgress(0.5f);
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
@@ -83,7 +81,6 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.25f);
@@ -92,7 +89,6 @@ namespace Proto.Promises.Tests
             deferred.ReportProgress(0.5f);
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
@@ -108,10 +104,9 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             deferred.Promise
-                .Progress(p => progress = p)
+                .Progress(p => progress = p) // TODO: execution/synchronization context
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.25f);
@@ -120,7 +115,6 @@ namespace Proto.Promises.Tests
             deferred.ReportProgress(0.5f);
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve(1);
@@ -138,7 +132,6 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.25f);
@@ -147,7 +140,6 @@ namespace Proto.Promises.Tests
             deferred.ReportProgress(0.5f);
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve(1);
@@ -171,20 +163,15 @@ namespace Proto.Promises.Tests
                 })
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.25f);
-            Promise.Manager.HandleCompletesAndProgress();
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
 
             deferred.ReportProgress(0.75f);
-            Promise.Manager.HandleCompletesAndProgress();
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
         }
 
         [Test]
@@ -198,23 +185,18 @@ namespace Proto.Promises.Tests
                 .Progress(progressListener)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.25f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.75f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.75f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
         }
 
@@ -230,7 +212,6 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
         }
 
@@ -243,7 +224,6 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
         }
 
@@ -261,7 +241,10 @@ namespace Proto.Promises.Tests
 
             deferred.ReportProgress(0.5f);
             deferred.Reject("Fail Value");
-            Promise.Manager.HandleCompletesAndProgress();
+
+            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
+            progress = float.NaN;
+
             Assert.IsNaN(progress);
         }
 
@@ -278,11 +261,9 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred.Reject("Fail Value");
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
         }
 
@@ -298,19 +279,17 @@ namespace Proto.Promises.Tests
                 .Catch(() => deferred2.Promise)
                 .Progress(p => progress = p)
                 .Forget();
-            Assert.IsNaN(progress);
+
+            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
             deferred.Reject("Fail Value");
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred2.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred2.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
         }
 
@@ -326,22 +305,19 @@ namespace Proto.Promises.Tests
                 .Catch(() => deferred2.Promise)
                 .Progress(p => progress = p)
                 .Forget();
-            Assert.IsNaN(progress);
+            
+            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.Reject("Fail Value");
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred2.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred2.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
 
         }
@@ -358,8 +334,10 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
+            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
+            progress = float.NaN;
+
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
             cancelationSource.Dispose();
@@ -378,11 +356,9 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
@@ -404,16 +380,17 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.25f);
+
+            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+            progress = float.NaN;
+
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
         }
 
@@ -433,16 +410,17 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.25f);
+
+            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+            progress = float.NaN;
+
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.IsNaN(progress);
         }
 
@@ -462,19 +440,15 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.25f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
         }
 
@@ -494,19 +468,15 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.25f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
         }
 
@@ -530,20 +500,16 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
-            deferred2.ReportProgress(0.5f);
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
+            deferred2.ReportProgress(0.5f);
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred2.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
         }
 
@@ -567,20 +533,16 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
-            deferred2.ReportProgress(0.5f);
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
+            deferred2.ReportProgress(0.5f);
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred2.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
         }
 
@@ -600,16 +562,13 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
-            deferred2.ReportProgress(0.5f);
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
+            deferred2.TryReportProgress(0.5f);
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
@@ -631,16 +590,13 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
-            deferred2.ReportProgress(0.5f);
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
+            deferred2.TryReportProgress(0.5f);
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
@@ -658,16 +614,13 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
-            deferred.ReportProgress(0.75f);
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
+            deferred.TryReportProgress(0.75f);
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
@@ -685,16 +638,13 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
-            deferred.ReportProgress(0.75f);
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
+            deferred.TryReportProgress(0.75f);
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
@@ -713,16 +663,13 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.25f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Cancel();
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
@@ -741,16 +688,13 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.25f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Cancel();
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
@@ -774,7 +718,6 @@ namespace Proto.Promises.Tests
                 .Finally(cancelationSource.Dispose)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
             Assert.IsTrue(firstInvoked);
             Assert.IsFalse(secondInvoked);
@@ -791,7 +734,6 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
             Assert.IsTrue(secondInvoked);
             Assert.IsFalse(firstInvoked);
@@ -802,7 +744,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve();
             deferred2.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
             Assert.IsTrue(secondInvoked);
             Assert.IsFalse(firstInvoked);
@@ -820,11 +761,9 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(1f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
         }
 
@@ -884,7 +823,6 @@ namespace Proto.Promises.Tests
             Assert.Throws<ArgumentOutOfRangeException>(() => deferred.ReportProgress(1.1f));
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
         }
 #endif
 
@@ -902,23 +840,18 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
 
             nextDeferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
 
             nextDeferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
         }
 
@@ -935,23 +868,18 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
 
             nextDeferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
 
             nextDeferred.Resolve(100);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
         }
 
@@ -968,23 +896,18 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve(100);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
 
             nextDeferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
 
             nextDeferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
         }
 
@@ -1001,23 +924,18 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve(100);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
 
             nextDeferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
 
             nextDeferred.Resolve(100);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
         }
 
@@ -1033,15 +951,12 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
         }
 
@@ -1057,15 +972,12 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
         }
 
@@ -1081,15 +993,12 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
         }
 
@@ -1105,15 +1014,12 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
         }
 
@@ -1130,15 +1036,12 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2.5f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(3f / 3f, progress, TestHelper.progressEpsilon);
         }
 
@@ -1155,15 +1058,12 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2.5f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(3f / 3f, progress, TestHelper.progressEpsilon);
         }
 
@@ -1184,55 +1084,42 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred1.ReportProgress(0.25f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f / 3f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred1.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred2.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred2.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred1.ReportProgress(0.7f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred3.ReportProgress(0.25f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2.25f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred1.ReportProgress(0.8f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2.25f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred3.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2.5f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred3.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
             deferred1.ReportProgress(0.9f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
             deferred1.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
@@ -1257,55 +1144,42 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred1.ReportProgress(0.25f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(0.25f / 3f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred1.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred2.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred2.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred1.ReportProgress(0.7f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred3.ReportProgress(0.25f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2.25f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred1.ReportProgress(0.8f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2.25f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred3.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(2.5f / 3f, progress, TestHelper.progressEpsilon);
 
             deferred3.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
             deferred1.ReportProgress(0.9f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
             deferred1.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
 
             cancelationSource.Dispose();
@@ -1326,9 +1200,9 @@ namespace Proto.Promises.Tests
             }
 
             promise.Forget();
-            deferred.ReportProgress(0.1f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(600, invokedCount);
+            deferred.ReportProgress(0.1f);
+            Assert.AreEqual(600 * 2, invokedCount);
             deferred.Resolve();
         }
 
@@ -1344,7 +1218,6 @@ namespace Proto.Promises.Tests
             }
 
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(600, invokedCount);
         }
 
@@ -1361,9 +1234,9 @@ namespace Proto.Promises.Tests
             }
 
             promise.Forget();
-            deferred.ReportProgress(0.1f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(600, invokedCount);
+            deferred.ReportProgress(0.1f);
+            Assert.AreEqual(600 * 2, invokedCount);
             deferred.Resolve(1);
         }
 
@@ -1379,7 +1252,6 @@ namespace Proto.Promises.Tests
             }
 
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(600, invokedCount);
         }
 
@@ -1396,9 +1268,9 @@ namespace Proto.Promises.Tests
             }
 
             promise.Forget();
-            deferred.ReportProgress(0.1f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(600, invokedCount);
+            deferred.ReportProgress(0.1f);
+            Assert.AreEqual(600 * 2, invokedCount);
             deferred.Resolve();
         }
 
@@ -1414,7 +1286,6 @@ namespace Proto.Promises.Tests
             }
 
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(600, invokedCount);
         }
 
@@ -1431,9 +1302,9 @@ namespace Proto.Promises.Tests
             }
 
             promise.Forget();
-            deferred.ReportProgress(0.1f);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(600, invokedCount);
+            deferred.ReportProgress(0.1f);
+            Assert.AreEqual(600 * 2, invokedCount);
             deferred.Resolve(1);
         }
 
@@ -1449,7 +1320,6 @@ namespace Proto.Promises.Tests
             }
 
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(600, invokedCount);
         }
 
@@ -1468,7 +1338,6 @@ namespace Proto.Promises.Tests
 
             promise.Forget();
             deferred.ReportProgress(0.1f);
-            Promise.Manager.HandleCompletesAndProgress();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
             deferred.Resolve();
         }
@@ -1486,7 +1355,6 @@ namespace Proto.Promises.Tests
             }
 
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
         }
 
@@ -1505,7 +1373,6 @@ namespace Proto.Promises.Tests
 
             promise.Forget();
             deferred.ReportProgress(0.1f);
-            Promise.Manager.HandleCompletesAndProgress();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
             deferred.Resolve(1);
         }
@@ -1523,7 +1390,6 @@ namespace Proto.Promises.Tests
             }
 
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
         }
 
@@ -1542,7 +1408,6 @@ namespace Proto.Promises.Tests
 
             promise.Forget();
             deferred.ReportProgress(0.1f);
-            Promise.Manager.HandleCompletesAndProgress();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
             deferred.Resolve();
         }
@@ -1560,7 +1425,6 @@ namespace Proto.Promises.Tests
             }
 
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
         }
 
@@ -1579,7 +1443,6 @@ namespace Proto.Promises.Tests
 
             promise.Forget();
             deferred.ReportProgress(0.1f);
-            Promise.Manager.HandleCompletesAndProgress();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
             deferred.Resolve(1);
         }
@@ -1597,7 +1460,6 @@ namespace Proto.Promises.Tests
             }
 
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
         }
 
@@ -1620,13 +1482,11 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
 
             Assert.IsNaN(progress);
             Assert.IsNaN(progressListener.CurrentProgress);
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
 
             Assert.IsNaN(progress);
             Assert.IsNaN(progressListener.CurrentProgress);
@@ -1648,13 +1508,11 @@ namespace Proto.Promises.Tests
                 .Forget();
 
             deferred.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
 
             Assert.IsNaN(progress);
             Assert.IsNaN(progressListener.CurrentProgress);
 
             deferred.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
 
             Assert.IsNaN(progress);
             Assert.IsNaN(progressListener.CurrentProgress);

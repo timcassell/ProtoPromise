@@ -223,7 +223,6 @@ namespace Proto.Promises.Tests.Threading
                 );
 
                 deferred.Resolve();
-                Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(1, successCount);
                 Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
@@ -258,7 +257,6 @@ namespace Proto.Promises.Tests.Threading
                 );
 
                 deferred.Resolve(1);
-                Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(1, successCount);
                 Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
@@ -292,7 +290,6 @@ namespace Proto.Promises.Tests.Threading
                 );
 
                 deferred.Resolve();
-                Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(1, successCount);
                 Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
@@ -326,7 +323,6 @@ namespace Proto.Promises.Tests.Threading
                 );
 
                 deferred.Resolve(1);
-                Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(1, successCount);
                 Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
@@ -360,7 +356,6 @@ namespace Proto.Promises.Tests.Threading
                 );
 
                 deferred.Resolve();
-                Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(1, successCount);
                 Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
@@ -394,7 +389,6 @@ namespace Proto.Promises.Tests.Threading
                 );
 
                 deferred.Resolve(1);
-                Promise.Manager.HandleCompletesAndProgress();
 
                 Assert.AreEqual(1, successCount);
                 Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
@@ -431,7 +425,6 @@ namespace Proto.Promises.Tests.Threading
             );
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
 
             Assert.AreEqual(1, successCount);
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
@@ -467,7 +460,6 @@ namespace Proto.Promises.Tests.Threading
             );
 
             deferred.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
 
             Assert.AreEqual(1, successCount);
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);

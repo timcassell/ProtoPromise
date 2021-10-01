@@ -152,7 +152,6 @@ namespace Proto.Promises.Tests
             Assert.Throws<InvalidOperationException>(() => promise.Then(1, cv => Promise.Resolved(1), 1, (int cv, object r) => Promise.Resolved(1)));
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletes();
         }
 
         [Test]
@@ -284,7 +283,6 @@ namespace Proto.Promises.Tests
             Assert.Throws<InvalidOperationException>(() => promise.Then(1, (cv, v) => Promise.Resolved(1), 1, (int cv, object r) => Promise.Resolved(1)));
 
             deferred.Resolve(1);
-            Promise.Manager.HandleCompletes();
         }
 
         [Test]
@@ -325,8 +323,6 @@ namespace Proto.Promises.Tests
                 onCallbackAdded: onCallbackAdded,
                 onCallbackAddedConvert: onCallbackAddedConvert
             );
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.resolveVoidCallbacks + TestHelper.continueVoidCallbacks) * 2,
@@ -373,8 +369,6 @@ namespace Proto.Promises.Tests
                 onCallbackAddedConvert: onCallbackAddedConvert
             );
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(
                 (TestHelper.resolveTCallbacks + TestHelper.continueTCallbacks) * 2,
                 rejectCount
@@ -415,8 +409,6 @@ namespace Proto.Promises.Tests
                 onCallbackAdded: onCallbackAdded,
                 onCallbackAddedConvert: onCallbackAddedConvert
             );
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.rejectVoidCallbacks + TestHelper.continueVoidCallbacks) * 2,
@@ -460,8 +452,6 @@ namespace Proto.Promises.Tests
                 onCallbackAddedConvert: onCallbackAddedConvert
             );
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(
                 (TestHelper.rejectTCallbacks + TestHelper.continueTCallbacks) * 2,
                 rejectCount
@@ -496,8 +486,6 @@ namespace Proto.Promises.Tests
                 onContinue: _ => { throw Promise.CancelException(expected); },
                 onCancel: onCancel
             );
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.resolveVoidCallbacks + TestHelper.continueVoidCallbacks) * 2,
@@ -534,8 +522,6 @@ namespace Proto.Promises.Tests
                 onCancel: onCancel
             );
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(
                 (TestHelper.resolveTCallbacks + TestHelper.continueTCallbacks) * 2,
                 cancelCount
@@ -568,8 +554,6 @@ namespace Proto.Promises.Tests
                 onCancel: onCancel
             );
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(
                 (TestHelper.rejectVoidCallbacks + TestHelper.continueVoidCallbacks) * 2,
                 cancelCount
@@ -601,8 +585,6 @@ namespace Proto.Promises.Tests
                 onContinue: _ => { throw Promise.CancelException(expected); },
                 onCancel: onCancel
             );
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 (TestHelper.rejectTCallbacks + TestHelper.continueTCallbacks) * 2,
@@ -648,8 +630,6 @@ namespace Proto.Promises.Tests
                 onCallbackAddedConvert: onCallbackAddedConvert
             );
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(
                 (TestHelper.resolveVoidCallbacks + TestHelper.continueVoidCallbacks) * 2,
                 errorCount
@@ -694,8 +674,6 @@ namespace Proto.Promises.Tests
                 onCallbackAddedConvert: onCallbackAddedConvert
             );
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(
                 (TestHelper.resolveTCallbacks + TestHelper.continueTCallbacks) * 2,
                 errorCount
@@ -732,8 +710,6 @@ namespace Proto.Promises.Tests
                 onCallbackAdded: onCallbackAdded,
                 onCallbackAddedConvert: onCallbackAddedConvert
             );
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(
                 TestHelper.rejectVoidCallbacks * 2,
@@ -773,8 +749,6 @@ namespace Proto.Promises.Tests
                 onCallbackAddedT: onCallbackAddedConvert
             );
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(
                 TestHelper.rejectTCallbacks * 2,
                 rejectCount
@@ -793,7 +767,6 @@ namespace Proto.Promises.Tests
                 .Then(() => resolved = true, () => Assert.Fail("Promise was rejected when it should have been resolved"))
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(resolved);
         }
 
@@ -812,7 +785,6 @@ namespace Proto.Promises.Tests
                 }, () => Assert.Fail("Promise was rejected when it should have been resolved"))
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(resolved);
         }
 
@@ -832,7 +804,6 @@ namespace Proto.Promises.Tests
                 })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(rejected);
         }
 
@@ -852,7 +823,6 @@ namespace Proto.Promises.Tests
                 })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(rejected);
         }
 
@@ -871,7 +841,6 @@ namespace Proto.Promises.Tests
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled"), () => Assert.Fail("Promise was rejected when it should have been canceled"))
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
         }
 
@@ -890,7 +859,6 @@ namespace Proto.Promises.Tests
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled"), () => Assert.Fail("Promise was rejected when it should have been canceled"))
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(canceled);
         }
     }

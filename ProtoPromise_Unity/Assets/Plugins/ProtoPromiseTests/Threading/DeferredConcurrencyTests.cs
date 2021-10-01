@@ -44,10 +44,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    // Progress isn't reported until manager handles it.
-                    Assert.IsNaN(progress1);
-                    Assert.IsNaN(progress2);
-                    Promise.Manager.HandleCompletesAndProgress();
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
@@ -62,7 +58,6 @@ namespace Proto.Promises.Tests.Threading
             );
 
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
         }
 
         [Test]
@@ -84,10 +79,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    // Progress isn't reported until manager handles it.
-                    Assert.IsNaN(progress1);
-                    Assert.IsNaN(progress2);
-                    Promise.Manager.HandleCompletesAndProgress();
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
@@ -103,7 +94,6 @@ namespace Proto.Promises.Tests.Threading
 
             deferred.Resolve();
             cancelationSource.Dispose();
-            Promise.Manager.HandleCompletesAndProgress();
         }
 
         [Test]
@@ -124,10 +114,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    // Progress isn't reported until manager handles it.
-                    Assert.IsNaN(progress1);
-                    Assert.IsNaN(progress2);
-                    Promise.Manager.HandleCompletesAndProgress();
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
@@ -142,7 +128,6 @@ namespace Proto.Promises.Tests.Threading
             );
 
             deferred.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
         }
 
         [Test]
@@ -164,10 +149,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    // Progress isn't reported until manager handles it.
-                    Assert.IsNaN(progress1);
-                    Assert.IsNaN(progress2);
-                    Promise.Manager.HandleCompletesAndProgress();
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
@@ -183,7 +164,6 @@ namespace Proto.Promises.Tests.Threading
 
             deferred.Resolve(1);
             cancelationSource.Dispose();
-            Promise.Manager.HandleCompletesAndProgress();
         }
 #endif
 
@@ -600,8 +580,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Assert.IsNaN(progress); // Progress isn't reported until manager handles it.
-                    Promise.Manager.HandleCompletesAndProgress();
                     Assert.AreEqual(expected, progress, TestHelper.progressEpsilon);
                     deferred.Resolve();
                 },
@@ -633,8 +611,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Assert.IsNaN(progress); // Progress isn't reported until manager handles it.
-                    Promise.Manager.HandleCompletesAndProgress();
                     Assert.AreEqual(expected, progress, TestHelper.progressEpsilon);
                     deferred.Resolve();
                     cancelationSource.Dispose();
@@ -665,8 +641,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Assert.IsNaN(progress); // Progress isn't reported until manager handles it.
-                    Promise.Manager.HandleCompletesAndProgress();
                     Assert.AreEqual(expected, progress, TestHelper.progressEpsilon);
                     deferred.Resolve(1);
                 },
@@ -698,8 +672,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Assert.IsNaN(progress); // Progress isn't reported until manager handles it.
-                    Promise.Manager.HandleCompletesAndProgress();
                     Assert.AreEqual(expected, progress, TestHelper.progressEpsilon);
                     deferred.Resolve(1);
                     cancelationSource.Dispose();
@@ -731,7 +703,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -763,7 +734,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -792,7 +762,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -824,7 +793,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -853,7 +821,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -885,7 +852,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -914,7 +880,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -946,7 +911,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -978,7 +942,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1010,7 +973,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1039,7 +1001,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1068,7 +1029,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1100,7 +1060,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1132,7 +1091,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1161,7 +1119,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1190,7 +1147,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions

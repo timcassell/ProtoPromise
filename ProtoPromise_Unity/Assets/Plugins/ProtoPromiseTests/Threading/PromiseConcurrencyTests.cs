@@ -213,7 +213,6 @@ namespace Proto.Promises.Tests.Threading
                 () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Forget()
             );
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -228,7 +227,6 @@ namespace Proto.Promises.Tests.Threading
                 () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Forget()
             );
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -286,7 +284,6 @@ namespace Proto.Promises.Tests.Threading
                 promiseCompleter.Teardown();
                 cancelationSource.TryDispose();
                 promise.Forget();
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expectedInvokes, invokedCount);
             };
             if (parallelActions.Count == 0)
@@ -357,7 +354,6 @@ namespace Proto.Promises.Tests.Threading
                 promiseCompleter.Teardown();
                 cancelationSource.TryDispose();
                 promise.Forget();
-                Promise.Manager.HandleCompletes();
                 Assert.AreEqual(expectedInvokes, invokedCount);
             };
             if (parallelActions.Count == 0)
@@ -410,7 +406,6 @@ namespace Proto.Promises.Tests.Threading
                             action.Invoke()
                                 .ContinueWith(r => result = r.State)
                                 .Forget();
-                            Promise.Manager.HandleCompletesAndProgress();
                         }
                     },
                     parallelActions: new Action[]
@@ -420,7 +415,6 @@ namespace Proto.Promises.Tests.Threading
                     teardown: () =>
                     {
                         cancelationSource.TryDispose();
-                        Promise.Manager.HandleCompletesAndProgress();
                         
                         Assert.AreNotEqual(Promise.State.Pending, result);
                         switch (completeType)
@@ -476,7 +470,6 @@ namespace Proto.Promises.Tests.Threading
                             action.Invoke()
                                 .ContinueWith(r => result = r.State)
                                 .Forget();
-                            Promise.Manager.HandleCompletesAndProgress();
                         }
                     },
                     parallelActions: new Action[]
@@ -486,7 +479,6 @@ namespace Proto.Promises.Tests.Threading
                     teardown: () =>
                     {
                         cancelationSource.TryDispose();
-                        Promise.Manager.HandleCompletesAndProgress();
 
                         Assert.AreNotEqual(Promise.State.Pending, result);
                         switch (completeType)
@@ -523,7 +515,6 @@ namespace Proto.Promises.Tests.Threading
             }
             promise.Forget();
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveVoidCallbacks, invokedCount);
         }
 
@@ -541,7 +532,6 @@ namespace Proto.Promises.Tests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveVoidCallbacks, invokedCount);
         }
 
@@ -561,7 +551,6 @@ namespace Proto.Promises.Tests.Threading
             }
             promise.Forget();
             deferred.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveTCallbacks, invokedCount);
         }
 
@@ -579,7 +568,6 @@ namespace Proto.Promises.Tests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveTCallbacks, invokedCount);
         }
 
@@ -599,7 +587,6 @@ namespace Proto.Promises.Tests.Threading
             }
             promise.Forget();
             deferred.Reject("Reject");
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectVoidCallbacks, invokedCount);
         }
 
@@ -617,7 +604,6 @@ namespace Proto.Promises.Tests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectVoidCallbacks, invokedCount);
         }
 
@@ -637,7 +623,6 @@ namespace Proto.Promises.Tests.Threading
             }
             promise.Forget();
             deferred.Reject("Reject");
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectTCallbacks, invokedCount);
         }
 
@@ -655,7 +640,6 @@ namespace Proto.Promises.Tests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectTCallbacks, invokedCount);
         }
 
@@ -672,7 +656,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
 
             cancelationSource.Dispose();
@@ -688,7 +671,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
@@ -705,7 +687,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
 
             cancelationSource.Dispose();
@@ -721,7 +702,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
@@ -740,7 +720,6 @@ namespace Proto.Promises.Tests.Threading
             }
             promise.Forget();
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
         }
 
@@ -757,7 +736,6 @@ namespace Proto.Promises.Tests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
         }
 
@@ -776,7 +754,6 @@ namespace Proto.Promises.Tests.Threading
             }
             promise.Forget();
             deferred.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
         }
 
@@ -793,7 +770,6 @@ namespace Proto.Promises.Tests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
         }
 
@@ -812,7 +788,6 @@ namespace Proto.Promises.Tests.Threading
             }
             promise.Forget();
             deferred.Reject("Reject");
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
         }
 
@@ -829,7 +804,6 @@ namespace Proto.Promises.Tests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
         }
 
@@ -848,7 +822,6 @@ namespace Proto.Promises.Tests.Threading
             }
             promise.Forget();
             deferred.Reject("Reject");
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
         }
 
@@ -865,7 +838,6 @@ namespace Proto.Promises.Tests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
         }
 
@@ -885,7 +857,6 @@ namespace Proto.Promises.Tests.Threading
             }
             promise.Forget();
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
 
             cancelationSource.Dispose();
@@ -904,7 +875,6 @@ namespace Proto.Promises.Tests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
         }
 
@@ -924,7 +894,6 @@ namespace Proto.Promises.Tests.Threading
             }
             promise.Forget();
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
 
             cancelationSource.Dispose();
@@ -943,7 +912,6 @@ namespace Proto.Promises.Tests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
         }
 
@@ -959,7 +927,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
@@ -973,7 +940,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
@@ -989,7 +955,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             deferred.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
@@ -1003,7 +968,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
@@ -1019,7 +983,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             promise.Forget();
             deferred.Reject("Reject");
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
@@ -1033,7 +996,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
@@ -1049,7 +1011,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             promise.Forget();
             deferred.Reject("Reject");
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
@@ -1063,7 +1024,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
@@ -1080,7 +1040,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
 
             cancelationSource.Dispose();
@@ -1096,7 +1055,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
@@ -1113,7 +1071,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
 
             cancelationSource.Dispose();
@@ -1129,7 +1086,6 @@ namespace Proto.Promises.Tests.Threading
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
     }

@@ -80,7 +80,6 @@ namespace Proto.Promises.Tests.Threading
                     helper.Teardown();
                     cancelationSource0.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -131,7 +130,6 @@ namespace Proto.Promises.Tests.Threading
                     helper.Teardown();
                     cancelationSource0.TryDispose();
                     cancelationSource1.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -190,7 +188,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource0.TryDispose();
                     cancelationSource1.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -249,7 +246,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource0.TryDispose();
                     cancelationSource1.TryDispose();
                     cancelationSource2.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -316,7 +312,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource1.TryDispose();
                     cancelationSource2.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -383,7 +378,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource1.TryDispose();
                     cancelationSource2.TryDispose();
                     cancelationSource3.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -458,7 +452,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource2.TryDispose();
                     cancelationSource3.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -533,7 +526,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource2.TryDispose();
                     cancelationSource3.TryDispose();
                     cancelationSource4.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -616,7 +608,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource3.TryDispose();
                     cancelationSource4.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -699,7 +690,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource3.TryDispose();
                     cancelationSource4.TryDispose();
                     cancelationSource5.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -790,7 +780,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource4.TryDispose();
                     cancelationSource5.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -881,7 +870,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource4.TryDispose();
                     cancelationSource5.TryDispose();
                     cancelationSource6.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -980,7 +968,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource5.TryDispose();
                     cancelationSource6.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
