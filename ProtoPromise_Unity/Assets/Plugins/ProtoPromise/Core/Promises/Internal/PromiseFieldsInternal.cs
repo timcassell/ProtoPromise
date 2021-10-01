@@ -151,6 +151,7 @@ namespace Proto.Promises
             {
                 [FieldOffset(0)]
                 internal short _promiseId;
+                // TODO: use [FieldOffset(2)] for depth to utilize the byte space for non-deferred promises.
                 [FieldOffset(2)]
                 internal short _deferredId;
                 [FieldOffset(4)]
@@ -169,6 +170,8 @@ namespace Proto.Promises
                 }
             } // IdRetain
 
+            // TODO: move flags and state into IdRetain struct, shrink _retains to ushort.
+            // Add previousState and ExecutionOption enum.
             private partial struct SmallFields
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
@@ -199,7 +202,7 @@ namespace Proto.Promises
                 private ITreeHandleable _waiter;
             }
 
-            internal abstract partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait
+            partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait
             {
 #if PROMISE_PROGRESS
                 volatile protected IProgressListener _progressListener;

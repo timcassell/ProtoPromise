@@ -30,7 +30,7 @@ namespace Proto.Promises
 
             void IProgress<float>.Report(float value)
             {
-                ReportProgress(value);
+                _target.ReportProgress(value);
             }
 
             /// <summary>
@@ -92,6 +92,8 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public Deferred AsDeferred()
             {
+                // TODO: if the cast fails and _promiseId == Internal.ValidIdFromApi, Deferred.Promise will return a valid, resolved promise.
+                // This needs to handle that and not allow the promise to be valid.
                 return new Deferred(_target._ref as Internal.PromiseRef.DeferredPromiseVoid, _target._promiseId, _target._deferredId);
             }
 
@@ -278,7 +280,7 @@ namespace Proto.Promises
 
             void IProgress<float>.Report(float value)
             {
-                ReportProgress(value);
+                _target.ReportProgress(value);
             }
 
             /// <summary>
@@ -457,6 +459,15 @@ namespace Proto.Promises
                 return new DeferredBase(rhs._target._ref, rhs._target._promiseId, rhs._target._deferredId);
             }
 
+            /// <summary>
+            /// Cast <see cref="DeferredBase"/> to <see cref="Deferred"/>.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            public static explicit operator Deferred(DeferredBase rhs)
+            {
+                return rhs.ToDeferred();
+            }
+
             [MethodImpl(Internal.InlineOption)]
             public bool Equals(Deferred other)
             {
@@ -531,7 +542,7 @@ namespace Proto.Promises
 
             void IProgress<float>.Report(float value)
             {
-                ReportProgress(value);
+                _target.ReportProgress(value);
             }
 
             /// <summary>
@@ -708,6 +719,15 @@ namespace Proto.Promises
             public static implicit operator Promise.DeferredBase(Deferred rhs)
             {
                 return new Promise.DeferredBase(rhs._target._ref, rhs._target._promiseId, rhs._target._deferredId);
+            }
+
+            /// <summary>
+            /// Cast <see cref="Promise{T}.DeferredBase"/> to <see cref="Deferred"/>.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            public static explicit operator Deferred(Promise.DeferredBase rhs)
+            {
+                return rhs.ToDeferred<T>();
             }
 
             [MethodImpl(Internal.InlineOption)]

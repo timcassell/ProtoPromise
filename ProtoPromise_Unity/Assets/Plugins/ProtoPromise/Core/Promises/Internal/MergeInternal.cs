@@ -276,9 +276,9 @@ namespace Proto.Promises
                     return null;
                 }
 
-                protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, bool shouldReport)
+                protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
                 {
-                    SetInitialProgress(progressListener, shouldReport, CurrentProgress(), new Fixed32(_maxWaitDepth + 1));
+                    SetInitialProgress(progressListener, CurrentProgress(), new Fixed32(_maxWaitDepth + 1), ref executionQueue);
                 }
 
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress)
@@ -306,7 +306,9 @@ namespace Proto.Promises
 
                 partial void IncrementProgress(PromisePassThrough passThrough)
                 {
-                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion(), true);
+                    var executionQueue = new ValueLinkedQueue<IProgressInvokable>();
+                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion(), ref executionQueue);
+                    ExecuteProgress(executionQueue);
                 }
 
                 private Fixed32 CurrentProgress()
@@ -315,28 +317,27 @@ namespace Proto.Promises
                     return new Fixed32(_unscaledProgress.ToDouble() * _progressScaler);
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, bool shouldReport)
+                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
                 {
                     ThrowIfInPool(this);
-                    IncrementProgress(amount, shouldReport);
+                    IncrementProgress(amount, ref executionQueue);
                 }
 
-                private void IncrementProgress(uint amount, bool shouldReport)
+                private void IncrementProgress(uint amount, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
                 {
                     _unscaledProgress.InterlockedIncrement(amount);
-                    if (shouldReport
-                        && (_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
+                    if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
                         InterlockedRetainDisregardId();
-                        AddToFrontOfProgressQueue(this);
+                        executionQueue.Push(this);
                     }
                 }
 
-                void IProgressInvokable.Invoke()
+                void IProgressInvokable.Invoke(ref ValueLinkedQueue<IProgressInvokable> executionQueue)
                 {
                     var progress = CurrentProgress();
                     _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
-                    ReportProgress(progress);
+                    ReportProgress(progress, ref executionQueue);
                     MaybeDispose();
                 }
             }

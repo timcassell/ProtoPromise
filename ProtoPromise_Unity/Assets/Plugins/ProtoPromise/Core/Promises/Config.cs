@@ -68,6 +68,7 @@ namespace Proto.Promises
 #if !PROMISE_PROGRESS
             [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
+            // TODO: just use (u)short in Fixed32 instead of bit shift.
             public const int ProgressDecimalBits = 13; // Must be const. Allowing this to change at runtime could mess up progress in flight.
 
             [Obsolete("Use ObjectPoolingEnabled instead.")]
@@ -76,16 +77,13 @@ namespace Proto.Promises
             volatile private static bool _objectPoolingEnabled = true; // Enabled by default.
             public static bool ObjectPoolingEnabled { get { return _objectPoolingEnabled; } set { _objectPoolingEnabled = value; } }
 
+            /// <summary>
+            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
+            /// </summary>
 #if PROMISE_DEBUG
-            volatile private static TraceLevel _debugCausalityTracer = TraceLevel.Rejections;
-            /// <summary>
-            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
-            /// </summary>
             public static TraceLevel DebugCausalityTracer { get { return _debugCausalityTracer; } set { _debugCausalityTracer = value; } }
+            volatile private static TraceLevel _debugCausalityTracer = TraceLevel.Rejections;
 #else
-            /// <summary>
-            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
-            /// </summary>
             public static TraceLevel DebugCausalityTracer { get { return default(TraceLevel); } set { } }
 #endif
 

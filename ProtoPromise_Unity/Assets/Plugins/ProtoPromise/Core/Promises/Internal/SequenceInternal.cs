@@ -20,18 +20,33 @@ namespace Proto.Promises
                     return CreateResolved();
                 }
 
-                // Invoke funcs async and normalize the progress.
-                PromiseRef rootPromise = cancelationToken.CanBeCanceled
-                    ? CancelablePromiseResolvePromise<VoidResult, VoidResult, DelegateVoidPromise>.GetOrCreate(DelegateWrapper.Create(promiseFuncs.Current), cancelationToken, 0)
-                    : (PromiseRef) PromiseResolvePromise<VoidResult, VoidResult, DelegateVoidPromise>.GetOrCreate(DelegateWrapper.Create(promiseFuncs.Current), 0);
-                Interlocked.CompareExchange(ref rootPromise._valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null);
+                // Invoke funcs and normalize the progress.
+                Promise promise;
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    var newPromise = CancelablePromiseResolvePromise<VoidResult, VoidResult, DelegateVoidPromise>.GetOrCreate(DelegateWrapper.Create(promiseFuncs.Current), cancelationToken, 0);
+                    promise = new Promise(newPromise, newPromise.Id, 0);
+                }
+                else
+                {
+                    try
+                    {
+                        promise = CallbackHelper.AdoptDirect(promiseFuncs.Current.Invoke()._target, -1);
+                    }
+                    catch (OperationCanceledException e)
+                    {
+                        promise = Promise.Canceled(e);
+                    }
+                    catch (Exception e)
+                    {
+                        promise = Promise.Rejected(e);
+                    }
+                }
 
-                Promise promise = new Promise(rootPromise, rootPromise.Id, 0);
                 while (promiseFuncs.MoveNext())
                 {
                     promise = promise.Then(promiseFuncs.Current, cancelationToken);
                 }
-                AddToHandleQueueBack(rootPromise);
                 return promise;
             }
         }

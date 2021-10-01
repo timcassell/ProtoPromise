@@ -157,9 +157,9 @@ namespace Proto.Promises
                     return null;
                 }
 
-                protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, bool shouldReport)
+                protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
                 {
-                    SetInitialProgress(progressListener, shouldReport, _raceSmallFields._currentProgress, _raceSmallFields._depthAndProgress.GetIncrementedWholeTruncated());
+                    SetInitialProgress(progressListener, _raceSmallFields._currentProgress, _raceSmallFields._depthAndProgress.GetIncrementedWholeTruncated(), ref executionQueue);
                 }
 
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs)
@@ -175,29 +175,29 @@ namespace Proto.Promises
                     _raceSmallFields._depthAndProgress = new Fixed32(minWaitDepth);
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, bool shouldReport)
+                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
                 {
                     ThrowIfInPool(this);
 
                     // Use double for better precision.
                     var newAmount = new Fixed32(senderAmount.ToDouble() * (_raceSmallFields._depthAndProgress.WholePart + 1) / (double) (ownerAmount.WholePart + 1));
-                    if (shouldReport & _raceSmallFields._currentProgress.InterlockedTrySetIfGreater(newAmount))
+                    if (_raceSmallFields._currentProgress.InterlockedTrySetIfGreater(newAmount))
                     {
                         if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                         {
                             InterlockedRetainDisregardId();
-                            AddToFrontOfProgressQueue(this);
+                            executionQueue.Push(this);
                         }
                     }
                 }
 
-                void IProgressInvokable.Invoke()
+                void IProgressInvokable.Invoke(ref ValueLinkedQueue<IProgressInvokable> executionQueue)
                 {
                     ThrowIfInPool(this);
                     Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
                     var progress = _raceSmallFields._currentProgress;
                     _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
-                    ReportProgress(progress);
+                    ReportProgress(progress, ref executionQueue);
                     MaybeDispose();
                 }
             }

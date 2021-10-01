@@ -327,13 +327,6 @@ namespace Proto.Promises
         private static ValueLinkedQueue<ITreeHandleable> _handleQueue;
         private static SpinLocker _handleLocker;
 
-        internal static void AddToHandleQueueFront(ITreeHandleable handleable)
-        {
-            _handleLocker.Enter();
-            _handleQueue.Push(handleable);
-            _handleLocker.Exit();
-        }
-
         internal static void AddToHandleQueueBack(ITreeHandleable handleable)
         {
             _handleLocker.Enter();
@@ -364,6 +357,7 @@ namespace Proto.Promises
         private static ValueLinkedStackZeroGC<UnhandledException> _unhandledExceptions;
         private static SpinLocker _unhandledExceptionsLocker;
 
+        // TODO: pass to Promise.Config.UncaughtRejectionHandler synchronously
         internal static void AddUnhandledException(UnhandledException exception)
         {
             _unhandledExceptions.Push(exception, ref _unhandledExceptionsLocker);

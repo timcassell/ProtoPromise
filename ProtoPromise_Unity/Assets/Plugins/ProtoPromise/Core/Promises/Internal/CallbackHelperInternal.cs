@@ -145,7 +145,7 @@ namespace Proto.Promises
                 }
 
 #if PROMISE_PROGRESS
-                internal static void InvokeAndCatchProgress<TProgress>(TProgress progress, float value, ITraceable traceable)
+                internal static void InvokeAndCatchProgress<TProgress>(ref TProgress progress, float value, ITraceable traceable)
                     where TProgress : IProgress<float>
                 {
                     SetCurrentInvoker(traceable);
@@ -171,7 +171,7 @@ namespace Proto.Promises
 
                     if (_this._ref == null)
                     {
-                        InvokeAndCatchProgress(progress, 1, null);
+                        InvokeAndCatchProgress(ref progress, 1, null);
                         return new Promise<TResult>(null, ValidIdFromApi, _this.Depth);
                     }
 
