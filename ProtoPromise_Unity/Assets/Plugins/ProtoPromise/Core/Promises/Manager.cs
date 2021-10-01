@@ -23,72 +23,37 @@ namespace Proto.Promises
 #endif
         public static class Manager
         {
-            private static bool _willThrow;
-
             /// <summary>
-            /// Invokes callbacks for completed promises,
-            /// then if <see cref="Config.UncaughtRejectionHandler"/> is not null, invokes it with each unhandled rejection,
-            /// otherwise throws all unhandled rejections as <see cref="AggregateException"/>.
-            /// <para/>Does nothing if completes are already being handled.
+            /// Invokes callbacks for completed promises.
             /// </summary>
             public static void HandleCompletes()
             {
-                bool willThrow = _willThrow;
-                _willThrow = true;
-
                 Internal.HandleEvents();
-
-                if (!willThrow)
-                {
-                    _willThrow = false;
-                    Internal.ThrowUnhandledRejections();
-                }
+                Internal.MaybeReportUnhandledRejections();
             }
 
             /// <summary>
             /// Invokes callbacks for completed promises,
-            /// then invokes progress callbacks for all promises that had their progress updated,
-            /// then if <see cref="Config.UncaughtRejectionHandler"/> is not null, invokes it with each unhandled rejection,
-            /// otherwise throws all unhandled rejections as <see cref="AggregateException"/>.
-            /// <para/>Does not handle completes if completes are already being handled. Does not handle progress if progress is already being handled or if progress is disabled.
+            /// then invokes progress callbacks for all promises that had their progress updated.
             /// </summary>
             public static void HandleCompletesAndProgress()
             {
-                bool willThrow = _willThrow;
-                _willThrow = true;
-
                 Internal.HandleEvents();
 #if PROMISE_PROGRESS
                 Internal.PromiseRef.InvokeProgressListeners();
 #endif
-
-                if (!willThrow)
-                {
-                    _willThrow = false;
-                    Internal.ThrowUnhandledRejections();
-                }
+                Internal.MaybeReportUnhandledRejections();
             }
 
             /// <summary>
-            /// Invokes progress callbacks for all promises that had their progress updated,
-            /// then if <see cref="Config.UncaughtRejectionHandler"/> is not null, invokes it with each unhandled rejection,
-            /// otherwise throws all unhandled rejections as <see cref="AggregateException"/>.
-            /// <para/>Does nothing if progress is already being handled or if progress is disabled.
+            /// Invokes progress callbacks for all promises that had their progress updated.
             /// </summary>
             public static void HandleProgress()
             {
-                bool willThrow = _willThrow;
-                _willThrow = true;
-
 #if PROMISE_PROGRESS
                 Internal.PromiseRef.InvokeProgressListeners();
 #endif
-
-                if (!willThrow)
-                {
-                    _willThrow = false;
-                    Internal.ThrowUnhandledRejections();
-                }
+                Internal.MaybeReportUnhandledRejections();
             }
 
             /// <summary>

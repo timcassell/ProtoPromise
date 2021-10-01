@@ -499,49 +499,24 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private ValueLinkedStackZeroGC(ValueLinkedStack<Node> stack)
-            {
-                _stack = stack;
-            }
-
-            [MethodImpl(InlineOption)]
             internal void ClearWithoutRepoolUnsafe()
             {
                 _stack = new ValueLinkedStack<Node>();
             }
 
             [MethodImpl(InlineOption)]
-            internal ValueLinkedStackZeroGC<T> ClearWithoutRepoolAndGetCopy(ref SpinLocker locker)
-            {
-                locker.Enter();
-                ValueLinkedStack<Node> newStack = _stack;
-                ClearWithoutRepoolUnsafe();
-                locker.Exit();
-                return new ValueLinkedStackZeroGC<T>(newStack);
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void PushUnsafe(T item)
+            internal void Push(T item)
             {
                 _stack.Push(Node.GetOrCreate(item));
             }
 
             [MethodImpl(InlineOption)]
-            internal T PopUnsafe()
+            internal T Pop()
             {
                 var node = _stack.Pop();
                 T item = node._value;
                 node.Dispose();
                 return item;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void Push(T item, ref SpinLocker locker)
-            {
-                Node node = Node.GetOrCreate(item);
-                locker.Enter();
-                _stack.Push(node);
-                locker.Exit();
             }
 
             [MethodImpl(InlineOption)]

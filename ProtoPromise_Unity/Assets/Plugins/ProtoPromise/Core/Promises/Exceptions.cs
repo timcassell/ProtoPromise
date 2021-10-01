@@ -147,8 +147,10 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
 #endif
-    public abstract class UnhandledException : Exception
+    public abstract class UnhandledException : Exception, Internal.ILinked<UnhandledException>
     {
+        UnhandledException Internal.ILinked<UnhandledException>.Next { get; set; }
+
         private readonly object _value;
         private readonly Type _type;
         private readonly string _stackTrace;

@@ -354,13 +354,14 @@ namespace Proto.Promises
         }
 
         // Handle uncaught errors. These must not be readonly.
-        private static ValueLinkedStackZeroGC<UnhandledException> _unhandledExceptions;
+        private static ValueLinkedStack<UnhandledException> _unhandledExceptions;
         private static SpinLocker _unhandledExceptionsLocker;
 
-        // TODO: pass to Promise.Config.UncaughtRejectionHandler synchronously
         internal static void AddUnhandledException(UnhandledException exception)
         {
-            _unhandledExceptions.Push(exception, ref _unhandledExceptionsLocker);
+            _unhandledExceptionsLocker.Enter();
+            _unhandledExceptions.Push(exception);
+            _unhandledExceptionsLocker.Exit();
         }
 
         internal static void AddRejectionToUnhandledStack(object unhandledValue, ITraceable traceable)
@@ -389,41 +390,24 @@ namespace Proto.Promises
             AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, type, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
         }
 
-        internal static void ThrowUnhandledRejections()
+        internal static void MaybeReportUnhandledRejections()
         {
-            var unhandledExceptions = _unhandledExceptions.ClearWithoutRepoolAndGetCopy(ref _unhandledExceptionsLocker);
-            if (unhandledExceptions.IsEmpty)
-            {
-                return;
-            }
-
+            // If Promise.Config.UncaughtRejectionHandler is not set, unhandled rejections will continue to pile up until it is set.
             Action<UnhandledException> handler = Promise.Config.UncaughtRejectionHandler;
-            if (handler != null)
+            if (handler == null)
             {
-                // Purposefully using foreach and ClearWithoutRepoolUnsafe to not re-pool internal Nodes.
-                // We don't want to waste pooled memory on errors.
-                foreach (UnhandledException unhandled in unhandledExceptions)
-                {
-                    handler.Invoke(unhandled);
-                }
-                unhandledExceptions.ClearWithoutRepoolUnsafe();
                 return;
             }
 
-#if CSHARP_7_3_OR_NEWER
-            var ex = new AggregateException(unhandledExceptions);
-            unhandledExceptions.ClearWithoutRepoolUnsafe();
-            throw ex;
-#else
-            // .Net 3.5 and earlier can't convert IEnumerable<UnhandledExceptionInternal> to IEnumerable<Exception>
-            var exceptions = new List<Exception>();
-            foreach (var ex in unhandledExceptions)
+            _unhandledExceptionsLocker.Enter();
+            var unhandledExceptions = _unhandledExceptions;
+            _unhandledExceptions = new ValueLinkedStack<UnhandledException>();
+            _unhandledExceptionsLocker.Exit();
+
+            while (unhandledExceptions.IsNotEmpty)
             {
-                exceptions.Add(ex);
+                handler.Invoke(unhandledExceptions.Pop());
             }
-            unhandledExceptions.ClearWithoutRepoolUnsafe();
-            throw new AggregateException(exceptions);
-#endif
         }
 
         internal static bool InterlockedAddIfNotEqual(ref int location, int value, int comparand, out int newValue)

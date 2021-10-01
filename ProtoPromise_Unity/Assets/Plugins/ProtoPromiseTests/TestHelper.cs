@@ -24,11 +24,12 @@ namespace Proto.Promises.Tests
     // These help test all Then/Catch/ContinueWith methods at once.
     public static partial class TestHelper
     {
+        private static Exception uncaughtException;
+
         static TestHelper()
         {
-            // Capture first exception from finalizers.
-            // Only throw one exception instead of aggregate to try to avoid overloading the test error output.
-            Promise.Config.UncaughtRejectionHandler = e => { throw e; };
+            // Set Promise.Config.UncaughtRejectionHandler. Only store 1 exception to try to avoid overloading the test error output.
+            Promise.Config.UncaughtRejectionHandler = e => uncaughtException = e;
             Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
 #if PROTO_PROMISE_POOL_DISABLE // Are we testing the pool or not? (used for command-line testing)
             Promise.Config.ObjectPoolingEnabled = false;
@@ -47,6 +48,12 @@ namespace Proto.Promises.Tests
             GC.Collect();
             GC.WaitForPendingFinalizers();
             Promise.Manager.HandleCompletesAndProgress();
+            Exception e = uncaughtException;
+            if (e != null)
+            {
+                uncaughtException = null;
+                throw e;
+            }
         }
 
         public static Action<Promise.Deferred, CancelationSource> GetCompleterVoid(CompleteType completeType, string rejectValue)

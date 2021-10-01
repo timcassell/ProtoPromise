@@ -396,7 +396,7 @@ namespace Proto.Promises
                 if (_valueContainer != DisposedRef.instance)
                 {
                     // CancelationSource wasn't disposed.
-                    AddRejectionToUnhandledStack(new Exception("CancelationSource's resources were garbage collected without being disposed."), this);
+                    AddRejectionToUnhandledStack(new UnreleasedObjectException("CancelationSource's resources were garbage collected without being disposed."), this);
                 }
             }
 
@@ -559,7 +559,7 @@ namespace Proto.Promises
                         listener._idsAndRetains.InterlockedRetainInternal();
                         _registeredCallbacks.Add(new RegisteredDelegate(order, listener));
                     }
-                    listener._links.PushUnsafe(new CancelationRegistration(this, TokenId, order));
+                    listener._links.Push(new CancelationRegistration(this, TokenId, order));
                 }
                 goto Return;
 
@@ -840,7 +840,7 @@ namespace Proto.Promises
             {
                 while (_links.IsNotEmpty)
                 {
-                    _links.PopUnsafe().TryUnregister();
+                    _links.Pop().TryUnregister();
                 }
             }
 

@@ -103,9 +103,19 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// If this is not null, uncaught rejections get routed through this instead of being thrown.
+            /// Uncaught rejections get routed through this delegate.
+            /// This must be set to a non-null delegate, otherwise uncaught rejections will continue to pile up without being reported.
             /// </summary>
-            public static Action<UnhandledException> UncaughtRejectionHandler { get; set; }
+            public static Action<UnhandledException> UncaughtRejectionHandler
+            {
+                get { return _uncaughtRejectionHandler; }
+                set
+                {
+                    _uncaughtRejectionHandler = value;
+                    Internal.MaybeReportUnhandledRejections();
+                }
+            }
+            private static Action<UnhandledException> _uncaughtRejectionHandler;
 
             /// <summary>
             /// Warning handler.

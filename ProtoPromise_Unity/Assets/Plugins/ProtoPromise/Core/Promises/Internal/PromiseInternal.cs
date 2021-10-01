@@ -107,6 +107,7 @@ namespace Proto.Promises
                 {
                     executionStack.Pop().Handle(ref executionStack);
                 }
+                MaybeReportUnhandledRejections();
             }
 
             protected virtual void MarkAwaited(short promiseId)

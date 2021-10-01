@@ -127,8 +127,8 @@ namespace Proto.Promises
                         current._smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.SettingInitial);
                         current.SetInitialProgress(currentListener, depthAndProgress, ref executionQueue);
                         current._smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.SettingInitial);
-                        ExecuteProgress(executionQueue);
                         current.MaybeDispose();
+                        ExecuteProgress(executionQueue);
                         return;
                     }
                     current.MaybeDispose();
