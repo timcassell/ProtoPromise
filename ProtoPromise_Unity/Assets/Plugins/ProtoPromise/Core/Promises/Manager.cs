@@ -1,59 +1,33 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
-#define PROMISE_DEBUG
-#else
-#undef PROMISE_DEBUG
-#endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-# endif
-
-using System;
+﻿using System;
 
 namespace Proto.Promises
 {
     partial struct Promise
     {
         /// <summary>
-        /// Promise manager. This can be used to cleared pooled objects (if enabled) or manually handle promises (not recommended for RELEASE builds).
+        /// Promise manager. This can be used to clear pooled objects (if enabled).
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
         public static class Manager
         {
-            /// <summary>
-            /// Invokes callbacks for completed promises.
-            /// </summary>
+            [Obsolete("Promise.Manager.HandleCompletes is no longer valid. Set Promise.Config.ForegroundContext instead.", true)]
             public static void HandleCompletes()
             {
-                Internal.HandleEvents();
-                Internal.MaybeReportUnhandledRejections();
+                throw new System.InvalidOperationException("Promise.Manager.HandleCompletes is no longer valid. Set Promise.Config.ForegroundContext instead.");
             }
 
-            /// <summary>
-            /// Invokes callbacks for completed promises,
-            /// then invokes progress callbacks for all promises that had their progress updated.
-            /// </summary>
+            [Obsolete("Promise.Manager.HandleCompletesAndProgress is no longer valid. Set Promise.Config.ForegroundContext instead.", true)]
             public static void HandleCompletesAndProgress()
             {
-                Internal.HandleEvents();
-#if PROMISE_PROGRESS
-                Internal.PromiseRef.InvokeProgressListeners();
-#endif
-                Internal.MaybeReportUnhandledRejections();
+                throw new System.InvalidOperationException("Promise.Manager.HandleCompletesAndProgress is no longer valid. Set Promise.Config.ForegroundContext instead.");
             }
 
-            /// <summary>
-            /// Invokes progress callbacks for all promises that had their progress updated.
-            /// </summary>
+            [Obsolete("Promise.Manager.HandleProgress is no longer valid. Set Promise.Config.ForegroundContext instead.", true)]
             public static void HandleProgress()
             {
-#if PROMISE_PROGRESS
-                Internal.PromiseRef.InvokeProgressListeners();
-#endif
-                Internal.MaybeReportUnhandledRejections();
+                throw new System.InvalidOperationException("Promise.Manager.HandleProgress is no longer valid. Set Promise.Config.ForegroundContext instead.");
             }
 
             /// <summary>
@@ -64,9 +38,7 @@ namespace Proto.Promises
                 Internal.ClearPool();
             }
 
-            /// <summary>
-            /// Sends the message to <see cref="Config.WarningHandler"/> if it exists.
-            /// </summary>
+            [Obsolete]
             public static void LogWarning(string message)
             {
                 var temp = Config.WarningHandler;

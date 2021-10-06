@@ -5,9 +5,12 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
+using Proto.Promises.Threading;
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises.Tests
 {
@@ -24,12 +27,15 @@ namespace Proto.Promises.Tests
     // These help test all Then/Catch/ContinueWith methods at once.
     public static partial class TestHelper
     {
-        private static Exception uncaughtException;
+        private static readonly PromiseSynchronizationContext _foregroundContext;
+        volatile private static Exception _uncaughtException;
 
         static TestHelper()
         {
-            // Set Promise.Config.UncaughtRejectionHandler. Only store 1 exception to try to avoid overloading the test error output.
-            Promise.Config.UncaughtRejectionHandler = e => uncaughtException = e;
+            // Set the foreground context to execute foreground promise callbacks.
+            Promise.Config.ForegroundContext = _foregroundContext = new PromiseSynchronizationContext();
+            // Set uncaught rejection handler. Only store 1 exception to try to avoid overloading the test error output.
+            Promise.Config.UncaughtRejectionHandler = e => _uncaughtException = e;
             Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
 #if PROTO_PROMISE_POOL_DISABLE // Are we testing the pool or not? (used for command-line testing)
             Promise.Config.ObjectPoolingEnabled = false;
@@ -44,16 +50,21 @@ namespace Proto.Promises.Tests
 
         public static void Cleanup()
         {
-            Promise.Manager.HandleCompletesAndProgress();
+            ExecuteForegroundCallbacks();
             GC.Collect();
             GC.WaitForPendingFinalizers();
-            Promise.Manager.HandleCompletesAndProgress();
-            Exception e = uncaughtException;
+            ExecuteForegroundCallbacks();
+
+            Exception e = Interlocked.Exchange(ref _uncaughtException, null);
             if (e != null)
             {
-                uncaughtException = null;
                 throw e;
             }
+        }
+
+        public static void ExecuteForegroundCallbacks()
+        {
+            _foregroundContext.Execute();
         }
 
         public static Action<Promise.Deferred, CancelationSource> GetCompleterVoid(CompleteType completeType, string rejectValue)

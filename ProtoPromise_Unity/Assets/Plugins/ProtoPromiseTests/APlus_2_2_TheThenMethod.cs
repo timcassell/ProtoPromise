@@ -762,7 +762,7 @@ namespace Proto.Promises.Tests
             deferred.Resolve();
             Assert.False(resolved);
 
-            Promise.Manager.HandleCompletes();
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.True(resolved);
 
             promise.Forget();
@@ -785,7 +785,7 @@ namespace Proto.Promises.Tests
             deferred.Resolve(1);
             Assert.False(resolved);
 
-            Promise.Manager.HandleCompletes();
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.True(resolved);
 
             promise.Forget();
@@ -804,7 +804,7 @@ namespace Proto.Promises.Tests
             deferred.Reject("Fail value");
             Assert.False(errored);
 
-            Promise.Manager.HandleCompletes();
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.True(errored);
         }
 
@@ -821,7 +821,7 @@ namespace Proto.Promises.Tests
             deferred.Reject("Fail value");
             Assert.False(errored);
 
-            Promise.Manager.HandleCompletes();
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.True(errored);
         }
 

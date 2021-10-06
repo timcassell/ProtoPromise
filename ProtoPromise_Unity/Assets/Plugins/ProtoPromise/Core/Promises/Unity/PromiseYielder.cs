@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections;
-using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace Proto.Promises
@@ -308,7 +307,7 @@ namespace Proto.Promises
         {
             if (_instance != this)
             {
-                Promise.Manager.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
+                Debug.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
                 Destroy(this);
                 return;
             }
@@ -324,7 +323,7 @@ namespace Proto.Promises
             {
                 if (_instance == this)
                 {
-                    Promise.Manager.LogWarning("PromiseYielder destroyed! Any pending PromiseYielder.WaitFor promises will not be resolved!");
+                    Debug.LogWarning("PromiseYielder destroyed! Any pending PromiseYielder.WaitFor promises will not be resolved!");
                     _instance = null;
                 }
             }
@@ -424,7 +423,6 @@ namespace Proto.Promises
                 try
                 {
                     deferred.Resolve(tempObj);
-                    Promise.Manager.HandleCompletes(); // Handle callbacks in case the yield instruction was WaitForEndOfFrame or WaitForFixedUpdate or other unusual yield.
                 }
                 catch
                 {

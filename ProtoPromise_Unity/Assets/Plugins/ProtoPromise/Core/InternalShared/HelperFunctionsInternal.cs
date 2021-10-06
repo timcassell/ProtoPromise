@@ -390,12 +390,18 @@ namespace Proto.Promises
             AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, type, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
         }
 
+        [MethodImpl(InlineOption)]
         internal static void MaybeReportUnhandledRejections()
         {
             // If Promise.Config.UncaughtRejectionHandler is not set, unhandled rejections will continue to pile up until it is set.
-            Action<UnhandledException> handler = Promise.Config.UncaughtRejectionHandler;
+            MaybeReportUnhandledRejections(Promise.Config.UncaughtRejectionHandler);
+        }
+
+        internal static void MaybeReportUnhandledRejections(Action<UnhandledException> handler)
+        {
             if (handler == null)
             {
+                // TODO: throw in background thread instead of letting them pile up.
                 return;
             }
 

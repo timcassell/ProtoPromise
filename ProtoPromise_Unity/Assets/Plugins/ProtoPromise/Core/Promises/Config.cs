@@ -17,6 +17,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -112,14 +113,17 @@ namespace Proto.Promises
                 set
                 {
                     _uncaughtRejectionHandler = value;
-                    Internal.MaybeReportUnhandledRejections();
+                    Internal.MaybeReportUnhandledRejections(value);
                 }
             }
-            private static Action<UnhandledException> _uncaughtRejectionHandler;
+            volatile private static Action<UnhandledException> _uncaughtRejectionHandler;
 
             /// <summary>
-            /// Warning handler.
+            /// The <see cref="SynchronizationContext"/> used to marshal work to the UI thread.
             /// </summary>
+            public static SynchronizationContext ForegroundContext { get; set; }
+
+            [Obsolete]
             public static Action<string> WarningHandler { get; set; }
         }
     }

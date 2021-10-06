@@ -64,6 +64,7 @@ namespace Proto.Promises.Tests
             deferred.ReportProgress(0.5f);
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
@@ -89,6 +90,7 @@ namespace Proto.Promises.Tests
             deferred.ReportProgress(0.5f);
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve();
@@ -115,6 +117,7 @@ namespace Proto.Promises.Tests
             deferred.ReportProgress(0.5f);
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve(1);
@@ -140,6 +143,7 @@ namespace Proto.Promises.Tests
             deferred.ReportProgress(0.5f);
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
 
             deferred.Resolve(1);

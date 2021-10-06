@@ -209,6 +209,8 @@ namespace Proto.Promises
                             return Invoker<TArg, TResult>.InvokeCallbackDirect(resolver, _this);
                         }
                     }
+                    // TODO: sync callback if ref-backed and already complete in RELEASE mode only.
+                    // else if (_this._ref.State != Promise.State.Pending) { }
                     else
                     {
                         _this._ref.MarkAwaited(_this.Id);
