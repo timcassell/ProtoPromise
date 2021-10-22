@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -103,25 +104,38 @@ namespace Proto.Promises
         /// <para/>Preserved promises are unsafe to return from public APIs. Use <see cref="Duplicate"/> to get a <see cref="Promise{T}"/> that is publicly safe.
         /// <para/><see cref="Duplicate"/> is safe to call even if you are unsure if <see cref="this"/> is preserved.
         /// </summary>
+        [MethodImpl(Internal.InlineOption)]
         public Promise<T> Duplicate()
         {
+            return WaitAsync(Promise.ContinuationOption.Synchronous);
+        }
+
+        /// <summary>
+        /// Mark <see cref="this"/> as awaited and schedule the next continuation to execute on the context of the provided option. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
+        /// </summary>
+        public Promise<T> WaitAsync(Promise.ContinuationOption continuationOption)
+        {
             ValidateOperation(1);
-            var _this = GetVoidCopy();
-            if (_ref != null)
-            {
-                var newPromise = _this._ref.GetDuplicate(_this.Id);
-                return new Promise<T>(newPromise, newPromise.Id, _this.Depth);
-            }
-            return this;
+            return Internal.PromiseRef.CallbackHelper.WaitAsync(this, (Internal.ContinuationOption) continuationOption, null);
+        }
+
+        /// <summary>
+        /// Mark <see cref="this"/> as awaited and schedule the next continuation to execute on the provided context. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
+        /// <para/>If <paramref name="continuationContext"/> is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.
+        /// </summary>
+        public Promise<T> WaitAsync(SynchronizationContext continuationContext)
+        {
+            ValidateOperation(1);
+            return Internal.PromiseRef.CallbackHelper.WaitAsync(this, Internal.ContinuationOption.Explicit, continuationContext);
         }
 
         /// <summary>
         /// Add a progress listener. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/><paramref name="progressListener"/> will be reported with progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
         /// 
-        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
-        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise{T}"/> will be resolved when it returns.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, progress will stop being reported.
         /// </summary>
@@ -145,9 +159,9 @@ namespace Proto.Promises
         /// Add a progress listener. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
         /// 
-        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
-        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise{T}"/> will be resolved when it returns.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
@@ -734,9 +748,9 @@ namespace Proto.Promises
         /// Capture a value and add a progress listener. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 from this and all previous waiting promises in the chain.
         /// 
-        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
-        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise"/> will be canceled with the same reason.
+        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="PromisePromise{T}"/> will be resolved when it returns.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled with any reason or no reason, the new <see cref="Promise{T}"/> will be canceled with the same reason.
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>

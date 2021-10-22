@@ -283,7 +283,7 @@ namespace Proto.Promises
                     return this;
                 }
 
-                internal sealed override void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                internal override void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     ThrowIfInPool(this);
                     // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
@@ -372,8 +372,7 @@ namespace Proto.Promises
 
                 internal virtual void HandleSelf(IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
-                    Promise.State state = valueContainer.GetState();
-                    State = state;
+                    State = valueContainer.GetState();
                     HandleWaiter(valueContainer, ref executionStack);
 
                     MaybeDispose();
@@ -420,7 +419,7 @@ namespace Proto.Promises
                 internal override PromiseRef GetDuplicate(short promiseId)
                 {
                     MarkAwaited(promiseId);
-                    var newPromise = PromiseDuplicate.GetOrCreate();
+                    var newPromise = ConfiguredPromise.GetOrCreate(true, null);
                     HookupNewPromise(newPromise);
                     return newPromise;
                 }
@@ -520,9 +519,12 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class PromiseDuplicate : PromiseSingleAwait, ITreeHandleable
+            internal sealed partial class ConfiguredPromise : PromiseSingleAwait, ITreeHandleable
             {
-                private PromiseDuplicate() { }
+                private static readonly WaitCallback _threadPoolCallback = ExecuteFromContext;
+                private static readonly SendOrPostCallback _synchronizationContextCallback = ExecuteFromContext;
+
+                private ConfiguredPromise() { }
 
                 protected override void Dispose()
                 {
@@ -531,17 +533,85 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseDuplicate GetOrCreate()
+                internal static ConfiguredPromise GetOrCreate(bool isSynchronous, SynchronizationContext synchronizationContext)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseDuplicate>()
-                        ?? new PromiseDuplicate();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<ConfiguredPromise>()
+                        ?? new ConfiguredPromise();
                     promise.Reset();
+                    promise._synchronizationContext = synchronizationContext;
+                    promise._isSynchronous = isSynchronous;
+                    promise._isPreviousComplete = false;
                     return promise;
                 }
 
+                [MethodImpl(InlineOption)]
                 public override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
                 {
                     HandleSelf((IValueContainer) _valueOrPrevious, ref executionStack);
+                }
+
+                private void ScheduleOnContext()
+                {
+                    if (_synchronizationContext != null)
+                    {
+                        _synchronizationContext.Post(_synchronizationContextCallback, this);
+                    }
+                    else
+                    {
+                        ThreadPool.QueueUserWorkItem(_threadPoolCallback, this);
+                    }
+                }
+
+                private static void ExecuteFromContext(object state)
+                {
+                    ValueLinkedStack<ITreeHandleable> executionStack = new ValueLinkedStack<ITreeHandleable>();
+                    ((ConfiguredPromise) state).Handle(ref executionStack);
+                    ExecuteHandlers(executionStack);
+                }
+
+                internal override void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                {
+                    ThrowIfInPool(this);
+                    // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
+                    _waiter = waiter;
+                    Thread.MemoryBarrier(); // Make sure State and _isPreviousComplete are read after _waiter is written.
+                    if (State != Promise.State.Pending)
+                    {
+                        // Exchange and check for null to handle race condition with HandleWaiter on another thread.
+                        waiter = Interlocked.Exchange(ref _waiter, null);
+                        if (waiter != null)
+                        {
+                            waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionStack);
+                        }
+                    }
+                    // It is only possible to not be pending here if this is configured to run synchronously.
+                    // But it is still possible to be pending here either way, so we need to check.
+                    else if (!_isSynchronous & _isPreviousComplete)
+                    {
+                        ScheduleOnContext();
+                    }
+                    MaybeDispose();
+                }
+
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
+                    valueContainer.Retain();
+                    _valueOrPrevious = valueContainer;
+                    _isPreviousComplete = true;
+                    Thread.MemoryBarrier(); // Make sure _waiter is read after _isPreviousComplete is written.
+                    // If not synchronous, leave pending until this is awaited.
+                    if (_isSynchronous)
+                    {
+                        executionStack.Push(this);
+                        //AddToHandleQueueFront(this);
+                    }
+                    else if (_waiter != null)
+                    {
+                        ScheduleOnContext();
+                    }
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
@@ -550,8 +620,13 @@ namespace Proto.Promises
                     owner.SuppressRejection = true;
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
-                    State = valueContainer.GetState();
-                    _idsAndRetains.InterlockedTryReleaseComplete();
+                    _isPreviousComplete = true;
+                    // If not synchronous, leave pending until this is awaited.
+                    if (_isSynchronous)
+                    {
+                        State = valueContainer.GetState();
+                        _idsAndRetains.InterlockedTryReleaseComplete();
+                    }
                 }
             }
 

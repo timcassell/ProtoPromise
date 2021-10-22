@@ -55,7 +55,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        public static class Config
+        public static partial class Config
         {
             /// <summary>
             /// If you need to support longer promise chains, decrease decimalBits. If you need higher precision, increase decimalBits.
@@ -122,6 +122,11 @@ namespace Proto.Promises
             /// The <see cref="SynchronizationContext"/> used to marshal work to the UI thread.
             /// </summary>
             public static SynchronizationContext ForegroundContext { get; set; }
+
+            /// <summary>
+            /// The <see cref="SynchronizationContext"/> used to marshal work to a background thread. If this is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> is used.
+            /// </summary>
+            public static SynchronizationContext BackgroundContext { get; set; }
 
             [Obsolete]
             public static Action<string> WarningHandler { get; set; }

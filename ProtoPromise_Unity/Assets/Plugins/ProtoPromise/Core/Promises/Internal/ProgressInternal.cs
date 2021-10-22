@@ -1268,9 +1268,9 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (state == Promise.State.Pending)
                     {
-                        bool didSet = _smallFields._currentProgress.TrySetIfZero(progress);
                         _smallFields._settingInitialProgress = true;
                         Thread.MemoryBarrier(); // Make sure _owner is read after _settingInitialProgress is written.
+                        bool didSet = _smallFields._currentProgress.TrySetIfZero(progress);
                         var owner = _owner;
                         if (didSet & owner != null)
                         {
@@ -1284,14 +1284,13 @@ namespace Proto.Promises
                     }
                 }
 
-                // This will never be called concurrently on multiple threads (ensured by PromiseSingleAwait and PromiseMultiAwait).
                 void IProgressListener.SetProgress(PromiseRef sender, Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
                 {
                     ThrowIfInPool(this);
-                    uint dif;
-                    bool didSet = _smallFields._currentProgress.InterlockedTrySetAndGetDifferenceIfNotNegativeAndWholeIsGreater(progress, out dif);
                     _smallFields._reportingProgress = true;
                     Thread.MemoryBarrier(); // Make sure _owner is read after _reportingProgress is written.
+                    uint dif;
+                    bool didSet = _smallFields._currentProgress.InterlockedTrySetAndGetDifferenceIfNotNegativeAndWholeIsGreater(progress, out dif);
                     var owner = _owner;
                     if (didSet & owner != null)
                     {

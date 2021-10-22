@@ -16,6 +16,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -163,15 +164,14 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal IdRetain(short initialId)
                 {
-                    _longValue = 0;
-                    _retains = 0;
+                    this = default(IdRetain);
                     _promiseId = initialId;
                     _deferredId = initialId;
                 }
             } // IdRetain
 
             // TODO: move flags and state into IdRetain struct, shrink _retains to ushort.
-            // Add previousState and ExecutionOption enum.
+            // Add previousState enum.
             private partial struct SmallFields
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
@@ -199,7 +199,14 @@ namespace Proto.Promises
 
             partial class PromiseSingleAwait : PromiseRef
             {
-                private ITreeHandleable _waiter;
+                volatile protected ITreeHandleable _waiter;
+            }
+
+            partial class ConfiguredPromise : PromiseSingleAwait
+            {
+                private SynchronizationContext _synchronizationContext;
+                private bool _isSynchronous;
+                volatile private bool _isPreviousComplete;
             }
 
             partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait

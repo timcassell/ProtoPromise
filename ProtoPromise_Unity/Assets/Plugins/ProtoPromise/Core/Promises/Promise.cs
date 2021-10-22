@@ -17,6 +17,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -82,6 +83,25 @@ namespace Proto.Promises
         public Promise Duplicate()
         {
             return _target.Duplicate();
+        }
+
+        /// <summary>
+        /// Mark <see cref="this"/> as awaited and schedule the next continuation to execute on the context of the provided option. Returns a new <see cref="Promise"/>.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise WaitAsync(ContinuationOption continuationOption)
+        {
+            return _target.WaitAsync(continuationOption);
+        }
+
+        /// <summary>
+        /// Mark <see cref="this"/> as awaited and schedule the next continuation to execute on the provided context. Returns a new <see cref="Promise"/>.
+        /// <para/>If <paramref name="continuationContext"/> is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise WaitAsync(SynchronizationContext continuationContext)
+        {
+            return _target.WaitAsync(continuationContext);
         }
 
         /// <summary>

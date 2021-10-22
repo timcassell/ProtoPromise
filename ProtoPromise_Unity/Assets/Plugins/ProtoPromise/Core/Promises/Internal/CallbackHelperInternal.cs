@@ -13,11 +13,20 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
     partial class Internal
     {
+        internal enum ContinuationOption
+        {
+            Synchronous,
+            Foreground,
+            Background,
+            Explicit
+        }
+
         partial class PromiseRef
         {
             private static class Invoker<TArg, TResult>
@@ -92,6 +101,67 @@ namespace Proto.Promises
                     newRef.WaitForWithprogress(promise);
                     return new Promise<TResult>(newRef, newRef.Id, currentDepth + 1);
 #endif
+                }
+
+                internal static Promise<TResult> WaitAsync<TResult>(Promise<TResult> _this, ContinuationOption continuationOption, SynchronizationContext synchronizationContext)
+                {
+                    PromiseRef newPromise;
+                    switch (continuationOption)
+                    {
+                        case ContinuationOption.Synchronous:
+                        {
+                            if (_this._ref == null)
+                            {
+                                return _this;
+                            }
+                            newPromise = _this._ref.GetDuplicate(_this.Id);
+                            break;
+                        }
+                        case ContinuationOption.Foreground:
+                        {
+                            // TODO: optimization: check if _this was already scheduled for the foreground
+                            //if ()
+                            //{
+                            //    goto case ContinuationOption.Synchronous;
+                            //}
+
+                            synchronizationContext = Promise.Config.ForegroundContext;
+                            if (synchronizationContext == null)
+                            {
+                                throw new InvalidOperationException(
+                                    "Promise.ContinuationOption.Foreground was provided to WaitAsync, but Promise.Config.ForegroundContext was null. " +
+                                    "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
+                                    GetFormattedStacktrace(2));
+                            }
+                            goto default;
+                        }
+                        case ContinuationOption.Background:
+                        {
+                            // TODO: optimization: check if _this was already scheduled for the background
+                            //if ()
+                            //{
+                            //    goto case ContinuationOption.Synchronous;
+                            //}
+
+                            synchronizationContext = Promise.Config.BackgroundContext;
+                            goto default;
+                        }
+                        default: // ContinuationOption.Explicit
+                        {
+                            if (_this._ref == null)
+                            {
+                                newPromise = ConfiguredPromise.GetOrCreate(false, synchronizationContext);
+                            }
+                            else
+                            {
+                                _this._ref.MarkAwaited(_this.Id);
+                                newPromise = ConfiguredPromise.GetOrCreate(false, synchronizationContext);
+                                _this._ref.HookupNewPromise(newPromise);
+                            }
+                            break;
+                        }
+                    }
+                    return new Promise<TResult>(newPromise, newPromise.Id, _this.Depth, _this.Result);
                 }
 
                 [MethodImpl(InlineOption)]

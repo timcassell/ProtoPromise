@@ -10,6 +10,13 @@
             Canceled
         }
 
+        public enum ContinuationOption : byte
+        {
+            Synchronous,
+            Foreground,
+            Background
+        }
+
         // These are necesary to pass ResultContainer to ContinueWith callbacks (because it is a ref struct, it cannot be used as a generic argument in System.Action<> and System.Func<>).
         public delegate void ContinueAction(ResultContainer resultContainer);
         public delegate void ContinueAction<TCapture>(TCapture capturedValue, ResultContainer resultContainer);

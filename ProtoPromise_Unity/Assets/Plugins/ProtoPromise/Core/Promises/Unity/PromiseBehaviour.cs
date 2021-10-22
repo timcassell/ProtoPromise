@@ -5,9 +5,23 @@ using UnityEngine;
 
 namespace Proto.Promises
 {
-    partial struct Promise<T>
+    partial struct Promise
     {
         // Promise is backed by Promise<Internal.VoidResult>, so we don't need a static constructor for it.
+        public static partial class Config
+        {
+            // Static constructor on Config to make sure the ForegroundContext is set (in case users want to copy it to the BackgroundContext for WebGL).
+            // This also prevents the PromiseBehaviour from overwriting it in case users set their own ForegroundContext before the Promise<T> static constructor is ran.
+            static Config()
+            {
+                Unity.PromiseBehaviour.Init();
+            }
+
+        }
+    }
+
+    partial struct Promise<T>
+    {
         static Promise()
         {
             Unity.PromiseBehaviour.Init();
@@ -43,7 +57,9 @@ namespace Proto.Promises
                     {
                         // Create a PromiseBehaviour instance before any promise actions are made.
                         // Unity will throw if this is not ran on the main thread.
-                        new GameObject("Proto.Promises.Unity.PromiseBehaviour").AddComponent<PromiseBehaviour>();
+                        new GameObject("Proto.Promises.Unity.PromiseBehaviour")
+                            .AddComponent<PromiseBehaviour>()
+                            .SetSynchronizationContext();
                     }
                 }
             }
@@ -61,6 +77,14 @@ namespace Proto.Promises
                 Dummy.Init();
             }
 
+            private void SetSynchronizationContext()
+            {
+                if (_instance == null)
+                {
+                    Promise.Config.ForegroundContext = _syncContext = new PromiseSynchronizationContext();
+                }
+            }
+
             private void Start()
             {
                 if (_instance != null)
@@ -72,7 +96,6 @@ namespace Proto.Promises
                 DontDestroyOnLoad(gameObject);
                 gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
                 _instance = this;
-                Promise.Config.ForegroundContext = _syncContext = new PromiseSynchronizationContext();
                 SetupUncaughtRejectionsIntercept();
                 StartCoroutine(UpdateRoutine());
             }
