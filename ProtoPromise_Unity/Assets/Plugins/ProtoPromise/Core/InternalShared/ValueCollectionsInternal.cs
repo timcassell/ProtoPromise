@@ -10,6 +10,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -17,23 +18,97 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        static partial void AssertNotInCollection<T>(T item) where T : class, ILinked<T>;
 #if PROMISE_DEBUG
+        internal class TraceableCollection
+        {
+            internal readonly StackTrace createdAt;
+
+            internal TraceableCollection()
+            {
+                createdAt = false // Set to true to capture the stacktrace. Slows down execution a lot, so only do this when absolutely necessary for debugging internal promise code.
+                    ? new StackTrace(2, false)
+                    : null;
+            }
+        }
+
+#if PROTO_PROMISE_DEVELOPER_MODE
+        // Make collections class instead of struct, and inherit TraceableCollection for debugging purposes.
+        partial class ValueLinkedStack<T> : TraceableCollection
+        {
+            internal ValueLinkedStack() : base() { }
+            
+            private void AssertNotInCollection(T item)
+            {
+                CollectionChecker<T>.AssertNotInCollection(item, this);
+            }
+        }
+
+        partial class ValueLinkedStackSafe<T> : TraceableCollection
+        {
+            internal ValueLinkedStackSafe() : base() { }
+
+            private void AssertNotInCollection(T item)
+            {
+                CollectionChecker<T>.AssertNotInCollection(item, this);
+            }
+        }
+
+        partial class ValueLinkedQueue<T> : TraceableCollection
+        {
+            internal ValueLinkedQueue() : base() { }
+
+            private void AssertNotInCollection(T item)
+            {
+                CollectionChecker<T>.AssertNotInCollection(item, this);
+            }
+        }
+#else // PROTO_PROMISE_DEVELOPER_MODE
+        partial struct ValueLinkedStack<T>
+        {
+            private void AssertNotInCollection(T item)
+            {
+                CollectionChecker<T>.AssertNotInCollection(item, null);
+            }
+        }
+
+        partial struct ValueLinkedStackSafe<T>
+        {
+            private void AssertNotInCollection(T item)
+            {
+                CollectionChecker<T>.AssertNotInCollection(item, null);
+            }
+        }
+
+        partial struct ValueLinkedQueue<T>
+        {
+            private void AssertNotInCollection(T item)
+            {
+                CollectionChecker<T>.AssertNotInCollection(item, null);
+            }
+        }
+#endif // PROTO_PROMISE_DEVELOPER_MODE
+
         private static class CollectionChecker<T> where T : class, ILinked<T>
         {
-            private static readonly HashSet<T> _itemsInACollection = new HashSet<T>();
+            private static readonly Dictionary<T, TraceableCollection> _itemsInACollection = new Dictionary<T, TraceableCollection>();
 
-            internal static void AssertNotInCollection(T item)
+            internal static void AssertNotInCollection(T item, TraceableCollection newCollection)
             {
-                bool isInCollection;
+                TraceableCollection currentCollection;
                 lock (_itemsInACollection)
                 {
-                    isInCollection = !_itemsInACollection.Add(item);
+                    if (!_itemsInACollection.TryGetValue(item, out currentCollection) && item.Next == null)
+                    {
+                        _itemsInACollection.Add(item, newCollection);
+                        return;
+                    }
                 }
-                if (isInCollection || item.Next != null)
-                {
-                    throw new System.InvalidOperationException("Item is in a collection, cannot add to a different collection.");
-                }
+#if PROTO_PROMISE_DEVELOPER_MODE
+                Exception innerException = currentCollection.createdAt == null ? null : new InvalidOperationException("Inhabited collection createdAt stacktrace.", currentCollection.createdAt.ToString());
+#else
+                Exception innerException = null;
+#endif
+                throw new System.InvalidOperationException("Item is in a collection, cannot add to a different collection.", innerException);
             }
 
             internal static void Remove(T item)
@@ -44,13 +119,8 @@ namespace Proto.Promises
                 }
             }
         }
+#endif // PROMISE_DEBUG
 
-        static partial void AssertNotInCollection<T>(T item) where T : class, ILinked<T>
-        {
-            CollectionChecker<T>.AssertNotInCollection(item);
-        }
-#endif
-        
         [MethodImpl(InlineOption)]
         static private void MarkRemovedFromCollection<T>(T item) where T : class, ILinked<T>
         {
@@ -61,7 +131,7 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode]
 #endif
         internal struct Enumerator<T> : IEnumerator<T> where T : class, ILinked<T>
         {
@@ -110,10 +180,12 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+#if PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+        internal partial class ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
+#else
+        internal partial struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
 #endif
-        internal struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
         {
             private T _head;
 
@@ -202,7 +274,7 @@ namespace Proto.Promises
         /// Must not be readonly.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode]
 #endif
         internal struct SpinLocker
         {
@@ -228,10 +300,12 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+#if PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+        internal partial class ValueLinkedStackSafe<T> where T : class, ILinked<T>
+#else
+        internal partial struct ValueLinkedStackSafe<T> where T : class, ILinked<T>
 #endif
-        internal struct ValueLinkedStackSafe<T> where T : class, ILinked<T>
         {
             volatile private T _head;
 
@@ -274,10 +348,12 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+#if PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+        internal partial class ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
+#else
+        internal partial struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
 #endif
-        internal struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
         {
             private T _head;
             private T _tail;
@@ -421,12 +497,12 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode]
 #endif
         internal struct ValueLinkedStackZeroGC<T> : IEnumerable<T>
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode]
 #endif
             private sealed class Node : ILinked<Node>
             {
@@ -452,7 +528,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode]
 #endif
             internal struct Enumerator : IEnumerator<T>
             {
@@ -486,6 +562,18 @@ namespace Proto.Promises
             }
 
             private ValueLinkedStack<Node> _stack;
+
+            [MethodImpl(InlineOption)]
+            private ValueLinkedStackZeroGC(ValueLinkedStack<Node> stack)
+            {
+                _stack = stack;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal static ValueLinkedStackZeroGC<T> Create()
+            {
+                return new ValueLinkedStackZeroGC<T>(new ValueLinkedStack<Node>());
+            }
 
             internal bool IsEmpty
             {
@@ -540,7 +628,7 @@ namespace Proto.Promises
         /// Generic Array enumerator. Use this instead of the default <see cref="Array.GetEnumerator"/> for passing it around as an <see cref="IEnumerator{T}"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode]
 #endif
         internal struct ArrayEnumerator<T> : IEnumerator<T>
         {
@@ -580,7 +668,7 @@ namespace Proto.Promises
     } // class Internal
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [System.Diagnostics.DebuggerNonUserCode]
+    [DebuggerNonUserCode]
 #endif
     internal static class ArrayExtensions
     {

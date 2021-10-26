@@ -230,11 +230,11 @@ namespace Proto.Promises
 #endif
                 }
 
-                private ValueLinkedStack<ITreeHandleable> _nextBranches;
+                private ValueLinkedStack<ITreeHandleable> _nextBranches = new ValueLinkedStack<ITreeHandleable>();
                 private ProgressAndLocker _progressAndLocker;
 
 #if PROMISE_PROGRESS
-                private ValueLinkedQueue<IProgressListener> _progressListeners; // TODO: change to ValueLinkedStack to use less memory. Make sure progress is still invoked in order.
+                private ValueLinkedQueue<IProgressListener> _progressListeners = new ValueLinkedQueue<IProgressListener>(); // TODO: change to ValueLinkedStack to use less memory. Make sure progress is still invoked in order.
 
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
@@ -396,7 +396,7 @@ namespace Proto.Promises
                 private int _waitCount;
 #if PROMISE_DEBUG
                 private readonly object _locker = new object();
-                private ValueLinkedStack<PromisePassThrough> _passThroughs;
+                private ValueLinkedStack<PromisePassThrough> _passThroughs = new ValueLinkedStack<PromisePassThrough>();
 #endif
 
 #if PROMISE_PROGRESS
@@ -426,7 +426,7 @@ namespace Proto.Promises
                 private RaceSmallFields _raceSmallFields;
 #if PROMISE_DEBUG
                 private readonly object _locker = new object();
-                private ValueLinkedStack<PromisePassThrough> _passThroughs;
+                private ValueLinkedStack<PromisePassThrough> _passThroughs = new ValueLinkedStack<PromisePassThrough>();
 #endif
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
@@ -449,7 +449,7 @@ namespace Proto.Promises
                 private FirstSmallFields _firstSmallFields;
 #if PROMISE_DEBUG
                 private readonly object _locker = new object();
-                private ValueLinkedStack<PromisePassThrough> _passThroughs;
+                private ValueLinkedStack<PromisePassThrough> _passThroughs = new ValueLinkedStack<PromisePassThrough>();
 #endif
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }

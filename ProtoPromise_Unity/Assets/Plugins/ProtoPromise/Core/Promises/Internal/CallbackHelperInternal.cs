@@ -239,10 +239,10 @@ namespace Proto.Promises
                         return _this.Duplicate();
                     }
 
-                    if (_this._ref == null)
+                    if (_this._ref == null)// TODO: RELEASE || _this._ref.State == Promise.State.Resolved)
                     {
                         InvokeAndCatchProgress(ref progress, 1, null);
-                        return new Promise<TResult>(null, ValidIdFromApi, _this.Depth);
+                        return new Promise<TResult>(null, ValidIdFromApi, _this.Depth, _this.Result);
                     }
 
                     _this._ref.MarkAwaited(_this.Id);

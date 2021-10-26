@@ -183,7 +183,7 @@ namespace Proto.Promises
                 WasAwaitedOrForgotten = false;
                 // Set retain counter to 2 without changing the Id.
                 // 1 retain for state, 1 retain for await/forget.
-                _idsAndRetains.InterlockedRetainDisregardId(2);
+                _idsAndRetains.InterlockedRetainDisregardId(2, true);
                 SetCreatedStacktrace(this, 3);
             }
 
@@ -1333,7 +1333,6 @@ namespace Proto.Promises
                     return true;
                 }
 
-                [MethodImpl(InlineOption)]
                 internal bool InterlockedTryReleaseComplete()
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -1357,7 +1356,7 @@ namespace Proto.Promises
 #endif
                 }
 
-                internal uint InterlockedRetainDisregardId(uint retains = 1)
+                internal uint InterlockedRetainDisregardId(uint retains = 1, bool shouldBeZero = false)
                 {
                     Thread.MemoryBarrier();
                     IdRetain initialValue = default(IdRetain), newValue;
@@ -1366,6 +1365,20 @@ namespace Proto.Promises
                         initialValue._longValue = Interlocked.Read(ref _longValue);
                         newValue = initialValue;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                        if (newValue._retains == 0)
+                        {
+                            if (!shouldBeZero)
+                            {
+                                throw new System.InvalidOperationException("Cannot retain after full release");
+                            }
+                        }
+                        else
+                        {
+                            if (shouldBeZero)
+                            {
+                                throw new System.InvalidOperationException("Expected 0 retains, actual retains: " + newValue._retains);
+                            }
+                        }
                         checked
 #else
                         unchecked

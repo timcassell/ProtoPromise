@@ -127,6 +127,8 @@ namespace Proto.Promises
                 public virtual bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index) // IMultiTreeHandleable.Handle
                 {
                     ThrowIfInPool(this);
+                    // Retain while handling, then release when complete for thread safety.
+                    InterlockedRetainDisregardId();
 
                     owner.SuppressRejection = true;
                     if (owner.State != Promise.State.Resolved) // Rejected/Canceled
@@ -135,31 +137,33 @@ namespace Proto.Promises
                         {
                             if (Interlocked.Decrement(ref _waitCount) == 0)
                             {
-                                MaybeDispose();
+                                _idsAndRetains.InterlockedTryReleaseComplete();
                             }
+                            MaybeDispose();
                             return false;
                         }
                         valueContainer.Retain();
                         Interlocked.Decrement(ref _waitCount);
+                        MaybeDispose();
                         return true;
                     }
                     else // Resolved
                     {
+                        IncrementProgress(passThrough);
                         int remaining = Interlocked.Decrement(ref _waitCount);
                         if (remaining == 1)
                         {
-                            return Interlocked.CompareExchange(ref _valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null) == null;
+                            bool resolved = Interlocked.CompareExchange(ref _valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null) == null;
+                            MaybeDispose();
+                            return resolved;
                         }
                         else if (remaining == 0)
                         {
-                            MaybeDispose();
+                            _idsAndRetains.InterlockedTryReleaseComplete();
                         }
-                        else
-                        {
-                            IncrementProgress(passThrough);
-                        }
+                        MaybeDispose();
+                        return false;
                     }
-                    return false;
                 }
 
                 internal int Depth
@@ -216,6 +220,8 @@ namespace Proto.Promises
                     public override bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index)
                     {
                         ThrowIfInPool(this);
+                        // Retain while handling, then release when complete for thread safety.
+                        InterlockedRetainDisregardId();
 
                         owner.SuppressRejection = true;
                         if (owner.State != Promise.State.Resolved) // Rejected/Canceled
@@ -224,17 +230,20 @@ namespace Proto.Promises
                             {
                                 if (Interlocked.Decrement(ref _waitCount) == 0)
                                 {
-                                    MaybeDispose();
+                                    _idsAndRetains.InterlockedTryReleaseComplete();
                                 }
+                                MaybeDispose();
                                 return false;
                             }
                             valueContainer.Retain();
                             Interlocked.Decrement(ref _waitCount);
+                            MaybeDispose();
                             return true;
                         }
                         else // Resolved
                         {
                             _onPromiseResolved.Invoke(valueContainer, _valueContainer, index);
+                            IncrementProgress(passThrough);
                             int remaining = Interlocked.Decrement(ref _waitCount);
                             if (remaining == 1)
                             {
@@ -242,19 +251,17 @@ namespace Proto.Promises
                                 {
                                     // Only nullify if all promises resolved, otherwise we let Dispose release it.
                                     _valueContainer = null;
+                                    MaybeDispose();
                                     return true;
                                 }
                             }
                             else if (remaining == 0)
                             {
-                                MaybeDispose();
+                                _idsAndRetains.InterlockedTryReleaseComplete();
                             }
-                            else
-                            {
-                                IncrementProgress(passThrough);
-                            }
+                            MaybeDispose();
+                            return false;
                         }
-                        return false;
                     }
                 }
             }

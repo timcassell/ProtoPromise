@@ -899,22 +899,28 @@ namespace Proto.Promises
                     var progressListeners = _progressListeners.MoveElementsToStack();
                     _progressAndLocker._progressCollectionLocker.Exit();
 
+                    if (progressListeners.IsEmpty)
+                    {
+                        return;
+                    }
+                    WaitWhileProgressFlags(ProgressFlags.Reporting | ProgressFlags.SettingInitial);
+
                     if (state == Promise.State.Resolved)
                     {
                         Fixed32 progress = _progressAndLocker._depthAndProgress.GetIncrementedWholeTruncated();
                         var executionQueue = new ValueLinkedQueue<IProgressInvokable>();
-                        while (progressListeners.IsNotEmpty)
+                        do
                         {
                             progressListeners.Pop().ResolveOrSetProgress(this, progress, ref executionQueue);
-                        }
+                        } while (progressListeners.IsNotEmpty);
                         ExecuteProgress(executionQueue);
                         return;
                     }
 
-                    while (progressListeners.IsNotEmpty)
+                    do
                     {
                         progressListeners.Pop().CancelProgress();
-                    }
+                    } while (progressListeners.IsNotEmpty);
                 }
 
                 private void SetProgress(Fixed32 progress, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
@@ -1000,18 +1006,19 @@ namespace Proto.Promises
                     _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
                     if (!progress.IsNegative) // Was it not suspended?
                     {
-                        // We don't need to lock around progress since listeners can only be added, not removed.
-                        // It doesn't matter if a new listener is added while we're iterating.
-                        var listenersEnumerator = _progressListeners.GetEnumerator();
-                        while (listenersEnumerator.MoveNext())
+                        // Lock is necessary for race condition with Handle.
+                        // TODO: refactor to remove the need for a lock here.
+                        _progressAndLocker._progressCollectionLocker.Enter();
+                        foreach (var progressListener in _progressListeners)
                         {
                             PromiseSingleAwaitWithProgress nextRef;
-                            listenersEnumerator.Current.SetProgress(this, progress, out nextRef, ref executionQueue);
+                            progressListener.SetProgress(this, progress, out nextRef, ref executionQueue);
                             if (nextRef != null)
                             {
                                 nextRef.ReportProgress(progress, ref executionQueue);
                             }
                         }
+                        _progressAndLocker._progressCollectionLocker.Exit();
                     }
                     MaybeDispose();
                 }

@@ -405,7 +405,7 @@ namespace Proto.Promises
             // TODO: replace lock(_registeredCallbacks) with Monitor.TryEnter() in abortable loop.
             // TODO: create a custom SortedDictionary with pooled nodes instead.
             private readonly List<RegisteredDelegate> _registeredCallbacks = new List<RegisteredDelegate>();
-            private ValueLinkedStackZeroGC<CancelationRegistration> _links;
+            private ValueLinkedStackZeroGC<CancelationRegistration> _links = ValueLinkedStackZeroGC<CancelationRegistration>.Create();
             volatile private ICancelValueContainer _valueContainer;
             private uint _registeredCount;
             private IdsAndRetains _idsAndRetains = new IdsAndRetains(1); // Start with Id 1 instead of 0 to reduce risk of false positives.

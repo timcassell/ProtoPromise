@@ -231,25 +231,59 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReporteddConcurrently_Pending_void(
+        public void PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReportedConcurrently_Pending_void(
             [Values] ActionType subscribeType,
             [Values] ActionType reportType,
             [Values] ActionType completePlace,
             [Values] CompleteType completeType)
         {
+            // TODO: test progress reported on synchronization context.
+
             int expectedInvokes = completeType == CompleteType.Resolve ? 10 : 0;
+            if (subscribeType == ActionType.InSetup)
+            {
+                expectedInvokes += 10;
+                if (reportType == ActionType.InSetup)
+                {
+                    expectedInvokes += 10 * 10;
+                }
+            }
+            else // parallel or teardown
+            {
+                // If all types are parallel, we can't know if it will be extra invokes.
+                // We only know there are extra invokes if complete (and report) come after subscribe.
+                if (completeType == CompleteType.Resolve && completePlace == ActionType.InTeardown)
+                {
+                    expectedInvokes += 10;
+                    if (reportType == ActionType.InTeardown)
+                    {
+                        expectedInvokes += 10 * 10;
+                    }
+                }
+            }
 
             var deferred = default(Promise.Deferred);
             var promise = default(Promise);
             var cancelationSource = default(CancelationSource);
             int invokedCount = 0;
 
+            Action AssertInvokes = completeType != CompleteType.Resolve && completePlace == ActionType.InSetup
+                // If the promise is rejected or canceled in the setup, we know that it should not be invoked more times than expected.
+                ? (Action) (() => Assert.AreEqual(expectedInvokes, invokedCount))
+                // OnProgress is potentially invoked from each background thread concurrently,
+                // but each TryReportProgress call is not guaranteed to invoke the callback,
+                // so we can't know how many onProgress invokes actually occurred, so just make sure it happened at least expectedInvokes times.
+                : () => Assert.GreaterOrEqual(invokedCount, expectedInvokes);
+
             List<Action> parallelActions = new List<Action>();
 
             var progressSubscriber = ParallelActionTestHelper.Create(
                 subscribeType,
                 10,
-                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Catch(() => { }).Forget()
+                () => promise
+                    .Progress(v => { Interlocked.Increment(ref invokedCount); })
+                    .Catch((string error) => { Assert.AreEqual(rejectValue, error); })
+                    .Forget()
             );
             progressSubscriber.MaybeAddParallelAction(parallelActions);
 
@@ -284,7 +318,7 @@ namespace Proto.Promises.Tests.Threading
                 promiseCompleter.Teardown();
                 cancelationSource.TryDispose();
                 promise.Forget();
-                Assert.AreEqual(expectedInvokes, invokedCount);
+                AssertInvokes();
             };
             if (parallelActions.Count == 0)
             {
@@ -301,25 +335,60 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReporteddConcurrently_Pending_T(
+        public void PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReportedConcurrently_Pending_T(
             [Values] ActionType subscribeType,
             [Values] ActionType reportType,
             [Values] ActionType completePlace,
             [Values] CompleteType completeType)
         {
+            // TODO: test progress reported on synchronization context.
+
             int expectedInvokes = completeType == CompleteType.Resolve ? 10 : 0;
+            if (subscribeType == ActionType.InSetup)
+            {
+                expectedInvokes += 10;
+                if (reportType == ActionType.InSetup)
+                {
+                    expectedInvokes += 10 * 10;
+                }
+            }
+            else // parallel or teardown
+            {
+                // If all types are parallel, we can't know if it will be extra invokes.
+                // We only know there are extra invokes if complete (and report) come after subscribe.
+                if (completeType == CompleteType.Resolve && completePlace == ActionType.InTeardown)
+                {
+                    expectedInvokes += 10;
+                    if (reportType == ActionType.InTeardown)
+                    {
+                        expectedInvokes += 10 * 10;
+                    }
+                }
+            }
 
             var deferred = default(Promise<int>.Deferred);
             var promise = default(Promise<int>);
             var cancelationSource = default(CancelationSource);
             int invokedCount = 0;
 
+            Action AssertInvokes = completeType != CompleteType.Resolve && completePlace == ActionType.InSetup
+                // If the promise is rejected or canceled in the setup, we know that it should not be invoked more times than expected.
+                ? (Action) (() => Assert.AreEqual(expectedInvokes, invokedCount))
+                // OnProgress is potentially invoked from each background thread concurrently,
+                // but each TryReportProgress call is not guaranteed to invoke the callback,
+                // so we can't know how many onProgress invokes actually occurred, so just make sure it happened at least expectedInvokes times.
+                : () => Assert.GreaterOrEqual(invokedCount, expectedInvokes);
+
+
             List<Action> parallelActions = new List<Action>();
 
             var progressSubscriber = ParallelActionTestHelper.Create(
                 subscribeType,
                 10,
-                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Catch(() => { }).Forget()
+                () => promise
+                    .Progress(v => { Interlocked.Increment(ref invokedCount); })
+                    .Catch((string error) => { Assert.AreEqual(rejectValue, error); })
+                    .Forget()
             );
             progressSubscriber.MaybeAddParallelAction(parallelActions);
 
@@ -354,7 +423,7 @@ namespace Proto.Promises.Tests.Threading
                 promiseCompleter.Teardown();
                 cancelationSource.TryDispose();
                 promise.Forget();
-                Assert.AreEqual(expectedInvokes, invokedCount);
+                AssertInvokes();
             };
             if (parallelActions.Count == 0)
             {

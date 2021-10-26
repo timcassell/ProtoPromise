@@ -70,7 +70,7 @@ namespace Proto.Promises.Threading
 
         private readonly Thread _thread;
         // These must not be readonly.
-        private Internal.ValueLinkedQueue<SyncCallback> _syncQueue;
+        private Internal.ValueLinkedQueue<SyncCallback> _syncQueue = new Internal.ValueLinkedQueue<SyncCallback>();
         private Internal.SpinLocker _syncLocker;
 
         public PromiseSynchronizationContext()
