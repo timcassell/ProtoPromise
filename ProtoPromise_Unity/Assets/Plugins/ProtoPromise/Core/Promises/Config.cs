@@ -121,12 +121,26 @@ namespace Proto.Promises
             /// <summary>
             /// The <see cref="SynchronizationContext"/> used to marshal work to the UI thread.
             /// </summary>
-            public static SynchronizationContext ForegroundContext { get; set; }
+            public static SynchronizationContext ForegroundContext
+            {
+                get { return _foregroundContext; }
+                set
+                {
+                    _foregroundContext = value;
+                    Internal._foregroundSynchronizationHandler = new Internal.SynchronizationHandler(value);
+                }
+            }
+            volatile private static SynchronizationContext _foregroundContext;
 
             /// <summary>
             /// The <see cref="SynchronizationContext"/> used to marshal work to a background thread. If this is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> is used.
             /// </summary>
-            public static SynchronizationContext BackgroundContext { get; set; }
+            public static SynchronizationContext BackgroundContext
+            {
+                get { return _backgroundContext; }
+                set { _backgroundContext = value; }
+            }
+            volatile private static SynchronizationContext _backgroundContext;
 
             [Obsolete]
             public static Action<string> WarningHandler { get; set; }

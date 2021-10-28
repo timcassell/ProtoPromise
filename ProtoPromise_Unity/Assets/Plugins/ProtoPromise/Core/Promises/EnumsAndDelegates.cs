@@ -1,5 +1,12 @@
 ﻿namespace Proto.Promises
 {
+    public enum SynchronizationOption : byte
+    {
+        Synchronous,
+        Foreground,
+        Background
+    }
+
     partial struct Promise
     {
         public enum State : byte
@@ -8,13 +15,6 @@
             Resolved,
             Rejected,
             Canceled
-        }
-
-        public enum ContinuationOption : byte
-        {
-            Synchronous,
-            Foreground,
-            Background
         }
 
         // These are necesary to pass ResultContainer to ContinueWith callbacks (because it is a ref struct, it cannot be used as a generic argument in System.Action<> and System.Func<>).

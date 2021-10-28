@@ -497,11 +497,13 @@ namespace Proto.Promises
                     internal Fixed32 _currentProgress;
                     volatile internal bool _complete;
                     volatile internal bool _canceled;
+                    internal bool _isSynchronous;
                 }
 
                 private ProgressSmallFields _smallProgressFields;
                 private CancelationRegistration _cancelationRegistration;
                 private TProgress _progress;
+                private SynchronizationContext _synchronizationContext;
 
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }

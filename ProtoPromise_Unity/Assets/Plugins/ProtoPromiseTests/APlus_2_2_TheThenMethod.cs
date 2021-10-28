@@ -742,15 +742,17 @@ namespace Proto.Promises.Tests
             }
         }
 
-        // I interpret this to mean it's the last thing that is ran in the frame.
-        // That is implemented during runtime by using Unity's execution order on a Monobehaviour to call Promise.Manager.HandleCompletes().
-        // Since this is a test, I call it directly.
+        // This is implemented in C# via a SynchronizationContext set in the Config.
+        // Unit tests here directly invoke the callbacks sent to the SynchronizationContext, but different applications may handle it differently.
+        // (In Unity, it executes all callbacks on the main thread every frame).
         [Test]
         public void _2_2_4_OnFulfilledMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode_void()
         {
             bool resolved = false;
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
+            var promise = deferred.Promise
+                .WaitAsync(SynchronizationOption.Foreground)
+                .Preserve();
 
             TestHelper.AddResolveCallbacks<bool, string>(promise,
                 () => resolved = true
@@ -773,7 +775,9 @@ namespace Proto.Promises.Tests
         {
             bool resolved = false;
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
+            var promise = deferred.Promise
+                .WaitAsync(SynchronizationOption.Foreground)
+                .Preserve();
 
             TestHelper.AddResolveCallbacks<int, bool, string>(promise,
                 v => resolved = true
@@ -797,7 +801,7 @@ namespace Proto.Promises.Tests
             bool errored = false;
             var deferred = Promise.NewDeferred();
 
-            TestHelper.AddCallbacks<bool, object, string>(deferred.Promise,
+            TestHelper.AddCallbacks<bool, object, string>(deferred.Promise.WaitAsync(SynchronizationOption.Foreground),
                 () => Assert.Fail("Promise was resolved when it should have been rejected."),
                 s => errored = true
             );
@@ -814,7 +818,7 @@ namespace Proto.Promises.Tests
             bool errored = false;
             var deferred = Promise.NewDeferred<int>();
 
-            TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
+            TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise.WaitAsync(SynchronizationOption.Foreground),
                 v => Assert.Fail("Promise was resolved when it should have been rejected."),
                 s => errored = true
             );

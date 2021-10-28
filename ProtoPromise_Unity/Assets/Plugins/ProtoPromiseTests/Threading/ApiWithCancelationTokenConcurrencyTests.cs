@@ -572,17 +572,19 @@ namespace Proto.Promises.Tests.Threading
 
 #if PROMISE_PROGRESS
         [Test]
-        public void Progress_PromiseMayReportProgressAndCallbackCanceledConcurrently_void()
+        public void Progress_PromiseMayReportProgressAndCallbackCanceledConcurrently_void(
+            [Values] SynchronizationOption synchronizationOption)
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
             bool completed = false;
+            bool invoked = false;
 
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise, CancelationToken, Promise>[]
                 {
-                    (promise, token) => promise.Progress(_ => { }, token),
-                    (promise, token) => promise.Progress(1, (cv, _) => { }, token),
+                    (promise, token) => promise.Progress(_ => { invoked = true; }, synchronizationOption, token),
+                    (promise, token) => promise.Progress(1, (cv, _) => { invoked = true;}, synchronizationOption, token),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -599,9 +601,12 @@ namespace Proto.Promises.Tests.Threading
                     // Teardown
                     () =>
                     {
+                        invoked = false;
                         cancelationSource.Dispose();
                         deferred.Resolve();
+                        TestHelper.ExecuteForegroundCallbacks();
                         Assert.IsTrue(completed);
+                        Assert.IsFalse(invoked);
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
@@ -611,17 +616,19 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void Progress_PromiseMayReportProgressAndCallbackCanceledConcurrently_T()
+        public void Progress_PromiseMayReportProgressAndCallbackCanceledConcurrently_T(
+            [Values] SynchronizationOption synchronizationOption)
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
             bool completed = false;
+            bool invoked = false;
 
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise, CancelationToken, Promise>[]
                 {
-                    (promise, token) => promise.Progress(_ => { }, token),
-                    (promise, token) => promise.Progress(1, (cv, _) => { }, token),
+                    (promise, token) => promise.Progress(_ => { invoked = true; }, synchronizationOption, token),
+                    (promise, token) => promise.Progress(1, (cv, _) => { invoked = true; }, synchronizationOption, token),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -638,9 +645,12 @@ namespace Proto.Promises.Tests.Threading
                     // Teardown
                     () =>
                     {
+                        invoked = false;
                         cancelationSource.Dispose();
                         deferred.Resolve(1);
+                        TestHelper.ExecuteForegroundCallbacks();
                         Assert.IsTrue(completed);
+                        Assert.IsFalse(invoked);
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
@@ -650,19 +660,21 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void Progress_PromiseMayReportProgressAndBeSubscribedProgressAndCallbackCanceledConcurrently_void()
+        public void Progress_PromiseMayReportProgressAndBeSubscribedProgressAndCallbackCanceledConcurrently_void(
+            [Values] SynchronizationOption synchronizationOption)
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
             var cancelationToken = default(CancelationToken);
             var promise = default(Promise);
             bool completed = false;
+            bool invoked = false;
 
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise, CancelationToken, Promise>[]
                 {
-                    (p, token) => p.Progress(_ => { }, token),
-                    (p, token) => p.Progress(1, (cv, _) => { }, token),
+                    (p, token) => p.Progress(_ => { invoked = true; }, synchronizationOption, token),
+                    (p, token) => p.Progress(1, (cv, _) => { invoked = true; }, synchronizationOption, token),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -677,9 +689,12 @@ namespace Proto.Promises.Tests.Threading
                     // Teardown
                     () =>
                     {
+                        invoked = false;
                         cancelationSource.Dispose();
                         deferred.Resolve();
+                        TestHelper.ExecuteForegroundCallbacks();
                         Assert.IsTrue(completed);
+                        Assert.IsFalse(invoked);
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
@@ -692,19 +707,21 @@ namespace Proto.Promises.Tests.Threading
         }
 
         [Test]
-        public void Progress_PromiseMayReportProgressAndBeSubscribedProgressAndCallbackCanceledConcurrently_T()
+        public void Progress_PromiseMayReportProgressAndBeSubscribedProgressAndCallbackCanceledConcurrently_T(
+            [Values] SynchronizationOption synchronizationOption)
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
             var cancelationToken = default(CancelationToken);
             var promise = default(Promise<int>);
             bool completed = false;
+            bool invoked = false;
 
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise, CancelationToken, Promise>[]
                 {
-                    (p, token) => p.Progress(_ => { }, token),
-                    (p, token) => p.Progress(1, (cv, _) => { }, token),
+                    (p, token) => p.Progress(_ => { invoked = true; }, synchronizationOption, token),
+                    (p, token) => p.Progress(1, (cv, _) => { invoked = true; }, synchronizationOption, token),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -719,9 +736,12 @@ namespace Proto.Promises.Tests.Threading
                     // Teardown
                     () =>
                     {
+                        invoked = false;
                         cancelationSource.Dispose();
                         deferred.Resolve(1);
+                        TestHelper.ExecuteForegroundCallbacks();
                         Assert.IsTrue(completed);
+                        Assert.IsFalse(invoked);
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),

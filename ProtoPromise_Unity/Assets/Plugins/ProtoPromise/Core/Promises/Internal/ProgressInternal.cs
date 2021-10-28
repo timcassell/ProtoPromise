@@ -21,6 +21,59 @@ namespace Proto.Promises
 {
     partial class Internal
     {
+        static partial void ExecuteProgress(ValueLinkedStack<PromiseRef.IProgressInvokable> executionStack);
+
+#if PROMISE_PROGRESS
+        partial class SynchronizationHandler : ILinked<PromiseRef.IProgressInvokable>
+        {
+            PromiseRef.IProgressInvokable ILinked<PromiseRef.IProgressInvokable>.Next { get; set; }
+
+            // This must not be readonly.
+            private ValueWriteOnlyLinkedQueue<PromiseRef.IProgressInvokable> _progressQueue;
+
+            partial void InitProgress()
+            {
+                _progressQueue = new ValueWriteOnlyLinkedQueue<PromiseRef.IProgressInvokable>(this);
+            }
+
+            internal void PostProgress(PromiseRef.IProgressInvokable progressInvokable)
+            {
+                _locker.Enter();
+                bool wasEmpty = _progressQueue.IsEmpty;
+                _progressQueue.Enqueue(progressInvokable);
+                _locker.Exit();
+
+                if (wasEmpty)
+                {
+                    _context.Post(_synchronizationContextCallback, this);
+                }
+            }
+
+            partial void TakeProgress(ref ValueLinkedStack<PromiseRef.IProgressInvokable> progressStack)
+            {
+                progressStack = _progressQueue.MoveElementsToStack();
+            }
+        }
+
+        static partial void ExecuteProgress(ValueLinkedStack<PromiseRef.IProgressInvokable> executionStack)
+        {
+            ValueLinkedQueue<PromiseRef.IProgressInvokable> executionQueue = new ValueLinkedQueue<PromiseRef.IProgressInvokable>();
+            while (executionStack.IsNotEmpty)
+            {
+                do
+                {
+                    executionStack.Pop().Invoke(ref executionQueue);
+                } while (executionStack.IsNotEmpty);
+                executionStack = executionQueue.MoveElementsToStack();
+            }
+        }
+
+        [MethodImpl(InlineOption)]
+        private static void ExecuteProgress(ValueLinkedQueue<PromiseRef.IProgressInvokable> executionQueue)
+        {
+            ExecuteProgress(executionQueue.MoveElementsToStack());
+        }
+#endif
         partial class PromiseRef
         {
             internal partial interface IProgressListener { }
@@ -176,46 +229,6 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
                 _idsAndRetains.InterlockedRetainDisregardId();
-            }
-
-            // Handle progress. These must not be readonly.
-            private static ValueLinkedQueue<IProgressInvokable> _progressQueue;
-            private static SpinLocker _progressLocker;
-
-            private static void AddToBackOfProgressQueue(IProgressInvokable progressListener)
-            {
-                _progressLocker.Enter();
-                _progressQueue.Enqueue(progressListener);
-                _progressLocker.Exit();
-            }
-
-            internal static void InvokeProgressListeners()
-            {
-                while (true)
-                {
-                    _progressLocker.Enter();
-                    var executionQueue = _progressQueue;
-                    _progressQueue = new ValueLinkedQueue<IProgressInvokable>();
-                    _progressLocker.Exit();
-                    
-                    if (executionQueue.IsEmpty)
-                    {
-                        break;
-                    }
-                    ExecuteProgress(executionQueue);
-                }
-            }
-
-            private static void ExecuteProgress(ValueLinkedQueue<IProgressInvokable> executionQueue)
-            {
-                do
-                {
-                    var executionStack = executionQueue.MoveElementsToStack();
-                    while (executionStack.IsNotEmpty)
-                    {
-                        executionStack.Pop().Invoke(ref executionQueue);
-                    }
-                } while (executionQueue.IsNotEmpty);
             }
 
             /// <summary>
@@ -535,10 +548,21 @@ namespace Proto.Promises
                 void IncrementProgress(uint increment, Fixed32 senderAmount, Fixed32 ownerAmount, ref ValueLinkedQueue<IProgressInvokable> executionQueue);
             }
 
+            private static readonly WaitCallback _progressThreadPoolCallback = ExecuteProgressFromContext;
+            private static readonly SendOrPostCallback _progressSynchronizationContextCallback = ExecuteProgressFromContext;
+
+            private static void ExecuteProgressFromContext(object state)
+            {
+                ValueLinkedQueue<IProgressInvokable> executionQueue = new ValueLinkedQueue<IProgressInvokable>();
+                ((IProgressInvokable) state).Invoke(ref executionQueue);
+                ExecuteProgress(executionQueue);
+            }
+
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class PromiseProgress<TProgress> : PromiseSingleAwaitWithProgress, IProgressListener, IProgressInvokable, ICancelDelegate
+            internal sealed partial class PromiseProgress<TProgress> : PromiseSingleAwaitWithProgress, IProgressListener, IProgressInvokable, ICancelDelegate, ITreeHandleable
                 where TProgress : IProgress<float>
             {
                 [MethodImpl(InlineOption)]
@@ -565,7 +589,7 @@ namespace Proto.Promises
 
                 private PromiseProgress() { }
 
-                internal static PromiseProgress<TProgress> GetOrCreate(TProgress progress, CancelationToken cancelationToken, int depth)
+                internal static PromiseProgress<TProgress> GetOrCreate(TProgress progress, CancelationToken cancelationToken, int depth, bool isSynchronous, SynchronizationContext synchronizationContext)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseProgress<TProgress>>()
                         ?? new PromiseProgress<TProgress>();
@@ -575,6 +599,8 @@ namespace Proto.Promises
                     promise.IsCanceled = false;
                     promise._smallProgressFields._currentProgress = default(Fixed32);
                     promise._smallProgressFields._depthAndProgress = new Fixed32(depth);
+                    promise._smallProgressFields._isSynchronous = isSynchronous;
+                    promise._synchronizationContext = synchronizationContext; // TODO
                     cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
                     return promise;
                 }
@@ -587,6 +613,40 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
+                private void ScheduleProgressOnContext()
+                {
+                    var foregroundHandler = _foregroundSynchronizationHandler;
+                    if (foregroundHandler != null && foregroundHandler._context == _synchronizationContext)
+                    {
+                        foregroundHandler.PostProgress(this);
+                    }
+                    else if (_synchronizationContext != null)
+                    {
+                        _synchronizationContext.Post(_progressSynchronizationContextCallback, this);
+                    }
+                    else
+                    {
+                        ThreadPool.QueueUserWorkItem(_progressThreadPoolCallback, this);
+                    }
+                }
+
+                private void ScheduleCompleteOnContext()
+                {
+                    var foregroundHandler = _foregroundSynchronizationHandler;
+                    if (foregroundHandler != null && foregroundHandler._context == _synchronizationContext)
+                    {
+                        foregroundHandler.PostHandleable(this);
+                    }
+                    else if (_synchronizationContext != null)
+                    {
+                        _synchronizationContext.Post(_synchronizationContextCallback, this);
+                    }
+                    else
+                    {
+                        ThreadPool.QueueUserWorkItem(_threadPoolCallback, this);
+                    }
+                }
+
                 void IProgressInvokable.Invoke(ref ValueLinkedQueue<IProgressInvokable> executionQueue)
                 {
                     ThrowIfInPool(this);
@@ -595,7 +655,9 @@ namespace Proto.Promises
                     double expected = _smallProgressFields._depthAndProgress.WholePart + 1u;
                     float value = (float) (_smallProgressFields._currentProgress.ToDouble() / expected);
                     _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
-                    if (value >= 0 & !IsComplete & !IsCanceled)
+                    bool _, isCancelationRequested;
+                    _cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out _, out isCancelationRequested);
+                    if (value >= 0 & !IsComplete & !IsCanceled & !isCancelationRequested)
                     {
                         CallbackHelper.InvokeAndCatchProgress(ref _progress, value, this);
                     }
@@ -609,8 +671,14 @@ namespace Proto.Promises
                         if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                         {
                             InterlockedRetainDisregardId();
-                            executionQueue.Enqueue(this);
-                            // TODO: handle execution/synchronization context
+                            if (_smallProgressFields._isSynchronous)
+                            {
+                                executionQueue.Enqueue(this);
+                            }
+                            else
+                            {
+                                ScheduleProgressOnContext();
+                            }
                             //AddToBackOfProgressQueue(this);
                         }
                     }
@@ -626,12 +694,7 @@ namespace Proto.Promises
                 void IProgressListener.ResolveOrSetProgress(PromiseRef sender, Fixed32 progress, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
                 {
                     ThrowIfInPool(this);
-                    if (!(_valueOrPrevious is PromiseRef))
-                    {
-                        // PromiseRef will have already made ready, just set IsComplete to prevent progress queue from invoking.
-                        IsComplete = true;
-                    }
-                    else
+                    if (!IsComplete)
                     {
                         SetProgress(progress, ref executionQueue);
                     }
@@ -648,8 +711,14 @@ namespace Proto.Promises
                             if (!sender.GetIsProgressSuspended() && TrySetInitialProgressAndMarkInQueue(progress))
                             {
                                 InterlockedRetainDisregardId();
-                                executionQueue.Enqueue(this);
-                                // TODO: handle execution/synchronization context
+                                if (_smallProgressFields._isSynchronous)
+                                {
+                                    executionQueue.Enqueue(this);
+                                }
+                                else
+                                {
+                                    ScheduleProgressOnContext();
+                                }
                                 //AddToBackOfProgressQueue(this);
                             }
                             break;
@@ -658,8 +727,14 @@ namespace Proto.Promises
                         {
                             if (sender != _valueOrPrevious && TrySetInitialProgressAndMarkInQueue(progress))
                             {
-                                executionQueue.Enqueue(this);
-                                // TODO: handle execution/synchronization context
+                                if (_smallProgressFields._isSynchronous)
+                                {
+                                    executionQueue.Enqueue(this);
+                                }
+                                else
+                                {
+                                    ScheduleProgressOnContext();
+                                }
                                 //AddToBackOfProgressQueue(this);
                                 break; // Break instead of InterlockedRetainDisregardId().
                             }
@@ -685,11 +760,6 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _smallProgressFields._currentProgress.InterlockedMaybeMakeNegativeIfWholeIsNotGreater();
-                    if (!(_valueOrPrevious is PromiseRef))
-                    {
-                        // PromiseRef will have already made ready, just set IsComplete to prevent progress queue from invoking.
-                        IsComplete = true;
-                    }
                     MaybeDispose();
                 }
 
@@ -717,7 +787,6 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     bool notCanceled = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !IsCanceled;
-                    IsComplete = true;
 
                     // HandleSelf
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
@@ -758,6 +827,77 @@ namespace Proto.Promises
                 internal override void HandleProgressListener(Promise.State state)
                 {
                     HandleProgressListener(state, _smallProgressFields._depthAndProgress.GetIncrementedWholeTruncated());
+                }
+
+                internal override void Forget(short promiseId)
+                {
+                    IncrementId(promiseId);
+                    WasAwaitedOrForgotten = true;
+                    if (!_smallProgressFields._isSynchronous & IsComplete)
+                    {
+                        ScheduleCompleteOnContext();
+                    }
+                    MaybeDispose();
+                }
+
+                internal override void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                {
+                    ThrowIfInPool(this);
+                    // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
+                    _waiter = waiter;
+                    Thread.MemoryBarrier(); // Make sure State and _isPreviousComplete are read after _waiter is written.
+                    if (State != Promise.State.Pending)
+                    {
+                        // Exchange and check for null to handle race condition with HandleWaiter on another thread.
+                        waiter = Interlocked.Exchange(ref _waiter, null);
+                        if (waiter != null)
+                        {
+                            waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionStack);
+                        }
+                    }
+                    // It is only possible to not be pending here if this is configured to run synchronously.
+                    // But it is still possible to be pending here either way, so we need to check.
+                    else if (!_smallProgressFields._isSynchronous & IsComplete)
+                    {
+                        ScheduleCompleteOnContext();
+                    }
+                    MaybeDispose();
+                }
+
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                {
+                    ThrowIfInPool(this);
+                    IsComplete = true;
+                    owner.SuppressRejection = true;
+                    valueContainer.Retain();
+                    _valueOrPrevious = valueContainer;
+                    Thread.MemoryBarrier(); // Make sure _waiter is read after IsComplete is written.
+                    // If not synchronous, leave pending until this is awaited or forgotten.
+                    if (_smallProgressFields._isSynchronous)
+                    {
+                        executionStack.Push(this);
+                    }
+                    else if (_waiter != null | WasAwaitedOrForgotten)
+                    {
+                        ScheduleCompleteOnContext();
+                    }
+                    //AddToHandleQueueFront(this);
+                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                }
+
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                {
+                    ThrowIfInPool(this);
+                    IsComplete = true;
+                    owner.SuppressRejection = true;
+                    valueContainer.Retain();
+                    _valueOrPrevious = valueContainer;
+                    // If not synchronous, leave pending until this is awaited or forgotten.
+                    if (_smallProgressFields._isSynchronous)
+                    {
+                        State = valueContainer.GetState();
+                        _idsAndRetains.InterlockedTryReleaseComplete();
+                    }
                 }
             } // PromiseProgress<TProgress>
 

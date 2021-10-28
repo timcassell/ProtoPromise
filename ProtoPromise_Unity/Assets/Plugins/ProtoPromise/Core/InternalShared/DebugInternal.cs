@@ -4,15 +4,35 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0031 // Use null propagation
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
+#if PROMISE_DEBUG
+using System.Linq;
+#endif
+
 namespace Proto.Promises
 {
     partial class Internal
     {
+        internal static string CausalityTraceMessage
+        {
+            get
+            {
+#if PROMISE_DEBUG
+                return Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
+                    ? " -- This exception's Stacktrace contains the causality trace of all async callbacks that ran."
+                    : " -- Set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
+#else
+                return " -- Enable DEBUG mode and set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
+#endif
+            }
+        }
+
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
         internal const MethodImplOptions InlineOption = MethodImplOptions.NoInlining;
 #else
@@ -26,7 +46,149 @@ namespace Proto.Promises
             partial void ValidateReturn(Promise other);
         }
 
+        static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames);
+        static partial void SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable);
+        static partial void SetCurrentInvoker(ITraceable current);
+        static partial void ClearCurrentInvoker();
+        static partial void IncrementInvokeId();
 #if PROMISE_DEBUG
+        static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames)
+        {
+            StackTrace stackTrace = Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
+                ? GetStackTrace(skipFrames + 1)
+                : null;
+            traceable.Trace = new CausalityTrace(stackTrace, _currentTrace);
+        }
+
+        static partial void SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable)
+        {
+            StackTrace stackTrace = rejectSkipFrames > 0 & Promise.Config.DebugCausalityTracer != Promise.TraceLevel.None
+                ? GetStackTrace(rejectSkipFrames + 1)
+                : null;
+            unhandledException.SetCreatedAndRejectedStacktrace(stackTrace, traceable.Trace);
+        }
+
+#if !CSHARP_7_3_OR_NEWER
+        // This is only needed in older language versions that don't support ref structs.
+        [ThreadStatic]
+        private static long _invokeId;
+        internal static long InvokeId { get { return _invokeId; } }
+
+        static partial void IncrementInvokeId()
+        {
+            ++_invokeId;
+        }
+#else
+        internal static long InvokeId { get { return ValidIdFromApi; } }
+#endif // !CSHARP_7_3_OR_NEWER
+
+        [ThreadStatic]
+        private static CausalityTrace _currentTrace;
+        [ThreadStatic]
+        private static Stack<CausalityTrace> _traces;
+
+        static partial void SetCurrentInvoker(ITraceable current)
+        {
+            if (_traces == null)
+            {
+                _traces = new Stack<CausalityTrace>();
+            }
+            _traces.Push(_currentTrace);
+            _currentTrace = current.Trace;
+        }
+
+        static partial void ClearCurrentInvoker()
+        {
+            _currentTrace = _traces.Pop();
+            IncrementInvokeId();
+        }
+
+        private static StackTrace GetStackTrace(int skipFrames)
+        {
+            return new StackTrace(skipFrames + 1, true);
+        }
+
+        internal static string GetFormattedStacktrace(ITraceable traceable)
+        {
+            return traceable != null ? traceable.Trace.ToString() : null;
+        }
+
+        internal static string GetFormattedStacktrace(int skipFrames)
+        {
+            return FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
+        }
+
+        internal static void ValidateArgument(object arg, string argName, int skipFrames)
+        {
+            if (arg == null)
+            {
+                throw new ArgumentNullException(argName, null, GetFormattedStacktrace(skipFrames + 1));
+            }
+        }
+
+        internal static string FormatStackTrace(IEnumerable<StackTrace> stackTraces)
+        {
+#if !CSHARP_7_3_OR_NEWER
+            // Format stack trace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
+            List<string> _stackTraces = new List<string>();
+            string[] separator = new string[1] { Environment.NewLine + " " };
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            foreach (StackTrace st in stackTraces)
+            {
+                if (st == null)
+                {
+                    continue;
+                }
+                string stackTrace = st.ToString();
+                if (string.IsNullOrEmpty(stackTrace))
+                {
+                    continue;
+                }
+                foreach (var trace in stackTrace.Substring(1).Split(separator, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (!trace.Contains("Proto.Promises"))
+                    {
+                        sb.Append(trace)
+                            .Replace(":line ", ":")
+                            .Replace("(", " (")
+                            .Replace(") in", ") [0x00000] in"); // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
+                        _stackTraces.Add(sb.ToString());
+                        sb.Length = 0;
+                    }
+                }
+            }
+            foreach (var trace in _stackTraces)
+            {
+                sb.Append(trace).Append(" " + Environment.NewLine);
+            }
+            sb.Append(" ");
+            return sb.ToString();
+#else // !CSHARP_7_3_OR_NEWER
+            // StackTrace.ToString() format issue was fixed in the new runtime.
+            List<StackFrame> stackFrames = new List<StackFrame>();
+            foreach (StackTrace stackTrace in stackTraces)
+            {
+                stackFrames.AddRange(stackTrace.GetFrames());
+            }
+
+            var trace = stackFrames
+                .Where(frame =>
+                {
+                    // Ignore DebuggerNonUserCode and DebuggerHidden.
+                    var methodType = frame?.GetMethod();
+                    return methodType != null
+                        && !methodType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
+                        && !methodType.DeclaringType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
+                        && !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false);
+                })
+                // Create a new StackTrace to get proper formatting.
+                .Select(frame => new StackTrace(frame).ToString())
+                .ToArray();
+
+            return string.Join(Environment.NewLine, trace);
+#endif // !CSHARP_7_3_OR_NEWER
+        }
+
         partial interface ITraceable
         {
             CausalityTrace Trace { get; set; }
@@ -195,6 +357,22 @@ namespace Proto.Promises
                     ExchangePassthroughs(ref _passThroughs, borrower, _locker);
                 }
             }
+        }
+#else // PROMISE_DEBUG
+        internal static long InvokeId
+        {
+            [MethodImpl(InlineOption)]
+            get { return ValidIdFromApi; }
+        }
+
+        internal static string GetFormattedStacktrace(int skipFrames)
+        {
+            return null;
+        }
+
+        internal static string GetFormattedStacktrace(ITraceable traceable)
+        {
+            return null;
         }
 #endif // PROMISE_DEBUG
 

@@ -19,7 +19,7 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        internal enum ContinuationOption
+        internal enum SynchronizationOption
         {
             Synchronous,
             Foreground,
@@ -103,12 +103,12 @@ namespace Proto.Promises
 #endif
                 }
 
-                internal static Promise<TResult> WaitAsync<TResult>(Promise<TResult> _this, ContinuationOption continuationOption, SynchronizationContext synchronizationContext)
+                internal static Promise<TResult> WaitAsync<TResult>(Promise<TResult> _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext)
                 {
                     PromiseRef newPromise;
                     switch (continuationOption)
                     {
-                        case ContinuationOption.Synchronous:
+                        case SynchronizationOption.Synchronous:
                         {
                             if (_this._ref == null)
                             {
@@ -117,14 +117,8 @@ namespace Proto.Promises
                             newPromise = _this._ref.GetDuplicate(_this.Id);
                             break;
                         }
-                        case ContinuationOption.Foreground:
+                        case SynchronizationOption.Foreground:
                         {
-                            // TODO: optimization: check if _this was already scheduled for the foreground
-                            //if ()
-                            //{
-                            //    goto case ContinuationOption.Synchronous;
-                            //}
-
                             synchronizationContext = Promise.Config.ForegroundContext;
                             if (synchronizationContext == null)
                             {
@@ -135,14 +129,8 @@ namespace Proto.Promises
                             }
                             goto default;
                         }
-                        case ContinuationOption.Background:
+                        case SynchronizationOption.Background:
                         {
-                            // TODO: optimization: check if _this was already scheduled for the background
-                            //if ()
-                            //{
-                            //    goto case ContinuationOption.Synchronous;
-                            //}
-
                             synchronizationContext = Promise.Config.BackgroundContext;
                             goto default;
                         }
@@ -231,7 +219,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddProgress<TResult, TProgress>(Promise<TResult> _this, TProgress progress, CancelationToken cancelationToken)
+                internal static Promise<TResult> AddProgress<TResult, TProgress>(Promise<TResult> _this, TProgress progress, CancelationToken cancelationToken, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext)
                     where TProgress : IProgress<float>
                 {
                     if (cancelationToken.IsCancelationRequested)
@@ -239,14 +227,45 @@ namespace Proto.Promises
                         return _this.Duplicate();
                     }
 
-                    if (_this._ref == null)// TODO: RELEASE || _this._ref.State == Promise.State.Resolved)
+                    switch (continuationOption)
                     {
-                        InvokeAndCatchProgress(ref progress, 1, null);
-                        return new Promise<TResult>(null, ValidIdFromApi, _this.Depth, _this.Result);
+                        case SynchronizationOption.Synchronous:
+                        {
+                            if (_this._ref == null)
+                            {
+                                InvokeAndCatchProgress(ref progress, 1, null);
+                                return new Promise<TResult>(null, ValidIdFromApi, _this.Depth, _this.Result);
+                            }
+                            // TODO:
+//#if !PROMISE_DEBUG
+//                            else if (_this._ref.State == Promise.State.Resolved)
+//                            {
+//                                InvokeAndCatchProgress(ref progress, 1, null);
+//                            }
+//#endif
+                            break;
+                        }
+                        case SynchronizationOption.Foreground:
+                        {
+                            synchronizationContext = Promise.Config.ForegroundContext;
+                            if (synchronizationContext == null)
+                            {
+                                throw new InvalidOperationException(
+                                    "Promise.ContinuationOption.Foreground was provided to Progress, but Promise.Config.ForegroundContext was null. " +
+                                    "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
+                                    GetFormattedStacktrace(2));
+                            }
+                            break;
+                        }
+                        case SynchronizationOption.Background:
+                        {
+                            synchronizationContext = Promise.Config.BackgroundContext;
+                            break;
+                        }
                     }
 
                     _this._ref.MarkAwaited(_this.Id);
-                    PromiseProgress<TProgress> promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken, _this.Depth);
+                    PromiseProgress<TProgress> promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken, _this.Depth, continuationOption == SynchronizationOption.Synchronous, synchronizationContext);
                     _this._ref.HookupNewPromiseWithProgress(promise, _this.Depth);
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }

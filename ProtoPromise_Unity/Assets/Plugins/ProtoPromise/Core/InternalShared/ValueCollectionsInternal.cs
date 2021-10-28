@@ -62,6 +62,16 @@ namespace Proto.Promises
                 CollectionChecker<T>.AssertNotInCollection(item, this);
             }
         }
+
+        partial class ValueWriteOnlyLinkedQueue<T> : TraceableCollection
+        {
+            internal ValueLinkedQueue() : base() { }
+
+            private void AssertNotInCollection(T item)
+            {
+                CollectionChecker<T>.AssertNotInCollection(item, this);
+            }
+        }
 #else // PROTO_PROMISE_DEVELOPER_MODE
         partial struct ValueLinkedStack<T>
         {
@@ -80,6 +90,14 @@ namespace Proto.Promises
         }
 
         partial struct ValueLinkedQueue<T>
+        {
+            private void AssertNotInCollection(T item)
+            {
+                CollectionChecker<T>.AssertNotInCollection(item, null);
+            }
+        }
+
+        partial struct ValueWriteOnlyLinkedQueue<T>
         {
             private void AssertNotInCollection(T item)
             {
@@ -119,6 +137,9 @@ namespace Proto.Promises
                 }
             }
         }
+#else // PROMISE_DEBUG
+        static partial void AssertNotInCollection<T>(T item);
+
 #endif // PROMISE_DEBUG
 
         [MethodImpl(InlineOption)]
@@ -180,7 +201,7 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if PROTO_PROMISE_DEVELOPER_MODE
+#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
         internal partial class ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
 #else
@@ -300,7 +321,7 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if PROTO_PROMISE_DEVELOPER_MODE
+#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
         internal partial class ValueLinkedStackSafe<T> where T : class, ILinked<T>
 #else
@@ -348,7 +369,7 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if PROTO_PROMISE_DEVELOPER_MODE
+#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
         internal partial class ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
 #else
@@ -397,18 +418,6 @@ namespace Proto.Promises
                     item.Next = _head;
                     _head = item;
                 }
-            }
-
-            /// <summary>
-            /// This doesn't clear _tail when the last item is taken.
-            /// </summary>
-            [MethodImpl(InlineOption)]
-            internal T DequeueRisky()
-            {
-                T temp = _head;
-                _head = _head.Next;
-                MarkRemovedFromCollection(temp);
-                return temp;
             }
 
             internal bool TryRemove(T item)
@@ -493,6 +502,48 @@ namespace Proto.Promises
             IEnumerator IEnumerable.GetEnumerator()
             {
                 return GetEnumerator();
+            }
+        }
+
+        /// <summary>
+        /// This structure is unsuitable for general purpose.
+        /// </summary>
+#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+        internal partial class ValueWriteOnlyLinkedQueue<T> where T : class, ILinked<T>
+#else
+        internal partial struct ValueWriteOnlyLinkedQueue<T> where T : class, ILinked<T>
+#endif
+        {
+            private readonly ILinked<T> _sentinel;
+            private ILinked<T> _tail;
+
+            internal bool IsEmpty
+            {
+                [MethodImpl(InlineOption)]
+                get { return _sentinel.Next == null; }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal ValueWriteOnlyLinkedQueue(ILinked<T> sentinel)
+            {
+                _tail = _sentinel = sentinel;
+            }
+
+            internal void Enqueue(T item)
+            {
+                AssertNotInCollection(item);
+
+                _tail.Next = item;
+                _tail = item;
+            }
+
+            internal ValueLinkedStack<T> MoveElementsToStack()
+            {
+                ValueLinkedStack<T> newStack = new ValueLinkedStack<T>(_sentinel.Next);
+                _sentinel.Next = null;
+                _tail = _sentinel;
+                return newStack;
             }
         }
 

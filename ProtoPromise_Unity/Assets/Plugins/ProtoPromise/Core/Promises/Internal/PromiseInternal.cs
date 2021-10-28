@@ -101,22 +101,13 @@ namespace Proto.Promises
                 }
             }
 
-            private static void ExecuteHandlers(ValueLinkedStack<ITreeHandleable> executionStack)
-            {
-                while (executionStack.IsNotEmpty)
-                {
-                    executionStack.Pop().Handle(ref executionStack);
-                }
-                MaybeReportUnhandledRejections();
-            }
-
             protected virtual void MarkAwaited(short promiseId)
             {
                 IncrementId(promiseId);
                 WasAwaitedOrForgotten = true;
             }
 
-            internal void Forget(short promiseId)
+            internal virtual void Forget(short promiseId)
             {
                 IncrementId(promiseId);
                 WasAwaitedOrForgotten = true;
@@ -516,14 +507,21 @@ namespace Proto.Promises
                 }
             }
 
+            private static readonly WaitCallback _threadPoolCallback = ExecuteFromContext;
+            private static readonly SendOrPostCallback _synchronizationContextCallback = ExecuteFromContext;
+
+            private static void ExecuteFromContext(object state)
+            {
+                ValueLinkedStack<ITreeHandleable> executionStack = new ValueLinkedStack<ITreeHandleable>();
+                ((ITreeHandleable) state).Handle(ref executionStack);
+                ExecuteHandlers(executionStack);
+            }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             internal sealed partial class ConfiguredPromise : PromiseSingleAwait, ITreeHandleable
             {
-                private static readonly WaitCallback _threadPoolCallback = ExecuteFromContext;
-                private static readonly SendOrPostCallback _synchronizationContextCallback = ExecuteFromContext;
-
                 private ConfiguredPromise() { }
 
                 protected override void Dispose()
@@ -552,7 +550,12 @@ namespace Proto.Promises
 
                 private void ScheduleOnContext()
                 {
-                    if (_synchronizationContext != null)
+                    var foregroundHandler = _foregroundSynchronizationHandler;
+                    if (foregroundHandler != null && foregroundHandler._context == _synchronizationContext)
+                    {
+                        foregroundHandler.PostHandleable(this);
+                    }
+                    else if (_synchronizationContext != null)
                     {
                         _synchronizationContext.Post(_synchronizationContextCallback, this);
                     }
@@ -560,13 +563,6 @@ namespace Proto.Promises
                     {
                         ThreadPool.QueueUserWorkItem(_threadPoolCallback, this);
                     }
-                }
-
-                private static void ExecuteFromContext(object state)
-                {
-                    ValueLinkedStack<ITreeHandleable> executionStack = new ValueLinkedStack<ITreeHandleable>();
-                    ((ConfiguredPromise) state).Handle(ref executionStack);
-                    ExecuteHandlers(executionStack);
                 }
 
                 internal override void AddWaiter(ITreeHandleable waiter, ref ValueLinkedStack<ITreeHandleable> executionStack)
@@ -601,7 +597,7 @@ namespace Proto.Promises
                     _valueOrPrevious = valueContainer;
                     _isPreviousComplete = true;
                     Thread.MemoryBarrier(); // Make sure _waiter is read after _isPreviousComplete is written.
-                    // If not synchronous, leave pending until this is awaited.
+                    // If not synchronous, leave pending until this is awaited or forgotten.
                     if (_isSynchronous)
                     {
                         executionStack.Push(this);
@@ -621,7 +617,7 @@ namespace Proto.Promises
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     _isPreviousComplete = true;
-                    // If not synchronous, leave pending until this is awaited.
+                    // If not synchronous, leave pending until this is awaited or forgotten.
                     if (_isSynchronous)
                     {
                         State = valueContainer.GetState();

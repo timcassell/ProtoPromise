@@ -56,6 +56,9 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
+            Assert.IsNaN(progress);
+
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.25f);
@@ -82,6 +85,9 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
+            Assert.IsNaN(progress);
+
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.25f);
@@ -106,9 +112,12 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             deferred.Promise
-                .Progress(p => progress = p) // TODO: execution/synchronization context
+                .Progress(p => progress = p)
                 .Forget();
 
+            Assert.IsNaN(progress);
+
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.25f);
@@ -135,6 +144,9 @@ namespace Proto.Promises.Tests
                 .Progress(p => progress = p)
                 .Forget();
 
+            Assert.IsNaN(progress);
+
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.25f);
@@ -167,6 +179,9 @@ namespace Proto.Promises.Tests
                 })
                 .Forget();
 
+            Assert.IsNaN(progress);
+
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
 
             deferred.ReportProgress(0.25f);
@@ -663,7 +678,7 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             deferred.Promise
-                .Progress(p => progress = p, cancelationSource.Token)
+                .Progress(p => progress = p, SynchronizationOption.Synchronous, cancelationSource.Token)
                 .Forget();
 
             deferred.ReportProgress(0.25f);
@@ -688,7 +703,7 @@ namespace Proto.Promises.Tests
             float progress = float.NaN;
 
             deferred.Promise
-                .Progress(1, (cv, p) => progress = p, cancelationSource.Token)
+                .Progress(1, (cv, p) => progress = p, SynchronizationOption.Synchronous, cancelationSource.Token)
                 .Forget();
 
             deferred.ReportProgress(0.25f);

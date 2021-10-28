@@ -9,6 +9,7 @@
 
 using Proto.Promises.Threading;
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -28,14 +29,20 @@ namespace Proto.Promises.Tests
     public static partial class TestHelper
     {
         private static readonly PromiseSynchronizationContext _foregroundContext;
-        volatile private static Exception _uncaughtException;
+        private static readonly List<Exception> _uncaughtExceptions = new List<Exception>();
 
         static TestHelper()
         {
             // Set the foreground context to execute foreground promise callbacks.
             Promise.Config.ForegroundContext = _foregroundContext = new PromiseSynchronizationContext();
-            // Set uncaught rejection handler. Only store 1 exception to try to avoid overloading the test error output.
-            Promise.Config.UncaughtRejectionHandler = e => _uncaughtException = e;
+            // Set uncaught rejection handler.
+            Promise.Config.UncaughtRejectionHandler = e =>
+            {
+                lock (_uncaughtExceptions)
+                {
+                    _uncaughtExceptions.Add(e);
+                }
+            };
             Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
 #if PROTO_PROMISE_POOL_DISABLE // Are we testing the pool or not? (used for command-line testing)
             Promise.Config.ObjectPoolingEnabled = false;
@@ -55,10 +62,18 @@ namespace Proto.Promises.Tests
             GC.WaitForPendingFinalizers();
             ExecuteForegroundCallbacks();
 
-            Exception e = Interlocked.Exchange(ref _uncaughtException, null);
-            if (e != null)
+            Exception[] exceptions;
+            lock (_uncaughtExceptions)
             {
-                throw e;
+                exceptions = _uncaughtExceptions.ToArray();
+                _uncaughtExceptions.Clear();
+            }
+            if (exceptions.Length > 0)
+            {
+                if (true) // Set to false to throw all uncaught rejections, leave true to only throw 1 exception to avoid overloading the test error output.
+                    throw exceptions[0];
+                else
+                    throw new AggregateException(exceptions);
             }
         }
 
