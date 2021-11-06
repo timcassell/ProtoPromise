@@ -110,13 +110,13 @@ namespace Proto.Promises
                     }
                 }
 
-                public override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public override void Handle(ref ExecutionScheduler executionScheduler)
                 {
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     Promise.State state = valueContainer.GetState();
                     State = state;
-                    HandleWaiter(valueContainer, ref executionStack);
-                    HandleProgressListener(state);
+                    HandleWaiter(valueContainer, ref executionScheduler);
+                    HandleProgressListener(state, ref executionScheduler);
 
                     if (Interlocked.Decrement(ref _waitCount) == 0)
                     {
@@ -124,9 +124,8 @@ namespace Proto.Promises
                     }
                 }
 
-                public virtual bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index) // IMultiTreeHandleable.Handle
+                public virtual void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler) // IMultiTreeHandleable.Handle
                 {
-                    ThrowIfInPool(this);
                     // Retain while handling, then release when complete for thread safety.
                     InterlockedRetainDisregardId();
 
@@ -139,31 +138,31 @@ namespace Proto.Promises
                             {
                                 _idsAndRetains.InterlockedTryReleaseComplete();
                             }
-                            MaybeDispose();
-                            return false;
                         }
-                        valueContainer.Retain();
-                        Interlocked.Decrement(ref _waitCount);
-                        MaybeDispose();
-                        return true;
+                        else
+                        {
+                            valueContainer.Retain();
+                            Interlocked.Decrement(ref _waitCount);
+                            executionScheduler.ScheduleSynchronous(this);
+                        }
                     }
                     else // Resolved
                     {
-                        IncrementProgress(passThrough);
+                        IncrementProgress(passThrough, ref executionScheduler);
                         int remaining = Interlocked.Decrement(ref _waitCount);
                         if (remaining == 1)
                         {
-                            bool resolved = Interlocked.CompareExchange(ref _valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null) == null;
-                            MaybeDispose();
-                            return resolved;
+                            if (Interlocked.CompareExchange(ref _valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null) == null)
+                            {
+                                executionScheduler.ScheduleSynchronous(this);
+                            }
                         }
                         else if (remaining == 0)
                         {
                             _idsAndRetains.InterlockedTryReleaseComplete();
                         }
-                        MaybeDispose();
-                        return false;
                     }
+                    MaybeDispose();
                 }
 
                 internal int Depth
@@ -177,7 +176,7 @@ namespace Proto.Promises
 #endif
                 }
 
-                partial void IncrementProgress(PromisePassThrough passThrough);
+                partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress);
 
                 private sealed class MergePromiseT<T> : MergePromise, IMultiTreeHandleable
@@ -217,9 +216,8 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    public override bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index)
+                    public override void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                     {
-                        ThrowIfInPool(this);
                         // Retain while handling, then release when complete for thread safety.
                         InterlockedRetainDisregardId();
 
@@ -232,18 +230,18 @@ namespace Proto.Promises
                                 {
                                     _idsAndRetains.InterlockedTryReleaseComplete();
                                 }
-                                MaybeDispose();
-                                return false;
                             }
-                            valueContainer.Retain();
-                            Interlocked.Decrement(ref _waitCount);
-                            MaybeDispose();
-                            return true;
+                            else
+                            {
+                                valueContainer.Retain();
+                                Interlocked.Decrement(ref _waitCount);
+                                executionScheduler.ScheduleSynchronous(this);
+                            }
                         }
                         else // Resolved
                         {
-                            _onPromiseResolved.Invoke(valueContainer, _valueContainer, index);
-                            IncrementProgress(passThrough);
+                            _onPromiseResolved.Invoke(valueContainer, _valueContainer, passThrough.Index);
+                            IncrementProgress(passThrough, ref executionScheduler);
                             int remaining = Interlocked.Decrement(ref _waitCount);
                             if (remaining == 1)
                             {
@@ -251,17 +249,15 @@ namespace Proto.Promises
                                 {
                                     // Only nullify if all promises resolved, otherwise we let Dispose release it.
                                     _valueContainer = null;
-                                    MaybeDispose();
-                                    return true;
+                                    executionScheduler.ScheduleSynchronous(this);
                                 }
                             }
                             else if (remaining == 0)
                             {
                                 _idsAndRetains.InterlockedTryReleaseComplete();
                             }
-                            MaybeDispose();
-                            return false;
                         }
+                        MaybeDispose();
                     }
                 }
             }
@@ -269,9 +265,9 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class MergePromise : IProgressInvokable
             {
-                internal override void HandleProgressListener(Promise.State state)
+                internal override void HandleProgressListener(Promise.State state, ref ExecutionScheduler executionScheduler)
                 {
-                    HandleProgressListener(state, new Fixed32(_maxWaitDepth + 1));
+                    HandleProgressListener(state, new Fixed32(_maxWaitDepth + 1), ref executionScheduler);
                 }
 
                 protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
@@ -283,9 +279,9 @@ namespace Proto.Promises
                     return null;
                 }
 
-                protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
+                protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, ref ExecutionScheduler executionScheduler)
                 {
-                    SetInitialProgress(progressListener, CurrentProgress(), new Fixed32(_maxWaitDepth + 1), ref executionQueue);
+                    SetInitialProgress(progressListener, CurrentProgress(), new Fixed32(_maxWaitDepth + 1), ref executionScheduler);
                 }
 
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress)
@@ -311,11 +307,9 @@ namespace Proto.Promises
                     }
                 }
 
-                partial void IncrementProgress(PromisePassThrough passThrough)
+                partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                 {
-                    var executionQueue = new ValueLinkedQueue<IProgressInvokable>();
-                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion(), ref executionQueue);
-                    ExecuteProgress(executionQueue);
+                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion(), ref executionScheduler);
                 }
 
                 private Fixed32 CurrentProgress()
@@ -324,27 +318,27 @@ namespace Proto.Promises
                     return new Fixed32(_unscaledProgress.ToDouble() * _progressScaler);
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
+                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    IncrementProgress(amount, ref executionQueue);
+                    IncrementProgress(amount, ref executionScheduler);
                 }
 
-                private void IncrementProgress(uint amount, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
+                private void IncrementProgress(uint amount, ref ExecutionScheduler executionScheduler)
                 {
                     _unscaledProgress.InterlockedIncrement(amount);
                     if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
                         InterlockedRetainDisregardId();
-                        executionQueue.Push(this);
+                        executionScheduler.ScheduleProgressSynchronous(this);
                     }
                 }
 
-                void IProgressInvokable.Invoke(ref ValueLinkedQueue<IProgressInvokable> executionQueue)
+                void IProgressInvokable.Invoke(ref ExecutionScheduler executionScheduler)
                 {
                     var progress = CurrentProgress();
                     _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
-                    ReportProgress(progress, ref executionQueue);
+                    ReportProgress(progress, ref executionScheduler);
                     MaybeDispose();
                 }
             }

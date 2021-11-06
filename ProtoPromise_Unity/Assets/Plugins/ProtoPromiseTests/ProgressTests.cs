@@ -28,699 +28,606 @@ namespace Proto.Promises.Tests
             TestHelper.Cleanup();
         }
 
-        private class ProgressListener : IProgress<float>
-        {
-            public float CurrentProgress { get; private set; }
-
-            void IProgress<float>.Report(float value)
-            {
-                CurrentProgress = value;
-            }
-
-            public ProgressListener(float initialProgress)
-            {
-                CurrentProgress = initialProgress;
-            }
-        }
-
 #if PROMISE_PROGRESS
-
         [Test]
-        public void OnProgressMayBeInvokedWhenThePromisesProgressHasChanged_void0()
+        public void ProgressMayBeReportedWhenThePromisesProgressHasChanged_void0(
+            [Values] ProgressType progressType)
         {
             var deferred = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground);
+            progressHelper.Subscribe(deferred.Promise)
                 .Forget();
 
-            Assert.IsNaN(progress);
-
             TestHelper.ExecuteForegroundCallbacks();
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f);
 
-            deferred.ReportProgress(0.25f);
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.ExecuteForegroundCallbacks();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0f, false, false);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0f, false, false);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.75f, 0.75f);
 
             deferred.Resolve();
         }
 
         [Test]
-        public void OnProgressMayBeInvokedWhenThePromisesProgressHasChanged_void1()
+        public void ProgressMayBeReportedWhenThePromisesProgressHasChanged_void1(
+            [Values] ProgressType progressType)
         {
             var cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground);
+            progressHelper.Subscribe(deferred.Promise)
                 .Forget();
 
-            Assert.IsNaN(progress);
-
             TestHelper.ExecuteForegroundCallbacks();
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f);
 
-            deferred.ReportProgress(0.25f);
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.ExecuteForegroundCallbacks();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0f, false, false);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0f, false, false);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.75f, 0.75f);
 
             deferred.Resolve();
-
             cancelationSource.Dispose();
         }
 
         [Test]
-        public void OnProgressMayBeInvokedWhenThePromisesProgressHasChanged_T0()
+        public void ProgressMayBeReportedWhenThePromisesProgressHasChanged_T0(
+            [Values] ProgressType progressType)
         {
             var deferred = Promise.NewDeferred<int>();
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground);
+            progressHelper.Subscribe(deferred.Promise)
                 .Forget();
-
-            Assert.IsNaN(progress);
 
             TestHelper.ExecuteForegroundCallbacks();
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f);
 
-            deferred.ReportProgress(0.25f);
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.ExecuteForegroundCallbacks();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve(1);
-        }
-
-        [Test]
-        public void OnProgressMayBeInvokedWhenThePromisesProgressHasChanged_T1()
-        {
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
-                .Forget();
-
-            Assert.IsNaN(progress);
-
-            TestHelper.ExecuteForegroundCallbacks();
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.25f);
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            TestHelper.ExecuteForegroundCallbacks();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve(1);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void OnProgressMayBeInvokedWithTheCapturedValueWhenThePromisesProgressHasChanged()
-        {
-            var deferred = Promise.NewDeferred();
-
-            float progress = float.NaN;
-            string capturedValue = "Capture Value";
-
-            deferred.Promise
-                .Progress(capturedValue, (cv, p) =>
-                {
-                    Assert.AreEqual(capturedValue, cv);
-                    progress = p;
-                })
-                .Forget();
-
-            Assert.IsNaN(progress);
-
-            TestHelper.ExecuteForegroundCallbacks();
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.25f);
-
-            deferred.ReportProgress(0.5f);
-
-            deferred.ReportProgress(0.75f);
-
-            deferred.Resolve();
-        }
-
-        [Test]
-        public void ProgressListenerMayBeReportedWhenThePromisesProgressHasChanged()
-        {
-            var deferred = Promise.NewDeferred();
-
-            var progressListener = new ProgressListener(float.NaN);
-
-            deferred.Promise
-                .Progress(progressListener)
-                .Forget();
-
-            Assert.AreEqual(0f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.25f);
-            Assert.AreEqual(0.25f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.75f);
-            Assert.AreEqual(0.75f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(1f, progressListener.CurrentProgress, TestHelper.progressEpsilon);
-        }
-
-        [Test]
-        public void OnProgressWillBeInvokedWith1WhenPromiseIsResolved0()
-        {
-            var deferred = Promise.NewDeferred();
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
-                .Forget();
-
-            deferred.Resolve();
-            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-        }
-
-        [Test]
-        public void OnProgressWillBeInvokedWith1WhenPromiseIsResolved1()
-        {
-            float progress = float.NaN;
-
-            Promise.Resolved()
-                .Progress(p => progress = p)
-                .Forget();
-
-            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsRejected0()
-        {
-            var deferred = Promise.NewDeferred();
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
-                .Catch(() => { })
-                .Forget();
-
-            deferred.ReportProgress(0.5f);
-            deferred.Reject("Fail Value");
-
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-            progress = float.NaN;
-
-            Assert.IsNaN(progress);
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsRejected1()
-        {
-            var deferred = Promise.NewDeferred();
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
-                .Catch(() => { })
-                .Forget();
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            deferred.Reject("Fail Value");
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-        }
-
-        [Test]
-        public void WhenAPromiseIsRejectedAndCaught_OnProgressWillBeInvokedWithExpectedValue0()
-        {
-            var deferred = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Catch(() => deferred2.Promise)
-                .Progress(p => progress = p)
-                .Forget();
-
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.5f);
-            deferred.Reject("Fail Value");
-            Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
-
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
-
-            deferred2.Resolve();
-            Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
-        }
-
-        [Test]
-        public void WhenAPromiseIsRejectedAndCaught_OnProgressWillBeInvokedWithExpectedValue1()
-        {
-            var deferred = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Catch(() => deferred2.Promise)
-                .Progress(p => progress = p)
-                .Forget();
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0f, false, false);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0f, false, false);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.75f, 0.75f);
             
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
-
-            deferred.Reject("Fail Value");
-            Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
-
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
-
-            deferred2.Resolve();
-            Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
-
+            deferred.Resolve(1);
         }
 
         [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled0()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
-                .Forget();
-
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-            progress = float.NaN;
-
-            cancelationSource.Cancel();
-            Assert.IsNaN(progress);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled1()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
-                .Forget();
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Cancel();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled2()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred();
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .ThenDuplicate()
-                .Then(() => { }, cancelationSource.Token)
-                .Progress(p => progress = p)
-                .Finally(cancelationSource.Dispose)
-                .Forget();
-
-            deferred.ReportProgress(0.25f);
-
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-            progress = float.NaN;
-
-            cancelationSource.Cancel();
-            Assert.IsNaN(progress);
-
-            deferred.ReportProgress(0.5f);
-            Assert.IsNaN(progress);
-
-            deferred.Resolve();
-            Assert.IsNaN(progress);
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled3()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred();
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Then(() => { }, cancelationSource.Token)
-                .ThenDuplicate()
-                .Progress(p => progress = p)
-                .Finally(cancelationSource.Dispose)
-                .Forget();
-
-            deferred.ReportProgress(0.25f);
-
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-            progress = float.NaN;
-
-            cancelationSource.Cancel();
-            Assert.IsNaN(progress);
-
-            deferred.ReportProgress(0.5f);
-            Assert.IsNaN(progress);
-
-            deferred.Resolve();
-            Assert.IsNaN(progress);
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled4()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred();
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .ThenDuplicate()
-                .Then(() => { }, cancelationSource.Token)
-                .Progress(p => progress = p)
-                .Finally(cancelationSource.Dispose)
-                .Forget();
-
-            deferred.ReportProgress(0.25f);
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Cancel();
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled5()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred();
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Then(() => { }, cancelationSource.Token)
-                .ThenDuplicate()
-                .Progress(p => progress = p)
-                .Finally(cancelationSource.Dispose)
-                .Forget();
-
-            deferred.ReportProgress(0.25f);
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Cancel();
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled6()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .ThenDuplicate()
-                .Then(() =>
-                    deferred2.Promise
-                        .Then(() => { }, cancelationSource.Token)
-                )
-                .Progress(p => progress = p)
-                .Finally(cancelationSource.Dispose)
-                .Forget();
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Cancel();
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            deferred2.Resolve();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled7()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Then(() =>
-                    deferred2.Promise
-                        .Then(() => { }, cancelationSource.Token)
-                )
-                .ThenDuplicate()
-                .Progress(p => progress = p)
-                .Finally(cancelationSource.Dispose)
-                .Forget();
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Cancel();
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            deferred2.Resolve();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled8()
-        {
-            var deferred = Promise.NewDeferred();
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .ThenDuplicate()
-                .Then(() => deferred2.Promise)
-                .Progress(p => progress = p)
-                .Forget();
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Cancel();
-            deferred2.TryReportProgress(0.5f);
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled9()
-        {
-            var deferred = Promise.NewDeferred();
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Then(() => deferred2.Promise)
-                .ThenDuplicate()
-                .Progress(p => progress = p)
-                .Forget();
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Cancel();
-            deferred2.TryReportProgress(0.5f);
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled10()
-        {
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
-                .Forget();
-
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Cancel();
-            deferred.TryReportProgress(0.75f);
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled11()
+        public void ProgressMayBeReportedWhenThePromisesProgressHasChanged_T1(
+            [Values] ProgressType progressType)
         {
             var cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground);
+            progressHelper.Subscribe(deferred.Promise)
                 .Forget();
 
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
+            TestHelper.ExecuteForegroundCallbacks();
+            progressHelper.AssertCurrentProgress(0f);
 
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0f, false, false);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0f, false, false);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.75f, 0.75f);
 
-            cancelationSource.Cancel();
+            deferred.Resolve(1);
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void OnProgressWillBeInvokedWith1WhenPromiseIsResolved_void0(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
+                .Forget();
+
+            progressHelper.ResolveAndAssertResult(deferred, 1f);
+        }
+
+        [Test]
+        public void OnProgressWillBeInvokedWith1WhenPromiseIsResolved_void1(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(Promise.Resolved())
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(1f);
+        }
+
+        [Test]
+        public void OnProgressWillBeInvokedWith1WhenPromiseIsResolved_T0(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred<int>();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
+                .Forget();
+
+            progressHelper.ResolveAndAssertResult(deferred, 1, 1f);
+        }
+
+        [Test]
+        public void OnProgressWillBeInvokedWith1WhenPromiseIsResolved_T1(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(Promise.Resolved(1))
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(1f);
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsRejected_void0(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
+                .Catch(() => { })
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.RejectAndAssertResult(deferred, "Reject", 0.5f, false);
             deferred.TryReportProgress(0.75f);
-            Assert.AreEqual(0.5f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0.5f, false);
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsRejected_void1(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(Promise.Rejected("Reject"))
+                .Catch(() => { })
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(float.NaN, false);
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsRejected_T0(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred<int>();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
+                .Catch(() => { })
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.RejectAndAssertResult(deferred, "Reject", 0.5f, false);
+            deferred.TryReportProgress(0.75f);
+            progressHelper.AssertCurrentProgress(0.5f, false);
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsRejected_T1(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(Promise<int>.Rejected("Reject"))
+                .Catch(() => { })
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(float.NaN, false);
+        }
+
+        [Test]
+        public void WhenAPromiseIsRejectedAndCaught_OnProgressWillBeInvokedWithExpectedValue_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .Catch(() => deferred2.Promise))
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f / 2f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+            progressHelper.RejectAndAssertResult(deferred, "Reject", 1f / 2f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred2, 2f / 2f);
+        }
+
+        [Test]
+        public void WhenAPromiseIsRejectedAndCaught_OnProgressWillBeInvokedWithExpectedValue_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .Catch(() => deferred2.Promise))
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f / 2f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+            progressHelper.RejectAndAssertResult(deferred, "Reject", 1f / 2f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred2, 1, 2f / 2f);
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled_void0(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.CancelAndAssertResult(deferred, 0.5f, false);
+            deferred.TryReportProgress(0.75f);
+            progressHelper.AssertCurrentProgress(0.5f, false);
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled_void1(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred(cancelationSource.Token);
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 0.5f, false);
+
+            cancelationSource.Dispose();
+
+            progressHelper.AssertCurrentProgress(0.5f, false);
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled_void2(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(Promise.Canceled())
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(float.NaN, false);
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled_T0(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred<int>();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.CancelAndAssertResult(deferred, 0.5f, false);
+
+            deferred.TryReportProgress(0.75f);
+            progressHelper.AssertCurrentProgress(0.5f, false);
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled_T1(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 0.5f, false);
+
+            cancelationSource.Dispose();
+
+            progressHelper.AssertCurrentProgress(0.5f, false);
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled_T2(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(Promise<int>.Canceled())
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(float.NaN, false);
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled1(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .ThenDuplicate()
+                    .ThenDuplicate(cancelationSource.Token))
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0.25f);
+
+            progressHelper.CancelAndAssertResult(cancelationSource, 0.25f, false);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.25f, false);
+            progressHelper.ResolveAndAssertResult(deferred, 0.25f, false);
 
             cancelationSource.Dispose();
         }
 
         [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenTokenIsCanceled0()
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled2(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .ThenDuplicate(cancelationSource.Token)
+                    .ThenDuplicate())
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0.25f);
+
+            progressHelper.CancelAndAssertResult(cancelationSource, 0.25f, false);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.25f, false);
+            progressHelper.ResolveAndAssertResult(deferred, 0.25f, false);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled3(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .ThenDuplicate()
+                    .Then(() =>
+                        deferred2.Promise
+                            .ThenDuplicate(cancelationSource.Token)
+                    ))
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f / 2f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+
+            progressHelper.ResolveAndAssertResult(deferred, 1f / 2f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1f / 2f, false);
+            progressHelper.ResolveAndAssertResult(deferred2, 1f / 2f, false);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled4(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .Then(() =>
+                        deferred2.Promise
+                            .ThenDuplicate(cancelationSource.Token)
+                    )
+                    .ThenDuplicate())
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f / 2f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+
+            progressHelper.ResolveAndAssertResult(deferred, 1f / 2f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1f / 2f, false);
+            progressHelper.ResolveAndAssertResult(deferred2, 1f / 2f, false);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled5(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .ThenDuplicate()
+                    .Then(() => deferred2.Promise))
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f / 2f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+
+            progressHelper.ResolveAndAssertResult(deferred, 1f / 2f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1f / 2f, false);
+            deferred2.TryReportProgress(0.5f);
+            progressHelper.AssertCurrentProgress(1f / 2f, false);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenPromiseIsCanceled6(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred();
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .Then(() => deferred2.Promise)
+                    .ThenDuplicate())
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f / 2f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+
+            progressHelper.ResolveAndAssertResult(deferred, 1f / 2f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1f / 2f, false);
+            deferred2.TryReportProgress(0.5f);
+            progressHelper.AssertCurrentProgress(1f / 2f, false);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenTokenIsCanceled_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
             CancelationSource cancelationSource = CancelationSource.New();
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p, SynchronizationOption.Synchronous, cancelationSource.Token)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise, cancelationSource.Token)
                 .Forget();
 
-            deferred.ReportProgress(0.25f);
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f);
 
-            cancelationSource.Cancel();
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0.25f);
 
-            deferred.Resolve();
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+            progressHelper.CancelAndAssertResult(cancelationSource, 0.25f, false);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.25f, false);
+            deferred.TryResolve();
+            progressHelper.AssertCurrentProgress(0.25f, false);
 
             cancelationSource.Dispose();
         }
 
         [Test]
-        public void OnProgressWillNoLongerBeInvokedWhenTokenIsCanceled1()
+        public void OnProgressWillNoLongerBeInvokedWhenTokenIsCanceled_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
-            var deferred = Promise.NewDeferred();
+            var deferred = Promise.NewDeferred<int>();
             CancelationSource cancelationSource = CancelationSource.New();
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(1, (cv, p) => progress = p, SynchronizationOption.Synchronous, cancelationSource.Token)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise, cancelationSource.Token)
                 .Forget();
 
-            deferred.ReportProgress(0.25f);
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f);
 
-            cancelationSource.Cancel();
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0.25f);
 
-            deferred.Resolve();
-            Assert.AreEqual(0.25f, progress, TestHelper.progressEpsilon);
+            progressHelper.CancelAndAssertResult(cancelationSource, 0.25f, false);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.25f, false);
+            progressHelper.ResolveAndAssertResult(deferred, 1, 0.25f, false);
 
             cancelationSource.Dispose();
         }
 
         [Test]
-        public void MultipleOnProgressAreInvokedProperly()
+        public void ProgressWillBeReportedWithCurrentProgressWhenItIsSubscribed_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred();
+            deferred.ReportProgress(0.5f);
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0.5f);
+            progressHelper.ResolveAndAssertResult(deferred, 1f);
+        }
+
+        [Test]
+        public void ProgressWillBeReportedWithCurrentProgressWhenItIsSubscribed_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred<int>();
+            deferred.ReportProgress(0.5f);
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0.5f);
+            progressHelper.ResolveAndAssertResult(deferred, 1, 1f);
+        }
+
+        [Test]
+        public void MultipleOnProgressAreInvokedProperly(
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred();
@@ -732,10 +639,12 @@ namespace Proto.Promises.Tests
 
             deferred.Promise
                 .ThenDuplicate()
-                .Then(() => { }, cancelationSource.Token)
-                .Progress(p => { firstInvoked = true; progress = p; })
+                .ThenDuplicate(cancelationSource.Token)
+                .Progress(p => { firstInvoked = true; progress = p; }, synchronizationOption)
                 .Finally(cancelationSource.Dispose)
                 .Forget();
+
+            TestHelper.ExecuteForegroundCallbacks();
 
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
             Assert.IsTrue(firstInvoked);
@@ -745,14 +654,16 @@ namespace Proto.Promises.Tests
             firstInvoked = false;
             secondInvoked = false;
             cancelationSource.Cancel();
+            TestHelper.ExecuteForegroundCallbacks();
 
             deferred2.Promise
                 .ThenDuplicate()
                 .ThenDuplicate()
-                .Progress(p => { secondInvoked = true; progress = p; })
+                .Progress(p => { secondInvoked = true; progress = p; }, synchronizationOption)
                 .Forget();
 
             deferred.ReportProgress(0.5f);
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
             Assert.IsTrue(secondInvoked);
             Assert.IsFalse(firstInvoked);
@@ -763,27 +674,26 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve();
             deferred2.Resolve();
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
             Assert.IsTrue(secondInvoked);
             Assert.IsFalse(firstInvoked);
         }
 
         [Test]
-        public void OnProgressWillNotBeInvokedWith1UntilPromiseIsResolved()
+        public void OnProgressWillNotBeInvokedWith1UntilPromiseIsResolved(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
                 .Forget();
 
-            deferred.ReportProgress(1f);
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f);
+            progressHelper.ReportProgressAndAssertResult(deferred, 1f, 0f, false);
+            progressHelper.ResolveAndAssertResult(deferred, 1f);
         }
 
 #if PROMISE_DEBUG
@@ -800,6 +710,10 @@ namespace Proto.Promises.Tests
             {
                 deferred.Promise.Progress(1, default(Action<int, float>));
             });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                deferred.Promise.Progress(default(IProgress<float>));
+            });
 
             deferred.Resolve();
 
@@ -812,6 +726,10 @@ namespace Proto.Promises.Tests
             Assert.Throws<ArgumentNullException>(() =>
             {
                 deferredInt.Promise.Progress(1, default(Action<int, float>));
+            });
+            Assert.Throws<ArgumentNullException>(() =>
+            {
+                deferredInt.Promise.Progress(default(IProgress<float>));
             });
 
             deferredInt.Resolve(0);
@@ -847,299 +765,266 @@ namespace Proto.Promises.Tests
 
         // A wait promise is a promise that waits on another promise.
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain0()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain_void_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
             var nextDeferred = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Then(() => nextDeferred.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .Then(() => nextDeferred.Promise))
                 .Forget();
 
-            Assert.AreEqual(0f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f / 2f);
 
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred, 1f / 2f);
 
-            deferred.Resolve();
-            Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.Resolve();
-            Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
+            try
+            {
+                progressHelper.ReportProgressAndAssertResult(nextDeferred, 0.5f, 1.5f / 2f);
+            }
+            catch
+            {
+                throw;
+            }
+            progressHelper.ResolveAndAssertResult(nextDeferred, 2f / 2f);
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain1()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain_void_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
             var nextDeferred = Promise.NewDeferred<int>();
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Then(() => nextDeferred.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .Then(() => nextDeferred.Promise))
                 .Forget();
 
-            Assert.AreEqual(0f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f / 2f);
 
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred, 1f / 2f);
 
-            deferred.Resolve();
-            Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.Resolve(100);
-            Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
+            // TODO: why is this failing with background synchronization?
+            try
+            {
+                progressHelper.ReportProgressAndAssertResult(nextDeferred, 0.5f, 1.5f / 2f);
+            }
+            catch
+            {
+                throw;
+            }
+            progressHelper.ResolveAndAssertResult(nextDeferred, 1, 2f / 2f);
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain2()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain_T_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred<int>();
             var nextDeferred = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Then(() => nextDeferred.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .Then(() => nextDeferred.Promise))
                 .Forget();
 
-            Assert.AreEqual(0f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f / 2f);
 
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred, 1, 1f / 2f);
 
-            deferred.Resolve(100);
-            Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.Resolve();
-            Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(nextDeferred, 0.5f, 1.5f / 2f);
+            progressHelper.ResolveAndAssertResult(nextDeferred, 2f / 2f);
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain3()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain_T_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred<int>();
             var nextDeferred = Promise.NewDeferred<int>();
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Then(() => nextDeferred.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .Then(() => nextDeferred.Promise))
                 .Forget();
 
-            Assert.AreEqual(0f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f / 2f);
 
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred, 1, 1f / 2f);
 
-            deferred.Resolve(100);
-            Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
-
-            nextDeferred.Resolve(100);
-            Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(nextDeferred, 0.5f, 1.5f / 2f);
+            progressHelper.ResolveAndAssertResult(nextDeferred, 1, 2f / 2f);
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain4()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain_voidPending_voidResolved(
+            [Values] ProgressType progressType,
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Explicit)] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Then(() => Promise.Resolved())
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .Then(() => Promise.Resolved()))
                 .Forget();
 
-            Assert.AreEqual(0f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f / 2f);
 
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred, 2f / 2f);
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain5()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain_voidResolved_voidPending(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            Promise.Resolved()
-                .Then(() => deferred.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Resolved()
+                    .Then(() => deferred.Promise))
                 .Forget();
 
-            Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(1f / 2f);
 
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 1.5f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred, 2f / 2f);
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain6()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain_voidPending_TResolved(
+            [Values] ProgressType progressType,
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Explicit)] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            deferred.Promise
-                .Then(() => Promise.Resolved(1))
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred.Promise
+                    .Then(() => Promise.Resolved()))
                 .Forget();
 
-            Assert.AreEqual(0f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f / 2f);
 
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred, 2f / 2f);
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain7()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain_TResolved_voidPending(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            Promise.Resolved(1)
-                .Then(() => deferred.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Resolved()
+                    .Then(() => deferred.Promise))
                 .Forget();
 
-            Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(1f / 2f);
 
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 1.5f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred, 2f / 2f);
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain8()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain_voidResolved_voidResolved_voidPending(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            Promise.Resolved()
-                .Then(() => Promise.Resolved())
-                .Then(() => deferred.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Resolved()
+                    .Then(() => Promise.Resolved())
+                    .Then(() => deferred.Promise))
                 .Forget();
 
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(2f / 3f);
 
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(2.5f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(3f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 2.5f / 3f);
+            progressHelper.ResolveAndAssertResult(deferred, 3f / 3f);
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain9()
+        public void OnProgressWillBeInvokedWithANormalizedValueFromAllWaitPromisesInTheChain_TResolved_TResolved_voidPending(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            Promise.Resolved(1)
-                .Then(() => Promise.Resolved(2))
-                .Then(() => deferred.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Resolved(1)
+                    .Then(() => Promise.Resolved(1))
+                    .Then(() => deferred.Promise))
                 .Forget();
 
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(2f / 3f);
 
-            deferred.ReportProgress(0.5f);
-            Assert.AreEqual(2.5f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred.Resolve();
-            Assert.AreEqual(3f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 2.5f / 3f);
+            progressHelper.ResolveAndAssertResult(deferred, 3f / 3f);
         }
 
         [Test]
-        public void OnProgressWillBeInvokedProperlyFromARecoveredPromise0()
+        public void OnProgressWillBeInvokedProperlyFromARecoveredPromise0(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
             var deferred3 = Promise.NewDeferred();
-
-            float progress = float.NaN;
-
             CancelationSource cancelationSource = CancelationSource.New();
 
-            deferred1.Promise
-                .Then(() => deferred2.Promise, cancelationSource.Token)
-                .ContinueWith(_ => deferred3.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred1.Promise
+                    .Then(() => deferred2.Promise, cancelationSource.Token)
+                    .ContinueWith(_ => deferred3.Promise))
                 .Forget();
 
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f / 3f);
 
-            deferred1.ReportProgress(0.25f);
-            Assert.AreEqual(0.25f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.25f, 0.25f / 3f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 2f / 3f);
 
-            cancelationSource.Cancel();
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 2f / 3f, false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 2f / 3f, false);
+            progressHelper.ResolveAndAssertResult(deferred2, 2f / 3f, false);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.7f, 2f / 3f, false);
 
-            deferred1.ReportProgress(0.5f);
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.25f, 2.25f / 3f);
 
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.8f, 2.25f / 3f, false);
 
-            deferred2.Resolve();
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 2.5f / 3f);
+            progressHelper.ResolveAndAssertResult(deferred3, 3f / 3f);
 
-            deferred1.ReportProgress(0.7f);
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred3.ReportProgress(0.25f);
-            Assert.AreEqual(2.25f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred1.ReportProgress(0.8f);
-            Assert.AreEqual(2.25f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred3.ReportProgress(0.5f);
-            Assert.AreEqual(2.5f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred3.Resolve();
-            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            deferred1.ReportProgress(0.9f);
-            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            deferred1.Resolve();
-            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.9f, 3f / 3f, false);
+            progressHelper.ResolveAndAssertResult(deferred1, 3f / 3f, false);
 
             cancelationSource.Dispose();
             // Promise must be forgotten since it was never returned in onResolved because it was canceled.
@@ -1147,338 +1032,426 @@ namespace Proto.Promises.Tests
         }
 
         [Test]
-        public void OnProgressWillBeInvokedProperlyFromARecoveredPromise1()
+        public void OnProgressWillBeInvokedProperlyFromARecoveredPromise1(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
             var deferred3 = Promise.NewDeferred<int>();
-
-            float progress = float.NaN;
-
             CancelationSource cancelationSource = CancelationSource.New();
 
-            deferred1.Promise
-                .Then(() => deferred2.Promise, cancelationSource.Token)
-                .ContinueWith(_ => deferred3.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                deferred1.Promise
+                    .Then(() => deferred2.Promise, cancelationSource.Token)
+                    .ContinueWith(_ => deferred3.Promise))
                 .Forget();
 
-            Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f / 3f);
 
-            deferred1.ReportProgress(0.25f);
-            Assert.AreEqual(0.25f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.25f, 0.25f / 3f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 2f / 3f);
 
-            cancelationSource.Cancel();
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 2f / 3f, false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 2f / 3f, false);
+            progressHelper.ResolveAndAssertResult(deferred2, 1, 2f / 3f, false);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.7f, 2f / 3f, false);
 
-            deferred1.ReportProgress(0.5f);
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.25f, 2.25f / 3f);
 
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.8f, 2.25f / 3f, false);
 
-            deferred2.Resolve(1);
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 2.5f / 3f);
+            progressHelper.ResolveAndAssertResult(deferred3, 1, 3f / 3f);
 
-            deferred1.ReportProgress(0.7f);
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred3.ReportProgress(0.25f);
-            Assert.AreEqual(2.25f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred1.ReportProgress(0.8f);
-            Assert.AreEqual(2.25f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred3.ReportProgress(0.5f);
-            Assert.AreEqual(2.5f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred3.Resolve(1);
-            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            deferred1.ReportProgress(0.9f);
-            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            deferred1.Resolve(1);
-            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.9f, 3f / 3f, false);
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 3f / 3f, false);
 
             cancelationSource.Dispose();
             // Promise must be forgotten since it was never returned in onResolved because it was canceled.
             deferred2.Promise.Forget();
         }
 
-        [Test]
-        public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Pending_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            for (int i = 0; i < 600; ++i)
-            {
-                promise.Progress(v => { ++invokedCount; }).Forget();
-            }
-
-            promise.Forget();
-            Assert.AreEqual(600, invokedCount);
-            deferred.ReportProgress(0.1f);
-            Assert.AreEqual(600 * 2, invokedCount);
-            deferred.Resolve();
-        }
+        const int MultiProgressCount = 100;
 
         [Test]
-        public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Resolved_void()
-        {
-            int invokedCount = 0;
-            Promise promise = Promise.Resolved().Preserve();
-
-            for (int i = 0; i < 600; ++i)
-            {
-                promise.Progress(v => { ++invokedCount; }).Forget();
-            }
-
-            promise.Forget();
-            Assert.AreEqual(600, invokedCount);
-        }
-
-        [Test]
-        public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Pending_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            for (int i = 0; i < 600; ++i)
-            {
-                promise.Progress(v => { ++invokedCount; }).Forget();
-            }
-
-            promise.Forget();
-            Assert.AreEqual(600, invokedCount);
-            deferred.ReportProgress(0.1f);
-            Assert.AreEqual(600 * 2, invokedCount);
-            deferred.Resolve(1);
-        }
-
-        [Test]
-        public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Resolved_T()
-        {
-            int invokedCount = 0;
-            Promise<int> promise = Promise.Resolved(1).Preserve();
-
-            for (int i = 0; i < 600; ++i)
-            {
-                promise.Progress(v => { ++invokedCount; }).Forget();
-            }
-
-            promise.Forget();
-            Assert.AreEqual(600, invokedCount);
-        }
-
-        [Test]
-        public void ProgressMayBeChainSubscribedMultipleTimes_Pending_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise;
-
-            for (int i = 0; i < 600; ++i)
-            {
-                promise = promise.Progress(v => { ++invokedCount; });
-            }
-
-            promise.Forget();
-            Assert.AreEqual(600, invokedCount);
-            deferred.ReportProgress(0.1f);
-            Assert.AreEqual(600 * 2, invokedCount);
-            deferred.Resolve();
-        }
-
-        [Test]
-        public void ProgressMayBeChainSubscribedMultipleTimes_Resolved_void()
-        {
-            int invokedCount = 0;
-            Promise promise = Promise.Resolved();
-
-            for (int i = 0; i < 600; ++i)
-            {
-                promise = promise.Progress(v => { ++invokedCount; });
-            }
-
-            promise.Forget();
-            Assert.AreEqual(600, invokedCount);
-        }
-
-        [Test]
-        public void ProgressMayBeChainSubscribedMultipleTimes_Pending_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise;
-
-            for (int i = 0; i < 600; ++i)
-            {
-                promise = promise.Progress(v => { ++invokedCount; });
-            }
-
-            promise.Forget();
-            Assert.AreEqual(600, invokedCount);
-            deferred.ReportProgress(0.1f);
-            Assert.AreEqual(600 * 2, invokedCount);
-            deferred.Resolve(1);
-        }
-
-        [Test]
-        public void ProgressMayBeChainSubscribedMultipleTimes_Resolved_T()
-        {
-            int invokedCount = 0;
-            Promise<int> promise = Promise.Resolved(1);
-
-            for (int i = 0; i < 600; ++i)
-            {
-                promise = promise.Progress(v => { ++invokedCount; });
-            }
-
-            promise.Forget();
-            Assert.AreEqual(600, invokedCount);
-        }
-
-        [Test]
-        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Pending_void()
+        public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Pending_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
-            int[] results = new int[600];
+            ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
 
-            for (int i = 0; i < 600; ++i)
+            for (int i = 0; i < MultiProgressCount; ++i)
             {
-                int index = i;
-                promise.Progress(i, (num, v) => { results[index] = num; }).Forget();
+                progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i].Subscribe(promise)
+                    .Forget();
             }
 
             promise.Forget();
-            deferred.ReportProgress(0.1f);
-            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].ReportProgressAndAssertResult(deferred, 0.1f, 0.1f);
+            }
             deferred.Resolve();
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(1f);
+            }
         }
 
         [Test]
-        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Resolved_void()
+        public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Resolved_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             Promise promise = Promise.Resolved().Preserve();
-            int[] results = new int[600];
+            ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
 
-            for (int i = 0; i < 600; ++i)
+            for (int i = 0; i < MultiProgressCount; ++i)
             {
-                int index = i;
-                promise.Progress(i, (num, v) => { results[index] = num; }).Forget();
+                progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i].Subscribe(promise)
+                    .Forget();
             }
 
             promise.Forget();
-            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(1f);
+            }
         }
 
         [Test]
-        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Pending_T()
+        public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Pending_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise.Preserve();
-            int[] results = new int[600];
+            ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
 
-            for (int i = 0; i < 600; ++i)
+            for (int i = 0; i < MultiProgressCount; ++i)
             {
-                int index = i;
-                promise.Progress(i, (num, v) => { results[index] = num; }).Forget();
+                progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i].Subscribe(promise)
+                    .Forget();
             }
 
             promise.Forget();
-            deferred.ReportProgress(0.1f);
-            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].ReportProgressAndAssertResult(deferred, 0.1f, 0.1f);
+            }
             deferred.Resolve(1);
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(1f);
+            }
         }
 
         [Test]
-        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Resolved_T()
+        public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Resolved_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             Promise<int> promise = Promise.Resolved(1).Preserve();
-            int[] results = new int[600];
+            ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
 
-            for (int i = 0; i < 600; ++i)
+            for (int i = 0; i < MultiProgressCount; ++i)
             {
-                int index = i;
-                promise.Progress(i, (num, v) => { results[index] = num; }).Forget();
+                progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i].Subscribe(promise)
+                    .Forget();
             }
 
             promise.Forget();
-            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(1f);
+            }
         }
 
         [Test]
-        public void ProgressChainSubscribedWillBeInvokedInOrder_Pending_void()
+        public void ProgressMayBeChainSubscribedMultipleTimes_Pending_void(
+            [Values] ProgressType progressType,
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Explicit)] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise;
-            int[] results = new int[600];
+            ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
 
-            for (int i = 0; i < 600; ++i)
+            for (int i = 0; i < MultiProgressCount; ++i)
             {
-                int index = i;
-                promise = promise.Progress(i, (num, v) => { results[index] = num; });
+                progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                promise = progressHelpers[i].Subscribe(promise);
             }
 
             promise.Forget();
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].ReportProgressAndAssertResult(deferred, 0.1f, 0.1f);
+            }
+            deferred.Resolve();
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(1f);
+            }
+        }
+
+        [Test]
+        public void ProgressMayBeChainSubscribedMultipleTimes_Resolved_void(
+            [Values] ProgressType progressType,
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Explicit)] SynchronizationType synchronizationType)
+        {
+            Promise promise = Promise.Resolved();
+            ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                promise = progressHelpers[i].Subscribe(promise);
+            }
+
+            promise.Forget();
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(1f);
+            }
+        }
+
+        [Test]
+        public void ProgressMayBeChainSubscribedMultipleTimes_Pending_T(
+            [Values] ProgressType progressType,
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Explicit)] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise;
+            ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                promise = progressHelpers[i].Subscribe(promise);
+            }
+
+            promise.Forget();
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].ReportProgressAndAssertResult(deferred, 0.1f, 0.1f);
+            }
+            deferred.Resolve(1);
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(1f);
+            }
+        }
+
+        [Test]
+        public void ProgressMayBeChainSubscribedMultipleTimes_Resolved_T(
+            [Values] ProgressType progressType,
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Explicit)] SynchronizationType synchronizationType)
+        {
+            Promise<int> promise = Promise.Resolved(1);
+            ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                promise = progressHelpers[i].Subscribe(promise);
+            }
+
+            promise.Forget();
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(1f);
+            }
+        }
+
+        [Test]
+        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Pending_void(
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
+        {
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+            int[] results = new int[MultiProgressCount];
+            int index = 0;
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                int num = i;
+                promise.Progress(v => { results[index++] = num; }, synchronizationOption).Forget();
+            }
+
+            promise.Forget();
+            index = 0;
             deferred.ReportProgress(0.1f);
+            TestHelper.ExecuteForegroundCallbacks();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            index = 0;
             deferred.Resolve();
         }
 
         [Test]
-        public void ProgressChainSubscribedWillBeInvokedInOrder_Resolved_void()
+        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Resolved_void(
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
         {
-            Promise promise = Promise.Resolved();
-            int[] results = new int[600];
+            Promise promise = Promise.Resolved().Preserve();
+            int[] results = new int[MultiProgressCount];
+            int index = 0;
 
-            for (int i = 0; i < 600; ++i)
+            for (int i = 0; i < MultiProgressCount; ++i)
             {
-                int index = i;
-                promise = promise.Progress(i, (num, v) => { results[index] = num; });
+                int num = i;
+                promise.Progress(v => { results[index++] = num; }, synchronizationOption).Forget();
             }
 
             promise.Forget();
+            TestHelper.ExecuteForegroundCallbacks();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
         }
 
         [Test]
-        public void ProgressChainSubscribedWillBeInvokedInOrder_Pending_T()
+        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Pending_T(
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
         {
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise;
-            int[] results = new int[600];
+            var promise = deferred.Promise.Preserve();
+            int[] results = new int[MultiProgressCount];
+            int index = 0;
 
-            for (int i = 0; i < 600; ++i)
+            for (int i = 0; i < MultiProgressCount; ++i)
             {
-                int index = i;
-                promise = promise.Progress(i, (num, v) => { results[index] = num; });
+                int num = i;
+                promise.Progress(v => { results[index++] = num; }, synchronizationOption).Forget();
             }
 
             promise.Forget();
+            index = 0;
             deferred.ReportProgress(0.1f);
+            TestHelper.ExecuteForegroundCallbacks();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            index = 0;
             deferred.Resolve(1);
         }
 
         [Test]
-        public void ProgressChainSubscribedWillBeInvokedInOrder_Resolved_T()
+        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Resolved_T(
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
         {
-            Promise<int> promise = Promise.Resolved(1);
-            int[] results = new int[600];
+            Promise<int> promise = Promise.Resolved(1).Preserve();
+            int[] results = new int[MultiProgressCount];
+            int index = 0;
 
-            for (int i = 0; i < 600; ++i)
+            for (int i = 0; i < MultiProgressCount; ++i)
             {
-                int index = i;
-                promise = promise.Progress(i, (num, v) => { results[index] = num; });
+                int num = i;
+                promise.Progress(v => { results[index++] = num; }, synchronizationOption).Forget();
             }
 
             promise.Forget();
+            TestHelper.ExecuteForegroundCallbacks();
+            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+        }
+
+        [Test]
+        public void ProgressChainSubscribedWillBeInvokedInOrder_Pending_void(
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
+        {
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise;
+            int[] results = new int[MultiProgressCount];
+            int index = 0;
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                int num = i;
+                promise = promise.Progress(v => { results[index++] = num; }, synchronizationOption);
+            }
+
+            promise.Forget();
+            index = 0;
+            deferred.ReportProgress(0.1f);
+            TestHelper.ExecuteForegroundCallbacks();
+            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            index = 0;
+            deferred.Resolve();
+        }
+
+        [Test]
+        public void ProgressChainSubscribedWillBeInvokedInOrder_Resolved_void(
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
+        {
+            Promise promise = Promise.Resolved();
+            int[] results = new int[MultiProgressCount];
+            int index = 0;
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                int num = i;
+                promise = promise.Progress(v => { results[index++] = num; }, synchronizationOption);
+            }
+
+            promise.Forget();
+            TestHelper.ExecuteForegroundCallbacks();
+            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+        }
+
+        [Test]
+        public void ProgressChainSubscribedWillBeInvokedInOrder_Pending_T(
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise;
+            int[] results = new int[MultiProgressCount];
+            int index = 0;
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                int num = i;
+                promise = promise.Progress(v => { results[index++] = num; }, synchronizationOption);
+            }
+
+            promise.Forget();
+            index = 0;
+            deferred.ReportProgress(0.1f);
+            TestHelper.ExecuteForegroundCallbacks();
+            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            index = 0;
+            deferred.Resolve(1);
+        }
+
+        [Test]
+        public void ProgressChainSubscribedWillBeInvokedInOrder_Resolved_T(
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
+        {
+            Promise<int> promise = Promise.Resolved(1);
+            int[] results = new int[MultiProgressCount];
+            int index = 0;
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                int num = i;
+                promise = promise.Progress(v => { results[index++] = num; }, synchronizationOption);
+            }
+
+            promise.Forget();
+            TestHelper.ExecuteForegroundCallbacks();
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
         }
 
@@ -1486,55 +1459,35 @@ namespace Proto.Promises.Tests
 
 #pragma warning disable CS0618 // Type or member is obsolete
         [Test]
-        public void ProgressDisabled_OnProgressWillNotBeInvoked_void()
+        public void ProgressDisabled_OnProgressWillNotBeInvoked_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            var progressListener = new ProgressListener(progress);
-
-            deferred.Promise
-                .Progress(p => progress = p)
-                .Progress(50, (cv, p) => progress = p)
-                .Progress(progressListener)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
                 .Forget();
 
-            deferred.ReportProgress(0.5f);
-
-            Assert.IsNaN(progress);
-            Assert.IsNaN(progressListener.CurrentProgress);
-
-            deferred.Resolve();
-
-            Assert.IsNaN(progress);
-            Assert.IsNaN(progressListener.CurrentProgress);
+            progressHelper.AssertCurrentProgress(float.NaN, false);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, float.NaN, false);
+            progressHelper.ResolveAndAssertResult(deferred, float.NaN, false);
         }
 
         [Test]
-        public void ProgressDisabled_OnProgressWillNotBeInvoked_T()
+        public void ProgressDisabled_OnProgressWillNotBeInvoked_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise<int>.NewDeferred();
 
-            float progress = float.NaN;
-
-            var progressListener = new ProgressListener(progress);
-
-            deferred.Promise
-                .Progress(p => progress = p)
-                .Progress(50, (cv, p) => progress = p)
-                .Progress(progressListener)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(deferred.Promise)
                 .Forget();
 
-            deferred.ReportProgress(0.5f);
-
-            Assert.IsNaN(progress);
-            Assert.IsNaN(progressListener.CurrentProgress);
-
-            deferred.Resolve(1);
-
-            Assert.IsNaN(progress);
-            Assert.IsNaN(progressListener.CurrentProgress);
+            progressHelper.AssertCurrentProgress(float.NaN, false);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, float.NaN, false);
+            progressHelper.ResolveAndAssertResult(deferred, 1, float.NaN, false);
         }
 #pragma warning restore CS0618 // Type or member is obsolete
 

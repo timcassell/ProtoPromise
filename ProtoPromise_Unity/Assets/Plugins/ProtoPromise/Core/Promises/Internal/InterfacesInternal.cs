@@ -6,7 +6,7 @@
         {
             internal partial interface IMultiTreeHandleable : ITreeHandleable
             {
-                bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index);
+                void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
             }
 
             internal interface IDelegate<TArg, TResult>
@@ -17,14 +17,14 @@
 
             internal interface IDelegateContinue
             {
-                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack);
-                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack);
+                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);
+                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
             }
 
             internal interface IDelegateContinuePromise
             {
-                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack);
-                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack);
+                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);
+                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
                 bool IsNull { get; }
             }
         }

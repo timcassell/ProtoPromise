@@ -344,19 +344,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(), ref executionStack);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -387,19 +387,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0), ref executionStack);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -431,19 +431,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(), ref executionStack);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -474,19 +474,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0), ref executionStack);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -518,19 +518,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     var result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result._target, ref executionStack);
+                    ((PromiseWaitPromise) owner).WaitFor(result._target, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -561,19 +561,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     var result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result, ref executionStack);
+                    ((PromiseWaitPromise) owner).WaitFor(result, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -604,19 +604,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     var result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result._target, ref executionStack);
+                    ((PromiseWaitPromise) owner).WaitFor(result._target, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -647,19 +647,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     var result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result, ref executionStack);
+                    ((PromiseWaitPromise) owner).WaitFor(result, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -962,19 +962,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(), ref executionStack);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -1007,19 +1007,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0), ref executionStack);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -1053,19 +1053,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(), ref executionStack);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -1098,19 +1098,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0), ref executionStack);
+                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -1144,19 +1144,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     var result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result._target, ref executionStack);
+                    ((PromiseWaitPromise) owner).WaitFor(result._target, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -1189,19 +1189,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     var result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result, ref executionStack);
+                    ((PromiseWaitPromise) owner).WaitFor(result, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -1234,19 +1234,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     var result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result._target, ref executionStack);
+                    ((PromiseWaitPromise) owner).WaitFor(result._target, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
@@ -1279,19 +1279,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     var result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result, ref executionStack);
+                    ((PromiseWaitPromise) owner).WaitFor(result, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionStack);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }

@@ -10,6 +10,7 @@
 #endif
 
 using System;
+using System.Threading;
 using NUnit.Framework;
 
 namespace Proto.Promises.Tests
@@ -589,7 +590,7 @@ namespace Proto.Promises.Tests
 
 #if PROMISE_PROGRESS
         [Test]
-        public void OnProgressWillBeInvokedWithCapturedValue_void()
+        public void OnProgressWillBeInvokedWithCapturedValue_void([Values] SynchronizationOption synchronizationOption)
         {
             string expected = "expected";
             bool invoked = false;
@@ -601,17 +602,30 @@ namespace Proto.Promises.Tests
                 {
                     Assert.AreEqual(expected, cv);
                     invoked = true;
-                })
+                    Thread.MemoryBarrier();
+                }, synchronizationOption)
                 .Forget();
 
             deferred.ReportProgress(0.5f);
             deferred.Resolve();
+            TestHelper.ExecuteForegroundCallbacks();
 
-            Assert.IsTrue(invoked);
+            if (synchronizationOption == SynchronizationOption.Background)
+            {
+                SpinWait.SpinUntil(() =>
+                {
+                    Thread.MemoryBarrier();
+                    return invoked;
+                }, TimeSpan.FromSeconds(1));
+            }
+            else
+            {
+                Assert.IsTrue(invoked);
+            }
         }
 
         [Test]
-        public void OnProgressWillBeInvokedWithCapturedValue_T()
+        public void OnProgressWillBeInvokedWithCapturedValue_T([Values] SynchronizationOption synchronizationOption)
         {
             string expected = "expected";
             bool invoked = false;
@@ -623,13 +637,26 @@ namespace Proto.Promises.Tests
                 {
                     Assert.AreEqual(expected, cv);
                     invoked = true;
-                })
+                    Thread.MemoryBarrier();
+                }, synchronizationOption)
                 .Forget();
 
             deferred.ReportProgress(0.5f);
             deferred.Resolve(1);
+            TestHelper.ExecuteForegroundCallbacks();
 
-            Assert.IsTrue(invoked);
+            if (synchronizationOption == SynchronizationOption.Background)
+            {
+                SpinWait.SpinUntil(() =>
+                {
+                    Thread.MemoryBarrier();
+                    return invoked;
+                }, TimeSpan.FromSeconds(1));
+            }
+            else
+            {
+                Assert.IsTrue(invoked);
+            }
         }
 #endif
 

@@ -30,9 +30,14 @@ namespace Proto.Promises
 
         internal interface ITreeHandleable : ILinked<ITreeHandleable>
         {
-            void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack);
-            void MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack);
-            void MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack);
+            void Handle(ref ExecutionScheduler executionScheduler);
+            void MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler);
+            void MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler);
+        }
+
+        internal interface IProgressInvokable : ILinked<IProgressInvokable>
+        {
+            void Invoke(ref ExecutionScheduler executionScheduler);
         }
 
         internal interface IRejectionToContainer

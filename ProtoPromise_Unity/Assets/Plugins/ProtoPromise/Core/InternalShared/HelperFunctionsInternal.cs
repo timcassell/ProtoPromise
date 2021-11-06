@@ -1,5 +1,17 @@
-﻿#pragma warning disable IDE0018 // Inline variable declaration
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+#endif
+
+#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0044 // Add readonly modifier
 
 using System;
 using System.Diagnostics;
@@ -29,6 +41,7 @@ namespace Proto.Promises
             // These must not be readonly.
             private ValueWriteOnlyLinkedQueue<ITreeHandleable> _handleQueue;
             private SpinLocker _locker;
+            volatile private bool _isScheduled = false;
 
             internal SynchronizationHandler(SynchronizationContext synchronizationContext)
             {
@@ -45,11 +58,12 @@ namespace Proto.Promises
             internal void PostHandleable(ITreeHandleable handleable)
             {
                 _locker.Enter();
-                bool wasEmpty = _handleQueue.IsEmpty;
+                bool wasScheduled = _isScheduled;
+                _isScheduled = true;
                 _handleQueue.Enqueue(handleable);
                 _locker.Exit();
 
-                if (wasEmpty)
+                if (!wasScheduled)
                 {
                     _context.Post(_synchronizationContextCallback, this);
                 }
@@ -57,27 +71,132 @@ namespace Proto.Promises
 
             internal void Execute()
             {
-                ValueLinkedStack<PromiseRef.IProgressInvokable> progressStack = new ValueLinkedStack<PromiseRef.IProgressInvokable>();
+                ValueLinkedQueue<IProgressInvokable> progressStack = new ValueLinkedQueue<IProgressInvokable>();
                 _locker.Enter();
-                var handleStack = _handleQueue.MoveElementsToStack();
+                ValueLinkedStack<ITreeHandleable> handleStack = _handleQueue.MoveElementsToStack();
                 TakeProgress(ref progressStack);
+                _isScheduled = false;
                 _locker.Exit();
 
-                ExecuteHandlers(handleStack);
-                ExecuteProgress(progressStack);
+                new ExecutionScheduler(this, handleStack, progressStack).Execute();
             }
 
             partial void InitProgress();
-            partial void TakeProgress(ref ValueLinkedStack<PromiseRef.IProgressInvokable> progressStack);
+            partial void TakeProgress(ref ValueLinkedQueue<IProgressInvokable> progressStack);
         }
 
-        private static void ExecuteHandlers(ValueLinkedStack<ITreeHandleable> executionStack)
+        internal
+#if CSHARP_7_3_OR_NEWER
+            ref // Force to use only on the CPU stack.
+#endif
+            partial struct ExecutionScheduler
         {
-            while (executionStack.IsNotEmpty)
+            private static readonly WaitCallback _threadPoolCallback = ExecuteFromContext;
+            private static readonly SendOrPostCallback _synchronizationContextCallback = ExecuteFromContext;
+
+            internal ValueLinkedStack<ITreeHandleable> _handleStack;
+            private readonly SynchronizationHandler _synchronizationHandler;
+#if PROMISE_PROGRESS
+            private ValueLinkedQueue<IProgressInvokable> _progressQueue;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            private bool _isExecutingProgress;
+#endif
+#endif
+
+            internal ExecutionScheduler(SynchronizationHandler synchronizationHandler, ValueLinkedStack<ITreeHandleable> handleStack, ValueLinkedQueue<IProgressInvokable> progressQueue)
             {
-                executionStack.Pop().Handle(ref executionStack);
+                _handleStack = handleStack;
+                _synchronizationHandler = synchronizationHandler;
+#if PROMISE_PROGRESS
+                _progressQueue = progressQueue;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                _isExecutingProgress = false;
+#endif
+#endif
             }
-            MaybeReportUnhandledRejections();
+
+            internal ExecutionScheduler(bool forHandleables) : this(null, !forHandleables) { }
+
+            private ExecutionScheduler(SynchronizationHandler synchronizationHandler, bool isExecutingProgress)
+            {
+                _handleStack = new ValueLinkedStack<ITreeHandleable>();
+                _synchronizationHandler = null;
+#if PROMISE_PROGRESS
+                _progressQueue = new ValueLinkedQueue<IProgressInvokable>();
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                _isExecutingProgress = isExecutingProgress;
+#endif
+#endif
+            }
+
+            [MethodImpl(InlineOption)]
+            internal ExecutionScheduler GetEmptyCopy()
+            {
+                bool isExecutingProgress =
+#if PROMISE_PROGRESS && (PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
+                    _isExecutingProgress;
+#else
+                    false;
+#endif
+                return new ExecutionScheduler(_synchronizationHandler, isExecutingProgress);
+            }
+
+            internal void Execute()
+            {
+                while (_handleStack.IsNotEmpty)
+                {
+                    _handleStack.Pop().Handle(ref this);
+                }
+                ExecuteProgressPartial();
+                MaybeReportUnhandledRejections();
+            }
+
+            partial void ExecuteProgressPartial();
+            partial void AssertNotExecutingProgress();
+
+            [MethodImpl(InlineOption)]
+            internal void ScheduleSynchronous(ITreeHandleable handleable)
+            {
+                AssertNotExecutingProgress();
+                _handleStack.Push(handleable);
+            }
+
+            internal void ScheduleOnContext(SynchronizationContext synchronizationContext, ITreeHandleable handleable)
+            {
+                AssertNotExecutingProgress();
+                if (_synchronizationHandler != null && _synchronizationHandler._context == synchronizationContext)
+                {
+                    // We're scheduling to the context that is currently executing, just place it on the stack instead of going through the context.
+                    _handleStack.Push(handleable);
+                    return;
+                }
+                ScheduleOnContextStatic(synchronizationContext, handleable);
+            }
+
+            internal static void ScheduleOnContextStatic(SynchronizationContext synchronizationContext, ITreeHandleable handleable)
+            {
+                if (synchronizationContext == null)
+                {
+                    // If there is no context, send it to the ThreadPool.
+                    ThreadPool.QueueUserWorkItem(_threadPoolCallback, handleable);
+                    return;
+                }
+                SynchronizationHandler foregroundHandler = _foregroundSynchronizationHandler;
+                if (foregroundHandler != null && foregroundHandler._context == synchronizationContext)
+                {
+                    // Schedule on the optimized foregroundHandler instead of going through the context.
+                    foregroundHandler.PostHandleable(handleable);
+                    return;
+                }
+                synchronizationContext.Post(_synchronizationContextCallback, handleable);
+            }
+
+            private static void ExecuteFromContext(object state)
+            {
+                ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
+                ((ITreeHandleable) state).Handle(ref executionScheduler);
+                executionScheduler.Execute();
+            }
         }
 
         [MethodImpl(InlineOption)]
@@ -202,7 +321,7 @@ namespace Proto.Promises
         }
 
         // Handle uncaught errors. These must not be readonly.
-        private static ValueLinkedStack<UnhandledException> _unhandledExceptions;
+        private static ValueLinkedStack<UnhandledException> _unhandledExceptions = new ValueLinkedStack<UnhandledException>();
         private static SpinLocker _unhandledExceptionsLocker;
 
         internal static void AddUnhandledException(UnhandledException exception)

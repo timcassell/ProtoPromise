@@ -95,13 +95,13 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                public override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public override void Handle(ref ExecutionScheduler executionScheduler)
                 {
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     Promise.State state = valueContainer.GetState();
                     State = state;
-                    HandleWaiter(valueContainer, ref executionStack);
-                    HandleProgressListener(state);
+                    HandleWaiter(valueContainer, ref executionScheduler);
+                    HandleProgressListener(state, ref executionScheduler);
 
                     if (Interlocked.Decrement(ref _firstSmallFields._waitCount) == 0)
                     {
@@ -109,7 +109,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index) // IMultiTreeHandleable.Handle
+                public void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler) // IMultiTreeHandleable.Handle
                 {
                     ThrowIfInPool(this);
 
@@ -123,7 +123,7 @@ namespace Proto.Promises
                             {
                                 MaybeDispose();
                             }
-                            return false;
+                            return;
                         }
                         addWaitCount = 0;
                     }
@@ -135,13 +135,13 @@ namespace Proto.Promises
                             {
                                 MaybeDispose();
                             }
-                            return false;
+                            return;
                         }
                         addWaitCount = -1;
                     }
                     valueContainer.Retain();
                     Interlocked.Add(ref _firstSmallFields._waitCount, addWaitCount);
-                    return true;
+                    executionScheduler.ScheduleSynchronous(this);
                 }
 
                 internal int Depth
@@ -161,9 +161,9 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class FirstPromise : IProgressInvokable
             {
-                internal override void HandleProgressListener(Promise.State state)
+                internal override void HandleProgressListener(Promise.State state, ref ExecutionScheduler executionScheduler)
                 {
-                    HandleProgressListener(state, _firstSmallFields._depthAndProgress.GetIncrementedWholeTruncated());
+                    HandleProgressListener(state, _firstSmallFields._depthAndProgress.GetIncrementedWholeTruncated(), ref executionScheduler);
                 }
 
                 protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
@@ -175,9 +175,9 @@ namespace Proto.Promises
                     return null;
                 }
 
-                protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
+                protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, ref ExecutionScheduler executionScheduler)
                 {
-                    SetInitialProgress(progressListener, _firstSmallFields._currentProgress, _firstSmallFields._depthAndProgress.GetIncrementedWholeTruncated(), ref executionQueue);
+                    SetInitialProgress(progressListener, _firstSmallFields._currentProgress, _firstSmallFields._depthAndProgress.GetIncrementedWholeTruncated(), ref executionScheduler);
                 }
 
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs)
@@ -193,7 +193,7 @@ namespace Proto.Promises
                     _firstSmallFields._depthAndProgress = new Fixed32(minWaitDepth);
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ValueLinkedQueue<IProgressInvokable> executionQueue)
+                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
 
@@ -204,18 +204,18 @@ namespace Proto.Promises
                         if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                         {
                             InterlockedRetainDisregardId();
-                            executionQueue.Push(this);
+                            executionScheduler.ScheduleProgressSynchronous(this);
                         }
                     }
                 }
 
-                void IProgressInvokable.Invoke(ref ValueLinkedQueue<IProgressInvokable> executionQueue)
+                void IProgressInvokable.Invoke(ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
                     var progress = _firstSmallFields._currentProgress;
                     _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
-                    ReportProgress(progress, ref executionQueue);
+                    ReportProgress(progress, ref executionScheduler);
                     MaybeDispose();
                 }
             }

@@ -1415,7 +1415,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T>.Deferred NewDeferred<T>(CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Promise<T>.Deferred.New(cancelationToken);
+            return Promise<T>.NewDeferred(cancelationToken);
         }
 
         /// <summary>

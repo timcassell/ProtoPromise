@@ -65,7 +65,7 @@ namespace Proto.Promises
 
         partial class ValueWriteOnlyLinkedQueue<T> : TraceableCollection
         {
-            internal ValueLinkedQueue() : base() { }
+            internal ValueWriteOnlyLinkedQueue() : base() { }
 
             private void AssertNotInCollection(T item)
             {
@@ -390,6 +390,12 @@ namespace Proto.Promises
                 get { return _head != null; }
             }
 
+            internal ValueLinkedQueue(T head, T tail)
+            {
+                _head = head;
+                _tail = tail;
+            }
+
             internal void Enqueue(T item)
             {
                 AssertNotInCollection(item);
@@ -544,6 +550,14 @@ namespace Proto.Promises
                 _sentinel.Next = null;
                 _tail = _sentinel;
                 return newStack;
+            }
+
+            internal ValueLinkedQueue<T> MoveElementsToQueue()
+            {
+                ValueLinkedQueue<T> newQueue = new ValueLinkedQueue<T>(_sentinel.Next, _tail as T);
+                _sentinel.Next = null;
+                _tail = _sentinel;
+                return newQueue;
             }
         }
 

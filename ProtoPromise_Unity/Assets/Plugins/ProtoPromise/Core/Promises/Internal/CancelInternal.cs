@@ -70,15 +70,14 @@ namespace Proto.Promises
                         previousValue.ReleaseAndMaybeAddToUnhandledStack(true);
                     }
 
-                    ValueLinkedStack<ITreeHandleable> executionStack = new ValueLinkedStack<ITreeHandleable>();
-                    owner.HandleWaiter(valueContainer, ref executionStack);
-                    owner.HandleProgressListener(Promise.State.Canceled);
+                    ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
+                    owner.HandleWaiter(valueContainer, ref executionScheduler);
+                    owner.HandleProgressListener(Promise.State.Canceled, ref executionScheduler);
                     if (Release())
                     {
                         owner.MaybeDispose();
                     }
-
-                    ExecuteHandlers(executionStack);
+                    executionScheduler.Execute();
                 }
 
                 internal bool TryMakeReady(PromiseSingleAwait owner, IValueContainer valueContainer)
@@ -152,29 +151,29 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
                         owner.SuppressRejection = true;
-                        executionStack.Push(this);
+                        executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueFront(this);
                     }
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
                         owner.SuppressRejection = true;
-                        executionStack.Push(this);
+                        executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueBack(this);
                     }
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     var resolveCallback = _resolver;
                     if (valueContainer.GetState() == Promise.State.Resolved)
@@ -185,13 +184,13 @@ namespace Proto.Promises
                         {
                             TResult result = resolveCallback.Invoke(arg);
                             valueContainer.Release();
-                            ResolveInternal(CreateResolveContainer(result, 0), ref executionStack);
+                            ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
                         }
                         return;
                     }
                     if (_cancelationHelper.TryUnregister(this))
                     {
-                        RejectOrCancelInternal(valueContainer, ref executionStack);
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
@@ -231,7 +230,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_resolver.IsNull)
                     {
@@ -245,12 +244,12 @@ namespace Proto.Promises
                         return;
                     }
                     owner.SuppressRejection = true;
-                    executionStack.Push(this);
+                    executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueFront(this);
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_resolver.IsNull)
                     {
@@ -264,17 +263,17 @@ namespace Proto.Promises
                         return;
                     }
                     owner.SuppressRejection = true;
-                    executionStack.Push(this);
+                    executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueBack(this);
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(valueContainer, ref executionStack);
+                        HandleSelf(valueContainer, ref executionScheduler);
                         return;
                     }
 
@@ -287,14 +286,14 @@ namespace Proto.Promises
                         if (_cancelationHelper.TryUnregister(this))
                         {
                             Promise<TResult> result = resolveCallback.Invoke(arg);
-                            WaitFor(result, ref executionStack);
+                            WaitFor(result, ref executionScheduler);
                             valueContainer.Release();
                         }
                         return;
                     }
                     if (_cancelationHelper.TryUnregister(this))
                     {
-                        RejectOrCancelInternal(valueContainer, ref executionStack);
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
@@ -337,29 +336,29 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
                         owner.SuppressRejection = true;
-                        executionStack.Push(this);
+                        executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueFront(this);
                     }
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
                         owner.SuppressRejection = true;
-                        executionStack.Push(this);
+                        executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueBack(this);
                     }
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     var resolveCallback = _resolver;
                     var rejectCallback = _rejecter;
@@ -372,7 +371,7 @@ namespace Proto.Promises
                         {
                             TResult result = resolveCallback.Invoke(arg);
                             valueContainer.Release();
-                            ResolveInternal(CreateResolveContainer(result, 0), ref executionStack);
+                            ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
                         }
                         return;
                     }
@@ -387,14 +386,14 @@ namespace Proto.Promises
                             {
                                 TResult result = rejectCallback.Invoke(arg);
                                 valueContainer.Release();
-                                ResolveInternal(CreateResolveContainer(result, 0), ref executionStack);
+                                ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
                             }
                             return;
                         }
                     }
                     if (_cancelationHelper.TryUnregister(this))
                     {
-                        RejectOrCancelInternal(valueContainer, ref executionStack);
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
@@ -437,7 +436,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_resolver.IsNull)
                     {
@@ -451,12 +450,12 @@ namespace Proto.Promises
                         return;
                     }
                     owner.SuppressRejection = true;
-                    executionStack.Push(this);
+                    executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueFront(this);
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_resolver.IsNull)
                     {
@@ -470,17 +469,17 @@ namespace Proto.Promises
                         return;
                     }
                     owner.SuppressRejection = true;
-                    executionStack.Push(this);
+                    executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueBack(this);
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(valueContainer, ref executionStack);
+                        HandleSelf(valueContainer, ref executionScheduler);
                         return;
                     }
 
@@ -495,7 +494,7 @@ namespace Proto.Promises
                         if (_cancelationHelper.TryUnregister(this))
                         {
                             Promise<TResult> result = resolveCallback.Invoke(arg);
-                            WaitFor(result, ref executionStack);
+                            WaitFor(result, ref executionScheduler);
                             valueContainer.Release();
                         }
                         return;
@@ -510,7 +509,7 @@ namespace Proto.Promises
                             if (_cancelationHelper.TryUnregister(this))
                             {
                                 Promise<TResult> result = rejectCallback.Invoke(arg);
-                                WaitFor(result, ref executionStack);
+                                WaitFor(result, ref executionScheduler);
                                 valueContainer.Release();
                             }
                             return;
@@ -518,7 +517,7 @@ namespace Proto.Promises
                     }
                     if (_cancelationHelper.TryUnregister(this))
                     {
-                        RejectOrCancelInternal(valueContainer, ref executionStack);
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
@@ -558,31 +557,31 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
                         owner.SuppressRejection = true;
-                        executionStack.Push(this);
+                        executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueFront(this);
                     }
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
                         owner.SuppressRejection = true;
-                        executionStack.Push(this);
+                        executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueBack(this);
                     }
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
                 {
-                    _continuer.Invoke(valueContainer, this, ref _cancelationHelper, ref executionStack);
+                    _continuer.Invoke(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                 }
 
                 void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
@@ -620,7 +619,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_continuer.IsNull)
                     {
@@ -634,12 +633,12 @@ namespace Proto.Promises
                         return;
                     }
                     owner.SuppressRejection = true;
-                    executionStack.Push(this);
+                    executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueFront(this);
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_continuer.IsNull)
                     {
@@ -653,23 +652,23 @@ namespace Proto.Promises
                         return;
                     }
                     owner.SuppressRejection = true;
-                    executionStack.Push(this);
+                    executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueBack(this);
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                protected override void Execute(ref ValueLinkedStack<ITreeHandleable> executionStack, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
                 {
                     if (_continuer.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(valueContainer, ref executionStack);
+                        HandleSelf(valueContainer, ref executionScheduler);
                         return;
                     }
 
                     var callback = _continuer;
                     _continuer = default(TContinuer);
-                    callback.Invoke(valueContainer, this, ref _cancelationHelper, ref executionStack);
+                    callback.Invoke(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                 }
 
                 void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
@@ -705,29 +704,29 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
                         owner.SuppressRejection = true;
-                        executionStack.Push(this);
+                        executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueFront(this);
                     }
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
                         owner.SuppressRejection = true;
-                        executionStack.Push(this);
+                        executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueBack(this);
                     }
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                public override void Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
+                public override void Handle(ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
@@ -736,7 +735,7 @@ namespace Proto.Promises
                     {
                         if (_cancelationHelper.TryUnregister(this))
                         {
-                            HandleSelf(valueContainer, ref executionStack);
+                            HandleSelf(valueContainer, ref executionScheduler);
                         }
                         return;
                     }
@@ -759,7 +758,7 @@ namespace Proto.Promises
                     }
                     ClearCurrentInvoker();
 
-                    HandleSelf(valueContainer, ref executionStack);
+                    HandleSelf(valueContainer, ref executionScheduler);
                 }
 
                 void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)

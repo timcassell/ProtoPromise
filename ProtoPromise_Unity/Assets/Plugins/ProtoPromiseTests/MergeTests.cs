@@ -346,294 +346,241 @@ namespace Proto.Promises.Tests
 
 #if PROMISE_PROGRESS
         [Test]
-        public void MergeProgressIsNormalized0()
+        public void MergeProgressIsNormalized0(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<string>();
             var deferred3 = Promise.NewDeferred<float>();
             var deferred4 = Promise.NewDeferred<bool>();
 
-            float progress = float.NaN;
-
-            Promise.Merge(deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Merge(deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise)
+            )
                 .Forget();
 
-            Assert.AreEqual(0f / 8f, progress, 0f);
+            progressHelper.AssertCurrentProgress(0f / 4f);
 
-            deferred1.ReportProgress(0.5f);
-            Assert.AreEqual(1f / 8f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 1f / 4f);
 
-            deferred1.Resolve(1);
-            Assert.AreEqual(2f / 8f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred2, "Success", 2f / 4f);
 
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(3f / 8f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 2.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred3, 2f, 3f / 4f);
 
-            deferred2.Resolve("Success");
-            Assert.AreEqual(4f / 8f, progress, TestHelper.progressEpsilon);
-
-            deferred3.ReportProgress(0.5f);
-            Assert.AreEqual(5f / 8f, progress, TestHelper.progressEpsilon);
-
-            deferred3.Resolve(2f);
-            Assert.AreEqual(6f / 8f, progress, TestHelper.progressEpsilon);
-
-            deferred4.ReportProgress(0.5f);
-            Assert.AreEqual(7f / 8f, progress, TestHelper.progressEpsilon);
-
-            deferred4.Resolve(true);
-            Assert.AreEqual(8f / 8f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred4, 0.5f, 3.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred4, true, 4f / 4f);
         }
 
         [Test]
-        public void MergeProgressIsNormalized1()
+        public void MergeProgressIsNormalized1(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred3 = Promise.NewDeferred<float>();
             var deferred4 = Promise.NewDeferred<bool>();
 
-            float progress = float.NaN;
-
-            Promise.Merge(deferred1.Promise, Promise.Resolved("Success"), deferred3.Promise, deferred4.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Merge(deferred1.Promise, Promise.Resolved("Success"), deferred3.Promise, deferred4.Promise)
+            )
                 .Forget();
 
-            Assert.AreEqual(2f / 8f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(1f / 4f);
 
-            deferred1.ReportProgress(0.5f);
-            Assert.AreEqual(3f / 8f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 1.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 2f / 4f);
 
-            deferred1.Resolve(1);
-            Assert.AreEqual(4f / 8f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 2.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred3, 2f, 3f / 4f);
 
-            deferred3.ReportProgress(0.5f);
-            Assert.AreEqual(5f / 8f, progress, TestHelper.progressEpsilon);
-
-            deferred3.Resolve(2f);
-            Assert.AreEqual(6f / 8f, progress, TestHelper.progressEpsilon);
-
-            deferred4.ReportProgress(0.5f);
-            Assert.AreEqual(7f / 8f, progress, TestHelper.progressEpsilon);
-
-            deferred4.Resolve(true);
-            Assert.AreEqual(8f / 8f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred4, 0.5f, 3.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred4, true, 4f / 4f);
         }
 
         [Test]
-        public void MergeProgressIsNormalized2()
+        public void MergeProgressIsNormalized2(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred3 = Promise.NewDeferred<bool>();
 
-            float progress = float.NaN;
-
-            Promise.Merge(deferred1.Promise, Promise.Resolved(1f), deferred3.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Merge(deferred1.Promise, Promise.Resolved(1f), deferred3.Promise)
+            )
                 .Forget();
 
-            Assert.AreEqual(1f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(1f / 3f);
 
-            deferred1.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 1.5f / 3f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 2f / 3f);
 
-            deferred1.Resolve(1);
-            Assert.AreEqual(2f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred3.ReportProgress(0.5f);
-            Assert.AreEqual(2.5f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred3.Resolve(true);
-            Assert.AreEqual(3f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 2.5f / 3f);
+            progressHelper.ResolveAndAssertResult(deferred3, true, 3f / 3f);
         }
 
         [Test]
-        public void MergeProgressIsNormalized3()
+        public void MergeProgressIsNormalized3(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<float>();
 
-            float progress = float.NaN;
-
-            Promise.Merge
-            (
-                deferred1.Promise
-                    .Then(() => 1),
-                deferred2.Promise
-                    .Then(() => 1f)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Merge
+                (
+                    deferred1.Promise.ThenDuplicate(),
+                    deferred2.Promise.ThenDuplicate()
+                )
             )
-                .Progress(p => progress = p)
                 .Forget();
 
-            Assert.AreEqual(0f / 2f, progress, 0f);
+            progressHelper.AssertCurrentProgress(0f / 2f);
 
-            deferred1.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 1f / 2f);
 
-            deferred1.Resolve(1);
-            Assert.AreEqual(1f / 2f, progress, TestHelper.progressEpsilon);
-
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 2f, progress, TestHelper.progressEpsilon);
-
-            deferred2.Resolve(1);
-            Assert.AreEqual(2f / 2f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred2, 1f, 2f / 2f);
         }
 
         [Test]
-        public void MergeProgressIsNormalized4()
+        public void MergeProgressIsNormalized4(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<float>();
             var deferred3 = Promise.NewDeferred<int>();
             var deferred4 = Promise.NewDeferred<float>();
 
-            float progress = float.NaN;
-
-            Promise.Merge
-            (
-                deferred1.Promise
-                    .Then(() => deferred3.Promise),
-                deferred2.Promise
-                    .Then(() => deferred4.Promise)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Merge
+                (
+                    deferred1.Promise
+                        .Then(() => deferred3.Promise),
+                    deferred2.Promise
+                        .Then(() => deferred4.Promise)
+                )
             )
-                .Progress(p => progress = p)
                 .Forget();
 
-            Assert.AreEqual(0f / 4f, progress, 0f);
+            progressHelper.AssertCurrentProgress(0f / 4f);
 
-            deferred1.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 1f / 4f);
 
-            deferred1.Resolve(1);
-            Assert.AreEqual(1f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 1.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred3, 1, 2f / 4f);
 
-            deferred3.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 2.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred2, 1f, 3f / 4f);
 
-            deferred3.Resolve(1);
-            Assert.AreEqual(2f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(2.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred2.Resolve(1);
-            Assert.AreEqual(3f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred4.ReportProgress(0.5f);
-            Assert.AreEqual(3.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred4.Resolve(1);
-            Assert.AreEqual(4f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred4, 0.5f, 3.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred4, 1f, 4f / 4f);
         }
 
         [Test]
-        public void MergeProgressIsNormalized5()
+        public void MergeProgressIsNormalized5(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<float>();
 
-            float progress = float.NaN;
-
-            Promise.Merge
-            (
-                deferred1.Promise
-                    .Then(x => Promise.Resolved(x)),
-                deferred2.Promise
-                    .Then(x => Promise.Resolved(x))
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Merge
+                (
+                    deferred1.Promise
+                        .Then(x => Promise.Resolved(x)),
+                    deferred2.Promise
+                        .Then(x => Promise.Resolved(x))
+                )
             )
-                .Progress(p => progress = p)
                 .Forget();
 
-            Assert.AreEqual(0f / 4f, progress, 0f);
+            progressHelper.AssertCurrentProgress(0f / 4f);
 
-            deferred1.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 2f / 4f);
 
-            deferred1.Resolve(1);
-            Assert.AreEqual(2f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(2.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred2.Resolve(1);
-            Assert.AreEqual(4f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 2.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred2, 1, 4f / 4f);
         }
 
         [Test]
-        public void MergeProgressIsNoLongerReportedFromRejected()
+        public void MergeProgressIsNoLongerReportedFromRejected(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<float>();
             var deferred3 = Promise.NewDeferred<bool>();
 
-            float progress = float.NaN;
-
-            Promise.Merge(deferred1.Promise, deferred2.Promise, deferred3.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Merge(deferred1.Promise, deferred2.Promise, deferred3.Promise)
+            )
                 .Catch(() => { })
                 .Forget();
 
-            Assert.AreEqual(0f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f / 3f);
 
-            deferred1.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 3f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 1f / 3f);
 
-            deferred1.Resolve(1);
-            Assert.AreEqual(1f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 3f);
+            progressHelper.RejectAndAssertResult(deferred2, "Reject", 1.5f / 3f, false);
 
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred2.Reject("Reject");
-            Assert.AreEqual(1.5f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred3.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred3.Resolve(true);
-            Assert.AreEqual(1.5f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 1.5f / 3f, false);
+            progressHelper.ResolveAndAssertResult(deferred3, true, 1.5f / 3f, false);
         }
 
         [Test]
-        public void MergeProgressIsNoLongerReportedFromCanceled()
+        public void MergeProgressIsNoLongerReportedFromCanceled(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred<int>();
             var cancelationSource = CancelationSource.New();
             var deferred2 = Promise.NewDeferred<float>(cancelationSource.Token);
             var deferred3 = Promise.NewDeferred<bool>();
 
-            float progress = float.NaN;
-
-            Promise.Merge(deferred1.Promise, deferred2.Promise, deferred3.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Merge(deferred1.Promise, deferred2.Promise, deferred3.Promise)
+            )
                 .Forget();
 
-            Assert.AreEqual(0f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f / 3f);
 
-            deferred1.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 3f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 1f / 3f);
 
-            deferred1.Resolve(1);
-            Assert.AreEqual(1f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 3f);
+            progressHelper.CancelAndAssertResult(deferred2, 1.5f / 3f, false);
 
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 3f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Cancel();
-            Assert.AreEqual(1.5f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred3.ReportProgress(0.5f);
-            Assert.AreEqual(1.5f / 3f, progress, TestHelper.progressEpsilon);
-
-            deferred3.Resolve(true);
-            Assert.AreEqual(1.5f / 3f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 1.5f / 3f, false);
+            progressHelper.ResolveAndAssertResult(deferred3, true, 1.5f / 3f, false);
 
             cancelationSource.Dispose();
         }
 
         [Test]
-        public void MergeProgressWillBeInvokedProperlyFromARecoveredPromise()
+        public void MergeProgressWillBeInvokedProperlyFromARecoveredPromise(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<float>();
@@ -641,58 +588,39 @@ namespace Proto.Promises.Tests
             var deferred4 = Promise.NewDeferred<bool>();
             var cancelationSource = CancelationSource.New();
 
-            float progress = float.NaN;
-
-            Promise.Merge
-            (
-                // Make first and second promise chains the same length
-                deferred1.Promise
-                    .Then(x => Promise.Resolved(x))
-                    .Then(x => Promise.Resolved(x)),
-                deferred2.Promise
-                    .Then(() => deferred3.Promise, cancelationSource.Token)
-                    .ContinueWith(_ => deferred4.Promise)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            progressHelper.Subscribe(
+                Promise.Merge
+                (
+                    // Make first and second promise chains the same length
+                    deferred1.Promise
+                        .Then(x => Promise.Resolved(x))
+                        .Then(x => Promise.Resolved(x)),
+                    deferred2.Promise
+                        .Then(() => deferred3.Promise, cancelationSource.Token)
+                        .ContinueWith(_ => deferred4.Promise)
+                )
             )
-                .Progress(p => progress = p)
                 .Forget();
 
-            Assert.AreEqual(0f / 6f, progress, TestHelper.progressEpsilon);
+            progressHelper.AssertCurrentProgress(0f / 6f);
 
-            deferred1.ReportProgress(0.5f);
-            Assert.AreEqual(0.5f / 6f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 6f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 3f / 6f);
 
-            deferred1.Resolve(1);
-            Assert.AreEqual(3f / 6f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.25f, 3.25f / 6f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 5f / 6f);
 
-            deferred2.ReportProgress(0.25f);
-            Assert.AreEqual(3.25f / 6f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 5f / 6f, false);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 5f / 6f, false);
+            progressHelper.ResolveAndAssertResult(deferred3, "Success", 5f / 6f, false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 5f / 6f, false);
 
-            cancelationSource.Cancel();
-            Assert.AreEqual(5f / 6f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred4, 0.5f, 5.5f / 6f);
+            progressHelper.ResolveAndAssertResult(deferred4, true, 6f / 6f);
 
-            deferred2.ReportProgress(0.5f);
-            Assert.AreEqual(5f / 6f, progress, TestHelper.progressEpsilon);
-
-            deferred3.ReportProgress(0.5f);
-            Assert.AreEqual(5f / 6f, progress, TestHelper.progressEpsilon);
-
-            deferred3.Resolve("Success");
-            Assert.AreEqual(5f / 6f, progress, TestHelper.progressEpsilon);
-
-            deferred2.ReportProgress(0.7f);
-            Assert.AreEqual(5f / 6f, progress, TestHelper.progressEpsilon);
-
-            deferred4.ReportProgress(0.5f);
-            Assert.AreEqual(5.5f / 6f, progress, TestHelper.progressEpsilon);
-
-            deferred4.Resolve(true);
-            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            deferred2.ReportProgress(0.8f);
-            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
-
-            deferred2.Resolve(1f);
-            Assert.AreEqual(1f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 6f / 6f, false);
+            progressHelper.ResolveAndAssertResult(deferred2, 1f, 6f / 6f, false);
 
             cancelationSource.Dispose();
             deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.

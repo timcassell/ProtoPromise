@@ -120,7 +120,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Mark <see cref="this"/> as awaited and schedule the next continuation to execute on the provided context. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
+        /// Mark <see cref="this"/> as awaited and schedule the next continuation to execute on <paramref name="continuationContext"/>. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If <paramref name="continuationContext"/> is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.
         /// </summary>
         public Promise<T> WaitAsync(SynchronizationContext continuationContext)
@@ -179,7 +179,8 @@ namespace Proto.Promises
 
         /// <summary>
         /// Add a progress listener. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
-        /// <para/><paramref name="progressListener"/> will be reported with progress that is normalized between 0 and 1 on the provided context.
+        /// <para/><paramref name="progressListener"/> will be reported with progress that is normalized between 0 and 1 on <paramref name="invokeContext"/>.
+        /// <para/>If <paramref name="invokeContext"/> is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.
         /// 
         /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise{T}"/> will be resolved when it returns.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
@@ -206,7 +207,8 @@ namespace Proto.Promises
 
         /// <summary>
         /// Add a progress listener. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
-        /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 on the provided context.
+        /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 on <paramref name="invokeContext"/>.
+        /// <para/>If <paramref name="invokeContext"/> is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.
         /// 
         /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise{T}"/> will be resolved when it returns.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
@@ -816,7 +818,8 @@ namespace Proto.Promises
 
         /// <summary>
         /// Capture a value and add a progress listener. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
-        /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 on the provided context.
+        /// <para/><paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 on <paramref name="invokeContext"/>.
+        /// <para/>If <paramref name="invokeContext"/> is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.
         /// 
         /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="PromisePromise{T}"/> will be resolved when it returns.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.

@@ -1,12 +1,8 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
-
-#pragma warning disable IDE0034 // Simplify 'default' expression
+﻿#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
+#pragma warning disable CS0618 // Type or member is obsolete
 
+using NUnit.Framework;
 using Proto.Promises.Threading;
 using System;
 using System.Collections.Generic;
@@ -23,12 +19,217 @@ namespace Proto.Promises.Tests
         CancelFromToken,
     }
 
+    public enum ProgressType
+    {
+        Callback,
+        CallbackWithCapture,
+        Interface
+    }
+
+    public enum SynchronizationType
+    {
+        Synchronous = 0,
+        Foreground = 1,
+#if !UNITY_WEBGL // WebGL doesn't support threads.
+        Background = 2,
+#endif
+        Explicit = 3
+    }
+
     public delegate void TestAction<T>(ref T value);
+
+    public class ProgressHelper : IProgress<float>
+    {
+        volatile private float _oldProgress;
+        volatile private float _reportedProgress;
+        volatile private float _expectedProgress;
+
+        private readonly object _locker = new object();
+        private readonly ProgressType _progressType;
+        private readonly SynchronizationType _synchronizationType;
+        volatile private bool _wasInvoked;
+        volatile private float _currentProgress = float.NaN;
+
+        public ProgressHelper(ProgressType progressType, SynchronizationType synchronizationType)
+        {
+            _progressType = progressType;
+            _synchronizationType = synchronizationType;
+        }
+
+        public void Report(float value)
+        {
+            lock (_locker)
+            {
+                _reportedProgress = value;
+
+                _currentProgress = value;
+                _wasInvoked = true;
+                Monitor.Pulse(_locker);
+            }
+        }
+
+        public void AssertCurrentProgress(float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
+        {
+            lock (_locker)
+            {
+                float currentProgress = GetCurrentProgress(expectInvoke, executeForeground);
+                if (float.IsNaN(expectedProgress))
+                {
+                    Assert.IsNaN(currentProgress);
+                }
+                else
+                {
+                    Assert.AreEqual(expectedProgress, currentProgress, TestHelper.progressEpsilon);
+                }
+            }
+        }
+
+        private float GetCurrentProgress(bool expectInvoke, bool executeForeground)
+        {
+            if (executeForeground)
+            {
+                TestHelper.ExecuteForegroundCallbacks();
+            }
+            if (expectInvoke)
+            {
+                // Wait for Report to be called in case it happens in a separate thread.
+                if (!_wasInvoked)
+                {
+                    if (!Monitor.Wait(_locker, TimeSpan.FromSeconds(1)))
+                    {
+                        throw new TimeoutException();
+                    }
+                }
+            }
+            return _currentProgress;
+        }
+
+        public void ReportProgressAndAssertResult(Promise.DeferredBase deferred, float reportValue, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
+        {
+            lock (_locker)
+            {
+                {
+                    _oldProgress = _currentProgress;
+                    _expectedProgress = expectedProgress;
+                }
+
+                _wasInvoked = false;
+                deferred.ReportProgress(reportValue);
+                AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
+            }
+        }
+
+        public void RejectAndAssertResult<TReject>(Promise.DeferredBase deferred, TReject reason, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
+        {
+            lock (_locker)
+            {
+                _wasInvoked = false;
+                deferred.Reject(reason);
+                AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
+            }
+        }
+
+        public void CancelAndAssertResult(Promise.DeferredBase deferred, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
+        {
+            lock (_locker)
+            {
+                _wasInvoked = false;
+                deferred.Cancel();
+                AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
+            }
+        }
+
+        public void CancelAndAssertResult(CancelationSource cancelationSource, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
+        {
+            lock (_locker)
+            {
+                _wasInvoked = false;
+                cancelationSource.Cancel();
+                AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
+            }
+        }
+
+        public void ResolveAndAssertResult(Promise.Deferred deferred, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
+        {
+            lock (_locker)
+            {
+                _wasInvoked = false;
+                deferred.Resolve();
+                AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
+            }
+        }
+
+        public void ResolveAndAssertResult<T>(Promise<T>.Deferred deferred, T result, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
+        {
+            lock (_locker)
+            {
+                _wasInvoked = false;
+                deferred.Resolve(result);
+                AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
+            }
+        }
+
+        public Promise Subscribe(Promise promise, CancelationToken cancelationToken = default(CancelationToken))
+        {
+            if (_synchronizationType == SynchronizationType.Explicit)
+            {
+                switch (_progressType)
+                {
+                    case ProgressType.Callback:
+                        return promise.Progress(Report, TestHelper._foregroundContext, cancelationToken);
+                    case ProgressType.CallbackWithCapture:
+                        return promise.Progress(this, (helper, v) => helper.Report(v), TestHelper._foregroundContext, cancelationToken);
+                    default:
+                        return promise.Progress(this, TestHelper._foregroundContext, cancelationToken);
+                }
+            }
+            else
+            {
+                switch (_progressType)
+                {
+                    case ProgressType.Callback:
+                        return promise.Progress(Report, (SynchronizationOption) _synchronizationType, cancelationToken);
+                    case ProgressType.CallbackWithCapture:
+                        return promise.Progress(this, (helper, v) => helper.Report(v), (SynchronizationOption) _synchronizationType, cancelationToken);
+                    default:
+                        return promise.Progress(this, (SynchronizationOption) _synchronizationType, cancelationToken);
+                }
+            }
+        }
+
+        public Promise<T> Subscribe<T>(Promise<T> promise, CancelationToken cancelationToken = default(CancelationToken))
+        {
+            if (_synchronizationType == SynchronizationType.Explicit)
+            {
+                switch (_progressType)
+                {
+                    case ProgressType.Callback:
+                        return promise.Progress(Report, TestHelper._foregroundContext, cancelationToken);
+                    case ProgressType.CallbackWithCapture:
+                        return promise.Progress(this, (helper, v) => helper.Report(v), TestHelper._foregroundContext, cancelationToken);
+                    default:
+                        return promise.Progress(this, TestHelper._foregroundContext, cancelationToken);
+                }
+            }
+            else
+            {
+                switch (_progressType)
+                {
+                    case ProgressType.Callback:
+                        return promise.Progress(Report, (SynchronizationOption) _synchronizationType, cancelationToken);
+                    case ProgressType.CallbackWithCapture:
+                        return promise.Progress(this, (helper, v) => helper.Report(v), (SynchronizationOption) _synchronizationType, cancelationToken);
+                    default:
+                        return promise.Progress(this, (SynchronizationOption) _synchronizationType, cancelationToken);
+                }
+            }
+        }
+    }
 
     // These help test all Then/Catch/ContinueWith methods at once.
     public static partial class TestHelper
     {
-        private static readonly PromiseSynchronizationContext _foregroundContext;
+        public static readonly PromiseSynchronizationContext _foregroundContext;
         private static readonly List<Exception> _uncaughtExceptions = new List<Exception>();
 
         static TestHelper()
@@ -43,7 +244,7 @@ namespace Proto.Promises.Tests
                     _uncaughtExceptions.Add(e);
                 }
             };
-            Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
+            Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All; // Disabled because it makes the tests slow.
 #if PROTO_PROMISE_POOL_DISABLE // Are we testing the pool or not? (used for command-line testing)
             Promise.Config.ObjectPoolingEnabled = false;
 #else
@@ -178,9 +379,7 @@ namespace Proto.Promises.Tests
             return promise.Then(v => v, cancelationToken);
         }
 
-#if PROMISE_PROGRESS
         public static readonly double progressEpsilon = 1d / Math.Pow(2d, Promise.Config.ProgressDecimalBits);
-#endif
 
         public const int resolveVoidCallbacks = 72;
         public const int resolveTCallbacks = 72;

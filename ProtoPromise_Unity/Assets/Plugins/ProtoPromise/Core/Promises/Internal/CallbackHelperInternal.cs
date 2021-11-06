@@ -98,7 +98,7 @@ namespace Proto.Promises
 #endif
                     // Normalize progress. Passing a default resolver makes the Execute method adopt the promise's state without attempting to invoke.
                     var newRef = PromiseResolvePromise<TResult, TResult, DelegateResolvePassthrough<TResult>>.GetOrCreate(default(DelegateResolvePassthrough<TResult>), currentDepth + 1);
-                    newRef.WaitForWithprogress(promise);
+                    newRef.WaitForWithProgress(promise);
                     return new Promise<TResult>(newRef, newRef.Id, currentDepth + 1);
 #endif
                 }
@@ -123,7 +123,7 @@ namespace Proto.Promises
                             if (synchronizationContext == null)
                             {
                                 throw new InvalidOperationException(
-                                    "Promise.ContinuationOption.Foreground was provided to WaitAsync, but Promise.Config.ForegroundContext was null. " +
+                                    "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
                                     "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
                                     GetFormattedStacktrace(2));
                             }
@@ -136,16 +136,9 @@ namespace Proto.Promises
                         }
                         default: // ContinuationOption.Explicit
                         {
-                            if (_this._ref == null)
-                            {
-                                newPromise = ConfiguredPromise.GetOrCreate(false, synchronizationContext);
-                            }
-                            else
-                            {
-                                _this._ref.MarkAwaited(_this.Id);
-                                newPromise = ConfiguredPromise.GetOrCreate(false, synchronizationContext);
-                                _this._ref.HookupNewPromise(newPromise);
-                            }
+                            newPromise = _this._ref == null
+                                ? ConfiguredPromise.GetOrCreate(false, synchronizationContext)
+                                : _this._ref.GetConfigured(_this.Id, synchronizationContext);
                             break;
                         }
                     }
@@ -219,15 +212,16 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddProgress<TResult, TProgress>(Promise<TResult> _this, TProgress progress, CancelationToken cancelationToken, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext)
+                internal static Promise<TResult> AddProgress<TResult, TProgress>(Promise<TResult> _this, TProgress progress, CancelationToken cancelationToken, SynchronizationOption invokeOption, SynchronizationContext synchronizationContext)
                     where TProgress : IProgress<float>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
-                        return _this.Duplicate();
+                        return WaitAsync(_this, invokeOption, synchronizationContext);
                     }
 
-                    switch (continuationOption)
+                    PromiseProgress<TProgress> promise;
+                    switch (invokeOption)
                     {
                         case SynchronizationOption.Synchronous:
                         {
@@ -251,21 +245,33 @@ namespace Proto.Promises
                             if (synchronizationContext == null)
                             {
                                 throw new InvalidOperationException(
-                                    "Promise.ContinuationOption.Foreground was provided to Progress, but Promise.Config.ForegroundContext was null. " +
+                                    "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
                                     "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
                                     GetFormattedStacktrace(2));
                             }
-                            break;
+                            goto default;
                         }
                         case SynchronizationOption.Background:
                         {
                             synchronizationContext = Promise.Config.BackgroundContext;
+                            goto default;
+                        }
+                        default: // SynchronizationOption.Explicit
+                        {
+                            if (_this._ref == null)
+                            {
+                                promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken, _this.Depth, false, synchronizationContext);
+                                promise._valueOrPrevious = CreateResolveContainer(_this.Result, 1);
+                                promise.IsComplete = true;
+                                ExecutionScheduler.ScheduleOnContextStatic(synchronizationContext, promise);
+                                return new Promise<TResult>(promise, promise.Id, _this.Depth);
+                            }
                             break;
                         }
                     }
 
                     _this._ref.MarkAwaited(_this.Id);
-                    PromiseProgress<TProgress> promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken, _this.Depth, continuationOption == SynchronizationOption.Synchronous, synchronizationContext);
+                    promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken, _this.Depth, invokeOption == SynchronizationOption.Synchronous, synchronizationContext);
                     _this._ref.HookupNewPromiseWithProgress(promise, _this.Depth);
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }

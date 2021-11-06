@@ -104,7 +104,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.Handle(ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.Handle(ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     var callback = _continuation;
@@ -127,17 +127,17 @@ namespace Proto.Promises
 #endif
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    executionStack.Push(this);
+                    executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueFront(this);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    executionStack.Push(this);
+                    executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueBack(this);
                 }
             }
@@ -307,55 +307,6 @@ namespace Proto.Promises
             }
         }
 
-        // TODO: for await optimizations when an `async Promise` awaits another `Promise`
-        // This will also be necessary for reporting progress to an `async Promise`.
-
-        //public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
-        //    where TAwaiter : INotifyCompletion
-        //    where TStateMachine : IAsyncStateMachine
-        //{
-        //    if (typeof(TAwaiter).IsValueType && typeof(IPromiseAwaiter).IsAssignableFrom(typeof(TAwaiter)))
-        //    {
-        //        AwaitOverrider<TAwaiter>.awaitOptimizer.AwaitOnCompleted(ref awaiter, _promise);
-        //    }
-        //    else
-        //    {
-        //        awaiter.OnCompleted(_promise.GetContinuation(ref stateMachine));
-        //    }
-        //}
-
-        //internal interface IPromiseAwaiter
-        //{
-        //    void AwaitOnCompleted(Internal.AsyncPromiseRef asyncPromiseRef);
-        //}
-
-        //internal abstract class AwaitOverrider<T> where T : INotifyCompletion
-        //{
-        //    internal static AwaitOverrider<T> awaitOptimizer;
-
-        //    private AwaitOverrider() { }
-
-        //    internal static void Create<TAwaiter>() where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
-        //    {
-        //        awaitOptimizer = new Impl<TAwaiter>();
-        //    }
-
-        //    internal abstract void AwaitOnCompleted(ref T awaiter, Internal.AsyncPromiseRef asyncPromiseRef);
-
-        //    private sealed class Impl<TAwaiter> : AwaitOverrider<T> where TAwaiter : struct, T, IPromiseAwaiter
-        //    {
-        //        internal override void AwaitOnCompleted(ref T awaiter, Internal.AsyncPromiseRef asyncPromiseRef)
-        //        {
-        //            if (typeof(T) == typeof(TAwaiter))
-        //            {
-        //                Unsafe.As<T, TAwaiter>(ref awaiter).AwaitOnCompleted(asyncPromiseRef);
-        //                return;
-        //            }
-        //            throw new System.InvalidOperationException("type T {" + typeof(T).FullName + "} is not TAwaiter {" + typeof(TAwaiter).FullName + "}");
-        //        }
-        //    }
-        //}
-
         /// <summary>
         /// Used to support the await keyword.
         /// </summary>
@@ -369,13 +320,6 @@ namespace Proto.Promises
             struct PromiseAwaiter<T> : ICriticalNotifyCompletion
         {
             private readonly Internal.PromiseAwaiterInternal<T> _awaiter;
-
-            // TODO: for await optimizations when an `async Promise` awaits another `Promise`
-            //static PromiseAwaiter()
-            //{
-            //    // Hacky way for the optimization to work on AOT/IL2CPP without dynamic type creation support.
-            //    AwaitOverrider<PromiseAwaiter<T>>.Create<PromiseAwaiter<T>>();
-            //}
 
             /// <summary>
             /// Internal use.
