@@ -189,7 +189,6 @@ namespace Proto.Promises
             [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
-            // TODO: don't error if progress is disabled, just do nothing. Set Obsolete attribute to warning.
             public void ReportProgress(float progress)
             {
                 _target.ReportProgress(progress);

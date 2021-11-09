@@ -497,6 +497,7 @@ namespace Proto.Promises
                     internal Fixed32 _currentProgress;
                     volatile internal bool _complete;
                     volatile internal bool _canceled;
+                    volatile internal bool _didFirstInvoke;
                     internal bool _isSynchronous;
                 }
 

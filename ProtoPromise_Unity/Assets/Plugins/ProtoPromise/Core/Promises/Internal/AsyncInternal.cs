@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0060 // Remove unused parameter
+#pragma warning disable CS0436 // Type conflicts with imported type
 
 using System;
 using System.Diagnostics;
@@ -15,7 +16,9 @@ using Proto.Promises.Async.CompilerServices;
 
 namespace System.Runtime.CompilerServices
 {
-#pragma warning disable CS0436 // Type conflicts with imported type
+    // I would #ifdef this entire file, but Unity complains about namespaces changed with define symbols.
+#if CSHARP_7_3_OR_NEWER // Custom async builders only available after C# 7.2.
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Interface | AttributeTargets.Delegate, Inherited = false, AllowMultiple = false)]
     internal sealed class AsyncMethodBuilderAttribute : Attribute
     {
         public Type BuilderType { get; }
@@ -25,7 +28,7 @@ namespace System.Runtime.CompilerServices
             BuilderType = builderType;
         }
     }
-#pragma warning restore CS0436 // Type conflicts with imported type
+#endif // CSHARP_7_3_OR_NEWER
 }
 
 namespace Proto.Promises

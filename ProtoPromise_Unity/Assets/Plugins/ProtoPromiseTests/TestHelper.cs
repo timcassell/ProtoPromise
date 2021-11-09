@@ -40,28 +40,35 @@ namespace Proto.Promises.Tests
 
     public class ProgressHelper : IProgress<float>
     {
-        volatile private float _oldProgress;
-        volatile private float _reportedProgress;
-        volatile private float _expectedProgress;
-
-        private readonly object _locker = new object();
+        public readonly object _locker = new object();
         private readonly ProgressType _progressType;
         private readonly SynchronizationType _synchronizationType;
+        private readonly Action<float> _onProgress;
         volatile private bool _wasInvoked;
         volatile private float _currentProgress = float.NaN;
+        volatile private float _expectedProgress = float.NaN;
 
-        public ProgressHelper(ProgressType progressType, SynchronizationType synchronizationType)
+        public ProgressHelper(ProgressType progressType, SynchronizationType synchronizationType, Action<float> onProgress = null)
         {
             _progressType = progressType;
             _synchronizationType = synchronizationType;
+            _onProgress = onProgress;
+        }
+
+        public void SetExpectedProgress(float expected)
+        {
+            _expectedProgress = expected;
+            _wasInvoked = false;
         }
 
         public void Report(float value)
         {
+            if (_onProgress != null)
+            {
+                _onProgress.Invoke(value);
+            }
             lock (_locker)
             {
-                _reportedProgress = value;
-
                 _currentProgress = value;
                 _wasInvoked = true;
                 Monitor.Pulse(_locker);
@@ -108,12 +115,7 @@ namespace Proto.Promises.Tests
         {
             lock (_locker)
             {
-                {
-                    _oldProgress = _currentProgress;
-                    _expectedProgress = expectedProgress;
-                }
-
-                _wasInvoked = false;
+                SetExpectedProgress(expectedProgress);
                 deferred.ReportProgress(reportValue);
                 AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
             }
@@ -123,7 +125,7 @@ namespace Proto.Promises.Tests
         {
             lock (_locker)
             {
-                _wasInvoked = false;
+                SetExpectedProgress(expectedProgress);
                 deferred.Reject(reason);
                 AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
             }
@@ -133,7 +135,7 @@ namespace Proto.Promises.Tests
         {
             lock (_locker)
             {
-                _wasInvoked = false;
+                SetExpectedProgress(expectedProgress);
                 deferred.Cancel();
                 AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
             }
@@ -143,7 +145,7 @@ namespace Proto.Promises.Tests
         {
             lock (_locker)
             {
-                _wasInvoked = false;
+                SetExpectedProgress(expectedProgress);
                 cancelationSource.Cancel();
                 AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
             }
@@ -153,7 +155,7 @@ namespace Proto.Promises.Tests
         {
             lock (_locker)
             {
-                _wasInvoked = false;
+                SetExpectedProgress(expectedProgress);
                 deferred.Resolve();
                 AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
             }
@@ -163,7 +165,7 @@ namespace Proto.Promises.Tests
         {
             lock (_locker)
             {
-                _wasInvoked = false;
+                SetExpectedProgress(expectedProgress);
                 deferred.Resolve(result);
                 AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
             }

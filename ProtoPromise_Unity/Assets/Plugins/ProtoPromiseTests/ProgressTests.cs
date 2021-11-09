@@ -10,7 +10,9 @@
 #endif
 
 using System;
+using System.Threading;
 using NUnit.Framework;
+using Proto.Promises.Tests.Threading;
 
 namespace Proto.Promises.Tests
 {
@@ -111,6 +113,144 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve(1);
             cancelationSource.Dispose();
+        }
+
+        private static void ExecuteOnThread(Action action, ThreadHelper threadHelper, bool synchronous)
+        {
+            if (synchronous)
+            {
+                action();
+            }
+            else
+            {
+                threadHelper.ExecuteSingleAction(action);
+            }
+        }
+
+        [Test]
+        public void OnProgressWillBeInvokedOnTheCorrectSynchronizationContext_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationCallbackType,
+            [Values(SynchronizationOption.Foreground, SynchronizationOption.Background)] SynchronizationOption synchronizationReportType)
+        {
+            Thread foregroundThread = Thread.CurrentThread;
+            ThreadHelper threadHelper = new ThreadHelper();
+
+            var deferred = Promise.NewDeferred();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationCallbackType, v =>
+            {
+                switch (synchronizationCallbackType)
+                {
+                    case SynchronizationType.Foreground:
+                    case SynchronizationType.Explicit:
+                    {
+                        Assert.AreEqual(foregroundThread, Thread.CurrentThread);
+                        return;
+                    }
+                    case SynchronizationType.Background:
+                    {
+                        Assert.AreNotEqual(foregroundThread, Thread.CurrentThread);
+                        Assert.IsTrue(Thread.CurrentThread.IsBackground);
+                        return;
+                    }
+                    case SynchronizationType.Synchronous:
+                    {
+                        if (synchronizationReportType == SynchronizationOption.Foreground)
+                        {
+                            goto case SynchronizationType.Foreground;
+                        }
+                        if (synchronizationReportType == SynchronizationOption.Background)
+                        {
+                            goto case SynchronizationType.Background;
+                        }
+                        break;
+                    }
+                }
+                throw new Exception();
+            });
+
+            progressHelper.SetExpectedProgress(0f);
+            ExecuteOnThread(() =>
+            {
+                progressHelper
+                    .Subscribe(deferred.Promise)
+                    .Forget();
+            }, threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
+            progressHelper.AssertCurrentProgress(0f);
+
+            progressHelper.SetExpectedProgress(0f);
+            ExecuteOnThread(() => deferred.ReportProgress(0.5f),
+                threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
+            progressHelper.AssertCurrentProgress(0.5f);
+
+            progressHelper.SetExpectedProgress(1f);
+            ExecuteOnThread(() => deferred.Resolve(),
+                threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
+            progressHelper.AssertCurrentProgress(1f);
+        }
+
+        [Test]
+        public void OnProgressWillBeInvokedOnTheCorrectSynchronizationContext_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationCallbackType,
+            [Values(SynchronizationOption.Foreground, SynchronizationOption.Background)] SynchronizationOption synchronizationReportType)
+        {
+            Thread foregroundThread = Thread.CurrentThread;
+            ThreadHelper threadHelper = new ThreadHelper();
+
+            var deferred = Promise.NewDeferred<int>();
+
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationCallbackType, v =>
+            {
+                switch (synchronizationCallbackType)
+                {
+                    case SynchronizationType.Foreground:
+                    case SynchronizationType.Explicit:
+                    {
+                        Assert.AreEqual(foregroundThread, Thread.CurrentThread);
+                        return;
+                    }
+                    case SynchronizationType.Background:
+                    {
+                        Assert.AreNotEqual(foregroundThread, Thread.CurrentThread);
+                        Assert.IsTrue(Thread.CurrentThread.IsBackground);
+                        return;
+                    }
+                    case SynchronizationType.Synchronous:
+                    {
+                        if (synchronizationReportType == SynchronizationOption.Foreground)
+                        {
+                            goto case SynchronizationType.Foreground;
+                        }
+                        if (synchronizationReportType == SynchronizationOption.Background)
+                        {
+                            goto case SynchronizationType.Background;
+                        }
+                        break;
+                    }
+                }
+                throw new Exception();
+            });
+
+            progressHelper.SetExpectedProgress(0f);
+            ExecuteOnThread(() =>
+            {
+                progressHelper
+                    .Subscribe(deferred.Promise)
+                    .Forget();
+            }, threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
+            progressHelper.AssertCurrentProgress(0f);
+
+            progressHelper.SetExpectedProgress(0f);
+            ExecuteOnThread(() => deferred.ReportProgress(0.5f),
+                threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
+            progressHelper.AssertCurrentProgress(0.5f);
+
+            progressHelper.SetExpectedProgress(1f);
+            ExecuteOnThread(() => deferred.Resolve(1),
+                threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
+            progressHelper.AssertCurrentProgress(1f);
         }
 
         [Test]
@@ -1073,7 +1213,7 @@ namespace Proto.Promises.Tests
             deferred2.Promise.Forget();
         }
 
-        const int MultiProgressCount = 100;
+        const int MultiProgressCount = 2;
 
         [Test]
         public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Pending_void(
@@ -1087,6 +1227,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i].SetExpectedProgress(0f);
                 progressHelpers[i].Subscribe(promise)
                     .Forget();
             }
@@ -1094,7 +1235,22 @@ namespace Proto.Promises.Tests
             promise.Forget();
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i].ReportProgressAndAssertResult(deferred, 0.1f, 0.1f);
+                progressHelpers[i].AssertCurrentProgress(0f);
+            }
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].SetExpectedProgress(0.1f);
+            }
+            deferred.ReportProgress(0.1f);
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(0.1f);
+            }
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].SetExpectedProgress(1f);
             }
             deferred.Resolve();
             for (int i = 0; i < MultiProgressCount; ++i)
@@ -1114,6 +1270,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i].SetExpectedProgress(1f);
                 progressHelpers[i].Subscribe(promise)
                     .Forget();
             }
@@ -1137,6 +1294,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i].SetExpectedProgress(0f);
                 progressHelpers[i].Subscribe(promise)
                     .Forget();
             }
@@ -1144,7 +1302,22 @@ namespace Proto.Promises.Tests
             promise.Forget();
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i].ReportProgressAndAssertResult(deferred, 0.1f, 0.1f);
+                progressHelpers[i].AssertCurrentProgress(0f);
+            }
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].SetExpectedProgress(0.1f);
+            }
+            deferred.ReportProgress(0.1f);
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(0.1f);
+            }
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].SetExpectedProgress(1f);
             }
             deferred.Resolve(1);
             for (int i = 0; i < MultiProgressCount; ++i)
@@ -1164,6 +1337,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i].SetExpectedProgress(1f);
                 progressHelpers[i].Subscribe(promise)
                     .Forget();
             }
@@ -1178,8 +1352,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void ProgressMayBeChainSubscribedMultipleTimes_Pending_void(
             [Values] ProgressType progressType,
-            // This test is unverifiable when progress is executed on background threads.
-            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Explicit)] SynchronizationType synchronizationType)
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise;
@@ -1188,13 +1361,29 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i].SetExpectedProgress(0f);
                 promise = progressHelpers[i].Subscribe(promise);
             }
 
             promise.Forget();
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i].ReportProgressAndAssertResult(deferred, 0.1f, 0.1f);
+                progressHelpers[i].AssertCurrentProgress(0f);
+            }
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].SetExpectedProgress(0.1f);
+            }
+            deferred.ReportProgress(0.1f);
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(0.1f);
+            }
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].SetExpectedProgress(1f);
             }
             deferred.Resolve();
             for (int i = 0; i < MultiProgressCount; ++i)
@@ -1206,8 +1395,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void ProgressMayBeChainSubscribedMultipleTimes_Resolved_void(
             [Values] ProgressType progressType,
-            // This test is unverifiable when progress is executed on background threads.
-            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Explicit)] SynchronizationType synchronizationType)
+            [Values] SynchronizationType synchronizationType)
         {
             Promise promise = Promise.Resolved();
             ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
@@ -1215,6 +1403,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i].SetExpectedProgress(1f);
                 promise = progressHelpers[i].Subscribe(promise);
             }
 
@@ -1228,8 +1417,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void ProgressMayBeChainSubscribedMultipleTimes_Pending_T(
             [Values] ProgressType progressType,
-            // This test is unverifiable when progress is executed on background threads.
-            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Explicit)] SynchronizationType synchronizationType)
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise;
@@ -1238,13 +1426,29 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i].SetExpectedProgress(0f);
                 promise = progressHelpers[i].Subscribe(promise);
             }
 
             promise.Forget();
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i].ReportProgressAndAssertResult(deferred, 0.1f, 0.1f);
+                progressHelpers[i].AssertCurrentProgress(0f);
+            }
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].SetExpectedProgress(0.1f);
+            }
+            deferred.ReportProgress(0.1f);
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(0.1f);
+            }
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                progressHelpers[i].SetExpectedProgress(1f);
             }
             deferred.Resolve(1);
             for (int i = 0; i < MultiProgressCount; ++i)
@@ -1256,8 +1460,7 @@ namespace Proto.Promises.Tests
         [Test]
         public void ProgressMayBeChainSubscribedMultipleTimes_Resolved_T(
             [Values] ProgressType progressType,
-            // This test is unverifiable when progress is executed on background threads.
-            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Explicit)] SynchronizationType synchronizationType)
+            [Values] SynchronizationType synchronizationType)
         {
             Promise<int> promise = Promise.Resolved(1);
             ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
@@ -1265,6 +1468,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i].SetExpectedProgress(1f);
                 promise = progressHelpers[i].Subscribe(promise);
             }
 

@@ -426,7 +426,7 @@ namespace Proto.Promises
                     } while (Interlocked.CompareExchange(ref _value, newValue, current) != current);
                 }
 
-                internal bool InterlockedTrySetIfNotNegativeAndWholeIsGreater(Fixed32 other)
+                internal bool InterlockedTrySet(Fixed32 other)
                 {
                     Thread.MemoryBarrier();
                     int otherValue = other._value;
@@ -435,9 +435,13 @@ namespace Proto.Promises
                     do
                     {
                         current = _value;
-                        bool failIfEquals = current < 0;
                         int currentWholePart = (current & PositiveMask) >> Promise.Config.ProgressDecimalBits; // Make positive before comparing.
-                        if (otherWholePart < currentWholePart | (failIfEquals & otherWholePart == currentWholePart))
+                        // Prevents promises from a broken chain from updating progress (cancelations break the chain).
+                        if (otherWholePart < currentWholePart
+                            // Same thing, but more edge-case. If current is negative, it means this was updated from a canceled or rejected promise, so it can only be further updated by a promise with a higher depth (WholePart).
+                            | (current < 0 & otherWholePart == currentWholePart)
+                            // Don't bother updating if the values are the same.
+                            | current == otherValue)
                         {
                             return false;
                         }
@@ -618,6 +622,14 @@ namespace Proto.Promises
                     set { _smallProgressFields._canceled = value; }
                 }
 
+                internal bool DidFirstInvoke
+                {
+                    [MethodImpl(InlineOption)]
+                    get { return _smallProgressFields._didFirstInvoke; }
+                    [MethodImpl(InlineOption)]
+                    set { _smallProgressFields._didFirstInvoke = value; }
+                }
+
                 private PromiseProgress() { }
 
                 internal static PromiseProgress<TProgress> GetOrCreate(TProgress progress, CancelationToken cancelationToken, int depth, bool isSynchronous, SynchronizationContext synchronizationContext)
@@ -628,10 +640,11 @@ namespace Proto.Promises
                     promise._progress = progress;
                     promise.IsComplete = false;
                     promise.IsCanceled = false;
+                    promise.DidFirstInvoke = false;
                     promise._smallProgressFields._currentProgress = default(Fixed32);
                     promise._smallProgressFields._depthAndProgress = new Fixed32(depth);
                     promise._smallProgressFields._isSynchronous = isSynchronous;
-                    promise._synchronizationContext = synchronizationContext; // TODO
+                    promise._synchronizationContext = synchronizationContext;
                     cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
                     return promise;
                 }
@@ -663,7 +676,11 @@ namespace Proto.Promises
 
                 private void SetProgress(Fixed32 progress, ref ExecutionScheduler executionScheduler)
                 {
-                    if (_smallProgressFields._currentProgress.InterlockedTrySetIfNotNegativeAndWholeIsGreater(progress) & !IsComplete & !IsCanceled)
+                    // InterlockedTrySet checks if progress is the same, so when this is called with progress 0 from another Promise for the first time, we need to force the invoke if possible.
+                    bool invoked = DidFirstInvoke;
+                    DidFirstInvoke = true;
+                    bool needsInvoke = _smallProgressFields._currentProgress.InterlockedTrySet(progress) | !invoked;
+                    if (needsInvoke & !IsComplete & !IsCanceled)
                     {
                         if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                         {
@@ -1063,7 +1080,7 @@ namespace Proto.Promises
 
                 private void SetProgress(Fixed32 progress, ref ExecutionScheduler executionScheduler)
                 {
-                    if (_progressAndLocker._currentProgress.InterlockedTrySetIfNotNegativeAndWholeIsGreater(progress)
+                    if (_progressAndLocker._currentProgress.InterlockedTrySet(progress)
                         && (_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
                         InterlockedRetainDisregardId();
@@ -1183,7 +1200,7 @@ namespace Proto.Promises
                     progressListener.Retain();
                     lastKnownProgress = _currentProgress;
                     _progressListener = progressListener;
-                    return base.MaybeAddProgressListenerAndGetPreviousRetained(ref progressListener, ref lastKnownProgress);
+                    return null;
                 }
 
                 protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, ref ExecutionScheduler executionScheduler)
