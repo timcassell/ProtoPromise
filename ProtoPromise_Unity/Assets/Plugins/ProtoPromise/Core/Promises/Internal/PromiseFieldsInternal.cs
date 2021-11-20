@@ -20,7 +20,6 @@ using System.Threading;
 
 namespace Proto.Promises
 {
-    [StructLayout(LayoutKind.Auto)]
     partial struct Promise
     {
         /// <summary>
@@ -53,6 +52,7 @@ namespace Proto.Promises
         // Otherwise, if all fields are on the same level as _ref, because it is a class type, it will pad T up to IntPtr.Size if T is not primitive, causing the Promise<T> struct to be larger than necessary.
         // This is especially needed for Promise, which has an internal Promise<Internal.VoidResult> field (and sadly, the runtime does not allow 0-sized structs, minimum size is 1 byte).
         // See https://stackoverflow.com/questions/24742325/why-does-struct-alignment-depend-on-whether-a-field-type-is-primitive-or-user-de
+        [StructLayout(LayoutKind.Auto)]
         private
 #if CSHARP_7_3_OR_NEWER
             readonly

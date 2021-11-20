@@ -140,14 +140,6 @@ namespace Proto.Promises.Tests.Threading
         private readonly Stack<Task> _executingTasks = new Stack<Task>(multiExecutionCount);
         private readonly Barrier _barrier = new Barrier(1);
         private int _currentParticipants = 0;
-        private readonly TimeSpan _timeout;
-
-        public ThreadHelper() : this(TimeSpan.FromSeconds(1000)) { } // 1000 second timeout should be enough for most cases (10 seconds for each thread).
-
-        public ThreadHelper(TimeSpan timeout)
-        {
-            _timeout = timeout;
-        }
 
         /// <summary>
         /// Execute the action multiple times in parallel threads.
@@ -197,9 +189,19 @@ namespace Proto.Promises.Tests.Threading
         }
 
         /// <summary>
-        /// Runs the pending actions in parallel, attempting to run them in lock-step.
+        /// Runs the pending actions in parallel, attempting to run them in lock-step, with a default timeoutPerAction value of 1 second.
+        /// Throws a <see cref="TimeoutException"/> if <paramref name="timeoutPerAction"/> is exceeded.
         /// </summary>
         public void ExecutePendingParallelActions()
+        {
+            ExecutePendingParallelActions(TimeSpan.FromSeconds(1));
+        }
+
+        /// <summary>
+        /// Runs the pending actions in parallel, attempting to run them in lock-step.
+        /// Throws a <see cref="TimeoutException"/> if <paramref name="timeoutPerAction"/> is exceeded.
+        /// </summary>
+        public void ExecutePendingParallelActions(TimeSpan timeoutPerAction)
         {
             Task[] tasks;
             lock (_executingTasks)
@@ -212,9 +214,10 @@ namespace Proto.Promises.Tests.Threading
             }
             try
             {
-                if (!Task.WaitAll(tasks, _timeout))
+                TimeSpan timeout = TimeSpan.FromTicks(timeoutPerAction.Ticks * tasks.Length);
+                if (!Task.WaitAll(tasks, timeout))
                 {
-                    throw new TimeoutException($"Action(s) timed out after {_timeout}, there may be a deadlock.");
+                    throw new TimeoutException($"{tasks.Length} Action(s) timed out after {timeout}, there may be a deadlock.");
                 }
             }
             catch (AggregateException e)

@@ -183,6 +183,22 @@ namespace Proto.Promises
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }
 
+                internal static Promise<T>.YieldInstruction AddYieldInstruction<T>(Promise<T> _this)
+                {
+                    YieldInstruction<T> yieldInstruction;
+                    if (_this._ref == null)
+                    {
+                        yieldInstruction = YieldInstruction<T>.GetOrCreate(CreateResolveContainer(_this.Result, 1), Promise.State.Resolved);
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        yieldInstruction = YieldInstruction<T>.GetOrCreate(null, Promise.State.Pending);
+                        _this._ref.HookupNewWaiter(yieldInstruction);
+                    }
+                    return yieldInstruction;
+                }
+
                 [MethodImpl(InlineOption)]
                 internal static int GetNextDepth(int depth)
                 {

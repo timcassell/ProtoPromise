@@ -55,6 +55,13 @@ namespace Proto.Promises.Tests
             _onProgress = onProgress;
         }
 
+        public void Reset()
+        {
+            TestHelper.ExecuteForegroundCallbacks();
+            _wasInvoked = false;
+            _currentProgress = _expectedProgress = float.NaN;
+        }
+
         public void SetExpectedProgress(float expected)
         {
             _expectedProgress = expected;
@@ -77,38 +84,38 @@ namespace Proto.Promises.Tests
 
         public void AssertCurrentProgress(float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
         {
-            lock (_locker)
+            float currentProgress = GetCurrentProgress(expectInvoke, executeForeground);
+            if (float.IsNaN(expectedProgress))
             {
-                float currentProgress = GetCurrentProgress(expectInvoke, executeForeground);
-                if (float.IsNaN(expectedProgress))
-                {
-                    Assert.IsNaN(currentProgress);
-                }
-                else
-                {
-                    Assert.AreEqual(expectedProgress, currentProgress, TestHelper.progressEpsilon);
-                }
+                Assert.IsNaN(currentProgress);
+            }
+            else
+            {
+                Assert.AreEqual(expectedProgress, currentProgress, TestHelper.progressEpsilon);
             }
         }
 
-        private float GetCurrentProgress(bool expectInvoke, bool executeForeground)
+        public float GetCurrentProgress(bool expectInvoke, bool executeForeground)
         {
-            if (executeForeground)
+            lock (_locker)
             {
-                TestHelper.ExecuteForegroundCallbacks();
-            }
-            if (expectInvoke)
-            {
-                // Wait for Report to be called in case it happens in a separate thread.
-                if (!_wasInvoked)
+                if (executeForeground)
                 {
-                    if (!Monitor.Wait(_locker, TimeSpan.FromSeconds(1)))
+                    TestHelper.ExecuteForegroundCallbacks();
+                }
+                if (expectInvoke)
+                {
+                    // Wait for Report to be called in case it happens in a separate thread.
+                    if (!_wasInvoked)
                     {
-                        throw new TimeoutException();
+                        if (!Monitor.Wait(_locker, TimeSpan.FromSeconds(1)))
+                        {
+                            throw new TimeoutException();
+                        }
                     }
                 }
+                return _currentProgress;
             }
-            return _currentProgress;
         }
 
         public void ReportProgressAndAssertResult(Promise.DeferredBase deferred, float reportValue, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
@@ -379,6 +386,16 @@ namespace Proto.Promises.Tests
         public static Promise<T> ThenDuplicate<T>(this Promise<T> promise, CancelationToken cancelationToken = default(CancelationToken))
         {
             return promise.Then(v => v, cancelationToken);
+        }
+
+        public static Promise SubscribeProgress(this Promise promise, ProgressHelper progressHelper, CancelationToken cancelationToken = default(CancelationToken))
+        {
+            return progressHelper.Subscribe(promise, cancelationToken);
+        }
+
+        public static Promise<T> SubscribeProgress<T>(this Promise<T> promise, ProgressHelper progressHelper, CancelationToken cancelationToken = default(CancelationToken))
+        {
+            return progressHelper.Subscribe(promise, cancelationToken);
         }
 
         public static readonly double progressEpsilon = 1d / Math.Pow(2d, Promise.Config.ProgressDecimalBits);

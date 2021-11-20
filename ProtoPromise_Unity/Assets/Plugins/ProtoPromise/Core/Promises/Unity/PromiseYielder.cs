@@ -1,8 +1,16 @@
-﻿#pragma warning disable IDE0034 // Simplify 'default' expression
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
+#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable RECS0108 // Warns about static fields in generic types
+#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Collections;
+using System.Threading;
 using UnityEngine;
 
 namespace Proto.Promises
@@ -81,41 +89,13 @@ namespace Proto.Promises
             /// <see cref="Dispose"/>, you must release all references to the
             /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/> so the garbage collector can reclaim the memory
             /// that the <see cref="T:ProtoPromise.Promise.YieldInstruction"/> was occupying.</remarks>
-            public virtual void Dispose()
-            {
-                ValidateOperation();
-
-                // Not bothering to remove from owner's branches, just mark for when the promise completes.
-                _isActive = false;
-                if (_state != State.Pending)
-                {
-                    ((IRetainable) _value).Release();
-                    _value = null;
-                }
-            }
-
-#if CSHARP_7_3_OR_NEWER // private protected not available in language versions.
-            private protected void Settle(Internal.IValueContainer valueContainer)
-            {
-#else
-            protected void Settle(object container)
-            {
-                Internal.IValueContainer valueContainer = (Internal.IValueContainer) container;
-#endif
-                // TODO: thread safety
-                if (_isActive)
-                {
-                    valueContainer.Retain();
-                    _value = valueContainer;
-                    _state = valueContainer.GetState();
-                }
-            }
+            public abstract void Dispose();
 
             protected void ValidateOperation()
             {
                 if (!_isActive)
                 {
-                    throw new InvalidOperationException("Promise yield instruction is not valid. You can get a validate yield instruction by calling promise.ToYieldInstruction(). After you have disposed ", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a validate yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
                 }
             }
         }
@@ -127,18 +107,7 @@ namespace Proto.Promises
         {
             ValidateOperation(1);
 
-            Internal.YieldInstructionVoid yieldInstruction;
-            if (_target._ref != null)
-            {
-                yieldInstruction = Internal.YieldInstructionVoid.GetOrCreate(null, State.Pending);
-                var executionStack = new Internal.ValueLinkedStack<Internal.ITreeHandleable>();
-                _target._ref.AddWaiter(yieldInstruction, ref executionStack);
-            }
-            else
-            {
-                yieldInstruction = Internal.YieldInstructionVoid.GetOrCreate(Internal.ResolveContainerVoid.GetOrCreate(), State.Resolved);
-            }
-            return yieldInstruction;
+            return Internal.PromiseRef.CallbackHelper.AddYieldInstruction(_target);
         }
     }
 
@@ -185,66 +154,20 @@ namespace Proto.Promises
         {
             ValidateOperation(1);
 
-            Internal.YieldInstruction<T> yieldInstruction;
-            if (_ref != null)
-            {
-                yieldInstruction = Internal.YieldInstruction<T>.GetOrCreate(null, Promise.State.Pending);
-                var executionStack = new Internal.ValueLinkedStack<Internal.ITreeHandleable>();
-                _ref.AddWaiter(yieldInstruction, ref executionStack);
-            }
-            else
-            {
-                yieldInstruction = Internal.YieldInstruction<T>.GetOrCreate(Internal.ResolveContainerVoid.GetOrCreate(), Promise.State.Resolved);
-            }
-            return yieldInstruction;
+            return Internal.PromiseRef.CallbackHelper.AddYieldInstruction(this);
         }
     }
 
     partial class Internal
     {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
-#endif
-        internal sealed class YieldInstructionVoid : Promise.YieldInstruction, ITreeHandleable // Annoying old runtime can't compile generic ObjectPool with interface only in the base.
-        {
-            private YieldInstructionVoid() { }
-
-            public static YieldInstructionVoid GetOrCreate(object valueContainer, Promise.State state)
-            {
-                var yieldInstruction = ObjectPool<ITreeHandleable>.TryTake<YieldInstructionVoid>()
-                    ?? new YieldInstructionVoid();
-                yieldInstruction._value = valueContainer;
-                yieldInstruction._state = state;
-                yieldInstruction._isActive = true;
-                return yieldInstruction;
-            }
-
-            public override void Dispose()
-            {
-                base.Dispose();
-                ObjectPool<ITreeHandleable>.MaybeRepool(this);
-            }
-
-            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
-
-            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
-            {
-                Settle(valueContainer);
-            }
-
-            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
-            {
-                Settle(valueContainer);
-            }
-
-            void ITreeHandleable.Handle(ref ValueLinkedStack<ITreeHandleable> executionStack) { throw new System.InvalidOperationException(); }
-        }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
         internal sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, ITreeHandleable // Annoying old runtime can't compile generic ObjectPool with interface only in the base.
         {
+            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+
             private YieldInstruction() { }
 
             public static YieldInstruction<T> GetOrCreate(object valueContainer, Promise.State state)
@@ -259,23 +182,49 @@ namespace Proto.Promises
 
             public override void Dispose()
             {
-                base.Dispose();
+                ValidateOperation();
+
+                // Not bothering to remove from owner's branches, just mark for when the promise completes.
+                _isActive = false;
+                Thread.MemoryBarrier();
+                object container = Interlocked.Exchange(ref _value, null);
+                if (container != null)
+                {
+                    ((IRetainable) container).Release();
+                }
+#if !PROMISE_DEBUG // Don't repool in DEBUG mode.
                 ObjectPool<ITreeHandleable>.MaybeRepool(this);
+#endif
             }
 
-            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+            private void Settle(IValueContainer valueContainer)
+            {
+                valueContainer.Retain();
+                _value = valueContainer;
+                _state = valueContainer.GetState();
+                Thread.MemoryBarrier();
+                if (!_isActive) // Was disposed?
+                {
+                    // Handle race condition with Dispose. Make sure we're removing the same container.
+                    var container = Interlocked.CompareExchange(ref _value, null, valueContainer);
+                    if (container != null)
+                    {
+                        ((IRetainable) container).Release();
+                    }
+                }
+            }
 
-            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
             {
                 Settle(valueContainer);
             }
 
-            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ValueLinkedStack<ITreeHandleable> executionStack)
+            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
             {
                 Settle(valueContainer);
             }
 
-            void ITreeHandleable.Handle(ref ValueLinkedStack<ITreeHandleable> executionStack) { throw new System.InvalidOperationException(); }
+            void ITreeHandleable.Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
         }
     }
 

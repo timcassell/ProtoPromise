@@ -326,7 +326,7 @@ namespace Proto.Promises.Tests.Threading
                 teardownAction();
                 return;
             }
-            var threadHelper = new ThreadHelper(TimeSpan.FromSeconds(10));
+            var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 setupAction,
                 teardownAction,
@@ -431,7 +431,7 @@ namespace Proto.Promises.Tests.Threading
                 teardownAction();
                 return;
             }
-            var threadHelper = new ThreadHelper(TimeSpan.FromSeconds(10));
+            var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 setupAction,
                 teardownAction,

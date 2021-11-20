@@ -146,8 +146,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal partial struct PromiseAwaiterInternal<T>
+        internal readonly partial struct PromiseAwaiterInternal<T>
         {
+            private readonly Promise<T> _promise;
 #if PROMISE_DEBUG
             // To make sure this isn't reused.
             private class IdContainer
@@ -156,7 +157,6 @@ namespace Proto.Promises
             }
             private readonly IdContainer _idContainer;
 #endif
-            private readonly Promise<T> _promise;
 
             /// <summary>
             /// Internal use.
@@ -164,8 +164,9 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal PromiseAwaiterInternal(Promise<T> promise)
             {
-                // TODO: remove the duplicate when synchronous callbacks are implemented.
-                // Duplicate force gets a single use promise (prevents retain overflows from a preserved promise).
+                // Duplicate force gets a single use promise if it's a multi use promise.
+                // It also prevents the promise from being used again improperly if it's a single use promise.
+                // And it internally validates the promise.
                 _promise = promise.Duplicate();
 #if PROMISE_DEBUG
                 _idContainer = new IdContainer() { _id = _promise.Id };
@@ -361,7 +362,7 @@ namespace Proto.Promises
 
     partial struct Promise
     {
-        // TODO: ConfigureAwait taking CancelationToken, ExecutionOptions, and/or progress normalization.
+        // TODO: ConfigureAwait for reporting progress to an async Promise.
 
         /// <summary>
         /// Used to support the await keyword.

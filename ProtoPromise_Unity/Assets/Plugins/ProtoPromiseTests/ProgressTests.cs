@@ -923,14 +923,7 @@ namespace Proto.Promises.Tests
             progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
             progressHelper.ResolveAndAssertResult(deferred, 1f / 2f);
 
-            try
-            {
-                progressHelper.ReportProgressAndAssertResult(nextDeferred, 0.5f, 1.5f / 2f);
-            }
-            catch
-            {
-                throw;
-            }
+            progressHelper.ReportProgressAndAssertResult(nextDeferred, 0.5f, 1.5f / 2f);
             progressHelper.ResolveAndAssertResult(nextDeferred, 2f / 2f);
         }
 
@@ -953,15 +946,7 @@ namespace Proto.Promises.Tests
             progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
             progressHelper.ResolveAndAssertResult(deferred, 1f / 2f);
 
-            // TODO: why is this failing with background synchronization?
-            try
-            {
-                progressHelper.ReportProgressAndAssertResult(nextDeferred, 0.5f, 1.5f / 2f);
-            }
-            catch
-            {
-                throw;
-            }
+            progressHelper.ReportProgressAndAssertResult(nextDeferred, 0.5f, 1.5f / 2f);
             progressHelper.ResolveAndAssertResult(nextDeferred, 1, 2f / 2f);
         }
 

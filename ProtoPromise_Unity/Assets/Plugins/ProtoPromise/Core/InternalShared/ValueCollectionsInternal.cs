@@ -25,9 +25,11 @@ namespace Proto.Promises
 
             internal TraceableCollection()
             {
-                createdAt = false // Set to true to capture the stacktrace. Slows down execution a lot, so only do this when absolutely necessary for debugging internal promise code.
-                    ? new StackTrace(2, false)
-                    : null;
+#if false // Set to true to capture the stacktrace. Slows down execution a lot, so only do this when absolutely necessary for debugging internal promise code.
+                createdAt = new StackTrace(2, false);
+#else
+                createdAt = null;
+#endif
             }
         }
 

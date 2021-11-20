@@ -9,6 +9,7 @@
 using NUnit.Framework;
 using System;
 using System.Linq;
+using System.Threading;
 
 namespace Proto.Promises.Tests.Threading
 {
@@ -573,95 +574,102 @@ namespace Proto.Promises.Tests.Threading
 #if PROMISE_PROGRESS
         [Test]
         public void Progress_PromiseMayReportProgressAndCallbackCanceledConcurrently_void(
-            [Values] SynchronizationOption synchronizationOption)
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
             bool completed = false;
             bool invoked = false;
 
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+
             var threadHelper = new ThreadHelper();
-            foreach (var action in new Func<Promise, CancelationToken, Promise>[]
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
                 {
-                    (promise, token) => promise.Progress(_ => { invoked = true; }, synchronizationOption, token),
-                    (promise, token) => promise.Progress(1, (cv, _) => { invoked = true;}, synchronizationOption, token),
-                })
-            {
-                threadHelper.ExecuteParallelActionsWithOffsets(false,
-                    // Setup
-                    () =>
+                    cancelationSource = CancelationSource.New();
+                    deferred = Promise.NewDeferred();
+                    // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
+                    progressHelper.Subscribe(deferred.Promise, cancelationSource.Token)
+                        .Finally(() => completed = true) // Make sure it completes.
+                        .Forget();
+                },
+                // Teardown
+                () =>
+                {
+                    invoked = false;
+                    cancelationSource.Dispose();
+                    deferred.Resolve();
+                    TestHelper.ExecuteForegroundCallbacks();
+                    if (synchronizationType == SynchronizationType.Background)
                     {
-                        cancelationSource = CancelationSource.New();
-                        deferred = Promise.NewDeferred();
-                        // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
-                        action(deferred.Promise, cancelationSource.Token)
-                            .Finally(() => completed = true) // Make sure it completes.
-                            .Forget();
-                    },
-                    // Teardown
-                    () =>
+                        SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1));
+                    }
+                    else
                     {
-                        invoked = false;
-                        cancelationSource.Dispose();
-                        deferred.Resolve();
-                        TestHelper.ExecuteForegroundCallbacks();
                         Assert.IsTrue(completed);
-                        Assert.IsFalse(invoked);
-                    },
-                    // Parallel actions
-                    () => cancelationSource.Cancel(),
-                    () => deferred.ReportProgress(0.5f)
-                );
-            }
+                    }
+                    Assert.IsFalse(invoked);
+                },
+                // Parallel actions
+                () => cancelationSource.Cancel(),
+                () => deferred.ReportProgress(0.5f)
+            );
         }
 
         [Test]
         public void Progress_PromiseMayReportProgressAndCallbackCanceledConcurrently_T(
-            [Values] SynchronizationOption synchronizationOption)
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
             bool completed = false;
             bool invoked = false;
 
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+
             var threadHelper = new ThreadHelper();
-            foreach (var action in new Func<Promise, CancelationToken, Promise>[]
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
                 {
-                    (promise, token) => promise.Progress(_ => { invoked = true; }, synchronizationOption, token),
-                    (promise, token) => promise.Progress(1, (cv, _) => { invoked = true; }, synchronizationOption, token),
-                })
-            {
-                threadHelper.ExecuteParallelActionsWithOffsets(false,
-                    // Setup
-                    () =>
+                    cancelationSource = CancelationSource.New();
+                    deferred = Promise.NewDeferred<int>();
+                    // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
+                    progressHelper.Subscribe(deferred.Promise, cancelationSource.Token)
+                        .Finally(() => completed = true) // Make sure it completes.
+                        .Forget();
+                },
+                // Teardown
+                () =>
+                {
+                    invoked = false;
+                    cancelationSource.Dispose();
+                    deferred.Resolve(1);
+                    TestHelper.ExecuteForegroundCallbacks();
+                    if (synchronizationType == SynchronizationType.Background)
                     {
-                        cancelationSource = CancelationSource.New();
-                        deferred = Promise.NewDeferred<int>();
-                        // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
-                        action(deferred.Promise, cancelationSource.Token)
-                            .Finally(() => completed = true) // Make sure it completes.
-                            .Forget();
-                    },
-                    // Teardown
-                    () =>
+                        SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1));
+                    }
+                    else
                     {
-                        invoked = false;
-                        cancelationSource.Dispose();
-                        deferred.Resolve(1);
-                        TestHelper.ExecuteForegroundCallbacks();
                         Assert.IsTrue(completed);
-                        Assert.IsFalse(invoked);
-                    },
-                    // Parallel actions
-                    () => cancelationSource.Cancel(),
-                    () => deferred.ReportProgress(0.5f)
-                );
-            }
+                    }
+                    Assert.IsFalse(invoked);
+                },
+                // Parallel actions
+                () => cancelationSource.Cancel(),
+                () => deferred.ReportProgress(0.5f)
+            );
         }
 
         [Test]
         public void Progress_PromiseMayReportProgressAndBeSubscribedProgressAndCallbackCanceledConcurrently_void(
-            [Values] SynchronizationOption synchronizationOption)
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
@@ -670,45 +678,48 @@ namespace Proto.Promises.Tests.Threading
             bool completed = false;
             bool invoked = false;
 
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+
             var threadHelper = new ThreadHelper();
-            foreach (var action in new Func<Promise, CancelationToken, Promise>[]
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
                 {
-                    (p, token) => p.Progress(_ => { invoked = true; }, synchronizationOption, token),
-                    (p, token) => p.Progress(1, (cv, _) => { invoked = true; }, synchronizationOption, token),
-                })
-            {
-                threadHelper.ExecuteParallelActionsWithOffsets(false,
-                    // Setup
-                    () =>
+                    cancelationSource = CancelationSource.New();
+                    deferred = Promise.NewDeferred();
+                    cancelationToken = cancelationSource.Token;
+                    promise = deferred.Promise;
+                },
+                // Teardown
+                () =>
+                {
+                    invoked = false;
+                    cancelationSource.Dispose();
+                    deferred.Resolve();
+                    TestHelper.ExecuteForegroundCallbacks();
+                    if (synchronizationType == SynchronizationType.Background)
                     {
-                        cancelationSource = CancelationSource.New();
-                        deferred = Promise.NewDeferred();
-                        cancelationToken = cancelationSource.Token;
-                        promise = deferred.Promise;
-                    },
-                    // Teardown
-                    () =>
+                        SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1));
+                    }
+                    else
                     {
-                        invoked = false;
-                        cancelationSource.Dispose();
-                        deferred.Resolve();
-                        TestHelper.ExecuteForegroundCallbacks();
                         Assert.IsTrue(completed);
-                        Assert.IsFalse(invoked);
-                    },
-                    // Parallel actions
-                    () => cancelationSource.Cancel(),
-                    () => deferred.ReportProgress(0.5f),
-                    () => action(promise, cancelationToken)
-                        .Finally(() => completed = true) // Whether the callback is called or not is indeterminable, just make sure it completes.
-                        .Forget()
-                );
-            }
+                    }
+                    Assert.IsFalse(invoked);
+                },
+                // Parallel actions
+                () => cancelationSource.Cancel(),
+                () => deferred.ReportProgress(0.5f),
+                () => progressHelper.Subscribe(promise, cancelationToken)
+                    .Finally(() => completed = true) // Whether the callback is called or not is indeterminable, just make sure it completes.
+                    .Forget()
+            );
         }
 
         [Test]
         public void Progress_PromiseMayReportProgressAndBeSubscribedProgressAndCallbackCanceledConcurrently_T(
-            [Values] SynchronizationOption synchronizationOption)
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
@@ -717,126 +728,142 @@ namespace Proto.Promises.Tests.Threading
             bool completed = false;
             bool invoked = false;
 
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+
             var threadHelper = new ThreadHelper();
-            foreach (var action in new Func<Promise, CancelationToken, Promise>[]
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
                 {
-                    (p, token) => p.Progress(_ => { invoked = true; }, synchronizationOption, token),
-                    (p, token) => p.Progress(1, (cv, _) => { invoked = true; }, synchronizationOption, token),
-                })
-            {
-                threadHelper.ExecuteParallelActionsWithOffsets(false,
-                    // Setup
-                    () =>
+                    cancelationSource = CancelationSource.New();
+                    deferred = Promise.NewDeferred<int>();
+                    cancelationToken = cancelationSource.Token;
+                    promise = deferred.Promise;
+                },
+                // Teardown
+                () =>
+                {
+                    invoked = false;
+                    cancelationSource.Dispose();
+                    deferred.Resolve(1);
+                    TestHelper.ExecuteForegroundCallbacks();
+                    if (synchronizationType == SynchronizationType.Background)
                     {
-                        cancelationSource = CancelationSource.New();
-                        deferred = Promise.NewDeferred<int>();
-                        cancelationToken = cancelationSource.Token;
-                        promise = deferred.Promise;
-                    },
-                    // Teardown
-                    () =>
+                        SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1));
+                    }
+                    else
                     {
-                        invoked = false;
-                        cancelationSource.Dispose();
-                        deferred.Resolve(1);
-                        TestHelper.ExecuteForegroundCallbacks();
                         Assert.IsTrue(completed);
-                        Assert.IsFalse(invoked);
-                    },
-                    // Parallel actions
-                    () => cancelationSource.Cancel(),
-                    () => deferred.ReportProgress(0.5f),
-                    () => action(promise, cancelationToken)
-                        .Finally(() => completed = true) // Whether the callback is called or not is indeterminable, just make sure it completes.
-                        .Forget()
-                );
-            }
+                    }
+                    Assert.IsFalse(invoked);
+                },
+                // Parallel actions
+                () => cancelationSource.Cancel(),
+                () => deferred.ReportProgress(0.5f),
+                () => progressHelper.Subscribe(promise, cancelationToken)
+                    .Finally(() => completed = true) // Whether the callback is called or not is indeterminable, just make sure it completes.
+                    .Forget()
+            );
         }
 
         [Test]
-        public void Progress_PromisesChainMayBeCanceledInMultiplePlacesAndProgressReportedConcurrently_void()
+        public void Progress_PromisesChainMayBeCanceledInMultiplePlacesAndProgressReportedConcurrently_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var cancelationSource1 = default(CancelationSource);
             var cancelationSource2 = default(CancelationSource);
             var deferred = default(Promise.Deferred);
             bool completed = false;
 
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+
             var threadHelper = new ThreadHelper();
-            foreach (var action in new Func<Promise, CancelationToken, CancelationToken, Promise>[]
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
                 {
-                    (promise, token1, token2) => promise.ThenDuplicate(token1).ThenDuplicate().ThenDuplicate(token2).ThenDuplicate().Progress(_ => { }),
-                    (promise, token1, token2) => promise.ThenDuplicate(token1).ThenDuplicate().ThenDuplicate(token2).ThenDuplicate().Progress(1, (cv, _) => { }),
-                })
-            {
-                threadHelper.ExecuteParallelActionsWithOffsets(false,
-                    // Setup
-                    () =>
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New();
+                    deferred = Promise.NewDeferred();
+                    // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
+                    progressHelper.Subscribe(
+                        deferred.Promise.ThenDuplicate(cancelationSource1.Token).ThenDuplicate().ThenDuplicate(cancelationSource2.Token).ThenDuplicate()
+                    )
+                        .Finally(() => completed = true) // Make sure it completes.
+                        .Forget();
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource1.Dispose();
+                    cancelationSource2.Dispose();
+                    deferred.Resolve();
+                    TestHelper.ExecuteForegroundCallbacks();
+                    if (synchronizationType == SynchronizationType.Background)
                     {
-                        cancelationSource1 = CancelationSource.New();
-                        cancelationSource2 = CancelationSource.New();
-                        deferred = Promise.NewDeferred();
-                        // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
-                        action(deferred.Promise, cancelationSource1.Token, cancelationSource2.Token)
-                            .Finally(() => completed = true) // Make sure it completes.
-                            .Forget();
-                    },
-                    // Teardown
-                    () =>
+                        SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1));
+                    }
+                    else
                     {
-                        cancelationSource1.Dispose();
-                        cancelationSource2.Dispose();
-                        deferred.Resolve();
                         Assert.IsTrue(completed);
-                    },
-                    // Parallel actions
-                    () => cancelationSource1.Cancel(),
-                    () => cancelationSource2.Cancel(),
-                    () => deferred.ReportProgress(0.5f)
-                );
-            }
+                    }
+                },
+                // Parallel actions
+                () => cancelationSource1.Cancel(),
+                () => cancelationSource2.Cancel(),
+                () => deferred.ReportProgress(0.5f)
+            );
         }
 
         [Test]
-        public void Progress_PromisesChainMayBeCanceledInMultiplePlacesAndProgressReportedConcurrently_T()
+        public void Progress_PromisesChainMayBeCanceledInMultiplePlacesAndProgressReportedConcurrently_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var cancelationSource1 = default(CancelationSource);
             var cancelationSource2 = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
             bool completed = false;
 
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+
             var threadHelper = new ThreadHelper();
-            foreach (var action in new Func<Promise, CancelationToken, CancelationToken, Promise>[]
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                // Setup
+                () =>
                 {
-                    (promise, token1, token2) => promise.ThenDuplicate(token1).ThenDuplicate().ThenDuplicate().ThenDuplicate(token2).ThenDuplicate().Progress(_ => { }),
-                    (promise, token1, token2) => promise.ThenDuplicate(token1).ThenDuplicate().ThenDuplicate().ThenDuplicate(token2).ThenDuplicate().Progress(1, (cv, _) => { }),
-                })
-            {
-                threadHelper.ExecuteParallelActionsWithOffsets(false,
-                    // Setup
-                    () =>
+                    cancelationSource1 = CancelationSource.New();
+                    cancelationSource2 = CancelationSource.New();
+                    deferred = Promise.NewDeferred<int>();
+                    // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
+                    progressHelper.Subscribe(
+                        deferred.Promise.ThenDuplicate(cancelationSource1.Token).ThenDuplicate().ThenDuplicate(cancelationSource2.Token).ThenDuplicate()
+                    )
+                        .Finally(() => completed = true) // Make sure it completes.
+                        .Forget();
+                },
+                // Teardown
+                () =>
+                {
+                    cancelationSource1.Dispose();
+                    cancelationSource2.Dispose();
+                    deferred.Resolve(1);
+                    TestHelper.ExecuteForegroundCallbacks();
+                    if (synchronizationType == SynchronizationType.Background)
                     {
-                        cancelationSource1 = CancelationSource.New();
-                        cancelationSource2 = CancelationSource.New();
-                        deferred = Promise.NewDeferred<int>();
-                        // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
-                        action(deferred.Promise, cancelationSource1.Token, cancelationSource2.Token)
-                            .Finally(() => completed = true) // Make sure it completes.
-                            .Forget();
-                    },
-                    // Teardown
-                    () =>
+                        SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1));
+                    }
+                    else
                     {
-                        cancelationSource1.Dispose();
-                        cancelationSource2.Dispose();
-                        deferred.Resolve(1);
                         Assert.IsTrue(completed);
-                    },
-                    // Parallel actions
-                    () => cancelationSource1.Cancel(),
-                    () => cancelationSource2.Cancel(),
-                    () => deferred.ReportProgress(0.5f)
-                );
-            }
+                    }
+                },
+                // Parallel actions
+                () => cancelationSource1.Cancel(),
+                () => cancelationSource2.Cancel(),
+                () => deferred.ReportProgress(0.5f)
+            );
         }
 #endif
     }
